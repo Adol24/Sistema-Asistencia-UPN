@@ -255,9 +255,39 @@ export async function anotarEnBitacora(accion: string, detalle: string): Promise
 // =================================================== funciones del portal ===
 // El participante no tiene sesión, así que su único camino son estas llamadas.
 
-export async function buscarEnPadronRemoto(matricula: string) {
+/**
+ * ¿Está esta matrícula en el padrón? Sin datos personales.
+ *
+ * Es lo único que el pre-registro necesita antes de comprobar la identidad. La
+ * función que sí devuelve el expediente exige el reto, porque la clave
+ * publicable viaja en el paquete y cualquiera puede llamar a la API por su
+ * cuenta: una comprobación que solo vive en el navegador no es una
+ * comprobación.
+ */
+export async function existeEnPadronRemoto(matricula: string) {
   const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_buscar_en_padron", { p_matricula: matricula });
+  const { data, error } = await sb.rpc("fn_padron_existe", { p_matricula: matricula });
+  if (error) throw error;
+  return data as { existe: boolean; ya_registrado: boolean };
+}
+
+/**
+ * El expediente del padrón, a cambio de demostrar que ya se sabe de quién es.
+ *
+ * Devuelve `null` tanto si el reto falla como si la matrícula no existe: si se
+ * distinguieran, la diferencia sería un buscador de matrículas válidas.
+ */
+export async function confirmarEnPadronRemoto(
+  matricula: string,
+  nombres: string,
+  programa: string,
+) {
+  const sb = exigirBase();
+  const { data, error } = await sb.rpc("fn_padron_confirmar", {
+    p_matricula: matricula,
+    p_nombres: nombres,
+    p_programa: programa,
+  });
   if (error) throw error;
   return data as {
     matricula: string;

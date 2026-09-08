@@ -1,14 +1,11 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Las pantallas del participante sí se indexan: son la cara pública del evento.
 User-agent: *
 Allow: /
+
+# Las de operación, no. No es control de acceso —robots.txt no lo es— pero
+# tampoco hay razón para que las URLs internas aparezcan en un buscador.
+Disallow: /admin
+Disallow: /financieros
+Disallow: /captura
+Disallow: /revision
+Disallow: /portal

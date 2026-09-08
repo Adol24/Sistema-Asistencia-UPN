@@ -62,3 +62,19 @@ cuando se construye desde Windows. Publicar desde el runner de Cloudflare —o
 desde cualquier máquina Linux o macOS— lo regenera correctamente. Si vas a
 publicar desde Windows y falla al resolver los archivos estáticos, esta es la
 causa.
+
+## Riesgo abierto antes de exponer esto a internet
+
+**Las pantallas de operación no tienen autenticación.** `/admin`, `/financieros`,
+`/captura` y `/revision` se abren escribiendo la URL.
+
+Hoy el daño está acotado desde la base: el rol anónimo no tiene ningún permiso
+sobre `participantes`, `padron_alumnos`, `pagos`, `evidencias`,
+`usuarios_internos`, `casos_soporte` ni `bitacora`, así que quien entre sin
+sesión ve la interfaz vacía o con datos simulados, no datos reales. La puerta
+está abierta pero el cuarto está vacío.
+
+Aun así, antes de un despliegue público hace falta una sesión real —Supabase Auth
+con los roles de `usuarios_internos`— y un `beforeLoad` que redirija a quien no la
+tenga. Sin eso, cualquiera puede recorrer la interfaz interna, y basta con que
+alguien conceda un permiso de más en la base para que deje de estar vacía.
