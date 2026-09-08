@@ -88,53 +88,79 @@
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.985 0.004 250);
-  --foreground: oklch(0.21 0.03 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.03 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.03 258);
-  --primary: oklch(0.36 0.09 255);
-  --primary-foreground: oklch(0.98 0.005 250);
-  --secondary: oklch(0.945 0.012 250);
-  --secondary-foreground: oklch(0.3 0.05 255);
-  --muted: oklch(0.955 0.008 250);
-  --muted-foreground: oklch(0.5 0.025 256);
-  --accent: oklch(0.62 0.13 55);
-  --accent-foreground: oklch(0.99 0.005 80);
-  --destructive: oklch(0.51 0.19 27);
-  --destructive-foreground: oklch(0.98 0.005 250);
-  --border: oklch(0.9 0.012 252);
-  --input: oklch(0.9 0.012 252);
-  --ring: oklch(0.36 0.09 255);
-  --chart-1: oklch(0.36 0.09 255);
-  --chart-2: oklch(0.62 0.13 55);
-  --chart-3: oklch(0.55 0.1 200);
-  --chart-4: oklch(0.68 0.12 145);
-  --chart-5: oklch(0.5 0.14 300);
 
-  /* Estados de pago */
-  --estado-pre: oklch(0.48 0.02 255);
-  --estado-pre-bg: oklch(0.95 0.008 255);
-  --estado-comprobante: oklch(0.48 0.11 250);
-  --estado-comprobante-bg: oklch(0.94 0.03 250);
-  --estado-pagado: oklch(0.45 0.12 150);
-  --estado-pagado-bg: oklch(0.94 0.05 150);
+  /*
+   * Azul UPN — Pantone 2728. Es el único color de identidad que el manual
+   * autoriza: «siempre que sea posible se usará el logo en color azul Pantone
+   * 2728 y la tipografía en negro 100%». Su construcción CMYK en el manual es
+   * 96/69/0/0, cuyo equivalente en pantalla es #0047BB = oklch(0.443 0.193 261).
+   *
+   * Todo el cromo de la interfaz vive en ese matiz (261): los grises llevan un
+   * tinte del azul institucional en vez de ser neutros de catálogo. Los colores
+   * saturados quedan reservados para significado —estados de pago, perfiles,
+   * semáforo—, no para decorar.
+   */
+  --background: oklch(0.985 0.004 261);
+  --foreground: oklch(0.21 0.03 261);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 261);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 261);
+  --primary: oklch(0.443 0.193 261);
+  --primary-foreground: oklch(0.99 0.004 261);
+  --secondary: oklch(0.945 0.022 261);
+  --secondary-foreground: oklch(0.37 0.13 261);
+  --muted: oklch(0.962 0.008 261);
+  /* Pantone Cool Gray 10 C, el gris que el propio manual usa. */
+  --muted-foreground: oklch(0.509 0.007 255.5);
+  /*
+   * `accent` es la superficie de hover de los componentes de shadcn
+   * (`hover:bg-accent`), no un color de marca: tiene que ser un tinte claro. El
+   * realce de marca se pide con `text-primary`.
+   */
+  --accent: oklch(0.93 0.032 261);
+  --accent-foreground: oklch(0.37 0.13 261);
+  /* Pantone 200 C, el rojo del manual. */
+  --destructive: oklch(0.502 0.197 20.6);
+  --destructive-foreground: oklch(0.99 0.004 261);
+  --border: oklch(0.9 0.016 261);
+  --input: oklch(0.9 0.016 261);
+  --ring: oklch(0.443 0.193 261);
+  --chart-1: oklch(0.443 0.193 261);
+  --chart-2: oklch(0.506 0.142 149);
+  --chart-3: oklch(0.62 0.11 261);
+  --chart-4: oklch(0.509 0.007 255.5);
+  --chart-5: oklch(0.502 0.197 20.6);
+
+  /*
+   * Estados de pago. El azul, el verde y el rojo salen de las tintas del manual
+   * (2728, Pantone 356 C y Pantone 200 C). El ámbar y el violeta no tienen
+   * equivalente institucional y se conservan: son advertencia y caducidad, y
+   * cambiarlos por un tono de marca borraría la diferencia.
+   */
+  --estado-pre: oklch(0.48 0.008 255.5);
+  --estado-pre-bg: oklch(0.95 0.006 261);
+  --estado-comprobante: oklch(0.443 0.193 261);
+  --estado-comprobante-bg: oklch(0.94 0.035 261);
+  --estado-pagado: oklch(0.506 0.142 149);
+  --estado-pagado-bg: oklch(0.945 0.05 149);
   --estado-discrepancia: oklch(0.52 0.12 75);
   --estado-discrepancia-bg: oklch(0.95 0.07 90);
   --estado-expirado: oklch(0.5 0.05 300);
   --estado-expirado-bg: oklch(0.95 0.02 300);
-  --estado-cancelado: oklch(0.48 0.16 27);
-  --estado-cancelado-bg: oklch(0.95 0.04 27);
+  --estado-cancelado: oklch(0.502 0.197 20.6);
+  --estado-cancelado-bg: oklch(0.95 0.04 20.6);
 
   /*
    * Semáforo de escaneo.
    *
-   * NO se redefine en modo oscuro a propósito: es una señal, no cromo. Se mira
-   * a un metro, en un salón, con el brillo al máximo, y tiene que verse igual
-   * sin importar el tema del teléfono. Por eso cada color trae su propio color
-   * de texto fijo, en lugar de heredar `--foreground`, que en oscuro es claro y
-   * dejaba el amarillo en 2.15:1.
+   * NO se redefine en modo oscuro y NO se alinea con la paleta institucional a
+   * propósito: es una señal, no cromo. Se mira a un metro, en un salón, con el
+   * brillo al máximo, y tiene que verse igual sin importar el tema del teléfono
+   * ni la marca. El verde del manual (Pantone 356) es más oscuro y se lee peor
+   * a esa distancia. Por eso cada color trae su propio color de texto fijo, en
+   * lugar de heredar `--foreground`, que en oscuro es claro y dejaba el amarillo
+   * en 2.15:1.
    */
   --semaforo-verde: oklch(0.48 0.15 150);
   --semaforo-verde-fg: oklch(1 0 0);
@@ -143,57 +169,58 @@
   --semaforo-rojo: oklch(0.48 0.2 27);
   --semaforo-rojo-fg: oklch(1 0 0);
 
-  /* Perfiles */
-  --perfil-alumno: oklch(0.45 0.13 250);
-  --perfil-alumno-bg: oklch(0.94 0.035 250);
-  --perfil-docente: oklch(0.45 0.12 165);
-  --perfil-docente-bg: oklch(0.94 0.04 165);
-  --perfil-externo: oklch(0.5 0.13 40);
-  --perfil-externo-bg: oklch(0.95 0.05 60);
+  /*
+   * Perfiles. Alumno lleva el azul institucional porque pertenece a la
+   * Universidad; docente, el verde del manual; externo, el gris Cool Gray 10:
+   * neutro a propósito, no atenuado.
+   */
+  --perfil-alumno: oklch(0.443 0.193 261);
+  --perfil-alumno-bg: oklch(0.94 0.035 261);
+  --perfil-docente: oklch(0.506 0.142 149);
+  --perfil-docente-bg: oklch(0.945 0.05 149);
+  --perfil-externo: oklch(0.509 0.007 255.5);
+  --perfil-externo-bg: oklch(0.95 0.005 255.5);
 
-  --sidebar: oklch(0.32 0.07 256);
-  --sidebar-foreground: oklch(0.97 0.005 250);
-  --sidebar-primary: oklch(0.62 0.13 55);
-  --sidebar-primary-foreground: oklch(0.99 0.005 80);
-  --sidebar-accent: oklch(0.38 0.07 256);
-  --sidebar-accent-foreground: oklch(0.97 0.005 250);
-  --sidebar-border: oklch(0.42 0.06 256);
-  --sidebar-ring: oklch(0.62 0.13 55);
+  --sidebar: oklch(0.3 0.09 261);
+  --sidebar-foreground: oklch(0.97 0.006 261);
+  --sidebar-primary: oklch(0.72 0.14 261);
+  --sidebar-primary-foreground: oklch(0.18 0.05 261);
+  --sidebar-accent: oklch(0.36 0.08 261);
+  --sidebar-accent-foreground: oklch(0.97 0.006 261);
+  --sidebar-border: oklch(0.4 0.07 261);
+  --sidebar-ring: oklch(0.72 0.14 261);
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: oklch(0.19 0.028 261);
+  --foreground: oklch(0.97 0.006 261);
+  --card: oklch(0.235 0.032 261);
+  --card-foreground: oklch(0.97 0.006 261);
+  --popover: oklch(0.235 0.032 261);
+  --popover-foreground: oklch(0.97 0.006 261);
+  /*
+   * El azul institucional puro sobre fondo oscuro cae a 2.6:1. Se sube la
+   * luminosidad conservando el matiz 261: sigue leyéndose como el azul UPN,
+   * pero se puede leer encima.
+   */
+  --primary: oklch(0.72 0.14 261);
+  --primary-foreground: oklch(0.18 0.05 261);
+  --secondary: oklch(0.3 0.045 261);
+  --secondary-foreground: oklch(0.97 0.006 261);
+  --muted: oklch(0.3 0.035 261);
+  --muted-foreground: oklch(0.75 0.02 261);
+  --accent: oklch(0.32 0.05 261);
+  --accent-foreground: oklch(0.97 0.006 261);
+  --destructive: oklch(0.68 0.18 20.6);
+  --destructive-foreground: oklch(0.16 0.04 261);
+  --border: oklch(0.36 0.04 261);
+  --input: oklch(0.38 0.045 261);
+  --ring: oklch(0.72 0.14 261);
+  --chart-1: oklch(0.72 0.14 261);
+  --chart-2: oklch(0.75 0.15 149);
+  --chart-3: oklch(0.62 0.11 261);
+  --chart-4: oklch(0.7 0.02 255.5);
+  --chart-5: oklch(0.7 0.17 20.6);
 
   /*
    * Tokens de dominio en oscuro.
@@ -202,25 +229,34 @@
    * brillantes e ilegibles. Se invierte la relación —texto claro sobre fondo
    * apagado del mismo tono— conservando el significado de cada color.
    */
-  --estado-pre: oklch(0.78 0.02 255);
-  --estado-pre-bg: oklch(0.3 0.012 255);
-  --estado-comprobante: oklch(0.8 0.1 250);
-  --estado-comprobante-bg: oklch(0.31 0.06 250);
-  --estado-pagado: oklch(0.82 0.13 150);
-  --estado-pagado-bg: oklch(0.3 0.07 150);
+  --estado-pre: oklch(0.78 0.015 255.5);
+  --estado-pre-bg: oklch(0.3 0.01 261);
+  --estado-comprobante: oklch(0.8 0.1 261);
+  --estado-comprobante-bg: oklch(0.31 0.06 261);
+  --estado-pagado: oklch(0.82 0.13 149);
+  --estado-pagado-bg: oklch(0.3 0.07 149);
   --estado-discrepancia: oklch(0.85 0.13 85);
   --estado-discrepancia-bg: oklch(0.32 0.07 75);
   --estado-expirado: oklch(0.8 0.06 300);
   --estado-expirado-bg: oklch(0.31 0.04 300);
-  --estado-cancelado: oklch(0.79 0.14 27);
-  --estado-cancelado-bg: oklch(0.31 0.09 27);
+  --estado-cancelado: oklch(0.79 0.14 20.6);
+  --estado-cancelado-bg: oklch(0.31 0.09 20.6);
 
-  --perfil-alumno: oklch(0.81 0.12 250);
-  --perfil-alumno-bg: oklch(0.31 0.07 250);
-  --perfil-docente: oklch(0.82 0.12 165);
-  --perfil-docente-bg: oklch(0.3 0.07 165);
-  --perfil-externo: oklch(0.82 0.12 45);
-  --perfil-externo-bg: oklch(0.32 0.07 45);
+  --perfil-alumno: oklch(0.81 0.12 261);
+  --perfil-alumno-bg: oklch(0.31 0.07 261);
+  --perfil-docente: oklch(0.82 0.12 149);
+  --perfil-docente-bg: oklch(0.3 0.07 149);
+  --perfil-externo: oklch(0.8 0.02 255.5);
+  --perfil-externo-bg: oklch(0.31 0.012 255.5);
+
+  --sidebar: oklch(0.235 0.032 261);
+  --sidebar-foreground: oklch(0.97 0.006 261);
+  --sidebar-primary: oklch(0.72 0.14 261);
+  --sidebar-primary-foreground: oklch(0.18 0.05 261);
+  --sidebar-accent: oklch(0.32 0.05 261);
+  --sidebar-accent-foreground: oklch(0.97 0.006 261);
+  --sidebar-border: oklch(0.36 0.04 261);
+  --sidebar-ring: oklch(0.72 0.14 261);
 }
 
 @layer base {
@@ -228,8 +264,51 @@
     border-color: var(--color-border);
   }
 
+  html {
+    /*
+     * Sin esto, iOS agranda el texto al girar el teléfono a horizontal y la
+     * maquetación se desarma justo en la pantalla que alguien está usando de pie
+     * en una fila.
+     */
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    /*
+     * El destello gris del toque delata que esto es una página web. Los estados
+     * de `:active` y `:focus-visible` de cada control comunican lo mismo sin el
+     * parpadeo.
+     */
+    -webkit-tap-highlight-color: transparent;
+    /* Evita el rebote de la página al llegar al final de una lista larga. */
+    overscroll-behavior-y: none;
   }
+}
+
+/*
+ * Zona segura.
+ *
+ * En un teléfono con notch y barra de gestos, `viewport-fit=cover` deja que la
+ * interfaz llegue al borde físico de la pantalla —que es lo que la hace ver como
+ * app y no como página—, pero deja de reservar espacio: una barra fija arriba se
+ * mete bajo el notch y una barra de pestañas abajo queda debajo de la barra de
+ * gestos, donde el dedo la toca sin querer.
+ *
+ * Estas utilidades suman la franja del sistema al espaciado que ya lleva el
+ * elemento, en lugar de sustituirlo, para que en un teléfono sin notch —donde
+ * `env()` vale 0— el diseño quede exactamente igual.
+ */
+@utility pt-seguro {
+  padding-top: calc(env(safe-area-inset-top) + var(--espacio-seguro, 0px));
+}
+
+@utility pb-seguro {
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--espacio-seguro, 0px));
+}
+
+@utility px-seguro {
+  padding-left: max(env(safe-area-inset-left), 1rem);
+  padding-right: max(env(safe-area-inset-right), 1rem);
 }
