@@ -95,12 +95,36 @@ advierte. Es deliberado que sea visible: un modo sin autenticación que no se
 anuncia es una trampa esperando a que alguien publique el prototipo creyendo que
 la administración está cerrada.
 
+## Límite de intentos por IP
+
+Vive en la base, no en el navegador: un contador en React se reinicia recargando
+la página. Se registra un renglón por intento en `privado.intentos` —un esquema
+que PostgREST no publica— y la IP sale de `cf-connecting-ip`, la cabecera de
+fiar porque Supabase corre detrás de Cloudflare.
+
+| Puerta | Tope | Ventana |
+| --- | --- | --- |
+| `fn_padron_existe` | 30 | 10 min |
+| `fn_padron_confirmar` | 10 | 10 min |
+| `fn_perfil_interno` (acceso) | 10 | 15 min |
+
+Sobre el acceso del personal: el inicio de sesión lo atiende Supabase Auth y no
+se puede interceptar desde Postgres. Pero entrar necesita **dos** cosas —la
+sesión de Auth y una fila activa en `usuarios_internos`—, y esa segunda sí pasa
+por la base. Por eso el límite está ahí: una IP que aporrea el acceso deja de
+obtener perfil aunque acierte la contraseña.
+
+Conviene además subir el límite propio de Supabase Auth en el panel
+(*Authentication → Rate Limits*), que es la primera barrera y actúa antes.
+
+Si no hay ninguna cabecera de IP —desarrollo local— no se limita. Inventar una
+agruparía a todo el mundo bajo la misma cuenta y bastaría un usuario para dejar
+fuera a los demás.
+
 ## Lo que sigue pendiente
 
-La sesión protege la interfaz, pero la base sigue siendo la que manda: sus
-políticas comprueban el rol en cada escritura y no confían en lo que diga el
-navegador. Antes del evento conviene además:
-
-- Límite de intentos por IP en el acceso del personal y en la consulta del
-  padrón. Lo que hay hoy es un contador en el navegador, que se salta recargando.
 - Revisar que cada persona tenga su propia cuenta antes del primer día.
+- Las dos migraciones nuevas (`20260908120000` y `20260908140000`) **no se han
+  ejecutado contra un Postgres**: en esta máquina no hay ni `psql` ni el CLI de
+  Supabase. Están revisadas leyéndolas, no probadas. Aplícalas primero en un
+  proyecto de prueba.

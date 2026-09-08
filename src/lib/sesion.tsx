@@ -31,6 +31,15 @@ interface Sesion {
 const Ctx = createContext<Sesion | null>(null);
 
 /**
+ * Código con el que PostgREST devuelve el 429 de `privado.limitar`. Se compara
+ * aquí y no se adivina por el texto del mensaje, que puede cambiar.
+ */
+const LIMITE_EXCEDIDO = "PGRST";
+
+/** Ni perfil ni ausencia de perfil: la IP está temporalmente bloqueada. */
+type Perfil = PersonaInterna | null | "limitado";
+
+/**
  * La sesión del personal interno.
  *
  * Se apoya en Supabase Auth, pero la cuenta de Auth por sí sola no basta: para
@@ -48,27 +57,36 @@ export function SesionProvider({ children }: { children: ReactNode }) {
   const [persona, setPersona] = useState<PersonaInterna | null>(null);
   const [cargando, setCargando] = useState(hayBaseDeDatos);
 
-  const leerPerfil = useCallback(async (): Promise<PersonaInterna | null> => {
+  const leerPerfil = useCallback(async (): Promise<Perfil> => {
     const { supabase } = await import("@/lib/supabase");
     if (!supabase) return null;
 
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return null;
 
-    // La fila interna es la que decide. Sin ella —o dada de baja— hay cuenta de
-    // Auth pero no permiso, y eso es exactamente «fuera».
-    const { data, error } = await supabase
-      .from("usuarios_internos")
-      .select("id, nombre, correo, rol, activo")
-      .eq("id", auth.user.id)
-      .maybeSingle();
+    /*
+     * El perfil se pide a `fn_perfil_interno`, no leyendo la tabla.
+     *
+     * La función devuelve únicamente la fila de quien llama y solo si está
+     * activa, así que la aplicación deja de necesitar permiso para leer el
+     * directorio del personal. Además lleva el límite por IP: una IP que
+     * aporrea el acceso deja de obtener perfil aunque acierte la contraseña,
+     * que es lo que Supabase Auth por sí solo no puede impedirnos comprobar.
+     */
+    const { data, error } = await supabase.rpc("fn_perfil_interno");
 
-    if (error || !data || !data.activo) return null;
+    // El límite por IP y «esta cuenta no tiene acceso» son cosas distintas y no
+    // pueden compartir mensaje: decirle a alguien bloqueado que hable con
+    // administración lo manda a resolver un problema que no tiene.
+    if (error?.code === LIMITE_EXCEDIDO) return "limitado";
+    if (error || !data) return null;
+
+    const fila = data as { id: string; nombre: string; correo: string; rol: string };
     return {
-      id: data.id as string,
-      nombre: data.nombre as string,
-      correo: data.correo as string,
-      rol: rolDesdeBase(data.rol as string),
+      id: fila.id,
+      nombre: fila.nombre,
+      correo: fila.correo,
+      rol: rolDesdeBase(fila.rol),
     };
   }, []);
 
@@ -77,7 +95,7 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     let vigente = true;
 
     void leerPerfil()
-      .then((p) => vigente && setPersona(p))
+      .then((p) => vigente && setPersona(p === "limitado" ? null : p))
       .catch(() => vigente && setPersona(null))
       .finally(() => vigente && setCargando(false));
 
@@ -101,6 +119,10 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       if (error) return "Correo o contraseña incorrectos.";
 
       const p = await leerPerfil();
+      if (p === "limitado") {
+        await supabase.auth.signOut();
+        return "Demasiados intentos desde esta conexión. Espera unos minutos.";
+      }
       if (!p) {
         await supabase.auth.signOut();
         return "Esa cuenta no tiene acceso al sistema. Habla con administración.";

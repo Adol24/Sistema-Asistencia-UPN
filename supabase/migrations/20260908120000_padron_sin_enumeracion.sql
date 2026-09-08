@@ -32,7 +32,7 @@
 
 -- `unaccent` compara nombres sin depender de los acentos. Va primero porque las
 -- funciones de abajo la usan.
-create extension if not exists unaccent;
+create extension if not exists unaccent with schema extensions;
 
 -- ---------------------------------------------------------------------------
 -- Paso 1: ¿existe? Responde sí o no, y si ya se registró. Nada más.
@@ -76,7 +76,7 @@ returns jsonb
 language plpgsql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_nombre text;
