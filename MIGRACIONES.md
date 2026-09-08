@@ -1,37 +1,30 @@
-# Migraciones pendientes
+# Migraciones
 
-Estado comprobado contra el proyecto real el 8 de septiembre de 2026, con una
-sonda de solo lectura usando la clave publicable.
+## Aplicadas
 
-## Lo que ya está aplicado
+Las 16 originales (`20260907000100` … `20260907001600`) y las tres de seguridad,
+confirmadas contra el proyecto real: `fn_padron_existe` responde 200,
+`fn_evaluar_escaneo` y `fn_buscar_en_padron` responden 401 al público.
 
-Las **16 migraciones originales** (`20260907000100` … `20260907001600`). Se
-confirmó llamando a `fn_buscar_en_padron`, que responde 200.
-
-## Lo que falta correr, en este orden
+## Pendiente
 
 | # | Archivo | Qué hace |
 | --- | --- | --- |
-| 17 | `20260908120000_padron_sin_enumeracion.sql` | Parte la consulta del padrón y le quita el acceso a `anon` |
-| 18 | `20260908140000_limite_por_ip.sql` | Límite de intentos por IP; `fn_perfil_interno` |
-| 19 | `20260908160000_revocar_ejecucion_publica.sql` | Cierra las funciones del personal al público |
+| 20 | `20260908180000_catalogo_academico_real.sql` | Sustituye el catálogo de ejemplo por la oferta real de la UPN |
 
-Comprobado: `fn_padron_existe`, `fn_padron_confirmar` y `fn_perfil_interno`
-devuelven 404 en el proyecto, o sea que ninguna de las tres está aplicada.
+Hasta que corra, la aplicación seguirá mostrando los programas de ejemplo: el
+catálogo se carga de la base, no del código.
 
-## Por qué corre prisa
+La migración da de alta los nueve programas reales **antes** de retirar los de
+ejemplo, para que nunca haya un momento sin catálogo. Solo retira los que no
+tienen alumnos detrás —`padron_alumnos` y `participantes` apuntan a `programas`
+con `on delete restrict`, así que un borrado a ciegas fallaría a medias— y avisa
+por consola de los que queden, con cuántas filas dependen de cada uno.
 
-Con solo las 16 originales, el proyecto **hoy** tiene dos agujeros abiertos:
-
-1. `fn_buscar_en_padron` devuelve el expediente académico completo —nombre,
-   nivel, programa, avance, grupo, plantel— a cambio de una matrícula, a
-   cualquiera con la clave publicable. Las matrículas siguen un patrón, así que
-   recorrerlas es un bucle.
-2. Las funciones del personal responden a llamadas anónimas. Se comprobó:
-   `fn_evaluar_escaneo` devolvió 200 a una llamada sin sesión. La causa es que
-   `create function` concede `EXECUTE` a `PUBLIC` por defecto y nadie lo revocó;
-   los `grant ... to authenticated` de `permisos.sql` añadían un permiso que ya
-   tenía todo el mundo. Entre las expuestas hay dos que escriben.
+También baja licenciatura de 10 a 8 semestres y cambia «Módulo» por
+«Cuatrimestre» en maestría. El disparador `fn_validar_avance` solo actúa al
+insertar o actualizar, así que no invalida filas existentes; la migración cuenta
+cuántas se pasarían del nuevo tope y lo avisa.
 
 ## Cómo aplicarlas
 
