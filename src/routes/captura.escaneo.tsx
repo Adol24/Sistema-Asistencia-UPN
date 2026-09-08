@@ -250,10 +250,7 @@ function Semaforo({
       onClick={onTocar}
       role="status"
       aria-live="assertive"
-      className={cn(
-        "flex min-h-screen cursor-pointer flex-col justify-between p-6",
-        FONDO[r.color],
-      )}
+      className={cn("flex min-h-svh cursor-pointer flex-col justify-between p-6", FONDO[r.color])}
     >
       <div>
         <p className="text-sm font-bold uppercase tracking-[0.2em] opacity-80">

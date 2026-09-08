@@ -187,7 +187,7 @@ function PanelRevision() {
 
   return (
     <Protegido area="revision">
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-svh flex-col bg-background">
         {/* Barra de progreso y filtros */}
         <header className="border-b border-border bg-card">
           <div className="mx-auto flex max-w-[100rem] flex-wrap items-center justify-between gap-3 px-4 py-2">

@@ -114,7 +114,7 @@ export function PantallaCaptura({
      *    bajo la barra de gestos.
      */
     <Protegido area="captura">
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-svh flex-col bg-background">
         <div className="sticky top-0 z-30">
           <AvisoPrototipo />
           <BarraConexion />

@@ -8,15 +8,18 @@ import type { Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 /**
- * Enlace de regreso al paso anterior. Vive dentro del contenido, no en una
- * barra fija: el prototipo ya no lleva cabecera propia y el título de cada
- * pantalla lo pone la pantalla misma.
+ * Enlace de regreso al paso anterior.
+ *
+ * No se dibuja en teléfonos. Ahí el sistema ya tiene su propio gesto o botón de
+ * retroceso, y repetirlo en pantalla gasta la altura que más escasea sin añadir
+ * nada. En escritorio se conserva: el botón del navegador está más lejos del
+ * ojo y de la mano, y aquí sobra el espacio.
  */
 function EnlaceVolver({ a }: { a: string }) {
   return (
     <Link
       to={a}
-      className="-ml-3 mb-2 inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted print:hidden"
+      className="-ml-3 mb-2 hidden min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted sm:inline-flex print:hidden"
     >
       <ArrowLeft className="size-4" aria-hidden />
       Volver
@@ -39,14 +42,27 @@ export function PantallaPublica({
 }) {
   return (
     /*
-     * `my-auto` centra la columna verticalmente cuando el contenido es corto.
-     * Sin esto, un formulario de tres campos quedaba pegado al borde superior de
-     * una pantalla de escritorio con medio metro de vacío debajo, que es buena
-     * parte de por qué el prototipo se veía sin terminar. Con contenido largo el
-     * margen automático se agota y la página vuelve a desplazarse con normalidad,
-     * cosa que `justify-center` no haría: recortaría el inicio.
+     * Dos decisiones sobre la altura, y la segunda arregla un fallo que se veía
+     * como dos.
+     *
+     * `my-auto` centra la columna cuando el contenido es corto. Sin esto, un
+     * formulario de tres campos quedaba pegado al borde superior con medio metro
+     * de vacío debajo. Con contenido largo el margen se agota y la página vuelve
+     * a desplazarse con normalidad, cosa que `justify-center` no haría: recorta
+     * el inicio.
+     *
+     * `min-h-svh` y no `min-h-screen`. En un teléfono, `100vh` mide la pantalla
+     * CON LA BARRA DEL NAVEGADOR OCULTA, así que el contenedor siempre era más
+     * alto que lo visible: aparecía scroll en pantallas que cabían de sobra, y
+     * el centrado quedaba desplazado hacia abajo porque se calculaba sobre esa
+     * altura mayor. `svh` es la ventana más pequeña —la que tiene la barra a la
+     * vista— y no cambia al desplazarse, así que tampoco da los saltos de `dvh`.
+     *
+     * La zona segura va aquí y no en `main`: en el contenedor se suma al
+     * relleno, mientras que dentro competiría con `py-*` —y `sm:py-12` se genera
+     * después en la hoja, así que ganaba y la franja se perdía al rotar.
      */
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-background pb-seguro">
       <main
         className={cn(
           "mx-auto my-auto w-full px-4 py-8 sm:py-12",
@@ -84,7 +100,7 @@ export function PantallaPanel({
 }) {
   return (
     <Protegido area={area}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-svh bg-background">
         <AvisoPrototipo />
         {nav ? (
           <div className="border-b border-border bg-card print:hidden">

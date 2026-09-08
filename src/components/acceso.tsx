@@ -169,7 +169,7 @@ export function AvisoPrototipo() {
 
 function Centrado({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-background">
       <div className="mx-auto my-auto w-full max-w-sm px-4 py-10 text-center">{children}</div>
     </div>
   );
