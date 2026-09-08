@@ -72,7 +72,11 @@ function IdentificacionAlumno() {
   )}`;
 
   return (
-    <PantallaPublica titulo="Identificación de alumno" volverA="/bienvenida">
+    <PantallaPublica
+      volverA="/bienvenida"
+      titulo="Escribe tu matrícula"
+      descripcion="Con eso te encontramos en el padrón de alumnos. En la siguiente pantalla verás tu nombre para confirmar que eres tú."
+    >
       <form
         onSubmit={(ev) => {
           ev.preventDefault();
@@ -81,13 +85,7 @@ function IdentificacionAlumno() {
         className="rounded-lg border border-border bg-card p-5"
         noValidate
       >
-        <h1 className="text-lg font-semibold">Escribe tu matrícula</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Con eso te encontramos en el padrón de alumnos. En la siguiente pantalla verás tu nombre
-          para confirmar que eres tú.
-        </p>
-
-        <div className="mt-5">
+        <div>
           <Label htmlFor="matricula">Matrícula</Label>
           <Input
             id="matricula"
@@ -104,13 +102,13 @@ function IdentificacionAlumno() {
             inputMode="numeric"
             autoComplete="off"
             maxLength={LARGO.matricula}
-            className="mt-1 h-14 text-center font-mono text-xl tracking-widest"
+            className="mt-1.5 h-14 text-center font-mono text-xl tracking-widest"
             aria-invalid={!!error}
           />
           {error ? (
-            <p className="mt-1 text-xs font-medium text-destructive">{error}</p>
+            <p className="mt-2 text-xs font-medium text-destructive">{error}</p>
           ) : (
-            <p className="mt-1 text-center text-xs text-muted-foreground">
+            <p className="mt-2 text-center text-xs text-muted-foreground">
               {matricula.length === 0
                 ? `Son ${LARGO.matricula} dígitos. Ejemplo del padrón simulado: 20262122031`
                 : matricula.length < LARGO.matricula
@@ -120,7 +118,7 @@ function IdentificacionAlumno() {
           )}
         </div>
 
-        <Button type="submit" className="mt-5 h-12 w-full text-base" disabled={cargando}>
+        <Button type="submit" className="mt-6 h-12 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Buscando en el padrón…
@@ -134,7 +132,7 @@ function IdentificacionAlumno() {
       </form>
 
       {noEncontrada ? (
-        <Alert variant="destructive" className="mt-4">
+        <Alert variant="destructive" className="mt-5">
           <AlertCircle className="size-4" />
           <AlertTitle>No encontramos esa matrícula en el padrón</AlertTitle>
           <AlertDescription className="grid gap-3">
@@ -150,10 +148,6 @@ function IdentificacionAlumno() {
           </AlertDescription>
         </Alert>
       ) : null}
-
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Atención de soporte: {evento.horarioSoporte} · {evento.correoSoporte}
-      </p>
     </PantallaPublica>
   );
 }

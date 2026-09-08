@@ -98,10 +98,10 @@ function Soporte() {
               estado === e.valor ? "border-primary" : "border-border hover:bg-muted",
             )}
           >
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {e.etiqueta}
             </p>
-            <p className="mt-2 text-3xl font-extrabold">{conteos[e.valor]}</p>
+            <p className="mt-2 text-3xl font-extrabold tabular-nums">{conteos[e.valor]}</p>
           </button>
         ))}
         <article
@@ -110,12 +110,12 @@ function Soporte() {
             conteos.nombre > 0 ? "border-estado-discrepancia/40" : "border-border",
           )}
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             De nombre, sin resolver
           </p>
           <p
             className={cn(
-              "mt-2 text-3xl font-extrabold",
+              "mt-2 text-3xl font-extrabold tabular-nums",
               conteos.nombre > 0 && "text-estado-discrepancia",
             )}
           >
@@ -145,7 +145,7 @@ function Soporte() {
           />
         </div>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Estado
           </span>
           <select
@@ -162,7 +162,7 @@ function Soporte() {
           </select>
         </label>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Canal
           </span>
           <select

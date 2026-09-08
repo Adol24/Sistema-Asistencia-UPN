@@ -43,10 +43,10 @@ function MiQr() {
       {pagado ? (
         <section className="rounded-lg border border-border bg-card p-6 text-center">
           <div className="flex justify-center">
-            <QrFalso valor={p.folio} size={260} />
+            <QrFalso valor={p.folio} size={320} />
           </div>
-          <p className="mt-4 text-xl font-bold">{p.nombre}</p>
-          <p className="font-mono text-sm text-muted-foreground">{p.folio}</p>
+          <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+          <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button
               className="h-12 text-base"

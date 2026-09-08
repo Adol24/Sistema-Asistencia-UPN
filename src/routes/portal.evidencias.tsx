@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
+import { EstadoVacio } from "@/components/tipografia";
 import { PortalNav } from "@/components/portal-nav";
 import { EstadoEvidenciaBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
@@ -61,13 +62,12 @@ function MisEvidencias() {
     return (
       <PantallaPublica titulo="Mis evidencias" volverA="/portal" ancho="lg">
         <PortalNav />
-        <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <ImageIcon className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <p className="mt-3 text-sm font-semibold">Las evidencias solo aplican para alumnos</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tu perfil no requiere subir evidencias de los días en línea.
-          </p>
-        </div>
+        <EstadoVacio
+          icono={<ImageIcon className="size-8" aria-hidden />}
+          titulo="Las evidencias solo aplican para alumnos"
+        >
+          Tu perfil no requiere subir evidencias de los días en línea.
+        </EstadoVacio>
       </PantallaPublica>
     );
   }
@@ -104,12 +104,13 @@ function MisEvidencias() {
   };
 
   return (
-    <PantallaPublica titulo="Mis evidencias" volverA="/portal" ancho="lg">
+    <PantallaPublica
+      titulo="Mis evidencias"
+      descripcion="Sube una foto por cada día en el que participaste en línea. Tienes máximo 3 intentos por día."
+      volverA="/portal"
+      ancho="lg"
+    >
       <PortalNav />
-      <p className="mb-4 text-sm text-muted-foreground">
-        Sube una foto por cada día en el que participaste en línea. Tienes máximo 3 intentos por
-        día.
-      </p>
 
       <ul className="grid gap-3">
         {([1, 2, 3] as Dia[]).map((dia) => {

@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Copy,
   ImageOff,
-  LayoutGrid,
   Minus,
   Plus,
   Undo2,
@@ -40,6 +39,7 @@ import {
   FILTROS_INICIALES,
   MOTIVOS,
   accionDeTecla,
+  type AccionTecla,
   etiquetaMotivo,
   asignacionDeCola,
   filtrarCola,
@@ -165,12 +165,20 @@ function PanelRevision() {
       const accion = accionDeTecla(e.key, { enCampo, hayModal: rechazando || criterios });
       if (!accion) return;
       e.preventDefault();
-      if (accion === "aprobar") aprobar();
-      else if (accion === "rechazar") {
-        if (actual) setRechazando(true);
-      } else if (accion === "siguiente") avanzar();
-      else if (accion === "anterior") retroceder();
-      else if (accion === "deshacer") deshacer();
+      /*
+       * Tabla en vez de escalera de `else if`. Cada atajo es una entrada, así
+       * que agregar uno no obliga a leer las ramas anteriores para saber dónde
+       * encaja, y TypeScript avisa si `accionDeTecla` devuelve una acción que
+       * aquí no está contemplada.
+       */
+      const acciones: Record<AccionTecla, () => void> = {
+        aprobar,
+        rechazar: () => actual && setRechazando(true),
+        siguiente: avanzar,
+        anterior: retroceder,
+        deshacer,
+      };
+      acciones[accion]();
     };
     window.addEventListener("keydown", alTeclear);
     return () => window.removeEventListener("keydown", alTeclear);
@@ -208,13 +216,6 @@ function PanelRevision() {
             >
               <BookOpen className="size-4" aria-hidden /> Criterios de aprobación
             </button>
-            <Link
-              to="/"
-              className="flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-              aria-label="Ir al índice del prototipo"
-            >
-              <LayoutGrid className="size-4" />
-            </Link>
           </div>
         </div>
 
@@ -558,7 +559,7 @@ function PanelRevision() {
 function Campo({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {etiqueta}
       </span>
       {children}

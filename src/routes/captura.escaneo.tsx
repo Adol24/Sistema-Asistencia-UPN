@@ -153,7 +153,7 @@ function PantallaEscaneo() {
       </p>
 
       <section className="mt-5 rounded-lg border border-dashed border-border bg-muted/40 p-3">
-        <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           <Zap className="size-3.5" aria-hidden /> Casos de prueba del prototipo
         </h2>
         <div className="mt-2 grid gap-2">

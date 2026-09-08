@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, GraduationCap, UserPlus } from "lucide-react";
+import { CalendarDays, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { Rotulo, Ayuda } from "@/components/tipografia";
 import { useEstadoEvento } from "@/lib/estado-evento";
 
 import { meta } from "@/lib/seo";
@@ -19,55 +20,96 @@ function Bienvenida() {
 
   return (
     <PantallaPublica>
-      <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Pre-registro</p>
-        <h1 className="mt-2 text-2xl font-bold leading-tight sm:text-3xl">{evento.nombre}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{evento.subtitulo}</p>
+      {/*
+       * La portada no lleva tarjeta. Encerrar el título del evento en un recuadro
+       * lo convertía en un widget más, del mismo peso visual que las dos opciones
+       * de abajo; sin recuadro, el título es el fondo de la pantalla y las
+       * opciones son lo único accionable. Es la misma información con una
+       * jerarquía distinta.
+       */}
+      <header className="text-center">
+        <Rotulo className="text-primary">Pre-registro</Rotulo>
+        <h1 className="mt-3 text-balance text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl">
+          {evento.nombre}
+        </h1>
+        <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-muted-foreground">
+          {evento.subtitulo}
+        </p>
+        <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
+          {evento.fechas}
+        </p>
+      </header>
 
-        <dl className="mt-6 grid gap-3 text-left text-sm">
-          <div className="flex items-start gap-3 rounded-md bg-muted p-3">
-            <CalendarDays className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-            <div>
-              <dt className="font-semibold">Fechas</dt>
-              <dd className="text-muted-foreground">{evento.fechas}</dd>
-            </div>
-          </div>
-        </dl>
-      </div>
+      <nav aria-label="Tipo de participante" className="mt-10 grid gap-3">
+        <OpcionRegistro
+          a="/alumno"
+          icono={<GraduationCap className="size-6 shrink-0" aria-hidden />}
+          titulo="Soy alumno de la universidad"
+          detalle="Te identificas con tu matrícula"
+          destacada
+        />
+        <OpcionRegistro
+          a="/registro"
+          icono={<UserPlus className="size-6 shrink-0 text-primary" aria-hidden />}
+          titulo="No soy alumno"
+          detalle="Docente o participante externo"
+        />
+      </nav>
 
-      <div className="mt-6 grid gap-3">
-        <Link
-          to="/alumno"
-          className="flex min-h-16 items-center gap-3 rounded-lg bg-primary px-5 text-left text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-        >
-          <GraduationCap className="size-6 shrink-0" aria-hidden />
-          <span>
-            <span className="block text-base font-semibold">Soy alumno de la universidad</span>
-            <span className="block text-xs text-primary-foreground/80">
-              Te identificas con tu matrícula
-            </span>
-          </span>
-        </Link>
-        <Link
-          to="/registro"
-          className="flex min-h-16 items-center gap-3 rounded-lg border border-border bg-card px-5 text-left shadow-sm transition-colors hover:bg-muted"
-        >
-          <UserPlus className="size-6 shrink-0 text-primary" aria-hidden />
-          <span>
-            <span className="block text-base font-semibold">No soy alumno</span>
-            <span className="block text-xs text-muted-foreground">
-              Docente o participante externo
-            </span>
-          </span>
-        </Link>
-      </div>
-
-      <p className="mt-6 text-center text-xs text-muted-foreground">
+      <Ayuda className="mt-8 text-center">
         ¿Ya te registraste?{" "}
-        <Link to="/portal" className="font-semibold text-primary underline">
+        <Link to="/portal" className="font-semibold text-primary underline underline-offset-2">
           Consulta tu estado en el portal
         </Link>
-      </p>
+      </Ayuda>
     </PantallaPublica>
+  );
+}
+
+function OpcionRegistro({
+  a,
+  icono,
+  titulo,
+  detalle,
+  destacada = false,
+}: {
+  a: "/alumno" | "/registro";
+  icono: React.ReactNode;
+  titulo: string;
+  detalle: string;
+  destacada?: boolean;
+}) {
+  return (
+    <Link
+      to={a}
+      className={
+        destacada
+          ? "group flex min-h-[4.5rem] items-center gap-4 rounded-lg bg-primary px-5 text-left text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          : "group flex min-h-[4.5rem] items-center gap-4 rounded-lg border border-border bg-card px-5 text-left shadow-sm transition-colors hover:bg-muted"
+      }
+    >
+      {icono}
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold leading-snug">{titulo}</span>
+        <span
+          className={
+            destacada
+              ? "mt-0.5 block text-xs text-primary-foreground/80"
+              : "mt-0.5 block text-xs text-muted-foreground"
+          }
+        >
+          {detalle}
+        </span>
+      </span>
+      <ChevronRight
+        className={
+          destacada
+            ? "size-5 shrink-0 text-primary-foreground/60 transition-transform group-hover:translate-x-0.5"
+            : "size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        }
+        aria-hidden
+      />
+    </Link>
   );
 }

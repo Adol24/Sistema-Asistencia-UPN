@@ -22,7 +22,7 @@ export function RelojEventoControl({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="flex items-center gap-1 self-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="flex items-center gap-1 self-center text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         <Clock className="size-3.5" aria-hidden /> Reloj simulado
       </span>
       <div className="flex gap-1" role="group" aria-label="Día simulado">

@@ -105,7 +105,7 @@ function Bitacora() {
           />
         </div>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Usuario
           </span>
           <select
@@ -122,7 +122,7 @@ function Bitacora() {
           </select>
         </label>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Acción
           </span>
           <select
@@ -139,7 +139,7 @@ function Bitacora() {
           </select>
         </label>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Desde
           </span>
           <Input
@@ -150,7 +150,7 @@ function Bitacora() {
           />
         </label>
         <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Hasta
           </span>
           <Input

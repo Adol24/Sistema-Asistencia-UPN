@@ -76,8 +76,8 @@ function ConfiguracionSesion() {
           })}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          {dia.etiqueta} — {dia.fecha} · Entrada {evento.registroEntrada} · Salida{" "}
-          {evento.registroSalida}
+          {dia.etiqueta} — {dia.fecha} · Entrada: {evento.registroEntrada} · Salida:{" "}
+          {evento.registroSalida.toLowerCase()}
         </p>
       </section>
 

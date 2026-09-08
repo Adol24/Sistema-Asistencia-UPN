@@ -28,7 +28,7 @@ export const Route = createFileRoute("/admin/configuracion")({
   head: () =>
     meta(
       "Configuración del evento — Administración",
-      "Fechas, sedes, cuotas, datos bancarios, fechas límite, WhatsApp de soporte y textos legales del Encuentro.",
+      "Fechas, lugares, cuotas, datos bancarios, fechas límite, WhatsApp de soporte y textos legales del Encuentro.",
     ),
   component: Configuracion,
 });
@@ -174,7 +174,7 @@ function Configuracion() {
               />
               <Campo
                 id={`sede-${d.dia}`}
-                etiqueta="Sede"
+                etiqueta="Lugar"
                 valor={d.sede}
                 onChange={(v) =>
                   set({ dias: b.dias.map((x, k) => (k === i ? { ...x, sede: v } : x)) })

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Search, Users } from "lucide-react";
 import { PantallaCaptura } from "@/components/captura-shell";
+import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,19 +76,19 @@ function ModoTaller() {
       </p>
 
       {delDia.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <Users className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <p className="mt-3 text-sm font-semibold">No hay talleres el día {sesion.dia}</p>
-          <p className="text-sm text-muted-foreground">
-            Cambia el día en la configuración de sesión para ver otro grupo.
-          </p>
-        </div>
+        <EstadoVacio
+          className="mt-6"
+          icono={<Users className="size-8" aria-hidden />}
+          titulo={`No hay talleres el día ${sesion.dia}`}
+        >
+          Cambia el día en la configuración de sesión para ver otro grupo.
+        </EstadoVacio>
       ) : (
         <>
           <div className="mt-4 grid gap-1">
             <label
               htmlFor="taller"
-              className="text-xs font-bold uppercase tracking-wide text-muted-foreground"
+              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
             >
               Taller
             </label>
@@ -115,7 +116,7 @@ function ModoTaller() {
             <span className="flex items-center gap-2 text-sm font-semibold">
               <Users className="size-4 text-primary" aria-hidden /> Asistentes marcados
             </span>
-            <span className="text-2xl font-extrabold">
+            <span className="text-2xl font-extrabold tabular-nums">
               {nMarcados}
               <span className="text-base font-medium text-muted-foreground">
                 {" "}

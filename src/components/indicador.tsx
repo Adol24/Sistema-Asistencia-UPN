@@ -38,20 +38,26 @@ export function Indicador({
         className,
       )}
     >
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {icono}
         {etiqueta}
       </p>
+      {/*
+       * `tabular-nums` no es cosmético: en una rejilla de indicadores que se
+       * refresca, las cifras proporcionales cambian de ancho al pasar de 1 a 2
+       * y las columnas bailan. Con cifras de ancho fijo el ojo puede comparar
+       * dos tarjetas sin volver a buscarlas.
+       */}
       <p
         className={cn(
-          "mt-2 text-3xl font-extrabold",
+          "mt-2 text-3xl font-extrabold tabular-nums tracking-tight",
           tono === "alerta" && "text-estado-discrepancia",
           tono === "critico" && "text-estado-cancelado",
         )}
       >
         {valor}
       </p>
-      {detalle ? <p className="mt-1 text-xs text-muted-foreground">{detalle}</p> : null}
+      {detalle ? <p className="mt-1.5 text-xs text-muted-foreground">{detalle}</p> : null}
     </article>
   );
 }

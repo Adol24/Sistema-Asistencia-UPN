@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Clock, DoorOpen, Gauge, ShieldAlert } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
+import { EstadoVacio } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
 import { Progress } from "@/components/ui/progress";
 import { RelojEventoControl } from "@/components/reloj-evento";
@@ -110,12 +111,12 @@ function Monitoreo() {
           <h2 className="text-sm font-bold">Desempeño por punto de captura</h2>
           <p className="mb-3 text-xs text-muted-foreground">Entradas registradas en cada acceso</p>
           {m.porPunto.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border p-8 text-center">
-              <p className="text-sm font-semibold">Todavía no hay entradas del día {dia}</p>
-              <p className="text-sm text-muted-foreground">
-                En cuanto se registre la primera, el desglose aparece aquí.
-              </p>
-            </div>
+            <EstadoVacio
+              className="bg-transparent p-8"
+              titulo={`Todavía no hay entradas del día ${dia}`}
+            >
+              En cuanto se registre la primera, el desglose aparece aquí.
+            </EstadoVacio>
           ) : (
             <ul className="grid gap-3">
               {m.porPunto.map((p) => {

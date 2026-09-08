@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CalendarRange, Clock, Info, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { EstadoVacio } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { moneda } from "@/lib/formato";
@@ -28,14 +29,14 @@ function CatalogoTalleres() {
   const [seleccion, setSeleccion] = useState<string | null>(null);
 
   return (
-    <PantallaPublica titulo="Talleres" volverA="/mi-dia" ancho="lg">
-      <h1 className="text-xl font-bold">Elige un taller (opcional)</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Puedes elegir máximo un taller. Cada taller tiene costo adicional y se paga por separado.
-      </p>
-
+    <PantallaPublica
+      volverA="/mi-dia"
+      ancho="lg"
+      titulo="Elige un taller (opcional)"
+      descripcion="Puedes elegir máximo un taller. Cada taller tiene costo adicional y se paga por separado."
+    >
       {seleccion ? (
-        <Alert className="mt-4">
+        <Alert className="mb-5">
           <Info className="size-4" />
           <AlertTitle>Tu lugar queda apartado hasta el {configuracion.fechaLimite}</AlertTitle>
           <AlertDescription>Si no entregas tu comprobante antes, se libera.</AlertDescription>
@@ -43,16 +44,15 @@ function CatalogoTalleres() {
       ) : null}
 
       {talleres.length === 0 ? (
-        <div className="mt-5 rounded-lg border border-dashed border-border bg-card p-10 text-center">
-          <Info className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <p className="mt-3 text-sm font-semibold">Por ahora no hay talleres disponibles</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Puedes continuar sin taller; tu registro al evento no depende de esto.
-          </p>
-        </div>
+        <EstadoVacio
+          icono={<Info className="size-8" aria-hidden />}
+          titulo="Por ahora no hay talleres disponibles"
+        >
+          Puedes continuar sin taller; tu registro al evento no depende de esto.
+        </EstadoVacio>
       ) : null}
 
-      <ul className="mt-5 grid gap-3">
+      <ul className="grid gap-3">
         {talleres.map((t) => {
           const libres = t.cupoTotal - t.cupoOcupado;
           const lleno = libres <= 0;
@@ -98,7 +98,7 @@ function CatalogoTalleres() {
                   <div className="text-sm">
                     <p className="font-semibold">{moneda(t.costo)}</p>
                     {lleno ? (
-                      <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                         Cupo lleno
                       </p>
                     ) : (

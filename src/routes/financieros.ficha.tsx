@@ -76,7 +76,7 @@ function FichaFinancieros() {
         </Alert>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="rounded-lg border border-border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -100,10 +100,10 @@ function FichaFinancieros() {
             ) : null}
           </div>
           <div className="rounded-lg border border-primary/30 bg-secondary px-4 py-3 text-right">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Total esperado
             </p>
-            <p className="text-2xl font-extrabold">{moneda(totalEsperado)}</p>
+            <p className="text-2xl font-extrabold tabular-nums">{moneda(totalEsperado)}</p>
             <p className="text-xs text-muted-foreground">
               {taller ? "Evento + taller, en dos depósitos" : "Solo evento, un depósito"}
             </p>
@@ -118,7 +118,7 @@ function FichaFinancieros() {
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Sede</dt>
+            <dt className="text-xs text-muted-foreground">Lugar</dt>
             <dd className="mt-0.5 text-sm font-semibold">{p.sede}</dd>
           </div>
           <div>
@@ -152,7 +152,7 @@ function FichaFinancieros() {
         ) : null}
       </section>
 
-      <h2 className="mt-8 text-lg font-bold">Registro de pago</h2>
+      <h2 className="mt-8 text-base font-semibold">Registro de pago</h2>
       <p className="text-sm text-muted-foreground">
         Un bloque por concepto. El sistema ya sabe cuánto debía pagar: solo captura lo que dice el
         voucher.
@@ -270,7 +270,7 @@ function BloquePago({
             : "border-estado-discrepancia/40 bg-estado-discrepancia-bg",
         )}
       >
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {titulo}
         </p>
         {hecho === "pagado" ? (
@@ -303,9 +303,9 @@ function BloquePago({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5">
+    <section className="rounded-lg border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {titulo}
         </p>
         <span className="text-xs text-muted-foreground">Estado actual: {estadoActual}</span>
@@ -313,7 +313,7 @@ function BloquePago({
       <p className="mt-1 font-mono text-xs text-muted-foreground">Concepto: {referenciaEsperada}</p>
       <p className="mt-2 text-sm">
         Monto esperado por el sistema:{" "}
-        <span className="text-lg font-bold">{moneda(montoEsperado)}</span>
+        <span className="text-lg font-bold tabular-nums">{moneda(montoEsperado)}</span>
       </p>
 
       <div className="mt-4 grid gap-4">

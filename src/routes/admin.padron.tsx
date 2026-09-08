@@ -176,7 +176,7 @@ function ImportacionPadron() {
       ) : null}
 
       {!filas && !leyendo ? (
-        <section className="mb-4 rounded-lg border border-border bg-card p-5">
+        <section className="mb-4 rounded-lg border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-sm font-bold">
             <CalendarDays className="size-4 text-primary" aria-hidden />
             Reparto por días
@@ -192,7 +192,7 @@ function ImportacionPadron() {
                 <p className="text-xs text-muted-foreground">
                   Día {dia} · {infoDia(dia).sede}
                 </p>
-                <p className="text-2xl font-extrabold">{total}</p>
+                <p className="text-2xl font-extrabold tabular-nums">{total}</p>
               </div>
             ))}
             <div
@@ -206,7 +206,7 @@ function ImportacionPadron() {
               <p className="text-xs text-muted-foreground">Sin día</p>
               <p
                 className={cn(
-                  "text-2xl font-extrabold",
+                  "text-2xl font-extrabold tabular-nums",
                   pendientes.length > 0 && "text-estado-discrepancia",
                 )}
               >
@@ -282,13 +282,13 @@ function ImportacionPadron() {
         <>
           <ZonaDeArchivo importador={imp} titulo="el padrón de Servicios Escolares" />
 
-          <section className="mt-6 rounded-lg border border-border bg-card p-5">
+          <section className="mt-6 rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Columnas requeridas</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               El padrón actual tiene {padron.length} alumnos. Una matrícula que ya exista se
               actualiza; una nueva se da de alta. El nombre va completo en una sola columna, y el
               nivel, el programa y el avance se validan contra el catálogo académico. El{" "}
-              <span className="font-semibold">plantel</span> es dónde estudia, no la sede del
+              <span className="font-semibold">plantel</span> es dónde estudia, no el lugar del
               evento: esa la asigna la organización al repartir los días.
             </p>
             <ul className="mt-3 flex flex-wrap gap-2">
@@ -319,7 +319,7 @@ function ImportacionPadron() {
       ) : null}
 
       {leyendo ? (
-        <div className="rounded-lg border border-border bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <Loader2 className="size-4 animate-spin" /> Revisando {archivo}…
           </p>

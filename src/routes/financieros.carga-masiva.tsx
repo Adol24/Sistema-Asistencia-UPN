@@ -114,7 +114,7 @@ function CargaMasiva() {
         <>
           <ZonaDeArchivo importador={imp} titulo="el archivo de pagos" />
 
-          <section className="mt-6 rounded-lg border border-border bg-card p-5">
+          <section className="mt-6 rounded-lg border border-border bg-card p-4">
             <h2 className="text-sm font-semibold">Columnas requeridas</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               El archivo debe traer estas cinco columnas, en cualquier orden, con el encabezado en
@@ -155,7 +155,7 @@ function CargaMasiva() {
       ) : null}
 
       {leyendo ? (
-        <div className="rounded-lg border border-border bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <Loader2 className="size-4 animate-spin" /> Revisando {archivo}…
           </p>
