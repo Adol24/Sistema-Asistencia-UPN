@@ -215,11 +215,24 @@ export async function guardarAsistencia(a: {
     .single();
   if (e1) throw e1;
 
+  /*
+   * Cada escaneo se firma con quien lo hizo.
+   *
+   * `asistencias.capturista_id` existía desde el principio pero este insert no
+   * lo enviaba, así que la columna quedaba en NULL: la tabla podía decir que
+   * alguien entró, pero no quién lo registró. Con tres personas turnándose en
+   * un punto de captura, eso convierte cualquier registro dudoso en un caso sin
+   * responsable. `guardarRevision`, veinte líneas más abajo, ya lo hacía bien;
+   * aquí solo faltaba aplicarlo.
+   */
+  const { data: sesion } = await sb.auth.getUser();
+
   const { error } = await sb.from("asistencias").insert({
     participante_id: p.id,
     dia: a.dia,
     tipo: a.tipo,
     punto: a.punto,
+    capturista_id: sesion.user?.id ?? null,
     autorizacion_motivo: a.autorizacionMotivo ?? null,
   });
   if (error) throw error;

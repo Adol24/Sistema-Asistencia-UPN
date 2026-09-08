@@ -52,6 +52,7 @@ function FichaFinancieros() {
 
   return (
     <PantallaPanel
+      area="financieros"
       titulo="Ficha del participante"
       descripcion="Verifica los montos que el sistema espera y registra el pago."
       nav={navFinancieros}

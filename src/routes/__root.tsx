@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { PrototipoProvider } from "../lib/prototipo";
 import { EstadoEventoProvider } from "../lib/estado-evento";
+import { SesionProvider } from "../lib/sesion";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
@@ -170,13 +171,15 @@ function RootComponent() {
         El orden importa: `PrototipoProvider` resuelve el participante de prueba
         contra la lista del contexto, que puede haber cambiado en la sesión.
       */}
-      <EstadoEventoProvider>
-        <PrototipoProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <Toaster position="top-center" richColors />
-        </PrototipoProvider>
-      </EstadoEventoProvider>
+      <SesionProvider>
+        <EstadoEventoProvider>
+          <PrototipoProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Toaster position="top-center" richColors />
+          </PrototipoProvider>
+        </EstadoEventoProvider>
+      </SesionProvider>
     </QueryClientProvider>
   );
 }

@@ -182,6 +182,7 @@ function Dashboard() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Dashboard"
       descripcion={`${configuracion.nombre} · ${configuracion.fechas}`}
       nav={navAdmin}

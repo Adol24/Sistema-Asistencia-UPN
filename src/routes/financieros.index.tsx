@@ -73,6 +73,7 @@ function BusquedaFinancieros() {
 
   return (
     <PantallaPanel
+      area="financieros"
       titulo="Servicios Financieros"
       descripcion="Atiende la fila: busca, verifica montos y registra el pago."
       nav={navFinancieros}

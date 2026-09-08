@@ -184,6 +184,7 @@ function Elegibles() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Listado de elegibles"
       descripcion="El sistema no genera las constancias: calcula quién cumple y entrega el listado a quien las elabora."
       nav={navAdmin}

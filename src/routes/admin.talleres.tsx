@@ -65,6 +65,7 @@ function AdminTalleres() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Talleres"
       descripcion="El cupo ocupado se calcula de las inscripciones; no se edita a mano."
       nav={navAdmin}

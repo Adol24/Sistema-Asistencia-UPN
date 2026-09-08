@@ -119,6 +119,7 @@ function Conciliacion() {
 
   return (
     <PantallaPanel
+      area="financieros"
       titulo="Conciliación"
       descripcion="Todo lo de esta pantalla se calcula de los pagos registrados en la sesión."
       nav={navFinancieros}

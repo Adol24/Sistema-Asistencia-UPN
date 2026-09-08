@@ -125,6 +125,7 @@ function ImportacionPadron() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Importación del padrón"
       descripcion="Nada cambia hasta que confirmas. Primero revisas la vista previa, después aplicas."
       nav={navAdmin}

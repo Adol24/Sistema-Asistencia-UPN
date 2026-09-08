@@ -63,18 +63,44 @@ desde cualquier máquina Linux o macOS— lo regenera correctamente. Si vas a
 publicar desde Windows y falla al resolver los archivos estáticos, esta es la
 causa.
 
-## Riesgo abierto antes de exponer esto a internet
+## Acceso del personal
 
-**Las pantallas de operación no tienen autenticación.** `/admin`, `/financieros`,
-`/captura` y `/revision` se abren escribiendo la URL.
+`/admin`, `/financieros`, `/captura` y `/revision` piden sesión. La cuenta de
+Supabase Auth por sí sola no basta: hace falta además una fila **activa** en
+`usuarios_internos`, que es donde vive el rol. Dar de baja a alguien —`activo =
+false`— lo deja fuera sin borrar su cuenta, para que sus firmas en la bitácora
+sigan teniendo autor.
 
-Hoy el daño está acotado desde la base: el rol anónimo no tiene ningún permiso
-sobre `participantes`, `padron_alumnos`, `pagos`, `evidencias`,
-`usuarios_internos`, `casos_soporte` ni `bitacora`, así que quien entre sin
-sesión ve la interfaz vacía o con datos simulados, no datos reales. La puerta
-está abierta pero el cuarto está vacío.
+Quién entra a cada zona reproduce lo que ya exigen las políticas de la base:
 
-Aun así, antes de un despliegue público hace falta una sesión real —Supabase Auth
-con los roles de `usuarios_internos`— y un `beforeLoad` que redirija a quien no la
-tenga. Sin eso, cualquiera puede recorrer la interfaz interna, y basta con que
-alguien conceda un permiso de más en la base para que deje de estar vacía.
+| Zona | Roles |
+| --- | --- |
+| Administración | `admin` |
+| Servicios Financieros | `admin`, `financieros` |
+| Captura de asistencia | `admin`, `capturista` |
+| Revisión de evidencias | `admin`, `revisor` |
+
+Para dar de alta a quien capturará asistencia: crear su usuario en Supabase Auth,
+y una fila en `usuarios_internos` con el mismo `id`, su correo y rol
+`capturista`. **Una cuenta por persona, no una compartida por punto de captura**:
+cada escaneo se firma en `asistencias.capturista_id`, y una cuenta compartida
+deja cualquier registro dudoso sin responsable.
+
+### Sin base de datos: modo prototipo
+
+Si no hay variables configuradas, la aplicación corre con datos simulados y **no
+pide contraseña**, para que se puedan revisar las pantallas sin depender de una
+llave. En ese modo, todas las pantallas internas muestran una franja ámbar que lo
+advierte. Es deliberado que sea visible: un modo sin autenticación que no se
+anuncia es una trampa esperando a que alguien publique el prototipo creyendo que
+la administración está cerrada.
+
+## Lo que sigue pendiente
+
+La sesión protege la interfaz, pero la base sigue siendo la que manda: sus
+políticas comprueban el rol en cada escritura y no confían en lo que diga el
+navegador. Antes del evento conviene además:
+
+- Límite de intentos por IP en el acceso del personal y en la consulta del
+  padrón. Lo que hay hoy es un contador en el navegador, que se salta recargando.
+- Revisar que cada persona tenga su propia cuenta antes del primer día.

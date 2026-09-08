@@ -75,6 +75,7 @@ function Bitacora() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Bitácora"
       descripcion="Registra lo que ocurre en la sesión, no solo lo histórico. Sin eso no se puede aclarar ninguna inconformidad."
       nav={navAdmin}

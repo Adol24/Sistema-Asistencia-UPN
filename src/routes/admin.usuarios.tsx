@@ -90,6 +90,7 @@ function AdminUsuarios() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Usuarios y roles"
       descripcion="Quien asigna permisos debe saber qué está concediendo."
       nav={navAdmin}

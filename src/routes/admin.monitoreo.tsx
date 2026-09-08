@@ -44,6 +44,7 @@ function Monitoreo() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Monitoreo en vivo"
       descripcion={`Registro de entrada: ${configuracion.registroEntrada}. Si el ritmo no alcanza, hay que abrir otra puerta.`}
       nav={navAdmin}

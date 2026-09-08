@@ -81,6 +81,7 @@ function CargaMasiva() {
 
   return (
     <PantallaPanel
+      area="financieros"
       titulo="Carga masiva de pagos"
       descripcion="Nada cambia de estado hasta que confirmas. Primero revisas, después aplicas."
       nav={navFinancieros}

@@ -3,6 +3,8 @@ import { ArrowLeft, Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
 import { Titulo, Texto } from "@/components/tipografia";
+import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
+import type { Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -67,34 +69,43 @@ export function PantallaPublica({
 export function PantallaPanel({
   titulo,
   descripcion,
+  area,
   acciones,
   nav,
   children,
 }: {
   titulo: string;
   descripcion?: string;
+  /** Zona interna a la que pertenece la pantalla. Decide quién puede entrar. */
+  area: Area;
   acciones?: ReactNode;
   nav?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      {nav ? (
-        <div className="border-b border-border bg-card print:hidden">
-          <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 py-2">{nav}</div>
-        </div>
-      ) : null}
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-          <div>
-            <Titulo>{titulo}</Titulo>
-            {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
+    <Protegido area={area}>
+      <div className="min-h-screen bg-background">
+        <AvisoPrototipo />
+        {nav ? (
+          <div className="border-b border-border bg-card print:hidden">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-2">
+              {nav}
+              <BotonSalir className="ml-auto" />
+            </div>
           </div>
-          {acciones}
-        </div>
-        {children}
-      </main>
-    </div>
+        ) : null}
+        <main className="mx-auto max-w-6xl px-4 py-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+            <div>
+              <Titulo>{titulo}</Titulo>
+              {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
+            </div>
+            {acciones}
+          </div>
+          {children}
+        </main>
+      </div>
+    </Protegido>
   );
 }
 

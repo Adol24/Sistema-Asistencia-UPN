@@ -27,6 +27,7 @@ import type {
 } from "@/mocks/tipos";
 import type { NivelAcademico } from "@/mocks/catalogos";
 import type { ConfiguracionEvento } from "@/mocks/evento";
+import { rolDesdeBase } from "@/lib/roles";
 
 // ============================================================ filas crudas ===
 
@@ -147,7 +148,8 @@ export interface FilaUsuario {
   id: string;
   nombre: string;
   correo: string;
-  rol: RolInterno;
+  /** El enum de Postgres, no el de la aplicación. Ver `lib/roles.ts`. */
+  rol: string;
   activo: boolean;
   ultimo_acceso: string | null;
 }
@@ -332,7 +334,7 @@ export const aUsuario = (f: FilaUsuario): UsuarioInterno => ({
   id: f.id,
   nombre: f.nombre,
   correo: f.correo,
-  rol: f.rol,
+  rol: rolDesdeBase(f.rol),
   activo: f.activo,
   ultimoAcceso: f.ultimo_acceso ? aFechaHora(f.ultimo_acceso) : "",
 });

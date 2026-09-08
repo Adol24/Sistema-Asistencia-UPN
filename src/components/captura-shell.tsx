@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import type { Modo } from "@/lib/escaneo";
 import { cn } from "@/lib/utils";
+import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
 
 const RUTAS = [
   { to: "/captura", label: "Sesión", icono: Settings2 },
@@ -112,35 +113,39 @@ export function PantallaCaptura({
      * 3. Ambas barras respetan la zona segura, para no quedar bajo el notch ni
      *    bajo la barra de gestos.
      */
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="sticky top-0 z-30">
-        <BarraConexion />
-        <header className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
-          <p className="truncate text-sm font-bold">{titulo}</p>
-        </header>
+    <Protegido area="captura">
+      <div className="flex min-h-screen flex-col bg-background">
+        <div className="sticky top-0 z-30">
+          <AvisoPrototipo />
+          <BarraConexion />
+          <header className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
+            <p className="truncate text-sm font-bold">{titulo}</p>
+            <BotonSalir className="ml-auto" />
+          </header>
+        </div>
+
+        <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">{children}</main>
+
+        {!sinNav ? (
+          <nav
+            aria-label="Secciones de captura"
+            className="sticky bottom-0 z-30 mt-auto grid grid-cols-4 gap-1 border-t border-border bg-card px-2 pb-seguro pt-1 [--espacio-seguro:0.25rem]"
+          >
+            {RUTAS.map((r) => (
+              <Link
+                key={r.to}
+                to={r.to}
+                activeProps={{ className: "text-primary" }}
+                inactiveProps={{ className: "text-muted-foreground" }}
+                className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none active:bg-muted"
+              >
+                <r.icono className="size-5 shrink-0" aria-hidden />
+                {r.label}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
       </div>
-
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4">{children}</main>
-
-      {!sinNav ? (
-        <nav
-          aria-label="Secciones de captura"
-          className="sticky bottom-0 z-30 mt-auto grid grid-cols-4 gap-1 border-t border-border bg-card px-2 pb-seguro pt-1 [--espacio-seguro:0.25rem]"
-        >
-          {RUTAS.map((r) => (
-            <Link
-              key={r.to}
-              to={r.to}
-              activeProps={{ className: "text-primary" }}
-              inactiveProps={{ className: "text-muted-foreground" }}
-              className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none active:bg-muted"
-            >
-              <r.icono className="size-5 shrink-0" aria-hidden />
-              {r.label}
-            </Link>
-          ))}
-        </nav>
-      ) : null}
-    </div>
+    </Protegido>
   );
 }

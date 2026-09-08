@@ -291,6 +291,7 @@ function Reportes() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Reportes"
       descripcion="Se calculan del estado de la sesión: lo que registres hoy aparece aquí sin recargar."
       nav={navAdmin}

@@ -88,6 +88,7 @@ function Configuracion() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Configuración del evento"
       descripcion="Estos valores alimentan las pantallas públicas: el cambio se ve sin recargar."
       nav={navAdmin}

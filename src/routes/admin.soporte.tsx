@@ -84,6 +84,7 @@ function Soporte() {
 
   return (
     <PantallaPanel
+      area="admin"
       titulo="Casos de soporte"
       descripcion="Contraparte del botón de WhatsApp y de la casilla de nombre incorrecto del pre-registro."
       nav={navAdmin}
