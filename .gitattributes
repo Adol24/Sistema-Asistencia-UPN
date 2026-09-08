@@ -39,9 +39,8 @@
 *.mp4       binary
 *.webm      binary
 
-# Lockfiles: se versionan, pero no ensucian los diffs de los PRs.
+# Lockfile: se versiona, pero no ensucia los diffs de los PRs.
 bun.lock            -diff linguist-generated
-package-lock.json   -diff linguist-generated
 
 # Archivo generado por TanStack Router: no es codigo escrito a mano.
 src/routeTree.gen.ts -diff linguist-generated

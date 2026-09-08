@@ -79,7 +79,7 @@ function Dashboard() {
   const [motivo, setMotivo] = useState("");
 
   /**
-   * Los mismos invariantes de `npm run verificar-mocks`, pero sobre el estado
+   * Los mismos invariantes de `bun run verificar-mocks`, pero sobre el estado
    * VIVO. Importar el padrón o editar un taller mueve días e inscripciones, así
    * que las reglas que se respetan al arrancar pueden romperse en marcha; esto
    * lo hace visible sin salir del panel.
@@ -287,7 +287,7 @@ function Dashboard() {
             {integridad.length === 1 ? "" : "s"} en esta sesión
           </h2>
           <p className="mt-1 text-sm text-estado-cancelado">
-            Son los mismos invariantes que valida <code>npm run verificar-mocks</code>, aplicados al
+            Son los mismos invariantes que valida <code>bun run verificar-mocks</code>, aplicados al
             estado vivo. Suelen aparecer tras importar el padrón o editar un taller.
           </p>
           <ul className="mt-2 grid gap-1 text-xs text-estado-cancelado">

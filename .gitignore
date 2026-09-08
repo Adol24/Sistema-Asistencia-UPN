@@ -1,9 +1,18 @@
 # =============================================================================
 # Dependencias
+#
+# El gestor de este proyecto es bun: el unico lockfile valido es bun.lock. Los
+# lockfiles de otros gestores se ignoran a proposito para que un `npm install`
+# o un `pnpm install` por descuido no meta un segundo lockfile en el repo y
+# termine resolviendo versiones distintas a las de bun.lock.
 # =============================================================================
 node_modules
 .pnp
 .pnp.js
+package-lock.json
+npm-shrinkwrap.json
+pnpm-lock.yaml
+yarn.lock
 
 # =============================================================================
 # Build / artefactos generados

@@ -6,7 +6,7 @@
  * quedaron inscritos en talleres que no se imparten su día. Nadie lo habría
  * notado hasta ver la pantalla.
  *
- * Se ejecuta con `npm run verificar-mocks`. Al agregar una regla nueva a los
+ * Se ejecuta con `bun run verificar-mocks`. Al agregar una regla nueva a los
  * mocks, agrégala también aquí.
  */
 
@@ -46,7 +46,7 @@ export interface Violacion {
 /**
  * Datos sobre los que se comprueban los invariantes.
  *
- * Por omisión son los de arranque, que es lo que valida `npm run verificar-mocks`.
+ * Por omisión son los de arranque, que es lo que valida `bun run verificar-mocks`.
  * Pero la sesión puede moverlos: la importación del padrón cambia el día de un
  * participante y la edición de un taller cambia sus días. Poder pasar el estado
  * vivo es lo que permite comprobar que esas dos operaciones no rompen en tiempo

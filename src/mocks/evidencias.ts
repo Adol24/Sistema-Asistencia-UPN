@@ -19,7 +19,7 @@ const alumnos = participantes.filter((p) => p.perfil === "alumno");
  * pedirle evidencia de ese día no tendría sentido: el portal ya lo pinta como
  * presencial. De aquí salen 80 evidencias repartidas de forma pareja entre los
  * tres días, en lugar de amontonarlas en los días 1 y 2 y dejar al 3 con una
- * cola simbólica. `npm run verificar-mocks` fija el mínimo por día.
+ * cola simbólica. `bun run verificar-mocks` fija el mínimo por día.
  */
 const diasDeEvidencia = (diaAsignado: Dia): Dia[] =>
   ([1, 2, 3] as Dia[]).filter((d) => d !== diaAsignado);

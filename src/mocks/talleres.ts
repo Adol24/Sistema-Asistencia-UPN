@@ -9,7 +9,7 @@ import type { Taller } from "./tipos";
  * conjunto simulado) más los participantes del prototipo que eligieron ese
  * taller. Así el contador de lugares disponibles y la etiqueta CUPO LLENO del
  * catálogo siempre concuerdan con los datos que el resto de las pantallas
- * muestran. `npm run verificar-mocks` comprueba esta correspondencia.
+ * muestran. `bun run verificar-mocks` comprueba esta correspondencia.
  */
 export const talleres: Taller[] = talleresBase.map(({ ocupadosPrevios, ...t }) => ({
   ...t,

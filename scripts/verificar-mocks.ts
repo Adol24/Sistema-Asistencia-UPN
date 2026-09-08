@@ -1,5 +1,5 @@
 /**
- * Punto de entrada de `npm run verificar-mocks`.
+ * Punto de entrada de `bun run verificar-mocks`.
  *
  * Imprime el resumen de los datos simulados y la lista de invariantes violados.
  * Sale con código 1 si hay alguna violación, para que sirva en CI.

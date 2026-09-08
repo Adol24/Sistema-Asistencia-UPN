@@ -5,7 +5,7 @@
  * portal, contra el proyecto real. **Solo lee**: no inserta, no actualiza y no
  * borra nada, así que se puede correr sobre la base de producción sin riesgo.
  *
- *     npm run verificar-conexion
+ *     bun run verificar-conexion
  *
  * Las credenciales salen de `.env`, que Bun carga solo. No se imprimen.
  */

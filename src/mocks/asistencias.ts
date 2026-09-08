@@ -12,7 +12,7 @@ const pagados = participantes.filter((p) => p.estadoPagoEvento === "pagado");
  * No es un hueco en los datos: es el caso normal de la puerta. Si todo pagado
  * ya tuviera entrada, el escáner respondería «YA REGISTRADO» casi siempre y el
  * caso verde —el que ocurre cientos de veces al día— sería el más difícil de
- * demostrar. `npm run verificar-mocks` comprueba que cada día conserve varios.
+ * demostrar. `bun run verificar-mocks` comprueba que cada día conserve varios.
  */
 const sinRegistroAun = (i: number) => i % 3 === 2;
 

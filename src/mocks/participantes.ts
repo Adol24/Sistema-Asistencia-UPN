@@ -23,7 +23,7 @@ type Fila = [
  *
  * Después vienen 12 docentes y 8 externos, que no pertenecen al padrón.
  *
- * `npm run verificar-mocks` comprueba todas estas reglas.
+ * `bun run verificar-mocks` comprueba todas estas reglas.
  */
 const filas: Fila[] = [
   ["JUAN CARLOS PEREZ MUÑOZ", "alumno", 1, "pagado", "T01", "pagado", false],

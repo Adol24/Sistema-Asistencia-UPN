@@ -16,7 +16,7 @@
 
 - **Última actualización:** 07/09/2026
 - **Raíz:** `C:\Proyectos Desarrollo\En Producción\encuentro-ui-main`
-- **Verificación:** `npm run verificar-mocks`, `npm run typecheck`, `npm run lint` y `npm run build` pasan los cuatro con código 0.
+- **Verificación:** `bun run verificar-mocks`, `bun run typecheck`, `bun run lint` y `bun run build` pasan los cuatro con código 0.
 - **Para enseñar el prototipo:** `docs/RECORRIDO-DEMO.md` — guion de demostración con folios reales verificados contra los datos.
 
 ---
@@ -25,7 +25,7 @@
 
 El prototipo está completo respecto al alcance vigente: **33 de 33 pantallas construidas** y **141 de 141 elementos** exigidos por la especificación. Los seis módulos funcionan y se tocan entre sí dentro de una misma sesión: un pago registrado en ventanilla hace aparecer el QR en el portal de esa persona y la deja pasar en verde en la puerta; un escaneo en la puerta se ve en su portal y queda anotado en la bitácora; una evidencia aprobada en el panel de revisión mueve el avance del dashboard y puede volver elegible a un alumno; importar un padrón corregido mueve de día al participante y libera su taller si ya no se imparte ese día; y cerrar un caso de nombre en soporte quita la marca de ese participante en el listado de elegibles y en su exportación.
 
-Los datos simulados dejaron de ser decorado: **46 comprobaciones, agrupadas en 18 familias**, se ejecutan en cada `npm run verificar-mocks`, y son las que impiden que una tanda futura vuelva a romper en silencio lo que ya funciona. Nacieron de errores reales cometidos durante el trabajo —días desalineados, un requisito de constancia matemáticamente inalcanzable, el escáner sin casos verdes— y cada uno falla nombrando el caso concreto. En la última tanda el verificador dejó de mirar solo los datos de arranque: **corre también sobre el estado de la sesión**, y para eso hubo que separar tres cosas que estaban mezcladas bajo la palabra «invariante» —lo que siempre debe cumplirse (`integridad`), lo que solo describe la riqueza de los datos de ejemplo (`cobertura`) y lo que es consecuencia legítima de un cambio hecho durante la sesión (`historico`)—. El dashboard muestra las primeras en rojo y las terceras como aviso, porque una asistencia que quedó en el día viejo tras mover a alguien de día no es un error: es historia, y no se reescribe.
+Los datos simulados dejaron de ser decorado: **46 comprobaciones, agrupadas en 18 familias**, se ejecutan en cada `bun run verificar-mocks`, y son las que impiden que una tanda futura vuelva a romper en silencio lo que ya funciona. Nacieron de errores reales cometidos durante el trabajo —días desalineados, un requisito de constancia matemáticamente inalcanzable, el escáner sin casos verdes— y cada uno falla nombrando el caso concreto. En la última tanda el verificador dejó de mirar solo los datos de arranque: **corre también sobre el estado de la sesión**, y para eso hubo que separar tres cosas que estaban mezcladas bajo la palabra «invariante» —lo que siempre debe cumplirse (`integridad`), lo que solo describe la riqueza de los datos de ejemplo (`cobertura`) y lo que es consecuencia legítima de un cambio hecho durante la sesión (`historico`)—. El dashboard muestra las primeras en rojo y las terceras como aviso, porque una asistencia que quedó en el día viejo tras mover a alguien de día no es un error: es historia, y no se reescribe.
 
 La Ñ se conserva de punta a punta, desde el mock hasta el CSV que recibe quien imprime, con BOM para que Excel no la degrade. Y el prototipo se puede enseñar sin prepararlo: **`docs/RECORRIDO-DEMO.md`** trae el recorrido completo —del pre-registro al listado de elegibles— con los folios, referencias y nombres concretos de cada paso, todos verificados por script contra los datos.
 
@@ -203,7 +203,7 @@ La instrucción fue explícita: solo interfaz, sin backend, sin base de datos, s
 
 **Ubicación:** `package.json:39-41`, `src/server.ts`, `src/start.ts`, `vite.config.ts:9-13`.
 
-La especificación pidió _"React + Vite + TypeScript + Tailwind CSS + shadcn/ui + **React Router**"_. El proyecto usa **TanStack Router** con **TanStack Start**, un framework full-stack con renderizado en servidor. `npm run build` genera un worker de servidor desplegable (`.output/server/index.mjs`, 18,75 kB) y configuración de Cloudflare (`.output/server/wrangler.json`, `.wrangler/deploy/config.json`).
+La especificación pidió _"React + Vite + TypeScript + Tailwind CSS + shadcn/ui + **React Router**"_. El proyecto usa **TanStack Router** con **TanStack Start**, un framework full-stack con renderizado en servidor. `bun run build` genera un worker de servidor desplegable (`.output/server/index.mjs`, 18,75 kB) y configuración de Cloudflare (`.output/server/wrangler.json`, `.wrangler/deploy/config.json`).
 
 **Clasificación: desviación de alcance real, pero no contaminación.** No hay código que intente conectarse a nada: no hay endpoints propios, ni server functions, ni acceso a datos. Lo que existe es la infraestructura de servidor de la plantilla. Dos piezas van claramente más allá de "solo presentación":
 
@@ -514,7 +514,7 @@ src/routes/financieros.index.tsx(50,16): error TS2820:
 Type '"/financieros/ficha"' is not assignable to type '"." | "/" | "/alumno" | ...
 ```
 
-_Impacto:_ El módulo de financieros es funcionalmente inalcanzable más allá de la primera pantalla, y **el proyecto no pasa el chequeo de tipos**. `npm run build` sí termina con éxito (exit 0) porque Vite no ejecuta `tsc`, lo que deja el error latente e invisible en el flujo de trabajo actual.
+_Impacto:_ El módulo de financieros es funcionalmente inalcanzable más allá de la primera pantalla, y **el proyecto no pasa el chequeo de tipos**. `bun run build` sí termina con éxito (exit 0) porque Vite no ejecuta `tsc`, lo que deja el error latente e invisible en el flujo de trabajo actual.
 
 **CRI-3 — Solo existe 1 de los 2 pares de hash duplicado exigidos, y el comentario del código afirma lo contrario**
 _Ubicación:_ `src/mocks/evidencias.ts:29-35`.
@@ -562,7 +562,7 @@ _Impacto:_ Bajo hoy. Útil como andamiaje cuando se construyan esos módulos, pe
 
 **MEN-5 — 80 errores de formato de Prettier**
 _Ubicación:_ Distribuidos en los archivos de `src/routes/` y `src/components/`.
-_Descripción:_ `npm run lint` termina con código 1 y reporta **87 problemas: 80 errores y 7 advertencias**. Los 80 errores son en su totalidad de la regla `prettier/prettier` (saltos de línea y ajuste), y los 7 restantes son advertencias de `react-refresh/only-export-components`, mayormente en archivos de `src/components/ui/` generados por shadcn. **No hay ni un solo error de lógica, de hooks o de tipos en el lint.** Los 80 son corregibles automáticamente con `npm run format`.
+_Descripción:_ `bun run lint` termina con código 1 y reporta **87 problemas: 80 errores y 7 advertencias**. Los 80 errores son en su totalidad de la regla `prettier/prettier` (saltos de línea y ajuste), y los 7 restantes son advertencias de `react-refresh/only-export-components`, mayormente en archivos de `src/components/ui/` generados por shadcn. **No hay ni un solo error de lógica, de hooks o de tipos en el lint.** Los 80 son corregibles automáticamente con `bun run format`.
 _Impacto:_ Nulo en funcionamiento. Relevante porque deja el lint en rojo, y un lint que siempre falla deja de servir como señal.
 
 **MEN-6 — El bloque de modo oscuro no cubre los tokens de dominio**
@@ -596,7 +596,7 @@ Estimación en tallas: **S** ≈ media jornada · **M** ≈ 1–2 jornadas · **
 | 0.2 | Traducir al español el 404 y el límite de error, con textos concretos (MAY-2)               | **S** | —          | Es la pantalla más visible del prototipo hoy                                                                                               |
 | 0.3 | Corregir el destino de `financieros.index.tsx:50` para que `tsc --noEmit` pase (CRI-2)      | **S** | —          | Devuelve el chequeo de tipos a verde. Provisionalmente puede quedarse en la misma pantalla hasta que exista la ficha                       |
 | 0.4 | Añadir un script `typecheck` (`tsc --noEmit`) a `package.json`                              | **S** | 0.3        | Sin esto, el próximo error de tipos volverá a pasar inadvertido: `build` no typechequea                                                    |
-| 0.5 | Ejecutar `npm run format` para dejar el lint en verde (MEN-5)                               | **S** | —          | 80 de 87 problemas se corrigen automáticamente                                                                                             |
+| 0.5 | Ejecutar `bun run format` para dejar el lint en verde (MEN-5)                               | **S** | —          | 80 de 87 problemas se corrigen automáticamente                                                                                             |
 
 ### Bloque 1 — Reparar los datos simulados (medio día)
 
@@ -661,7 +661,7 @@ Estimación en tallas: **S** ≈ media jornada · **M** ≈ 1–2 jornadas · **
 
 ## 9. Recomendación de siguiente paso
 
-**Ejecutar el Bloque 0 completo antes de escribir una sola línea de funcionalidad nueva.** Son cinco tareas de talla S, medio día en conjunto, y cambian la naturaleza del entregable: hoy el prototipo aparenta estar completo y falla en 21 sitios; después estará honestamente al 51 % y será revisable. Mientras eso no ocurra, cualquier revisión con interesados producirá retroalimentación sobre pantallas de error en inglés en lugar de sobre el producto, y cualquier persona que se incorpore perderá tiempo averiguando si los enlaces rotos son defectos o alcance pendiente. La tarea 0.4 —añadir el script `typecheck`— es la que impide que el problema se repita: el error de tipos de CRI-2 lleva ahí desde que se escribió esa línea y nadie lo vio, porque `npm run build` no ejecuta `tsc`.
+**Ejecutar el Bloque 0 completo antes de escribir una sola línea de funcionalidad nueva.** Son cinco tareas de talla S, medio día en conjunto, y cambian la naturaleza del entregable: hoy el prototipo aparenta estar completo y falla en 21 sitios; después estará honestamente al 51 % y será revisable. Mientras eso no ocurra, cualquier revisión con interesados producirá retroalimentación sobre pantallas de error en inglés en lugar de sobre el producto, y cualquier persona que se incorpore perderá tiempo averiguando si los enlaces rotos son defectos o alcance pendiente. La tarea 0.4 —añadir el script `typecheck`— es la que impide que el problema se repita: el error de tipos de CRI-2 lleva ahí desde que se escribió esa línea y nadie lo vio, porque `bun run build` no ejecuta `tsc`.
 
 **Inmediatamente después, el Bloque 1** (dos tareas S, medio día). Corregir los datos simulados ahora cuesta minutos; corregirlos después de construir el panel de revisión sobre la suposición de que hay dos pares de duplicados cuesta rehacer la pantalla. El mismo argumento aplica a la inconsistencia de días: es una línea de código hoy y una sesión de depuración desconcertante dentro de dos semanas, cuando alguien note que el mismo participante aparece en el día 1 en una pantalla y en el día 3 en otra.
 
@@ -712,9 +712,9 @@ Los tres comandos pasan:
 
 | Comando             | Antes                                              | Ahora                                   |
 | ------------------- | -------------------------------------------------- | --------------------------------------- |
-| `npm run typecheck` | No existía; `tsc --noEmit` fallaba con 1 error     | **exit 0**, sin errores                 |
-| `npm run lint`      | exit 1 — 87 problemas (80 errores, 7 advertencias) | **exit 0**, sin errores ni advertencias |
-| `npm run build`     | exit 0                                             | **exit 0**                              |
+| `bun run typecheck` | No existía; `tsc --noEmit` fallaba con 1 error     | **exit 0**, sin errores                 |
+| `bun run lint`      | exit 1 — 87 problemas (80 errores, 7 advertencias) | **exit 0**, sin errores ni advertencias |
+| `bun run build`     | exit 0                                             | **exit 0**                              |
 
 **0.1 — El índice ya no ofrece ningún enlace roto.** Comprobado contra las rutas reales extraídas de `src/routeTree.gen.ts`: de las 36 entradas, las **15 marcadas `listo` corresponden todas a rutas existentes** y las **21 marcadas `pendiente` no son navegables**. Ninguna entrada pendiente corresponde a una ruta ya construida. Los contadores derivados coinciden con el conteo real (15 / 36 / 21). Desglose por módulo: Registro público 9/9 · Portal 5/5 · Servicios Financieros 1/4 · Captura 0/4 · Revisión 0/1 · Administración 0/10 · Verificación pública 0/3. Sumando las barras de navegación de paneles, **quedan 0 enlaces navegables apuntando a rutas inexistentes** en todo el proyecto.
 
@@ -757,8 +757,8 @@ El costo solo pudo cambiar en PRE-00813 porque T03 es el único taller de $400 y
 | Indicador                                   | Antes                                          | Ahora                                    |
 | ------------------------------------------- | ---------------------------------------------- | ---------------------------------------- |
 | Enlaces navegables rotos en el prototipo    | 21 en el índice + 3 en la barra de financieros | **0**                                    |
-| `npm run typecheck`                         | Inexistente; `tsc` fallaba con 1 error         | **exit 0**                               |
-| `npm run lint`                              | exit 1 — 80 errores, 7 advertencias            | **exit 0** — 0 y 0                       |
+| `bun run typecheck`                         | Inexistente; `tsc` fallaba con 1 error         | **exit 0**                               |
+| `bun run lint`                              | exit 1 — 80 errores, 7 advertencias            | **exit 0** — 0 y 0                       |
 | Pares de hash duplicado reales              | 1 de 2                                         | **2 de 2**                               |
 | Discrepancias de día padrón ↔ participantes | 22 de 32                                       | **0 de 32**                              |
 | Pantallas en inglés                         | 2 (404 y límite de error)                      | **0**                                    |
@@ -791,10 +791,10 @@ Primera tanda que construye alcance nuevo. Se cerraron los cuatro defectos menor
 
 | Comando                   | Resultado                                     |
 | ------------------------- | --------------------------------------------- |
-| `npm run verificar-mocks` | **exit 0** — todos los invariantes se cumplen |
-| `npm run typecheck`       | **exit 0**                                    |
-| `npm run lint`            | **exit 0** — 0 errores, 0 advertencias        |
-| `npm run build`           | **exit 0**                                    |
+| `bun run verificar-mocks` | **exit 0** — todos los invariantes se cumplen |
+| `bun run typecheck`       | **exit 0**                                    |
+| `bun run lint`            | **exit 0** — 0 errores, 0 advertencias        |
+| `bun run build`           | **exit 0**                                    |
 
 #### Parte A — Cierre de defectos
 
@@ -813,7 +813,7 @@ Efecto colateral atendido: al reordenarse los participantes cambiaron los folios
 
 **A.4 — Barras de navegación sin uso.** Se **retiraron** `navAdmin` y `navCaptura`. Justificación: declaraban 14 destinos de módulos inexistentes, duplicando la lista que desde la tanda anterior vive en `src/lib/mapa-pantallas.ts`. Dos listas de lo mismo se desincronizan; una sola no. Cuando esos módulos se construyan, su barra se arma como la de financieros y `NavPanel` ya atenúa solo lo que siga pendiente. Queda un comentario en el archivo explicando el porqué.
 
-**A.5 — Invariantes documentados y ejecutables.** `src/mocks/verificar.ts` (nuevo) comprueba **19 familias de invariantes** y `scripts/verificar-mocks.ts` lo expone como `npm run verificar-mocks`, con salida distinta de cero si algo falla:
+**A.5 — Invariantes documentados y ejecutables.** `src/mocks/verificar.ts` (nuevo) comprueba **19 familias de invariantes** y `scripts/verificar-mocks.ts` lo expone como `bun run verificar-mocks`, con salida distinta de cero si algo falla:
 
 | Invariante                                                                | Qué comprueba                                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -916,10 +916,10 @@ Se unificó el estado del evento en un contexto compartido y se construyó el m�
 
 | Comando                   | Resultado                                     |
 | ------------------------- | --------------------------------------------- |
-| `npm run verificar-mocks` | **exit 0** — todos los invariantes se cumplen |
-| `npm run typecheck`       | **exit 0**                                    |
-| `npm run lint`            | **exit 0** — 0 errores, 0 advertencias        |
-| `npm run build`           | **exit 0**                                    |
+| `bun run verificar-mocks` | **exit 0** — todos los invariantes se cumplen |
+| `bun run typecheck`       | **exit 0**                                    |
+| `bun run lint`            | **exit 0** — 0 errores, 0 advertencias        |
+| `bun run build`           | **exit 0**                                    |
 
 #### Parte A — Estado unificado
 
@@ -1058,10 +1058,10 @@ Cuarta tanda. Se corrigieron los cuatro defectos abiertos y se construyó el pan
 
 | Comando                   | Resultado                                                    |
 | ------------------------- | ------------------------------------------------------------ |
-| `npm run verificar-mocks` | **exit 0** — todos los invariantes, incluido el nuevo de A.1 |
-| `npm run typecheck`       | **exit 0**                                                   |
-| `npm run lint`            | **exit 0** — 0 errores, 0 advertencias                       |
-| `npm run build`           | **exit 0**                                                   |
+| `bun run verificar-mocks` | **exit 0** — todos los invariantes, incluido el nuevo de A.1 |
+| `bun run typecheck`       | **exit 0**                                                   |
+| `bun run lint`            | **exit 0** — 0 errores, 0 advertencias                       |
+| `bun run build`           | **exit 0**                                                   |
 
 Las tres suites de tandas anteriores (captura, validaciones de pago, carga masiva) siguen pasando: sin regresiones.
 
@@ -1175,10 +1175,10 @@ Quinta tanda. Se cerraron cuatro de los cinco defectos abiertos y se construyó 
 
 | Comando                   | Resultado                                                                     |
 | ------------------------- | ----------------------------------------------------------------------------- |
-| `npm run verificar-mocks` | **exit 0** — 24 familias de invariantes, con los nuevos de A.2 y de anomalías |
-| `npm run typecheck`       | **exit 0**                                                                    |
-| `npm run lint`            | **exit 0** — 0 errores, 0 advertencias                                        |
-| `npm run build`           | **exit 0**                                                                    |
+| `bun run verificar-mocks` | **exit 0** — 24 familias de invariantes, con los nuevos de A.2 y de anomalías |
+| `bun run typecheck`       | **exit 0**                                                                    |
+| `bun run lint`            | **exit 0** — 0 errores, 0 advertencias                                        |
+| `bun run build`           | **exit 0**                                                                    |
 
 Las siete suites de tandas anteriores siguen pasando: sin regresiones.
 
@@ -1313,10 +1313,10 @@ Con esta tanda el prototipo queda completo respecto al alcance vigente: **33 de 
 
 | Comando                   | Resultado                               |
 | ------------------------- | --------------------------------------- |
-| `npm run verificar-mocks` | **exit 0** — 24 familias de invariantes |
-| `npm run typecheck`       | **exit 0**                              |
-| `npm run lint`            | **exit 0** — 0 errores, 0 advertencias  |
-| `npm run build`           | **exit 0**                              |
+| `bun run verificar-mocks` | **exit 0** — 24 familias de invariantes |
+| `bun run typecheck`       | **exit 0**                              |
+| `bun run lint`            | **exit 0** — 0 errores, 0 advertencias  |
+| `bun run build`           | **exit 0**                              |
 
 Las ocho suites de tandas anteriores siguen pasando.
 
@@ -1599,10 +1599,10 @@ del semáforo. Un guion que nombre un folio inexistente falla en el peor momento
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ 24 familias, código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ 24 familias, código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Y las 14 comprobaciones de lógica pura acumuladas en las siete tandas —pagos,
 carga masiva, escaneo, revisión, portal, padrón, elegibilidad, propagación,
@@ -1735,10 +1735,10 @@ la que queda, es **45 comprobaciones nombradas agrupadas en 18 familias**.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Las 16 comprobaciones de lógica pura pasan, incluida la nueva
 `probar-preregistro.ts` (23 casos, con las contrapruebas de los invariantes
@@ -2014,10 +2014,10 @@ aserciones seguían usando las constantes que dejaron de existir.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ 46 comprobaciones, código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ 46 comprobaciones, código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Las **18 suites** de lógica pura pasan.
 
@@ -2109,10 +2109,10 @@ que hace confiar en lo que no se debe.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Las **19 suites** de lógica pura pasan. **No quedan defectos abiertos.**
 
@@ -2147,7 +2147,7 @@ el árbol de rutas y va antes que el plugin de React; `nitro` va al final porque
 empaqueta lo que los demás produjeron.
 
 **Comprobado de verdad, no por inspección:** se desinstaló el paquete
-(`bun install` lo quitó del `bun.lock`) y se borró de `node_modules`. `npm run
+(`bun install` lo quitó del `bun.lock`) y se borró de `node_modules`. `bun run
 build` sigue en 0 y produce el mismo worker de Cloudflare.
 
 #### Lo que se conservó, y por qué
@@ -2161,10 +2161,10 @@ nada de eso existe ya.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 ---
 
@@ -2245,10 +2245,10 @@ repetían —con el CSV viejo— lo que ahora comprueba la suite nueva.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Las **22 suites** de lógica pura pasan.
 
@@ -2397,9 +2397,9 @@ llegaría a ver.
 
 | Comando | Resultado |
 | --- | --- |
-| `npm run verificar-mocks` | ✓ código 0 |
-| `npm run typecheck` | ✓ código 0 |
-| `npm run lint` | ✓ código 0 |
-| `npm run build` | ✓ código 0 |
+| `bun run verificar-mocks` | ✓ código 0 |
+| `bun run typecheck` | ✓ código 0 |
+| `bun run lint` | ✓ código 0 |
+| `bun run build` | ✓ código 0 |
 
 Las 23 suites pasan.

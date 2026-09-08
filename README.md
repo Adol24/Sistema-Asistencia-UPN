@@ -362,17 +362,19 @@ Esto es exclusivamente la capa de presentación. Sin backend, sin base de datos,
   qué orden y con qué folios concretos, todos verificados contra los datos
   simulados.
 
-Comandos de verificación: `npm run verificar-mocks`, `npm run typecheck`,
-`npm run lint`, `npm run build`.
+Comandos de verificación: `bun run verificar-mocks`, `bun run typecheck`,
+`bun run lint`, `bun run build`.
 
 ## Cómo trabajarlo
 
-Necesitas Node.js y npm.
+Necesitas [bun](https://bun.sh). Es el gestor de paquetes del proyecto y el
+único lockfile válido es `bun.lock`: no uses npm ni pnpm, porque generan su
+propio lockfile y terminan resolviendo versiones distintas.
 
 ```sh
-npm install
-npm run dev      # servidor de desarrollo
-npm run build    # compila para producción
+bun install
+bun run dev      # servidor de desarrollo
+bun run build    # compila para producción
 ```
 
 El proyecto usa TanStack Start sobre Vite, con Tailwind CSS v4 y componentes de
