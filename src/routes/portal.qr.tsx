@@ -3,7 +3,7 @@ import { Camera, Download, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
-import { QrFalso } from "@/components/qr-falso";
+import { CodigoQR } from "@/components/qr";
 import { Button } from "@/components/ui/button";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePrototipo } from "@/lib/prototipo";
@@ -43,7 +43,7 @@ function MiQr() {
       {pagado ? (
         <section className="rounded-lg border border-border bg-card p-6 text-center">
           <div className="flex justify-center">
-            <QrFalso valor={p.folio} size={320} />
+            <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
           </div>
           <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
           <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>

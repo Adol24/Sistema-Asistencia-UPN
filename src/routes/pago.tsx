@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { QrFalso } from "@/components/qr-falso";
+import { CodigoQR } from "@/components/qr";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/mocks/evidencias";
 import { moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
@@ -89,7 +89,7 @@ function Pago() {
         </p>
         <p className="mt-1 text-4xl font-extrabold tracking-tight sm:text-5xl">{folio}</p>
         <div className="mt-4 flex justify-center">
-          <QrFalso valor={folio} size={148} />
+          <CodigoQR valor={folio} size={148} />
         </div>
       </section>
 

@@ -3,7 +3,7 @@ import { CheckCircle2, Download, Info, LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
-import { QrFalso } from "@/components/qr-falso";
+import { CodigoQR } from "@/components/qr";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/mocks/catalogos";
 import { moneda } from "@/lib/formato";
@@ -87,7 +87,7 @@ function Comprobante() {
           </div>
         </dl>
         <div className="justify-self-center">
-          <QrFalso valor={participante.folio} size={148} />
+          <CodigoQR valor={participante.folio} size={148} />
           <p className="mt-2 text-center text-xs text-muted-foreground">Folio para ventanilla</p>
         </div>
       </div>
