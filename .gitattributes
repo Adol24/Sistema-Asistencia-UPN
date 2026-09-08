@@ -1,0 +1,47 @@
+# =============================================================================
+# Normalizacion de saltos de linea
+#
+# El repositorio guarda todo en LF. Cada quien lo ve en el formato de su sistema
+# operativo al hacer checkout. Sin esto, un mismo archivo editado en Windows y
+# en Linux aparece como "modificado por completo" y los diffs no sirven.
+# =============================================================================
+* text=auto eol=lf
+
+# Archivos que deben quedar en LF si o si (scripts y config que corren en Linux).
+*.sh        text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.json      text eol=lf
+*.sql       text eol=lf
+*.css       text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.toml      text eol=lf
+*.csv       text eol=lf
+
+# Binarios: Git no los toca ni intenta hacer diff.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.avif      binary
+*.pdf       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.eot       binary
+*.mp4       binary
+*.webm      binary
+
+# Lockfiles: se versionan, pero no ensucian los diffs de los PRs.
+bun.lock            -diff linguist-generated
+package-lock.json   -diff linguist-generated
+
+# Archivo generado por TanStack Router: no es codigo escrito a mano.
+src/routeTree.gen.ts -diff linguist-generated
