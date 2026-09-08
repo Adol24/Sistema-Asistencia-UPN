@@ -1,65 +1,63 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, LayoutGrid, Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEstadoEvento } from "@/lib/estado-evento";
 import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
+import { Titulo, Texto } from "@/components/tipografia";
 import { cn } from "@/lib/utils";
 
-export function BarraSuperior({ titulo, volverA }: { titulo?: string; volverA?: string }) {
-  // El nombre del evento se edita en administración: la barra que lo lleva en
-  // todas las pantallas tiene que leerlo del contexto, no del mock.
-  const { configuracion: evento } = useEstadoEvento();
-
+/**
+ * Enlace de regreso al paso anterior. Vive dentro del contenido, no en una
+ * barra fija: el prototipo ya no lleva cabecera propia y el título de cada
+ * pantalla lo pone la pantalla misma.
+ */
+function EnlaceVolver({ a }: { a: string }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur print:hidden">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-        {volverA ? (
-          <Link
-            to={volverA}
-            className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted"
-            aria-label="Volver"
-          >
-            <ArrowLeft className="size-5" />
-          </Link>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{titulo ?? evento.nombre}</p>
-          {titulo ? (
-            <p className="truncate text-xs text-muted-foreground">{evento.nombre}</p>
-          ) : null}
-        </div>
-        <Link
-          to="/"
-          className="flex h-11 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground hover:bg-muted"
-        >
-          <LayoutGrid className="size-4" />
-          Índice
-        </Link>
-      </div>
-    </header>
+    <Link
+      to={a}
+      className="-ml-3 mb-2 inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted print:hidden"
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      Volver
+    </Link>
   );
 }
 
 export function PantallaPublica({
   titulo,
+  descripcion,
   volverA,
   children,
   ancho = "md",
 }: {
   titulo?: string;
+  descripcion?: string;
   volverA?: string;
   children: ReactNode;
   ancho?: "md" | "lg";
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <BarraSuperior titulo={titulo} volverA={volverA} />
+    /*
+     * `my-auto` centra la columna verticalmente cuando el contenido es corto.
+     * Sin esto, un formulario de tres campos quedaba pegado al borde superior de
+     * una pantalla de escritorio con medio metro de vacío debajo, que es buena
+     * parte de por qué el prototipo se veía sin terminar. Con contenido largo el
+     * margen automático se agota y la página vuelve a desplazarse con normalidad,
+     * cosa que `justify-center` no haría: recortaría el inicio.
+     */
+    <div className="flex min-h-screen flex-col bg-background">
       <main
         className={cn(
-          "mx-auto w-full px-4 py-6 sm:py-10",
+          "mx-auto my-auto w-full px-4 py-8 sm:py-12",
           ancho === "md" ? "max-w-xl" : "max-w-3xl",
         )}
       >
+        {volverA ? <EnlaceVolver a={volverA} /> : null}
+        {titulo ? (
+          <header className="mb-6">
+            <Titulo>{titulo}</Titulo>
+            {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
+          </header>
+        ) : null}
         {children}
       </main>
     </div>
@@ -81,17 +79,16 @@ export function PantallaPanel({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <BarraSuperior titulo={titulo} />
       {nav ? (
         <div className="border-b border-border bg-card print:hidden">
           <div className="mx-auto flex max-w-6xl flex-wrap gap-1 px-4 py-2">{nav}</div>
         </div>
       ) : null}
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{titulo}</h1>
-            {descripcion ? <p className="text-sm text-muted-foreground">{descripcion}</p> : null}
+            <Titulo>{titulo}</Titulo>
+            {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
           </div>
           {acciones}
         </div>
@@ -104,8 +101,7 @@ export function PantallaPanel({
 /**
  * Barra de navegación de un panel. Las entradas cuya pantalla todavía no se
  * construye se dibujan atenuadas y sin comportamiento de clic, en lugar de
- * enlazar a una ruta inexistente. El estado se consulta en `mapa-pantallas`,
- * que es la misma fuente de verdad que alimenta el índice.
+ * enlazar a una ruta inexistente. El estado se consulta en `mapa-pantallas`.
  */
 export function NavPanel({ items }: { items: { to: RutaConstruida; label: string }[] }) {
   return (

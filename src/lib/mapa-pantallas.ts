@@ -1,18 +1,16 @@
 /**
  * Mapa único de las pantallas del prototipo.
  *
- * Es la fuente de verdad para el índice (`/`) y para la pantalla de 404: una
- * entrada `pendiente` no se enlaza en el índice y, si alguien llega a su URL,
- * el 404 puede decir "aún no se construye" en lugar de "no existe".
+ * Es la fuente de verdad para las barras de navegación de los paneles y para la
+ * pantalla de 404: una entrada `pendiente` no se enlaza y, si alguien llega a
+ * su URL, el 404 puede decir "aún no se construye" en lugar de "no existe".
  *
  * Para dar por construida una pantalla, cambia su `estado` a "listo" y agrega
- * su ruta a `RutaConstruida`. El contador de avance del índice se recalcula
- * solo a partir de estos datos.
+ * su ruta a `RutaConstruida`.
  */
 
 /** Rutas que existen realmente en `src/routes/`. */
 export type RutaConstruida =
-  | "/"
   | "/bienvenida"
   | "/alumno"
   | "/confirmar-nombre"
@@ -140,19 +138,6 @@ export const modulos: ModuloIndice[] = [
 ];
 
 const todasLasEntradas = modulos.flatMap((m) => m.rutas);
-
-/** Avance del prototipo, derivado de `modulos`. Nunca se escribe a mano. */
-export const avance = {
-  total: todasLasEntradas.length,
-  construidas: todasLasEntradas.filter((e) => e.estado === "listo").length,
-  get pendientes() {
-    return this.total - this.construidas;
-  },
-};
-
-/** Cuenta cuántas de las entradas de un módulo ya están construidas. */
-export const construidasDe = (m: ModuloIndice) =>
-  m.rutas.filter((r) => r.estado === "listo").length;
 
 /**
  * Estado de una ruta según este mapa. Lo usan las barras de navegación de los

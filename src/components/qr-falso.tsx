@@ -1,6 +1,16 @@
 import { cn } from "@/lib/utils";
 
-/** QR decorativo determinista para el prototipo (no codifica información real). */
+/**
+ * QR decorativo determinista para el prototipo (no codifica información real).
+ *
+ * `size` es un máximo, no un ancho fijo: el SVG se encoge con `max-w-full` para
+ * que en un teléfono de 320 px no desborde la tarjeta y provoque scroll
+ * horizontal. Es la pantalla que el alumno abre en la fila de la entrada, así
+ * que ocupa todo el ancho disponible hasta ese máximo.
+ *
+ * El código va en negro puro sobre blanco puro, sin los colores de la paleta:
+ * un lector de códigos necesita el contraste máximo y no le importa la marca.
+ */
 export function QrFalso({
   valor,
   size = 200,
@@ -35,14 +45,17 @@ export function QrFalso({
       viewBox={`0 0 ${n} ${n}`}
       role="img"
       aria-label={`Código QR del folio ${valor}`}
-      className={cn("rounded-md bg-card p-0 shadow-sm ring-1 ring-border", className)}
+      className={cn(
+        "h-auto max-w-full rounded-md bg-white shadow-sm ring-1 ring-border",
+        className,
+      )}
     >
       <rect width={n} height={n} fill="white" />
       {Array.from({ length: n * n }).map((_, i) => {
         const r = Math.floor(i / n);
         const c = i % n;
         const on = esAncla(r, c) ? anclaPintada(r, c) : celdas[i];
-        return on ? <rect key={i} x={c} y={r} width={1} height={1} fill="#0f172a" /> : null;
+        return on ? <rect key={i} x={c} y={r} width={1} height={1} fill="#000000" /> : null;
       })}
     </svg>
   );
