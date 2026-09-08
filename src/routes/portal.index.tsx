@@ -15,7 +15,7 @@ export const Route = createFileRoute("/portal/")({
   head: () =>
     meta(
       "Portal del participante — XIV Encuentro Internacional de Educación",
-      "Consulta el estado de tu registro, tu código QR, tus evidencias y tu constancia con tu folio del XIV Encuentro Internacional de Educación.",
+      "Consulta el estado de tu registro, tu código QR, tus evidencias y si cumples los requisitos de constancia, con tu folio del XIV Encuentro Internacional de Educación.",
     ),
   component: AccesoPortal,
 });
@@ -52,7 +52,11 @@ function AccesoPortal() {
   };
 
   return (
-    <PantallaPublica titulo="Portal del participante" volverA="/bienvenida">
+    <PantallaPublica
+      volverA="/bienvenida"
+      titulo="Entra con tu folio"
+      descripcion="No necesitas contraseña. Usa tu folio y tu matrícula (o el correo con el que te registraste)."
+    >
       <form
         className="rounded-lg border border-border bg-card p-5"
         noValidate
@@ -61,12 +65,7 @@ function AccesoPortal() {
           void entrar();
         }}
       >
-        <h1 className="text-lg font-semibold">Entra con tu folio</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          No necesitas contraseña. Usa tu folio y tu matrícula (o el correo con el que te
-          registraste).
-        </p>
-        <div className="mt-5 grid gap-4">
+        <div className="grid gap-4">
           <div>
             <Label htmlFor="folio">Folio</Label>
             <Input

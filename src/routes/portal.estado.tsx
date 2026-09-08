@@ -38,7 +38,7 @@ function EstadoPortal() {
   const actual = indiceDe(estado.evento);
 
   return (
-    <PantallaPublica titulo="Estado de mi registro" volverA="/portal" ancho="lg">
+    <PantallaPublica volverA="/portal" ancho="lg">
       <PortalNav />
 
       {avisos.length > 0 ? (
@@ -56,14 +56,14 @@ function EstadoPortal() {
             <div className="flex flex-wrap gap-2">
               <Link
                 to="/talleres"
-                className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
               >
                 Elegir otro taller
               </Link>
               <button
                 type="button"
                 onClick={() => descartarAvisos(p.folio)}
-                className="inline-flex h-10 items-center rounded-md px-4 text-sm font-semibold text-muted-foreground hover:bg-muted"
+                className="inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold text-muted-foreground hover:bg-muted"
               >
                 Ya lo vi
               </button>

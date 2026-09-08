@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Check, Copy, Download, Loader2, Mail, QrCode } from "lucide-react";
+import { AlertTriangle, Check, Copy, Download, Loader2, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
@@ -75,11 +75,11 @@ function Pago() {
             setEnviando(true);
             await simularLatencia();
             setEnviando(false);
-            toast.success("Reenviamos las instrucciones a tu correo.");
+            toast.success("Descargamos las instrucciones.");
           }}
         >
-          {enviando ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
-          Reenviar por correo
+          {enviando ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+          Imprimir
         </Button>
       </div>
 
@@ -102,7 +102,7 @@ function Pago() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <article className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Depósito 1 — Evento
           </p>
           <p className="mt-2 font-mono text-sm">Concepto: ENCUENTRO-{folio}</p>
@@ -110,7 +110,7 @@ function Pago() {
         </article>
         {taller ? (
           <article className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Depósito 2 — Taller
             </p>
             <p className="mt-2 font-mono text-sm">Concepto: TALLER-{folio}</p>
@@ -119,7 +119,7 @@ function Pago() {
           </article>
         ) : (
           <article className="rounded-lg border border-dashed border-border bg-muted/40 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Depósito 2 — Taller
             </p>
             <p className="mt-2 text-sm text-muted-foreground">

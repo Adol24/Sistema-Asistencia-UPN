@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Download, MailCheck } from "lucide-react";
+import { CheckCircle2, Download, Info, LayoutList } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/comprobante")({
   head: () =>
     meta(
       "Comprobante de pre-registro — XIV Encuentro Internacional de Educación",
-      "Resumen de tu pre-registro: folio, perfil, día, sede, taller y montos por pagar del XIV Encuentro Internacional de Educación.",
+      "Resumen de tu pre-registro: folio, perfil, día, lugar, taller y montos por pagar del XIV Encuentro Internacional de Educación.",
     ),
   component: Comprobante,
 });
@@ -41,9 +41,7 @@ function Comprobante() {
         <p className="flex items-center gap-2 text-sm font-semibold">
           <CheckCircle2 className="size-5" aria-hidden /> Tu pre-registro quedó guardado
         </p>
-        <p className="mt-1 text-xs">
-          Te enviamos una copia a {borrador.correo ?? participante.correo}.
-        </p>
+        <p className="mt-1 text-xs">Descárgalo o guarda esta pantalla: es tu comprobante.</p>
       </div>
 
       <div className="mt-4 grid gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-[1fr_auto]">
@@ -54,7 +52,7 @@ function Comprobante() {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Folio</dt>
-            <dd className="font-mono text-lg font-bold">{participante.folio}</dd>
+            <dd className="font-mono text-lg font-bold tabular-nums">{participante.folio}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Perfil</dt>
@@ -74,7 +72,7 @@ function Comprobante() {
             </div>
           ) : null}
           <div>
-            <dt className="text-xs text-muted-foreground">Día y sede</dt>
+            <dt className="text-xs text-muted-foreground">Día y lugar</dt>
             <dd className="font-medium">
               {dia.etiqueta} — {dia.fecha} · {dia.sede}
             </dd>
@@ -85,7 +83,7 @@ function Comprobante() {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Total por pagar (en dos depósitos)</dt>
-            <dd className="text-lg font-bold">{moneda(total)}</dd>
+            <dd className="text-lg font-bold tabular-nums">{moneda(total)}</dd>
           </div>
         </dl>
         <div className="justify-self-center">
@@ -101,13 +99,12 @@ function Comprobante() {
         >
           <Download className="size-4" /> Descargar comprobante
         </Button>
-        <Button
-          variant="outline"
-          className="h-12 text-base"
-          onClick={() => toast.success("Reenviamos tu comprobante por correo.")}
+        <Link
+          to="/portal"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-base font-medium transition-colors hover:bg-accent"
         >
-          <MailCheck className="size-4" /> Reenviar por correo
-        </Button>
+          <LayoutList className="size-4" aria-hidden /> Ver mi estado en el portal
+        </Link>
       </div>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
@@ -116,6 +113,57 @@ function Comprobante() {
           Consulta tu estado en el portal
         </Link>
       </p>
+
+      {/*
+       * Este bloque existe para evitar una expectativa equivocada, no para
+       * informar de más.
+       *
+       * Hasta aquí el alumno solo se ha pre-registrado, y ninguno de los tres
+       * requisitos de constancia depende de eso: dependen de pagar, de asistir y
+       * —si es alumno— de que le aprueben las evidencias. El sitio hablaba de
+       * «tu constancia» desde el primer paso, así que era razonable terminar el
+       * registro creyendo que ya estaba resuelta. Decirlo aquí, y no al final
+       * del evento, es lo que deja tiempo de hacer algo al respecto.
+       *
+       * La lista se redacta a mano en lugar de leerse de `elegibilidad.ts`
+       * porque aquí son condiciones generales, no el estado de esta persona:
+       * su avance real vive en `/portal/constancia`, que sí las evalúa.
+       */}
+      <section className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Info className="size-4 shrink-0 text-primary" aria-hidden />
+          El pre-registro no da derecho a la constancia
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Para aparecer en el listado de elegibles necesitas, además de este registro:
+        </p>
+        <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
+          <li className="flex gap-2">
+            <span aria-hidden className="text-primary">
+              1.
+            </span>
+            Tu pago del evento registrado como pagado.
+          </li>
+          <li className="flex gap-2">
+            <span aria-hidden className="text-primary">
+              2.
+            </span>
+            Entrada y salida registradas el día {dia.etiqueta}.
+          </li>
+          {participante.perfil === "alumno" ? (
+            <li className="flex gap-2">
+              <span aria-hidden className="text-primary">
+                3.
+              </span>
+              Tus evidencias de los días en línea, aprobadas.
+            </li>
+          ) : null}
+        </ul>
+        <p className="mt-3 text-xs text-muted-foreground">
+          La universidad elabora el documento con ese listado; el sistema no lo emite. Puedes seguir
+          tu avance en el portal.
+        </p>
+      </section>
     </PantallaPublica>
   );
 }

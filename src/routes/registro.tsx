@@ -88,21 +88,22 @@ function RegistroExterno() {
 
   if (porConfirmar) {
     return (
-      <PantallaPublica titulo="Confirma tus datos" volverA="/bienvenida">
-        <section className="rounded-lg border-2 border-primary/25 bg-card p-5">
-          <p className="text-center text-sm text-muted-foreground">
-            Así quedará tu registro. No podrás editarlo después.
-          </p>
-          <p className="my-6 text-center text-2xl font-extrabold leading-snug tracking-tight">
+      <PantallaPublica
+        titulo="Confirma tus datos"
+        descripcion="Así quedará tu registro. No podrás editarlo después."
+        volverA="/bienvenida"
+      >
+        <section className="rounded-lg border-2 border-primary/25 bg-card px-5 py-8">
+          <p className="text-balance text-center text-2xl font-extrabold leading-snug tracking-tight">
             {porConfirmar.nombre}
           </p>
-          <p className="rounded-md bg-muted p-3 text-center text-sm">
+          <p className="mt-6 rounded-md bg-muted p-3 text-center text-sm">
             <span className="text-muted-foreground">Correo: </span>
             <span className="break-all font-semibold">{porConfirmar.correo}</span>
           </p>
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            El nombre es el que se usará para tu constancia, y el correo es por donde soporte te
-            contacta. Revísalos bien.
+            El nombre es con el que quedas registrado, y el correo es por donde soporte te contacta.
+            Revísalos bien.
           </p>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button
@@ -132,9 +133,7 @@ function RegistroExterno() {
       <Alert className="mb-4">
         <AlertTriangle className="size-4" />
         <AlertTitle>Escribe tu nombre en MAYÚSCULAS y sin acentos</AlertTitle>
-        <AlertDescription>
-          Verifica bien tus datos: así aparecerán en tu constancia.
-        </AlertDescription>
+        <AlertDescription>Verifica bien tus datos: así quedará tu registro.</AlertDescription>
       </Alert>
 
       <form

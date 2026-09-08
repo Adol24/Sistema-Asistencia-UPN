@@ -22,8 +22,14 @@ export const evento = {
    * Dominio que deben tener los correos de los alumnos. Vacío significa que
    * se acepta cualquiera: hay universidades que no dan cuenta institucional a
    * todos, y rechazar a quien no la tiene lo dejaría fuera del evento.
+   *
+   * Va vacío porque en esta universidad los alumnos NO tienen cuenta
+   * institucional: usan su correo personal. Con un dominio aquí, la validación
+   * de `completar-datos` rechazaba a todos y nadie podía terminar el
+   * pre-registro. El campo se conserva —es editable en administración— para la
+   * universidad que sí la exija.
    */
-  dominioInstitucional: "alumnos.universidad.mx",
+  dominioInstitucional: "",
   /** Niveles, programas y forma de contar el avance. Editable. */
   catalogoAcademico,
   whatsappSoporte: "5211234567890",
@@ -50,7 +56,13 @@ export const evento = {
     },
   ],
   registroEntrada: "8:00 a 9:00 hrs",
-  registroSalida: "13:00 a 14:00 hrs",
+  /*
+   * La salida NO lleva hora: depende de cuánto se alarguen las ponencias de los
+   * invitados, y anunciar un rango que no se cumple hace que la gente se vaya
+   * antes de registrarse. El campo sigue siendo texto libre para que la
+   * organización pueda escribir una hora si algún año sí la tiene.
+   */
+  registroSalida: "Al terminar las ponencias del día",
   avisoPrivacidad:
     "Los datos que proporciones se usan únicamente para tu registro, control de asistencia y emisión de constancia del XIV Encuentro Internacional de Educación. No se comparten con terceros. Puedes solicitar su corrección o baja escribiendo al correo de soporte.",
   terminos:

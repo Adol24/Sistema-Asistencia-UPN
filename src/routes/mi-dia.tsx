@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarCheck, Clock, MapPin } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 
@@ -10,8 +10,8 @@ import { meta } from "@/lib/seo";
 export const Route = createFileRoute("/mi-dia")({
   head: () =>
     meta(
-      "Tu día y sede — XIV Encuentro Internacional de Educación",
-      "Consulta el día, la sede y el horario de registro asignados para tu asistencia presencial al XIV Encuentro Internacional de Educación.",
+      "Tu día y lugar — XIV Encuentro Internacional de Educación",
+      "Consulta el día, el lugar y el horario de registro asignados para tu asistencia presencial al XIV Encuentro Internacional de Educación.",
     ),
   component: MiDia,
 });
@@ -23,25 +23,26 @@ function MiDia() {
   const dia = infoDia(borrador.dia ?? participante.dia);
 
   return (
-    <PantallaPublica titulo="Tu día y sede" volverA="/confirmar-nombre">
-      <p className="text-sm text-muted-foreground">
-        Tu asistencia presencial ya está asignada. No es posible cambiar de día.
-      </p>
-
-      <div className="mt-4 overflow-hidden rounded-lg border border-border bg-card">
-        <div className="bg-primary px-5 py-4 text-primary-foreground">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/70">
+    <PantallaPublica
+      titulo="Tu día y sede"
+      descripcion="Tu asistencia presencial ya está asignada. No es posible cambiar de día."
+      volverA="/confirmar-nombre"
+    >
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="bg-primary px-5 py-5 text-primary-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/70">
             Tu asistencia presencial es
           </p>
-          <p className="mt-1 text-2xl font-extrabold">
+          <p className="mt-2 text-balance text-2xl font-extrabold leading-tight">
             {dia.etiqueta} — {dia.fecha}
           </p>
         </div>
-        <dl className="grid gap-3 p-5 text-sm">
+        {/* `gap-4` y no `gap-3`: son datos distintos, no una lista continua. */}
+        <dl className="grid gap-4 p-5 text-sm">
           <div className="flex items-center gap-3">
             <MapPin className="size-5 text-primary" aria-hidden />
             <div>
-              <dt className="font-semibold">Sede</dt>
+              <dt className="font-semibold">Lugar</dt>
               <dd className="text-muted-foreground">{dia.sede}</dd>
             </div>
           </div>
@@ -52,13 +53,13 @@ function MiDia() {
               <dd className="text-muted-foreground">{evento.registroEntrada}</dd>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <CalendarCheck className="size-5 text-primary" aria-hidden />
-            <div>
-              <dt className="font-semibold">Registro de salida</dt>
-              <dd className="text-muted-foreground">{evento.registroSalida}</dd>
-            </div>
-          </div>
+          {/*
+           * El registro de salida NO se muestra al alumno: no tiene hora fija
+           * —depende de cuánto se alarguen las ponencias— y anunciar un rango
+           * que no se cumple hace que la gente se vaya antes de tiempo. El dato
+           * sigue existiendo en la configuración y lo ve el personal de captura,
+           * que es quien lo necesita para operar la puerta.
+           */}
         </dl>
       </div>
 
