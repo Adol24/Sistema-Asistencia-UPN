@@ -7,14 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { hayBaseDeDatos } from "@/lib/supabase";
-import {
-  cargarTodo,
-  guardarAsistencia,
-  guardarConfiguracion,
-  guardarPago,
-  guardarRevision,
-} from "@/lib/datos";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { asistencias as asistenciasMock } from "@/mocks/asistencias";
 import { bitacora as bitacoraMock, casosSoporte as casosMock } from "@/mocks/casosSoporte";
 import { evidencias as evidenciasMock } from "@/mocks/evidencias";
@@ -54,6 +47,66 @@ import {
 import { fechaHora, hora as horaActual } from "@/lib/formato";
 import { guardarCola, leerCola } from "@/lib/cola-pendientes";
 import { aplicarRevisiones } from "@/lib/revision";
+
+/**
+ * Acceso a la capa de datos, cargada bajo demanda.
+ *
+ * `@/lib/datos` arrastra el SDK de Supabase. Importarlo de forma estática metía
+ * ese peso en el paquete que descarga **cualquier** visitante, incluido el
+ * alumno que solo abre su QR desde el teléfono y nunca escribe en la base. Con
+ * el import dinámico, el SDK se descarga la primera vez que hace falta y solo
+ * si hay base configurada.
+ *
+ * Además reúne en un sitio el patrón que estaba copiado cuatro veces —escribir
+ * sin esperar y registrar el fallo en consola—, que es la forma correcta aquí:
+ * la pantalla ya se actualizó de manera optimista y la escritura no debe
+ * bloquear a quien está atendiendo una fila.
+ */
+type ModuloDatos = typeof import("@/lib/datos");
+
+/**
+ * Campo de la configuración -> columna de su tabla.
+ *
+ * Era una escalera de ocho `if (patch.x !== undefined)` idénticos salvo por el
+ * nombre. Como dato en una tabla, añadir un campo es una línea y no hay ninguna
+ * rama que leer: la correspondencia se ve de un vistazo y no puede
+ * desincronizarse a mitad de la escalera.
+ *
+ * Solo están los campos planos. Los días y el catálogo académico viven en
+ * tablas aparte y se editan por su cuenta.
+ */
+const COLUMNA = {
+  nombre: "nombre",
+  subtitulo: "subtitulo",
+  fechas: "fechas",
+  cuotaEvento: "cuota_evento",
+  horasValidacion: "horas_validacion",
+  dominioInstitucional: "dominio_institucional",
+  correoSoporte: "correo_soporte",
+  whatsappSoporte: "whatsapp_soporte",
+} as const satisfies Partial<Record<keyof ConfiguracionEvento, string>>;
+
+/** Sin dominio configurado es cadena vacía en la app y NULL en la tabla. */
+const valorDeColumna = (campo: string, valor: unknown) =>
+  campo === "dominioInstitucional" ? valor || null : valor;
+
+function columnasDeConfiguracion(patch: Partial<ConfiguracionEvento>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(patch)
+      .filter(([campo, valor]) => valor !== undefined && campo in COLUMNA)
+      .map(([campo, valor]) => [
+        COLUMNA[campo as keyof typeof COLUMNA],
+        valorDeColumna(campo, valor),
+      ]),
+  );
+}
+
+function escribir(descripcion: string, accion: (datos: ModuloDatos) => Promise<unknown>): void {
+  if (!hayBaseDeDatos) return;
+  void import("@/lib/datos")
+    .then(accion)
+    .catch((e: unknown) => console.error(`No se pudo guardar ${descripcion}`, e));
+}
 
 /**
  * Estado del evento durante la sesión del prototipo: pagos registrados en
@@ -343,7 +396,8 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     if (!hayBaseDeDatos) return;
     let vigente = true;
 
-    void cargarTodo()
+    void import("@/lib/datos")
+      .then((m) => m.cargarTodo())
       .then((datos) => {
         if (!vigente || !datos) return;
         setConfiguracion(datos.configuracion);
@@ -421,15 +475,17 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       // —una referencia duplicada que dos ventanillas capturaron a la vez— el
       // error queda en consola y hay que recargar. Es el límite conocido de
       // escribir de forma optimista, y está anotado.
-      void guardarPago({
-        folio: pago.folio,
-        concepto: pago.concepto,
-        monto: pago.monto,
-        montoEsperado: pago.montoEsperado,
-        referencia: pago.referencia,
-        fechaDeposito: pago.fechaDeposito,
-        nota: pago.nota,
-      }).catch((e: unknown) => console.error("No se pudo guardar el pago", e));
+      escribir("el pago", (d) =>
+        d.guardarPago({
+          folio: pago.folio,
+          concepto: pago.concepto,
+          monto: pago.monto,
+          montoEsperado: pago.montoEsperado,
+          referencia: pago.referencia,
+          fechaDeposito: pago.fechaDeposito,
+          nota: pago.nota,
+        }),
+      );
 
       return pago;
     },
@@ -572,13 +628,15 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
           // La asistencia se guarda sin esperar: en la puerta la respuesta tiene
           // que ser inmediata, y esperar a la red la volvería lenta justo donde
           // se forma la fila.
-          void guardarAsistencia({
-            folio: asistencia.folio,
-            dia: asistencia.dia,
-            tipo: asistencia.tipo,
-            punto: asistencia.punto,
-            autorizacionMotivo: asistencia.autorizacion?.nota,
-          }).catch((e: unknown) => console.error("No se pudo guardar la asistencia", e));
+          escribir("la asistencia", (d) =>
+            d.guardarAsistencia({
+              folio: asistencia!.folio,
+              dia: asistencia!.dia,
+              tipo: asistencia!.tipo,
+              punto: asistencia!.punto,
+              autorizacionMotivo: asistencia!.autorizacion?.nota,
+            }),
+          );
         } else {
           setEnCola((prev) => [...prev, asistencia!]);
         }
@@ -684,9 +742,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     // Un disparador de la base pone el estado de la evidencia a partir de esta
     // fila, así que no hace falta actualizarla aparte: la decisión y su efecto
     // no pueden separarse.
-    void guardarRevision(id, estado, motivo).catch((e: unknown) =>
-      console.error("No se pudo guardar la revisión", e),
-    );
+    escribir("la revisión", (d) => d.guardarRevision(id, estado, motivo));
   }, []);
 
   const deshacerRevision = useCallback<Ctx["deshacerRevision"]>(() => {
@@ -704,23 +760,9 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
   // ------------------------------------------------------- configuración ---
   const actualizarConfiguracion = useCallback<Ctx["actualizarConfiguracion"]>((patch) => {
     setConfiguracion((prev) => ({ ...prev, ...patch }));
-    if (!hayBaseDeDatos) return;
-    // Solo los campos planos: los días y el catálogo académico viven en tablas
-    // aparte y se editan por su cuenta.
-    const columnas: Record<string, unknown> = {};
-    if (patch.nombre !== undefined) columnas["nombre"] = patch.nombre;
-    if (patch.subtitulo !== undefined) columnas["subtitulo"] = patch.subtitulo;
-    if (patch.fechas !== undefined) columnas["fechas"] = patch.fechas;
-    if (patch.cuotaEvento !== undefined) columnas["cuota_evento"] = patch.cuotaEvento;
-    if (patch.horasValidacion !== undefined) columnas["horas_validacion"] = patch.horasValidacion;
-    if (patch.dominioInstitucional !== undefined)
-      columnas["dominio_institucional"] = patch.dominioInstitucional || null;
-    if (patch.correoSoporte !== undefined) columnas["correo_soporte"] = patch.correoSoporte;
-    if (patch.whatsappSoporte !== undefined) columnas["whatsapp_soporte"] = patch.whatsappSoporte;
+    const columnas = columnasDeConfiguracion(patch);
     if (Object.keys(columnas).length)
-      void guardarConfiguracion(columnas).catch((e: unknown) =>
-        console.error("No se pudo guardar la configuración", e),
-      );
+      escribir("la configuración", (d) => d.guardarConfiguracion(columnas));
   }, []);
 
   // ------------------------------------------------------------ talleres ---

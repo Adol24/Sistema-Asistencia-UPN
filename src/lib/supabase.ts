@@ -1,5 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { clave, hayBaseDeDatos, url } from "@/lib/supabase-config";
+
+export { hayBaseDeDatos };
+
 /**
  * El cliente de Supabase.
  *
@@ -14,11 +18,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * da permisos por sí sola, porque queda sujeta a las políticas de seguridad a
  * nivel de fila. La clave de servicio nunca debe aparecer aquí.
  */
-const url = import.meta.env["VITE_SUPABASE_URL"] as string | undefined;
-const clave = import.meta.env["VITE_SUPABASE_ANON_KEY"] as string | undefined;
-
-export const hayBaseDeDatos = Boolean(url && clave);
-
 export const supabase: SupabaseClient | null = hayBaseDeDatos
   ? createClient(url!, clave!, {
       auth: {
