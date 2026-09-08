@@ -5,6 +5,19 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * `alto:` — solo cuando la ventana tiene altura de sobra.
+ *
+ * El centrado vertical se ve bien con la pantalla entera y estorba en cuanto
+ * aparece el teclado: la ventana se queda en un tercio y un formulario centrado
+ * empuja su botón fuera de alcance. Con esta variante el centrado se apaga solo
+ * cuando deja de caber, y la página vuelve a desplazarse con normalidad.
+ *
+ * Va por ALTURA, no por ancho: `sm:` no sirve aquí porque un teléfono con el
+ * teclado abierto sigue teniendo el mismo ancho.
+ */
+@custom-variant alto (@media (min-height: 34rem));
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility

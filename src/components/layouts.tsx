@@ -62,10 +62,16 @@ export function PantallaPublica({
      * relleno, mientras que dentro competiría con `py-*` —y `sm:py-12` se genera
      * después en la hoja, así que ganaba y la franja se perdía al rotar.
      */
-    <div className="flex min-h-svh flex-col bg-background pb-seguro">
+    /*
+     * `pb-[var(--teclado,0px)]` devuelve recorrido a la página cuando el teclado
+     * está abierto, que es lo que permite al navegador acercar el campo
+     * enfocado. Sin él, un formulario que cabe justo en la pantalla no tiene
+     * nada que desplazar y su botón se queda debajo del teclado.
+     */
+    <div className="flex min-h-svh flex-col bg-background pb-seguro [padding-bottom:calc(env(safe-area-inset-bottom)+var(--teclado,0px))]">
       <main
         className={cn(
-          "mx-auto my-auto w-full px-4 py-8 sm:py-12",
+          "mx-auto w-full px-4 py-8 alto:my-auto sm:py-12",
           ancho === "md" ? "max-w-xl" : "max-w-3xl",
         )}
       >

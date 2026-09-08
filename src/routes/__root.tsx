@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { PrototipoProvider } from "../lib/prototipo";
 import { EstadoEventoProvider } from "../lib/estado-evento";
 import { SesionProvider } from "../lib/sesion";
+import { useAltoTeclado } from "../lib/teclado";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
@@ -109,7 +110,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
        * `env(safe-area-inset-*)`, que es lo que hacen las utilidades
        * `pt-seguro` / `pb-seguro` de `styles.css`.
        */
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      /*
+       * `interactive-widget=resizes-content` hace que el teclado del teléfono
+       * encoja la maqueta, no solo el área visible. Sin él, la página sigue
+       * midiendo la pantalla completa: el contenido centrado no se mueve, no hay
+       * nada que desplazar, y el botón de un formulario corto queda debajo del
+       * teclado, fuera de alcance.
+       */
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+      },
       { name: "theme-color", content: "#0047BB" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
@@ -164,6 +176,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Publica `--teclado` para que las pantallas con formulario dejen sitio.
+  useAltoTeclado();
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -61,6 +61,16 @@ function RegistroExterno() {
     const e: Partial<Record<keyof Campos, string>> = {};
     if (!c.nombres.trim()) e.nombres = "Escribe tu nombre o nombres.";
     if (!c.paterno.trim()) e.paterno = "Escribe tu apellido paterno.";
+    /*
+     * El apellido materno era opcional y no debía serlo.
+     *
+     * El alumno no elige su nombre: llega del padrón completo. Quien se registra
+     * por su cuenta lo escribe, y si aquí falta un apellido el nombre queda
+     * incompleto en el listado de elegibles que la universidad usa para elaborar
+     * los documentos. Corregirlo después significa un caso de soporte y volver a
+     * emitir.
+     */
+    if (!c.materno.trim()) e.materno = "Escribe tu apellido materno.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.correo.trim()))
       e.correo = "Ese correo no tiene un formato válido.";
     if (!c.celular) e.celular = "Escribe tu celular.";
@@ -73,7 +83,7 @@ function RegistroExterno() {
     if (Object.keys(e).length) return;
 
     setPorConfirmar({
-      nombre: [c.nombres, c.paterno, c.materno].filter(Boolean).join(" ").trim(),
+      nombre: [c.nombres, c.paterno, c.materno].map((x) => x.trim()).join(" "),
       correo: c.correo.trim().toLowerCase(),
     });
   };
@@ -168,7 +178,7 @@ function RegistroExterno() {
             [
               ["nombres", "Nombre(s)", "JUAN CARLOS"],
               ["paterno", "Apellido paterno", "PEREZ"],
-              ["materno", "Apellido materno (opcional)", "MUÑOZ"],
+              ["materno", "Apellido materno", "MUÑOZ"],
               ["correo", "Correo electrónico", "correo@dominio.com"],
               ["celular", "Celular (10 dígitos)", "8112345678"],
               ["institucion", "Institución de procedencia", "UNIVERSIDAD DEL VALLE"],
