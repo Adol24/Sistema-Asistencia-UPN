@@ -144,3 +144,75 @@ export function CodigoQR({
     </div>
   );
 }
+
+/**
+ * El pase del participante como imagen.
+ *
+ * Se dibuja en un lienzo módulo a módulo en vez de rasterizar el SVG de la
+ * pantalla. Convertir el SVG obligaría a incrustar la tipografía —al pasar por
+ * una imagen, el navegador ya no tiene acceso a las fuentes de la página y el
+ * texto saldría en cualquier otra—, y además permite componer algo distinto de
+ * lo que se ve: aquí interesa el folio y el nombre debajo del código, para que
+ * la imagen se explique sola en la galería del teléfono meses después.
+ *
+ * Sale en blanco y negro puro, sin los ojos azules de la pantalla: esta imagen
+ * se lee bajo el sol en la puerta, y ahí manda el contraste.
+ */
+// El componente y el generador de la imagen comparten la codificación y las
+// decisiones sobre contraste; separarlos obligaría a mantener dos veces el mismo
+// criterio de qué hace legible un símbolo.
+// eslint-disable-next-line react-refresh/only-export-components
+export async function pngDelPase(
+  valor: string,
+  datos: { nombre: string; evento: string },
+): Promise<Blob | null> {
+  const qr = encode(valor, { ecc: "H", border: 4 });
+  const n = qr.size;
+
+  const modulo = 16;
+  const lado = n * modulo;
+  const margen = 48;
+  const alturaTexto = 150;
+
+  const lienzo = document.createElement("canvas");
+  lienzo.width = lado + margen * 2;
+  lienzo.height = lado + margen + alturaTexto;
+  const ctx = lienzo.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+
+  ctx.fillStyle = "#000000";
+  for (let f = 0; f < n; f++)
+    for (let c = 0; c < n; c++)
+      if (qr.data[f]?.[c]) ctx.fillRect(margen + c * modulo, margen + f * modulo, modulo, modulo);
+
+  const centro = lienzo.width / 2;
+  let y = margen + lado + 46;
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#0B1220";
+  ctx.font = "bold 44px ui-monospace, 'Courier New', monospace";
+  ctx.fillText(valor, centro, y);
+
+  y += 42;
+  ctx.fillStyle = "#334155";
+  ctx.font = "28px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText(recortar(ctx, datos.nombre, lienzo.width - margen), centro, y);
+
+  y += 34;
+  ctx.fillStyle = "#0047BB";
+  ctx.font = "bold 22px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText(recortar(ctx, datos.evento, lienzo.width - margen), centro, y);
+
+  return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
+}
+
+/** Un nombre largo no debe salirse de la imagen ni encogerse hasta no leerse. */
+function recortar(ctx: CanvasRenderingContext2D, texto: string, ancho: number): string {
+  if (ctx.measureText(texto).width <= ancho) return texto;
+  let corto = texto;
+  while (corto.length > 4 && ctx.measureText(`${corto}…`).width > ancho) corto = corto.slice(0, -1);
+  return `${corto}…`;
+}
