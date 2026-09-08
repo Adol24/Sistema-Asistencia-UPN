@@ -104,3 +104,6 @@ coverage
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Caché local del registro de skills (herramienta, no proyecto)
+.atl/

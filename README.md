@@ -343,9 +343,13 @@ Confirmación explícita en toda acción irreversible: cancelar registro, aplica
 
 NAVEGACIÓN Y ENTREGA
 
-Incluye una pantalla de índice en / que liste todas las rutas del prototipo agrupadas por módulo, para que quien revise pueda saltar directamente a cualquier pantalla sin recorrer el flujo completo.
+~~Incluye una pantalla de índice en / que liste todas las rutas del prototipo agrupadas por módulo, para que quien revise pueda saltar directamente a cualquier pantalla sin recorrer el flujo completo.~~
 
-Agrega un selector de participante de prueba flotante (visible solo en el prototipo) que permita cambiar entre perfiles y estados de pago para ver cómo se comporta cada pantalla sin tener que rehacer el flujo.
+CAMBIO DE ALCANCE — ÍNDICE: la pantalla de índice se retiró. `/` redirige a `/bienvenida` y el prototipo se recorre como lo haría un participante. Las 33 pantallas siguen siendo navegables directamente por URL.
+
+~~Agrega un selector de participante de prueba flotante (visible solo en el prototipo) que permita cambiar entre perfiles y estados de pago para ver cómo se comporta cada pantalla sin tener que rehacer el flujo.~~
+
+CAMBIO DE ALCANCE — SELECTOR DE PRUEBA: el botón flotante «Prototipo» se retiró junto con su panel. El participante activo se elige por los caminos reales de la interfaz: el folio en `/portal` y la búsqueda en `/financieros`. Con él se fueron el interruptor de tema y el indicador de origen de datos.
 
 Todas las rutas deben ser navegables directamente por URL.
 
