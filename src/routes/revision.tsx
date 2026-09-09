@@ -33,7 +33,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { usuariosInternos } from "@/mocks/usuariosInternos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import {
   CRITERIOS,
@@ -54,7 +53,7 @@ import {
 } from "@/lib/revision";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Evidencia } from "@/mocks/tipos";
+import type { Evidencia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/revision")({
   head: () =>
@@ -65,12 +64,18 @@ export const Route = createFileRoute("/revision")({
   component: PanelRevision,
 });
 
-const REVISORES = revisoresDe(usuariosInternos);
-
 function PanelRevision() {
-  const { evidencias, revisarEvidencia, deshacerRevision, revisiones, registrarBitacora } =
-    useEstadoEvento();
-  const [revisor, setRevisor] = useState(REVISORES[0] ?? "");
+  const {
+    evidencias,
+    revisarEvidencia,
+    deshacerRevision,
+    revisiones,
+    registrarBitacora,
+    usuarios,
+  } = useEstadoEvento();
+  // Los revisores salen del personal cargado, no de una lista fija en el código.
+  const REVISORES = useMemo(() => revisoresDe(usuarios), [usuarios]);
+  const [revisor, setRevisor] = useState("");
   const [filtros, setFiltros] = useState<FiltrosRevision>({
     ...FILTROS_INICIALES,
     revisor: REVISORES[0] ?? "todos",
@@ -85,7 +90,10 @@ function PanelRevision() {
   const [otro, setOtro] = useState("");
 
   // El reparto por bloques de día se calcula una vez sobre la cola completa.
-  const asignacion = useMemo(() => asignacionDeCola(evidencias, REVISORES), [evidencias]);
+  const asignacion = useMemo(
+    () => asignacionDeCola(evidencias, REVISORES),
+    [evidencias, REVISORES],
+  );
   const cola = useMemo(
     () => filtrarCola(evidencias, filtros, asignacion),
     [evidencias, filtros, asignacion],

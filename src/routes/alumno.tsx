@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { buscarEnPadron } from "@/mocks/alumnosPadron";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
 import { simularLatencia } from "@/lib/formato";
@@ -54,13 +53,8 @@ function IdentificacionAlumno() {
      */
     let existe: boolean;
     try {
-      if (hayBaseDeDatos) {
-        const { existeEnPadronRemoto } = await import("@/lib/datos");
-        existe = (await existeEnPadronRemoto(matricula)).existe;
-      } else {
-        await simularLatencia();
-        existe = !!buscarEnPadron(matricula);
-      }
+      const { existeEnPadronRemoto } = await import("@/lib/datos");
+      existe = (await existeEnPadronRemoto(matricula)).existe;
     } catch {
       setCargando(false);
       return setError("No pudimos consultar el padrón. Inténtalo de nuevo en un momento.");

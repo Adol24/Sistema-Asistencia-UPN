@@ -5,7 +5,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { CodigoQR } from "@/components/qr";
 import { PerfilBadge } from "@/components/estado-badges";
-import { avanceTexto } from "@/mocks/catalogos";
+import { avanceTexto } from "@/dominio/catalogos";
 import { moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -24,17 +24,17 @@ function Comprobante() {
   const { borrador, participante } = usePrototipo();
   const { configuracion: evento, getTaller, infoDia } = useEstadoEvento();
   // Los datos académicos son del alumno: docentes y externos no los tienen.
-  const nivel = borrador.nivel ?? participante.nivel;
-  const programa = borrador.programa ?? participante.programa;
-  const avance = borrador.avance ?? participante.avance;
-  const grupo = borrador.grupo ?? participante.grupo;
-  const plantel = borrador.plantel ?? participante.plantel;
+  const nivel = borrador.nivel ?? participante?.nivel;
+  const programa = borrador.programa ?? participante?.programa;
+  const avance = borrador.avance ?? participante?.avance;
+  const grupo = borrador.grupo ?? participante?.grupo;
+  const plantel = borrador.plantel ?? participante?.plantel;
   const avance_ = avanceTexto(evento.catalogoAcademico, nivel, avance);
   // El folio del pre-registro recién creado, no el del participante de contexto.
-  const folio = borrador.folio ?? participante.folio;
-  const dia = infoDia(borrador.dia ?? participante.dia);
-  const taller = getTaller(borrador.tallerId ?? participante.tallerId);
-  const nombre = borrador.nombre ?? participante.nombre;
+  const folio = borrador.folio ?? participante?.folio;
+  const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);
+  const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
+  const nombre = borrador.nombre ?? participante?.nombre;
   const total = evento.cuotaEvento + (taller?.costo ?? 0);
 
   return (
@@ -59,7 +59,7 @@ function Comprobante() {
           <div>
             <dt className="text-xs text-muted-foreground">Perfil</dt>
             <dd className="mt-1">
-              <PerfilBadge perfil={borrador.perfil ?? participante.perfil} />
+              <PerfilBadge perfil={borrador.perfil ?? participante?.perfil ?? "alumno"} />
             </dd>
           </div>
           {programa ? (
@@ -89,7 +89,7 @@ function Comprobante() {
           </div>
         </dl>
         <div className="justify-self-center">
-          <CodigoQR valor={folio} size={148} />
+          <CodigoQR valor={folio ?? ""} size={148} />
           <p className="mt-2 text-center text-xs text-muted-foreground">Folio para ventanilla</p>
         </div>
       </div>
@@ -152,7 +152,7 @@ function Comprobante() {
             </span>
             Entrada y salida registradas el día {dia.etiqueta}.
           </li>
-          {participante.perfil === "alumno" ? (
+          {participante?.perfil === "alumno" ? (
             <li className="flex gap-2">
               <span aria-hidden className="text-primary">
                 3.

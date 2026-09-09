@@ -6,12 +6,12 @@ import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { avanceTexto } from "@/mocks/catalogos";
+import { avanceTexto } from "@/dominio/catalogos";
 import { descargarCsv } from "@/lib/exportar";
 import { elegibilidadEvento, nombreConstancia, nombreEnRevisionActivo } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/mocks/tipos";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/reportes")({
   head: () =>

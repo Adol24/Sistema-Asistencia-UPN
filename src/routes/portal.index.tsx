@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getParticipante } from "@/mocks/participantes";
 import { simularLatencia } from "@/lib/formato";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
@@ -59,20 +58,10 @@ function AccesoPortal() {
     const credencial = verificacion.trim();
     const clave = folio.trim().toUpperCase();
     try {
-      if (hayBaseDeDatos) {
-        const { autenticarPortal } = await import("@/lib/datos");
-        const id = await autenticarPortal(clave, credencial);
-        setCargando(false);
-        if (!id) return setError(ERROR_ACCESO);
-      } else {
-        await simularLatencia();
-        const p = getParticipante(clave);
-        const v = credencial.toLowerCase();
-        const casa =
-          !!p && (v === (p.matricula ?? "").toLowerCase() || v === p.correo.toLowerCase());
-        setCargando(false);
-        if (!casa) return setError(ERROR_ACCESO);
-      }
+      const { autenticarPortal } = await import("@/lib/datos");
+      const id = await autenticarPortal(clave, credencial);
+      setCargando(false);
+      if (!id) return setError(ERROR_ACCESO);
     } catch {
       setCargando(false);
       return setError("No pudimos comprobar tus datos. Inténtalo de nuevo en un momento.");
@@ -105,7 +94,7 @@ function AccesoPortal() {
               value={folio}
               onChange={(e) => setFolioInput(e.target.value)}
               {...CAMPO_MAYUSCULAS}
-              placeholder={participante.folio}
+              placeholder={participante?.folio}
               className="mt-1 h-12 text-base uppercase"
             />
           </div>
@@ -115,7 +104,7 @@ function AccesoPortal() {
               id="verif"
               value={verificacion}
               onChange={(e) => setVerificacion(e.target.value)}
-              placeholder={participante.matricula ?? participante.correo}
+              placeholder={participante?.matricula ?? participante?.correo}
               className="mt-1 h-12 text-base"
             />
           </div>
@@ -139,8 +128,8 @@ function AccesoPortal() {
           )}
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          En el prototipo puedes entrar con el folio {participante.folio} y{" "}
-          {participante.matricula ?? participante.correo}.
+          En el prototipo puedes entrar con el folio {participante?.folio} y{" "}
+          {participante?.matricula ?? participante?.correo}.
         </p>
       </form>
     </PantallaPublica>

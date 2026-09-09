@@ -12,7 +12,7 @@
  * por qué fulano no aparece en el listado.
  */
 
-import type { Asistencia, CasoSoporte, EstadoPago, Evidencia, Participante } from "@/mocks/tipos";
+import type { Asistencia, CasoSoporte, EstadoPago, Evidencia, Participante } from "@/dominio/tipos";
 
 /** Los dos listados que el sistema entrega por separado. */
 export type TipoListado = "evento" | "taller";

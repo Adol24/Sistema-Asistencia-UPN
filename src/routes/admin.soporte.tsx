@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { CasoSoporte } from "@/mocks/tipos";
+import type { CasoSoporte } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/soporte")({
   head: () =>

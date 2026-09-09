@@ -2,18 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, QrCode, Search, SearchX } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
+import { buscarEnParticipantes } from "@/lib/busqueda";
 import { navFinancieros } from "@/components/nav-financieros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
-import { buscarParticipante, participantes } from "@/mocks/participantes";
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/financieros/")({
   head: () =>
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/financieros/")({
 function BusquedaFinancieros() {
   const navigate = useNavigate();
   const { setFolio } = usePrototipo();
-  const { estadoDe } = useEstadoEvento();
+  const { estadoDe, participantes } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -62,7 +62,7 @@ function BusquedaFinancieros() {
     setCargando(true);
     setResultados(null);
     await simularLatencia();
-    setResultados(buscarParticipante(q));
+    setResultados(buscarEnParticipantes(participantes, q));
     setCargando(false);
   };
 
@@ -127,8 +127,7 @@ function BusquedaFinancieros() {
             <Search className="mx-auto size-8 text-muted-foreground" aria-hidden />
             <p className="mt-3 text-sm font-semibold">Escribe un dato para comenzar</p>
             <p className="text-sm text-muted-foreground">
-              Ejemplos del prototipo: {participantes[0]!.folio}, {participantes[0]!.matricula} o
-              MUÑOZ.
+              Busca por folio, matrícula, correo o apellido.
             </p>
           </div>
         ) : resultados.length === 0 ? (
@@ -176,15 +175,8 @@ function BusquedaFinancieros() {
               Apunta al código QR del participante
             </p>
           </div>
-          <Button
-            className="h-12"
-            onClick={() => {
-              setCamara(false);
-              abrir(participantes[0]!);
-            }}
-          >
-            Simular lectura de {participantes[0]!.folio}
-          </Button>
+          {/* El botón que simulaba una lectura se retiró con los datos de
+              ejemplo: apuntaba siempre al primer participante inventado. */}
         </DialogContent>
       </Dialog>
     </PantallaPanel>

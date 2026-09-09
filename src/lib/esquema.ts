@@ -24,9 +24,9 @@ import type {
   RolInterno,
   TallerBase,
   UsuarioInterno,
-} from "@/mocks/tipos";
-import type { NivelAcademico } from "@/mocks/catalogos";
-import type { ConfiguracionEvento } from "@/mocks/evento";
+} from "@/dominio/tipos";
+import type { NivelAcademico } from "@/dominio/catalogos";
+import type { ConfiguracionEvento } from "@/lib/configuracion";
 import { rolDesdeBase } from "@/lib/roles";
 
 // ============================================================ filas crudas ===

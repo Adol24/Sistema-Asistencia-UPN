@@ -50,11 +50,17 @@ export const Route = createFileRoute("/financieros/carga-masiva")({
 });
 
 function CargaMasiva() {
-  const { registrarLote, pagos, registrarBitacora } = useEstadoEvento();
+  const { registrarLote, pagos, registrarBitacora, getParticipante, getTaller } = useEstadoEvento();
   const [aplicado, setAplicado] = useState<number | null>(null);
   // El flujo de importar —soltar, analizar, filtrar, confirmar, aplicar— es el
   // mismo que el del padrón y vive en un solo lugar.
-  const analizar = useCallback((texto: string) => analizarArchivo(texto, pagos), [pagos]);
+  // Las listas salen del contexto —o sea, de la base— y no de un módulo de
+  // datos simulados: validar un archivo real contra participantes inventados
+  // marcaba como inexistente cualquier folio verdadero.
+  const analizar = useCallback(
+    (texto: string) => analizarArchivo(texto, pagos, getParticipante, getTaller),
+    [pagos, getParticipante, getTaller],
+  );
   const imp = useImportador<FilaAnalizada>(analizar);
   const { filas, leyendo, archivo, confirmando, aplicando, resumen, visibles } = imp;
 

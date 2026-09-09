@@ -1,4 +1,4 @@
-import type { RolInterno } from "@/mocks/tipos";
+import type { RolInterno } from "@/dominio/tipos";
 
 /**
  * Los roles internos, y el puente entre cómo se llaman aquí y cómo se llaman en

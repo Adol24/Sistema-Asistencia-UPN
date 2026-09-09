@@ -3,7 +3,7 @@ import { AlertTriangle, Award, Check, X } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";

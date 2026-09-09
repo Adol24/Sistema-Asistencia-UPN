@@ -12,7 +12,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { detectarAnomalias, metricasDelDia } from "@/lib/monitoreo";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/mocks/tipos";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/monitoreo")({
   head: () =>

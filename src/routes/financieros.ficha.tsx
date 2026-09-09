@@ -9,23 +9,25 @@ import {
   Info,
   Loader2,
   QrCode,
+  Search,
   SearchX,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { navFinancieros } from "@/components/nav-financieros";
+import { EstadoVacio } from "@/components/tipografia";
+import type { Participante } from "@/dominio/tipos";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { soloImporte } from "@/lib/campos";
-import { avanceTexto } from "@/mocks/catalogos";
+import { avanceTexto } from "@/dominio/catalogos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getTaller } from "@/mocks/talleres";
 
-import { IMAGEN_VOUCHER } from "@/mocks/evidencias";
+import { IMAGEN_VOUCHER } from "@/lib/imagenes";
 import { isoAFecha, moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -42,9 +44,35 @@ export const Route = createFileRoute("/financieros/ficha")({
   component: FichaFinancieros,
 });
 
+/*
+ * Se parte en dos por la misma razón que las pantallas del portal: la
+ * comprobación tiene que ocurrir después de todos los hooks. Aquí además la
+ * respuesta correcta cuando no hay nadie seleccionado no es un rótulo de espera
+ * sino volver a la búsqueda, que es de donde se llega a esta ficha.
+ */
 function FichaFinancieros() {
-  const { participante: p } = usePrototipo();
-  const { estadoDe, configuracion, infoDia } = useEstadoEvento();
+  const { participante } = usePrototipo();
+  if (!participante) return <SinParticipante />;
+  return <FichaDe p={participante} />;
+}
+
+function SinParticipante() {
+  return (
+    <PantallaPanel
+      area="financieros"
+      titulo="Ficha del participante"
+      descripcion="Primero busca a la persona por folio, matrícula o nombre."
+      nav={navFinancieros}
+    >
+      <EstadoVacio icono={<Search className="size-8" aria-hidden />} titulo="Nadie seleccionado">
+        Vuelve a la búsqueda y elige a quién quieres atender.
+      </EstadoVacio>
+    </PantallaPanel>
+  );
+}
+
+function FichaDe({ p }: { p: Participante }) {
+  const { estadoDe, configuracion, infoDia, getTaller } = useEstadoEvento();
   const taller = getTaller(p.tallerId);
   const dia = infoDia(p.dia);
   const estado = estadoDe(p);

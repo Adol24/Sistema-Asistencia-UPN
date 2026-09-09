@@ -7,7 +7,7 @@
  * proyección están aquí, verificables, y no repartidos por la vista.
  */
 
-import type { Asistencia, Dia } from "@/mocks/tipos";
+import type { Asistencia, Dia } from "@/dominio/tipos";
 
 /** Ventana del evento: fuera de este rango un escaneo es improbable. */
 export const HORA_INICIO = 8;

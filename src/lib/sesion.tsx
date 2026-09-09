@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { rolDesdeBase } from "@/lib/roles";
-import type { RolInterno } from "@/mocks/tipos";
+import type { RolInterno } from "@/dominio/tipos";
 
 export interface PersonaInterna {
   id: string;

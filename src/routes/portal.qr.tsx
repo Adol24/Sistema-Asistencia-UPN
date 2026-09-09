@@ -9,7 +9,7 @@ import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { Button } from "@/components/ui/button";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";

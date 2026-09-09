@@ -7,8 +7,6 @@
  * los `pago` que esta función preparó.
  */
 
-import { getParticipante } from "@/mocks/participantes";
-import { getTaller } from "@/mocks/talleres";
 import {
   buscarReferenciaEn,
   parsearMonto,
@@ -16,6 +14,7 @@ import {
   type Concepto,
   type PagoRegistrado,
 } from "@/lib/pagos-logica";
+import type { Participante, Taller } from "@/dominio/tipos";
 
 export const COLUMNAS = [
   "folio",
@@ -68,6 +67,16 @@ const moneda = (n: number) => `$${n.toFixed(2)}`;
 export function analizarArchivo(
   texto: string,
   pagosRegistrados: PagoRegistrado[],
+  /*
+   * Las listas se reciben, no se importan.
+   *
+   * Antes salían de los módulos de datos simulados, así que este análisis
+   * validaba un archivo real contra participantes inventados: un folio correcto
+   * salía como inexistente y uno de ejemplo pasaba. Pedirlas por parámetro es lo
+   * que permite que vengan de la base.
+   */
+  buscarParticipante: (folio: string) => Participante | undefined,
+  buscarTaller: (id?: string) => Taller | undefined,
 ): FilaAnalizada[] {
   const lineas = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lineas.length < 2)
@@ -99,7 +108,7 @@ export function analizarArchivo(
     const fecha = crudo["fecha_deposito"] ?? "";
     const monto = parsearMonto(crudo["monto"] ?? "");
 
-    const p = getParticipante(folio);
+    const p = buscarParticipante(folio);
     if (!p) return error(`El folio ${folio || "(vacío)"} no existe.`);
     if (conceptoTxt !== "evento" && conceptoTxt !== "taller")
       return error(
@@ -127,7 +136,7 @@ export function analizarArchivo(
       );
     vistasEnArchivo.set(referencia.toLowerCase(), n);
 
-    const taller = getTaller(p.tallerId);
+    const taller = buscarTaller(p.tallerId);
     if (concepto === "taller" && !taller)
       return error("Trae pago de taller pero la persona no eligió ninguno.", p.nombre);
 

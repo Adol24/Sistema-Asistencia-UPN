@@ -10,7 +10,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
-import { buscarEnPadron } from "@/mocks/alumnosPadron";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { nombreConstancia } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
@@ -51,9 +50,12 @@ function ConfirmarNombre() {
   const { abrirCasoNombre, configuracion: evento, diaDe } = useEstadoEvento();
   // La matrícula es lo único que `/alumno` deja: el resto lo entrega el servidor
   // cuando se supera el reto.
-  const matricula = borrador.matricula ?? participante.matricula ?? "";
-  const nombre = borrador.nombre ?? participante.nombre;
-  const folio = participante.folio;
+  const matricula = borrador.matricula ?? participante?.matricula ?? "";
+  const nombre = borrador.nombre ?? participante?.nombre ?? "";
+  // Todavía no hay folio: se crea al cerrar el pre-registro, en `/talleres`. El
+  // caso de corrección se abre contra la matrícula, que es lo que identifica a
+  // esta persona en este punto del flujo.
+  const folio = participante?.folio ?? matricula;
   const [opcion, setOpcion] = useState<"correcto" | "incorrecto" | null>(null);
   const [correccion, setCorreccion] = useState("");
   const [errorCorreccion, setErrorCorreccion] = useState("");
@@ -114,39 +116,21 @@ function ConfirmarNombre() {
     setComprobando(true);
     let ok = false;
     try {
-      if (hayBaseDeDatos) {
-        const { confirmarEnPadronRemoto } = await import("@/lib/datos");
-        const ficha = await confirmarEnPadronRemoto(matricula, nombresPila, programa);
-        if (ficha) {
-          ok = true;
-          // El expediente llega ahora, no antes. Se guarda para los pasos
-          // siguientes del pre-registro.
-          setBorrador({
-            nombre: ficha.nombre,
-            nivel: ficha.nivel,
-            programa: ficha.programa,
-            avance: ficha.avance,
-            grupo: ficha.grupo ?? undefined,
-            plantel: ficha.plantel,
-            dia: diaDe(matricula),
-          });
-        }
-      } else {
-        const alumno = buscarEnPadron(matricula);
-        ok =
-          !!alumno &&
-          coincidenNombres(nombresPila, alumno.nombre) &&
-          nombreConstancia(programa) === nombreConstancia(alumno.programa);
-        if (ok && alumno)
-          setBorrador({
-            nombre: alumno.nombre,
-            nivel: alumno.nivel,
-            programa: alumno.programa,
-            avance: alumno.avance,
-            grupo: alumno.grupo,
-            plantel: alumno.plantel,
-            dia: diaDe(matricula),
-          });
+      const { confirmarEnPadronRemoto } = await import("@/lib/datos");
+      const ficha = await confirmarEnPadronRemoto(matricula, nombresPila, programa);
+      if (ficha) {
+        ok = true;
+        // El expediente llega ahora, no antes. Se guarda para los pasos
+        // siguientes del pre-registro.
+        setBorrador({
+          nombre: ficha.nombre,
+          nivel: ficha.nivel,
+          programa: ficha.programa,
+          avance: ficha.avance,
+          grupo: ficha.grupo ?? undefined,
+          plantel: ficha.plantel,
+          dia: diaDe(matricula),
+        });
       }
     } catch {
       setComprobando(false);

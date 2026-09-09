@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { CasoSoporte, EstadoEvidencia, EstadoPago, Perfil, Semaforo } from "@/mocks/tipos";
+import type { CasoSoporte, EstadoEvidencia, EstadoPago, Perfil, Semaforo } from "@/dominio/tipos";
 
 type EstadoCaso = CasoSoporte["estado"];
 import {

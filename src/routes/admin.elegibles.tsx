@@ -19,7 +19,7 @@ import {
 import { descargarCsv } from "@/lib/exportar";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia, Participante } from "@/mocks/tipos";
+import type { Dia, Participante } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/elegibles")({
   head: () =>

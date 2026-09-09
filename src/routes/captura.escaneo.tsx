@@ -264,11 +264,11 @@ function Semaforo({
         {r.participante ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <PerfilBadge
-              perfil={r.participante.perfil}
+              perfil={r.participante?.perfil}
               className="border-white/40 bg-white/20 text-inherit"
             />
             <span className="rounded-md bg-black/15 px-2 py-1 font-mono text-xs">
-              {r.participante.folio}
+              {r.participante?.folio}
             </span>
           </div>
         ) : null}

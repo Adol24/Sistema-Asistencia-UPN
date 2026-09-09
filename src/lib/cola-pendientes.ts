@@ -14,7 +14,7 @@
  * cola se comporta como vacía y la aplicación sigue funcionando.
  */
 
-import type { Asistencia } from "@/mocks/tipos";
+import type { Asistencia } from "@/dominio/tipos";
 
 const CLAVE = "encuentro:cola-pendientes:v1";
 

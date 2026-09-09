@@ -12,8 +12,8 @@
  */
 
 import { partirLinea } from "@/lib/carga-masiva";
-import type { AlumnoPadron, Participante } from "@/mocks/tipos";
-import type { NivelAcademico } from "@/mocks/catalogos";
+import type { AlumnoPadron, Participante } from "@/dominio/tipos";
+import type { NivelAcademico } from "@/dominio/catalogos";
 
 /**
  * Lo que el archivo de Servicios Escolares tiene que traer. El nombre viene

@@ -5,15 +5,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PortalNav } from "@/components/portal-nav";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
-import { getTaller } from "@/mocks/talleres";
-import { avanceTexto } from "@/mocks/catalogos";
+import { avanceTexto } from "@/dominio/catalogos";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { EstadoPago } from "@/mocks/tipos";
+import type { EstadoPago } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/portal/estado")({
   head: () =>
@@ -43,7 +42,14 @@ function EstadoPortal() {
 }
 
 function EstadoPortalContenido({ p }: { p: Participante }) {
-  const { estadoDe, configuracion: evento, infoDia, avisosDe, descartarAvisos } = useEstadoEvento();
+  const {
+    estadoDe,
+    configuracion: evento,
+    infoDia,
+    avisosDe,
+    descartarAvisos,
+    getTaller,
+  } = useEstadoEvento();
   const estado = estadoDe(p);
   const dia = infoDia(p.dia);
   const taller = getTaller(p.tallerId);

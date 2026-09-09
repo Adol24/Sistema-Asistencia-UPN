@@ -15,7 +15,6 @@
     "deploy": "vite build && nitro deploy --prebuilt",
     "deploy:preview": "vite build && nitro deploy --prebuilt --dry-run",
     "typecheck": "tsc --noEmit",
-    "verificar-mocks": "bun run scripts/verificar-mocks.ts",
     "verificar-conexion": "bun run scripts/verificar-conexion.ts",
     "lint": "eslint .",
     "format": "prettier --write ."

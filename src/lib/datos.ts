@@ -43,8 +43,8 @@ import type {
   Participante,
   TallerBase,
   UsuarioInterno,
-} from "@/mocks/tipos";
-import type { ConfiguracionEvento } from "@/mocks/evento";
+} from "@/dominio/tipos";
+import type { ConfiguracionEvento } from "@/lib/configuracion";
 
 /** Todo lo que el contexto necesita para arrancar. */
 export interface Instantanea {

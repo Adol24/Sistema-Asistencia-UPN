@@ -20,7 +20,7 @@ function MiDia() {
   const navigate = useNavigate();
   const { borrador, participante } = usePrototipo();
   const { configuracion: evento, infoDia } = useEstadoEvento();
-  const dia = infoDia(borrador.dia ?? participante.dia);
+  const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);
 
   return (
     <PantallaPublica

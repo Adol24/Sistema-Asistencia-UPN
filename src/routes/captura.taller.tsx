@@ -6,7 +6,6 @@ import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { talleres } from "@/mocks/talleres";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { retroalimentar } from "@/lib/retro";
 import { meta } from "@/lib/seo";
@@ -22,8 +21,12 @@ export const Route = createFileRoute("/captura/taller")({
 });
 
 function ModoTaller() {
-  const { participantes, sesion, escanear, asistencias, quitarAsistencia } = useEstadoEvento();
-  const delDia = useMemo(() => talleres.filter((t) => t.dias.includes(sesion.dia)), [sesion.dia]);
+  const { participantes, sesion, escanear, asistencias, quitarAsistencia, talleres } =
+    useEstadoEvento();
+  const delDia = useMemo(
+    () => talleres.filter((t) => t.dias.includes(sesion.dia)),
+    [talleres, sesion.dia],
+  );
   const [tallerId, setTallerId] = useState<string>(() => delDia[0]?.id ?? "");
   const [q, setQ] = useState("");
 

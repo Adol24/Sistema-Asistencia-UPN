@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
-import type { ConfiguracionEvento } from "@/mocks/evento";
+import type { ConfiguracionEvento } from "@/lib/configuracion";
 
 export const Route = createFileRoute("/admin/configuracion")({
   head: () =>

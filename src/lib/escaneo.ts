@@ -6,7 +6,7 @@
  * reingreso de 15 minutos se pueda comprobar sin esperar 15 minutos.
  */
 
-import type { Asistencia, Dia, EstadoPago, Participante } from "@/mocks/tipos";
+import type { Asistencia, Dia, EstadoPago, Participante } from "@/dominio/tipos";
 
 export type Modo = "entrada" | "salida" | "taller";
 export type Color = "verde" | "amarillo" | "rojo";

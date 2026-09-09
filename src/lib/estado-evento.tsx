@@ -8,14 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
-import { asistencias as asistenciasMock } from "@/mocks/asistencias";
-import { bitacora as bitacoraMock, casosSoporte as casosMock } from "@/mocks/casosSoporte";
-import { evidencias as evidenciasMock } from "@/mocks/evidencias";
-import { talleresBase as talleresBaseMock } from "@/mocks/talleres-base";
-import { usuariosInternos as usuariosMock } from "@/mocks/usuariosInternos";
-import { alumnosPadron as padronMock } from "@/mocks/alumnosPadron";
-import { evento, type ConfiguracionEvento } from "@/mocks/evento";
-import { participantes as participantesMock } from "@/mocks/participantes";
+import { CONFIGURACION_VACIA, type ConfiguracionEvento } from "@/lib/configuracion";
 import type {
   AlumnoPadron,
   Asistencia,
@@ -28,7 +21,7 @@ import type {
   Taller,
   TallerBase,
   UsuarioInterno,
-} from "@/mocks/tipos";
+} from "@/dominio/tipos";
 import {
   buscarReferenciaEn,
   diagnosticarPago,
@@ -353,7 +346,15 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
   const [historial, setHistorial] = useState<EscaneoHistorial[]>([]);
   const [contadorEscaneos, setContadorEscaneos] = useState(0);
 
-  const [configuracion, setConfiguracion] = useState<ConfiguracionEvento>(evento);
+  /*
+   * Todo arranca vacío y lo llena la base.
+   *
+   * Antes arrancaba con datos de ejemplo, y eso hacía invisible el peor fallo
+   * posible: con la base mal configurada, o sin permisos, las pantallas se veían
+   * llenas y plausibles. Nadie revisa lo que parece correcto. Vacío se nota, se
+   * pregunta y se arregla.
+   */
+  const [configuracion, setConfiguracion] = useState<ConfiguracionEvento>(CONFIGURACION_VACIA);
 
   const [avisos, setAvisos] = useState<Record<string, string[]>>({});
   const agregarAviso = useCallback((folio: string, texto: string) => {
@@ -372,16 +373,16 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     (dia) => configuracion.dias.find((d) => d.dia === dia) ?? configuracion.dias[0]!,
     [configuracion.dias],
   );
-  const [talleresBase, setTalleresBase] = useState<TallerBase[]>(talleresBaseMock);
-  const [usuarios, setUsuarios] = useState<UsuarioInterno[]>(usuariosMock);
-  const [casos, setCasos] = useState<CasoSoporte[]>(casosMock);
-  const [padron, setPadron] = useState<AlumnoPadron[]>(padronMock);
+  const [talleresBase, setTalleresBase] = useState<TallerBase[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioInterno[]>([]);
+  const [casos, setCasos] = useState<CasoSoporte[]>([]);
+  const [padron, setPadron] = useState<AlumnoPadron[]>([]);
   // Estas tres se leían directamente del módulo de datos simulados. Ahora son
   // estado para que la carga desde Supabase pueda sustituirlas sin que ninguna
   // pantalla se entere: siguen siendo arreglos, no promesas.
-  const [participantesBase, setParticipantesBase] = useState(participantesMock);
-  const [asistenciasBase, setAsistenciasBase] = useState(asistenciasMock);
-  const [evidenciasBase, setEvidenciasBase] = useState(evidenciasMock);
+  const [participantesBase, setParticipantesBase] = useState<Participante[]>([]);
+  const [asistenciasBase, setAsistenciasBase] = useState<Asistencia[]>([]);
+  const [evidenciasBase, setEvidenciasBase] = useState<Evidencia[]>([]);
   /** De la clave corta del taller a su uuid, para poder escribir en la base. */
   const [idPorClave, setIdPorClave] = useState<Record<string, string>>({});
   const [conectado, setConectado] = useState(false);
@@ -547,13 +548,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const bitacora = useMemo<EntradaBitacora[]>(
-    () => [
-      ...bitacoraSesion,
-      ...bitacoraMock.map((b) => ({ ...b, id: `BM-${b.id}`, deLaSesion: false })),
-    ],
-    [bitacoraSesion],
-  );
+  const bitacora = useMemo<EntradaBitacora[]>(() => [...bitacoraSesion], [bitacoraSesion]);
 
   // ---------------------------------------------------------- asistencias ---
   // Las de los mocks, más las capturadas y sincronizadas. Las que están en cola
@@ -713,8 +708,10 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
           nombre: p?.nombre ?? folio,
           dia,
           tipo: "salida",
-          // El horario del evento termina a las 14:00; el cierre se marca ahí.
-          hora: evento.horario.split(" a ")[1]?.replace(" hrs", "").trim() ?? "14:00",
+          // La hora del cierre sale del horario configurado del evento. Si aún
+          // no hay configuración, se deja en blanco antes que inventar una hora
+          // que quedaría escrita en el registro de asistencia de alguien.
+          hora: configuracion.horario.split(" a ")[1]?.replace(" hrs", "").trim() ?? "",
           punto: "Cierre del sistema",
           capturista: "SISTEMA",
           cierreAutomatico: true,
@@ -724,7 +721,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       setCapturadas((prev) => [...prev, ...cierres]);
       return cierres.length;
     },
-    [participantes, capturadas, asistenciasBase],
+    [participantes, capturadas, asistenciasBase, configuracion.horario],
   );
 
   // ------------------------------------------------ revisión de evidencias ---

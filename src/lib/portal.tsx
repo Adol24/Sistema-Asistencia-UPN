@@ -5,7 +5,7 @@ import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { aParticipante, type FilaParticipante } from "@/lib/esquema";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 
 /** Lo que el portal necesita de una persona, en una sola llamada. */
 export interface DatosPortal {

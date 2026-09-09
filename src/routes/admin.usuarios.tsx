@@ -19,12 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { etiquetaRol } from "@/mocks/usuariosInternos";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
+import { ETIQUETA_ROL } from "@/lib/roles";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { RolInterno, UsuarioInterno } from "@/mocks/tipos";
+import type { RolInterno, UsuarioInterno } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/usuarios")({
   head: () =>
@@ -134,7 +134,7 @@ function AdminUsuarios() {
                       className="rounded-md border border-border px-2 py-0.5 text-xs font-semibold hover:bg-muted"
                       title="Ver qué puede hacer este rol"
                     >
-                      {etiquetaRol[u.rol]}
+                      {ETIQUETA_ROL[u.rol]}
                     </button>
                   </td>
                   <td className="px-3 py-2">
@@ -191,7 +191,7 @@ function AdminUsuarios() {
                     : "border-border hover:bg-muted",
                 )}
               >
-                {etiquetaRol[r]}
+                {ETIQUETA_ROL[r]}
                 <span className="text-xs opacity-70">
                   {usuarios.filter((u) => u.rol === r).length}
                 </span>
@@ -219,7 +219,7 @@ function AdminUsuarios() {
             guardarUsuario(u);
             registrarBitacora(
               editado ? "Editó usuario interno" : "Dio de alta un usuario interno",
-              `${u.nombre} · ${etiquetaRol[u.rol]} · ${u.activo ? "activo" : "inactivo"}`,
+              `${u.nombre} · ${ETIQUETA_ROL[u.rol]} · ${u.activo ? "activo" : "inactivo"}`,
             );
             toast.success(`Usuario ${u.nombre} guardado.`);
             setEditando(null);
@@ -235,7 +235,7 @@ function AdminUsuarios() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {borrando?.activo
-                ? `Perderá el acceso al panel de ${borrando ? etiquetaRol[borrando.rol] : ""}, pero el registro se conserva: sus entradas de bitácora siguen teniendo autor. Se desactiva, no se borra.`
+                ? `Perderá el acceso al panel de ${borrando ? ETIQUETA_ROL[borrando.rol] : ""}, pero el registro se conserva: sus entradas de bitácora siguen teniendo autor. Se desactiva, no se borra.`
                 : "Volverá a tener acceso con el mismo rol y su histórico intacto."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -250,7 +250,7 @@ function AdminUsuarios() {
                 guardarUsuario({ ...u, activo: !u.activo });
                 registrarBitacora(
                   u.activo ? "Dio de baja a un usuario interno" : "Reactivó a un usuario interno",
-                  `${u.nombre} · ${etiquetaRol[u.rol]} · el histórico se conserva`,
+                  `${u.nombre} · ${ETIQUETA_ROL[u.rol]} · el histórico se conserva`,
                 );
                 toast.success(
                   u.activo
@@ -329,7 +329,7 @@ function FormularioUsuario({
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {etiquetaRol[r]}
+                  {ETIQUETA_ROL[r]}
                 </option>
               ))}
             </select>

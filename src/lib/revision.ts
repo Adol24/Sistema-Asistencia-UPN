@@ -7,7 +7,7 @@
  * montar la pantalla.
  */
 
-import type { EstadoEvidencia, Evidencia, UsuarioInterno } from "@/mocks/tipos";
+import type { EstadoEvidencia, Evidencia, UsuarioInterno } from "@/dominio/tipos";
 
 export type MotivoRechazo =
   "no_se_distingue" | "no_se_ve_transmision" | "ilegible" | "duplicada" | "fuera_horario" | "otro";

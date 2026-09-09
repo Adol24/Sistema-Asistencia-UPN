@@ -6,7 +6,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
-import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/mocks/evidencias";
+import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
 import { moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -52,10 +52,10 @@ function Pago() {
   // Configuración y catálogo salen del contexto: lo que administración cambie se
   // ve aquí sin recargar.
   const { configuracion: evento, getTaller } = useEstadoEvento();
-  // El folio del pre-registro recién creado. `participante.folio` es el del
+  // El folio del pre-registro recién creado. `participante?.folio` es el del
   // contexto —otra persona— y enseñarlo aquí era el fallo más visible del flujo.
-  const folio = borrador.folio ?? participante.folio;
-  const taller = getTaller(borrador.tallerId ?? participante.tallerId);
+  const folio = borrador.folio ?? participante?.folio;
+  const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
   const [ampliada, setAmpliada] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -91,7 +91,7 @@ function Pago() {
         </p>
         <p className="mt-1 text-4xl font-extrabold tracking-tight sm:text-5xl">{folio}</p>
         <div className="mt-4 flex justify-center">
-          <CodigoQR valor={folio} size={148} />
+          <CodigoQR valor={folio ?? ""} size={148} />
         </div>
       </section>
 

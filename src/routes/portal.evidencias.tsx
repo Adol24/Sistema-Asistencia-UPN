@@ -17,12 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { hora, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
-import type { Dia, EstadoEvidencia } from "@/mocks/tipos";
+import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/portal/evidencias")({
   head: () =>

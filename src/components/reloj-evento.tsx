@@ -2,7 +2,7 @@ import { Clock } from "lucide-react";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { comoHora } from "@/lib/formato";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/mocks/tipos";
+import type { Dia } from "@/dominio/tipos";
 
 /**
  * Reloj simulado del evento.

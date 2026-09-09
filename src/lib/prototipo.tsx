@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import type { Participante } from "@/mocks/tipos";
+import type { Participante } from "@/dominio/tipos";
 
 interface Borrador {
   perfil?: Participante["perfil"] | undefined;
@@ -24,7 +24,16 @@ interface Borrador {
 }
 
 interface Ctx {
-  participante: Participante;
+  /**
+   * Quien está usando el flujo, o `null` si todavía no hay nadie.
+   *
+   * Antes nunca era nulo porque siempre había una lista de ejemplo detrás:
+   * `participantes[0]!`. Sin datos simulados, la lista empieza vacía y esa
+   * afirmación se cae al arrancar. Hacerlo nulo obliga a cada pantalla a decidir
+   * qué enseña cuando no hay nadie, que es una pregunta que siempre existió y
+   * que los datos de ejemplo ocultaban.
+   */
+  participante: Participante | null;
   setFolio: (folio: string) => void;
   borrador: Borrador;
   setBorrador: (b: Borrador) => void;
@@ -37,12 +46,12 @@ export function PrototipoProvider({ children }: { children: ReactNode }) {
   // La lista viene del contexto, no del mock: si la importación del padrón movió
   // a alguien de día, el participante de prueba lo refleja sin recargar.
   const { participantes } = useEstadoEvento();
-  const [folio, setFolio] = useState(participantes[0]!.folio);
+  const [folio, setFolio] = useState<string | null>(null);
   const [borrador, setBorradorState] = useState<Borrador>({});
 
   const value = useMemo<Ctx>(
     () => ({
-      participante: participantes.find((p) => p.folio === folio) ?? participantes[0]!,
+      participante: participantes.find((p) => p.folio === folio) ?? null,
       setFolio,
       borrador,
       setBorrador: (b) => setBorradorState((prev) => ({ ...prev, ...b })),

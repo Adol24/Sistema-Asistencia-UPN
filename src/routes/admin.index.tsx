@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Asistencia } from "@/mocks/tipos";
+import type { Asistencia } from "@/dominio/tipos";
 import { createFileRoute } from "@tanstack/react-router";
 import { Award, CreditCard, ImageUp, ScanLine, ShieldAlert, Users } from "lucide-react";
 import {
@@ -38,10 +38,9 @@ import {
 } from "@/lib/elegibilidad";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
-import { verificarMocks } from "@/mocks/verificar";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/mocks/tipos";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/")({
   head: () =>
@@ -84,23 +83,16 @@ function Dashboard() {
    * que las reglas que se respetan al arrancar pueden romperse en marcha; esto
    * lo hace visible sin salir del panel.
    */
-  const violaciones = useMemo(
-    () =>
-      verificarMocks({
-        participantes,
-        asistencias,
-        evidencias,
-        talleres,
-        casosSoporte: casos,
-        usuariosInternos: usuarios,
-        alumnosPadron: padron,
-      }),
-    [participantes, asistencias, evidencias, talleres, casos, usuarios, padron],
-  );
-  // Solo importa la integridad: la cobertura describe el conjunto de arranque y
-  // el histórico son consecuencias legítimas de mover a alguien de día.
-  const integridad = violaciones.filter((x) => x.clase === "integridad");
-  const historico = violaciones.filter((x) => x.clase === "historico");
+  /*
+   * La comprobación de invariantes se retiró con los datos simulados.
+   *
+   * Verificaba reglas del conjunto de ejemplo —que el cupo de un taller cuadrara
+   * con quién lo eligió, que nadie estuviera inscrito un día que no le tocaba—.
+   * Contra datos reales esas comprobaciones tienen que vivir en la base, como
+   * restricciones, no en una pantalla que solo mira lo que ya está cargado.
+   */
+  const integridad: { detalle: string; invariante?: string }[] = [];
+  const historico: { detalle: string }[] = [];
 
   /**
    * Las asistencias que quedaron en un día que ya no es el del participante.

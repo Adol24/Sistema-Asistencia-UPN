@@ -5,9 +5,7 @@
  * puedan comprobar directamente, sin montar componentes.
  */
 
-import { participantes } from "@/mocks/participantes";
-import { getTaller } from "@/mocks/talleres";
-import type { EstadoPago, Participante } from "@/mocks/tipos";
+import type { EstadoPago, Participante } from "@/dominio/tipos";
 
 export type Concepto = "evento" | "taller";
 
@@ -110,48 +108,18 @@ export function diagnosticarPago(
   return { clase: "exacto", mensaje: "El monto coincide con lo esperado." };
 }
 
-/** Pagos que los datos simulados ya dan por registrados antes de abrir ventanilla. */
+/**
+ * Los pagos con los que arranca la aplicación: ninguno.
+ *
+ * Fabricaba pagos a partir de la lista de participantes de ejemplo, así que
+ * ventanilla abría con decenas de cobros que nadie había hecho. Los pagos reales
+ * viven en la tabla `pagos` y llegan con la carga inicial.
+ *
+ * Se conserva la función en vez de borrarla porque es el punto donde el estado
+ * decide con qué empieza; devolver una lista vacía lo dice mejor que quitarla.
+ */
 export function pagosIniciales(): PagoRegistrado[] {
-  const out: PagoRegistrado[] = [];
-  participantes.forEach((p, i) => {
-    const registrado = p.estadoPagoEvento === "pagado" || p.estadoPagoEvento === "discrepancia";
-    if (!registrado || !p.referenciaEvento) return;
-    out.push({
-      id: `PG-${p.folio}-EV`,
-      folio: p.folio,
-      concepto: "evento",
-      monto:
-        p.estadoPagoEvento === "discrepancia" ? p.montoEsperadoEvento - 50 : p.montoEsperadoEvento,
-      montoEsperado: p.montoEsperadoEvento,
-      referencia: p.referenciaEvento,
-      fechaDeposito: p.creadoEn.slice(0, 10),
-      resultado: p.estadoPagoEvento === "discrepancia" ? "discrepancia" : "pagado",
-      origen: "ventanilla",
-      registradoEn: p.creadoEn,
-      ...(p.estadoPagoEvento === "discrepancia"
-        ? { nota: "Depositó menos de lo esperado; se solicitó complemento." }
-        : {}),
-    });
-    const t = getTaller(p.tallerId);
-    if (t && (p.estadoPagoTaller === "pagado" || p.estadoPagoTaller === "discrepancia")) {
-      out.push({
-        id: `PG-${p.folio}-TA`,
-        folio: p.folio,
-        concepto: "taller",
-        monto: p.estadoPagoTaller === "discrepancia" ? t.costo + 50 : t.costo,
-        montoEsperado: t.costo,
-        referencia: `REFT${String(690430 + i * 17)}`,
-        fechaDeposito: p.creadoEn.slice(0, 10),
-        resultado: p.estadoPagoTaller === "discrepancia" ? "discrepancia" : "pagado",
-        origen: "ventanilla",
-        registradoEn: p.creadoEn,
-        ...(p.estadoPagoTaller === "discrepancia"
-          ? { nota: "Depositó de más; se registró la diferencia a favor." }
-          : {}),
-      });
-    }
-  });
-  return out;
+  return [];
 }
 
 /**

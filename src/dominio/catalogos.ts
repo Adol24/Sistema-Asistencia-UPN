@@ -24,32 +24,15 @@ export interface NivelAcademico {
   programas: string[];
 }
 
-/** El catálogo de arranque. La configuración parte de aquí y se puede editar. */
-export const catalogoAcademico: NivelAcademico[] = [
-  {
-    nivel: "Licenciatura",
-    etiquetaAvance: "Semestre",
-    totalAvance: 8,
-    programas: [
-      "Licenciatura en Administración Educativa",
-      "Licenciatura en Educación e Innovación Pedagógica",
-      "Licenciatura en Educación Indígena",
-      "Licenciatura en Intervención Educativa",
-      "Licenciatura en Pedagogía",
-      "Licenciatura en Psicología Educativa",
-    ],
-  },
-  {
-    nivel: "Maestría",
-    etiquetaAvance: "Cuatrimestre",
-    totalAvance: 6,
-    programas: [
-      "Maestría en Didácticas de Lenguas y Culturas Indoamericanas",
-      "Maestría en Educación Básica",
-      "Maestría en Educación Media Superior",
-    ],
-  },
-];
+/*
+ * Aquí vivía el catálogo académico escrito a mano.
+ *
+ * Se retiró con el resto de los datos inventados: los niveles y sus programas
+ * son de la universidad y viven en `niveles_academicos` y `programas`, donde
+ * administración los edita. Un catálogo de arranque en el código volvía a
+ * introducir el problema que se acaba de quitar —dos fuentes para el mismo dato,
+ * y ninguna forma de saber cuál se está viendo—.
+ */
 
 /** El nivel con ese nombre, o undefined si ya no está en el catálogo. */
 export const buscarNivel = (catalogo: NivelAcademico[], nivel?: string) =>

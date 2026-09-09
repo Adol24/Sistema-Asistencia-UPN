@@ -15,11 +15,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { usuariosInternos } from "@/mocks/usuariosInternos";
 import { PUNTOS_CAPTURA, useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/mocks/tipos";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/captura/")({
   head: () =>
@@ -30,8 +29,6 @@ export const Route = createFileRoute("/captura/")({
   component: ConfiguracionSesion,
 });
 
-const capturistas = usuariosInternos.filter((u) => u.rol === "capturista");
-
 function ConfiguracionSesion() {
   const navigate = useNavigate();
   const {
@@ -40,7 +37,10 @@ function ConfiguracionSesion() {
     ejecutarCierreAutomatico,
     configuracion: evento,
     infoDia,
+    usuarios,
   } = useEstadoEvento();
+  // El personal sale de `usuarios_internos`, no de una lista fija en el código.
+  const capturistas = usuarios.filter((u) => u.rol === "capturista" && u.activo);
   const dia = infoDia(sesion.dia);
 
   return (

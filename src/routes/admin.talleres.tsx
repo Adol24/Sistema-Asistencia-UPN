@@ -24,7 +24,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { moneda } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia, TallerBase } from "@/mocks/tipos";
+import type { Dia, TallerBase } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/talleres")({
   head: () =>
