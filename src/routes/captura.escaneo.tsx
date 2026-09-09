@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, Keyboard, ScanLine, ShieldCheck, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
+import { CamaraQR } from "@/components/camara-qr";
 import { PerfilBadge, PuntoSemaforo } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,19 +124,16 @@ function PantallaEscaneo() {
         <SelectorModo compacto />
       </div>
 
-      {/* Cámara simulada */}
-      <div className="relative mt-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-foreground/90">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="size-48 rounded-2xl border-4 border-dashed border-background/60" />
-        </div>
-        <ScanLine className="size-10 animate-pulse text-background/80" aria-hidden />
-        <p className="absolute bottom-3 px-4 text-center text-xs text-background/90">
-          Cámara simulada — apunta al código QR del participante
-        </p>
+      {/*
+        La cámara se pausa mientras hay un resultado en pantalla: si no, seguiría
+        leyendo el mismo código del teléfono que aún está enfrente y volvería a
+        disparar en cuanto pasara el antirrebote.
+      */}
+      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={!resultado}>
         <span className="absolute right-3 top-3 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
           {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
         </span>
-      </div>
+      </CamaraQR>
 
       <form
         className="mt-3 flex gap-2"

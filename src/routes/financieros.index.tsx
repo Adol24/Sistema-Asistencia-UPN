@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, QrCode, Search, SearchX } from "lucide-react";
+import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { CamaraQR } from "@/components/camara-qr";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { navFinancieros } from "@/components/nav-financieros";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/financieros/")({
 function BusquedaFinancieros() {
   const navigate = useNavigate();
   const { setFolio } = usePrototipo();
-  const { estadoDe, participantes } = useEstadoEvento();
+  const { estadoDe, getParticipante, participantes } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -168,15 +170,28 @@ function BusquedaFinancieros() {
 
       <Dialog open={camara} onOpenChange={setCamara}>
         <DialogContent>
-          <DialogTitle>Escaneo de QR (simulado)</DialogTitle>
-          <div className="relative flex h-64 items-center justify-center rounded-md bg-foreground/90">
-            <div className="size-40 rounded-lg border-4 border-dashed border-background/70" />
-            <p className="absolute bottom-3 text-xs text-background">
-              Apunta al código QR del participante
-            </p>
-          </div>
-          {/* El botón que simulaba una lectura se retiró con los datos de
-              ejemplo: apuntaba siempre al primer participante inventado. */}
+          <DialogTitle>Escanea el código del participante</DialogTitle>
+          {/*
+            La cámara solo se monta con el diálogo abierto: montarla siempre la
+            dejaría encendida durante toda la jornada de ventanilla, calentando
+            el equipo sin que nadie la esté mirando.
+
+            Aquí el escaneo solo BUSCA a la persona; no registra nada. Quien
+            cobra necesita ver la ficha antes de tocar el pago.
+          */}
+          {camara ? (
+            <CamaraQR
+              onLeer={(valor) => {
+                const p = getParticipante(valor.trim().toUpperCase());
+                if (!p) {
+                  toast.error(`No encontramos el folio ${valor.trim()}.`);
+                  return;
+                }
+                setCamara(false);
+                abrir(p);
+              }}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </PantallaPanel>
