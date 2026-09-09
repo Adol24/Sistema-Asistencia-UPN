@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Camera, Download, Loader2, Share2 } from "lucide-react";
+import { Camera, Download, Loader2, Maximize2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
-import { CodigoQR, pngDelPase } from "@/components/qr";
+import { CodigoQR, PaseAPantallaCompleta, pngDelPase } from "@/components/qr";
+import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { Button } from "@/components/ui/button";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePrototipo } from "@/lib/prototipo";
@@ -37,15 +38,33 @@ function MiQr() {
   const estado = estadoDe(p);
   const pagado = estado.evento === "pagado";
   const faltantes = faltantesDe(evento.horasValidacion);
+  const [ampliado, setAmpliado] = useState(false);
+
+  // También en la vista normal: alguien puede enseñar el pase sin ampliarlo.
+  usePantallaEncendida(pagado);
 
   return (
     <PantallaPublica titulo="Mi código QR" volverA="/portal" ancho="lg">
       <PortalNav />
       {pagado ? (
         <section className="rounded-lg border border-border bg-card p-6 text-center">
-          <div className="flex justify-center">
+          {/*
+           * Tocar el código lo abre a pantalla completa. Es el gesto que la
+           * gente intenta por instinto con cualquier imagen, y aquí resulta ser
+           * justo lo que conviene hacer en la puerta.
+           */}
+          <button
+            type="button"
+            onClick={() => setAmpliado(true)}
+            className="mx-auto flex flex-col items-center gap-2 rounded-lg"
+            aria-label="Ver el código a pantalla completa"
+          >
             <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
-          </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <Maximize2 className="size-3.5" aria-hidden />
+              Tócalo para mostrarlo en grande
+            </span>
+          </button>
           <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
           <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
           <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} />
@@ -79,6 +98,13 @@ function MiQr() {
           </Link>
         </section>
       )}
+      {ampliado && pagado ? (
+        <PaseAPantallaCompleta
+          valor={p.folio}
+          nombre={p.nombre}
+          onCerrar={() => setAmpliado(false)}
+        />
+      ) : null}
     </PantallaPublica>
   );
 }

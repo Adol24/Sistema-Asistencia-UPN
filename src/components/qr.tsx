@@ -1,5 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { encode, QrCodeDataType } from "uqr";
+import { X } from "lucide-react";
+
+import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 
 import { cn } from "@/lib/utils";
 
@@ -183,10 +186,46 @@ export async function pngDelPase(
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, lienzo.width, lienzo.height);
 
-  ctx.fillStyle = "#000000";
+  /*
+   * Se dibuja igual que en pantalla, ojos azules y sigla incluidos.
+   *
+   * Antes salía en negro puro, por contraste. Medido, esa ventaja no existe: un
+   * lector binariza a gris, y el azul UPN queda en 0.081 de luminancia, cuatro
+   * veces por debajo del umbral con el que se decide qué es un módulo oscuro.
+   * Para los lectores láser de LED rojo el azul es de los colores más seguros,
+   * porque absorbe casi todo el rojo. El color que los rompe es el rojo.
+   *
+   * Lo que sí costaba la diferencia era confianza: dos códigos distintos para el
+   * mismo folio hacen dudar de si son el mismo, y esa duda en la fila de una
+   * entrada pesa más que unas décimas de contraste que nadie va a notar.
+   */
+  const hueco = huecoSeguro(qr, Math.round(n * HUECO));
+  const desde = Math.floor((n - hueco) / 2);
+  const enElHueco = (f: number, c: number) =>
+    hueco > 0 && f >= desde && f < desde + hueco && c >= desde && c < desde + hueco;
+
   for (let f = 0; f < n; f++)
-    for (let c = 0; c < n; c++)
-      if (qr.data[f]?.[c]) ctx.fillRect(margen + c * modulo, margen + f * modulo, modulo, modulo);
+    for (let c = 0; c < n; c++) {
+      if (!qr.data[f]?.[c] || enElHueco(f, c)) continue;
+      ctx.fillStyle = qr.types[f]?.[c] === QrCodeDataType.Position ? "#0047BB" : "#0B1220";
+      ctx.fillRect(margen + c * modulo, margen + f * modulo, modulo, modulo);
+    }
+
+  if (hueco > 0) {
+    const x = margen + desde * modulo;
+    const ancho = hueco * modulo;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(x, x, ancho, ancho);
+    ctx.strokeStyle = "#0047BB";
+    ctx.lineWidth = Math.max(2, modulo * 0.35);
+    ctx.strokeRect(x, x, ancho, ancho);
+    ctx.fillStyle = "#0047BB";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `800 ${Math.round(ancho * 0.42)}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillText("UPN", x + ancho / 2, x + ancho / 2);
+    ctx.textBaseline = "alphabetic";
+  }
 
   const centro = lienzo.width / 2;
   let y = margen + lado + 46;
@@ -215,4 +254,59 @@ function recortar(ctx: CanvasRenderingContext2D, texto: string, ancho: number): 
   let corto = texto;
   while (corto.length > 4 && ctx.measureText(`${corto}…`).width > ancho) corto = corto.slice(0, -1);
   return `${corto}…`;
+}
+
+/**
+ * El pase a pantalla completa, para enseñarlo en la puerta.
+ *
+ * Fondo blanco de borde a borde y nada más que el código. Dos razones, y ninguna
+ * es estética: en una pantalla OLED el blanco a pantalla completa sube el brillo
+ * real que emite el panel, que es el primer factor de que un lector acierte; y
+ * quitar todo lo demás elimina bordes y textos que confunden al buscar el
+ * símbolo.
+ *
+ * Mientras está abierto se mantiene la pantalla encendida. Sin eso, el alumno
+ * abre el pase, avanza en la fila y llega con la pantalla atenuada.
+ */
+export function PaseAPantallaCompleta({
+  valor,
+  nombre,
+  onCerrar,
+}: {
+  valor: string;
+  nombre: string;
+  onCerrar: () => void;
+}) {
+  usePantallaEncendida(true);
+
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => e.key === "Escape" && onCerrar();
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [onCerrar]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Pase de ${nombre}`}
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-white p-6"
+      onClick={onCerrar}
+    >
+      {/* Sin `ring` ni sombra: cualquier borde alrededor compite con la zona
+          tranquila cuando el lector busca el símbolo. */}
+      <CodigoQR valor={valor} size={420} etiqueta="UPN" className="shadow-none ring-0" />
+      <div className="text-center">
+        <p className="font-mono text-lg font-bold tabular-nums text-[#0B1220]">{valor}</p>
+        <p className="mt-1 text-sm text-[#334155]">{nombre}</p>
+      </div>
+      <button
+        onClick={onCerrar}
+        className="absolute bottom-8 inline-flex min-h-11 items-center gap-2 rounded-md px-4 text-sm font-semibold text-[#334155]"
+      >
+        <X className="size-4" aria-hidden />
+        Cerrar
+      </button>
+    </div>
+  );
 }
