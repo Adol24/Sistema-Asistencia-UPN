@@ -56,6 +56,7 @@ function ImportacionPadron() {
     participantes,
     padron,
     aplicarPadron,
+    guardarPadron,
     estadoDe,
     registrarBitacora,
     repartoPorDia,
@@ -65,6 +66,8 @@ function ImportacionPadron() {
     infoDia,
     configuracion,
   } = useEstadoEvento();
+  // Lo que la base rechazó: se enseña, no se esconde en la consola.
+  const [rechazados, setRechazados] = useState<{ matricula: string; motivo: string }[]>([]);
   const [aplicado, setAplicado] = useState<{
     registros: number;
     altas: number;
@@ -96,8 +99,23 @@ function ImportacionPadron() {
   );
 
   const aplicar = () =>
-    imp.aplicar((filasAplicables) => {
+    imp.aplicar(async (filasAplicables) => {
       const aAplicar = filasAplicables.filter((f) => f.alumno).map((f) => f.alumno!);
+
+      /*
+       * Primero se guarda y después se actualiza la pantalla.
+       *
+       * Al revés, un rechazo de la base dejaría la pantalla diciendo que todo se
+       * aplicó mientras la tabla se queda sin esas filas: exactamente el fallo
+       * que este cambio viene a corregir.
+       */
+      const guardado = await guardarPadron(aAplicar);
+      setRechazados(guardado.rechazados);
+      if (guardado.rechazados.length)
+        toast.error(
+          `La base rechazó ${guardado.rechazados.length} de ${aAplicar.length}. Revisa el detalle abajo.`,
+        );
+
       const r = aplicarPadron(aAplicar);
       registrarBitacora(
         "Importó el padrón de alumnos",
@@ -155,6 +173,28 @@ function ImportacionPadron() {
         </Button>
       }
     >
+      {rechazados.length > 0 ? (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>La base rechazó {rechazados.length} filas</AlertTitle>
+          <AlertDescription>
+            <p className="mb-2">
+              Esas matrículas NO quedaron guardadas. Suele ser un nombre de programa o de plantel
+              que no está en el catálogo; corrígelo en el archivo o dalo de alta en configuración y
+              vuelve a importar.
+            </p>
+            <ul className="grid gap-1 text-xs">
+              {rechazados.slice(0, 10).map((r) => (
+                <li key={r.matricula}>
+                  <span className="font-mono">{r.matricula}</span> — {r.motivo}
+                </li>
+              ))}
+              {rechazados.length > 10 ? <li>… y {rechazados.length - 10} más</li> : null}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {aplicado !== null ? (
         <Alert className="mb-4">
           <CheckCircle2 className="size-4" />

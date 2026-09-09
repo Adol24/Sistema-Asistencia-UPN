@@ -307,6 +307,18 @@ interface Ctx {
     dia: Dia,
   ) => { movido: boolean; tallerLiberado?: string | undefined };
 
+  /**
+   * Guarda el padrón en la base y dice qué aceptó y qué no.
+   *
+   * Separada de `aplicarPadron` —que actualiza la pantalla— porque escribir
+   * puede rechazar filas por motivos que solo la base conoce: un programa que no
+   * está en el catálogo, un plantel con otro nombre. Quien importa tiene que
+   * verlos, no encontrarlos en la consola.
+   */
+  guardarPadron: (filas: AlumnoPadron[]) => Promise<{
+    guardados: number;
+    rechazados: { matricula: string; motivo: string }[];
+  }>;
   aplicarPadron: (filas: AlumnoPadron[]) => {
     registros: number;
     altas: number;
@@ -1047,6 +1059,12 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
    * lo trae: quien entra nuevo queda esperando el reparto, y quien ya estaba
    * conserva el suyo.
    */
+  const guardarPadron = useCallback<Ctx["guardarPadron"]>(async (filas) => {
+    if (!hayBaseDeDatos) return { guardados: filas.length, rechazados: [] };
+    const { guardarPadronRemoto } = await import("@/lib/datos");
+    return guardarPadronRemoto(filas);
+  }, []);
+
   const aplicarPadron = useCallback<Ctx["aplicarPadron"]>((filas) => {
     if (filas.length === 0) return { registros: 0, altas: 0, actualizaciones: 0, sinDia: 0 };
 
@@ -1067,6 +1085,15 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       return [...porMatricula.values()];
     });
 
+    /*
+     * Aquí faltaba lo esencial: guardarlo.
+     *
+     * La pantalla leía el archivo, validaba cada fila, avisaba de los errores y
+     * decía «se aplicaron 2,500 registros» —y al recargar no quedaba ninguno—.
+     * El padrón es la puerta de entrada de todos los datos del sistema: sin él
+     * nadie puede pre-registrarse, y sin pre-registros no hay folios, pagos,
+     * asistencias ni evidencias.
+     */
     return { registros: filas.length, altas, actualizaciones, sinDia };
   }, []);
 
@@ -1148,6 +1175,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       getParticipante,
       padron,
       aplicarPadron,
+      guardarPadron,
       diaDe,
       repartoPorDia,
       sinDiaAsignado,
@@ -1206,6 +1234,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       getParticipante,
       padron,
       aplicarPadron,
+      guardarPadron,
       diaDe,
       repartoPorDia,
       sinDiaAsignado,

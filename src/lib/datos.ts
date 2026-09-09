@@ -551,3 +551,126 @@ export async function reasignarDiaRemoto(matricula: string, dia: Dia): Promise<v
   const { error } = await sb.rpc("fn_reasignar_dia", { p_matricula: matricula, p_dia: dia });
   if (error) throw error;
 }
+
+/** Lo que ocurrió al guardar el padrón. Se enseña tal cual en la pantalla. */
+export interface ResultadoPadron {
+  guardados: number;
+  rechazados: { matricula: string; motivo: string }[];
+}
+
+/**
+ * Guarda el padrón importado.
+ *
+ * Es la puerta de entrada de todos los datos del sistema: sin padrón no hay
+ * alumnos que se pre-registren, y sin pre-registros no hay folios, pagos,
+ * asistencias ni evidencias. La pantalla hacía todo el trabajo difícil —leer el
+ * archivo, validar, avisar de errores, repartir días— y le faltaba justo el
+ * último paso, así que al recargar no quedaba nada.
+ *
+ * Dos cosas que el archivo no trae resueltas:
+ *
+ * 1. **El archivo trae texto y la tabla guarda identificadores.** «Licenciatura
+ *    en Pedagogía» y «Campus Central» tienen que resolverse contra `programas`,
+ *    `niveles_academicos` y `planteles`. Se cargan los tres catálogos una vez y
+ *    se resuelve en memoria: hacerlo fila por fila serían miles de consultas.
+ * 2. **Un nombre que no está en el catálogo no se inventa.** Se rechaza esa fila
+ *    y se dice cuál y por qué. Crear el programa sobre la marcha metería en el
+ *    catálogo oficial cualquier errata del archivo.
+ *
+ * Se sube por lotes para que un archivo de miles de filas no viaje en una sola
+ * petición, y el fallo de un lote no tumba los demás: se informa y se sigue.
+ */
+export async function guardarPadronRemoto(
+  filas: AlumnoPadron[],
+  porLote = 200,
+): Promise<ResultadoPadron> {
+  const sb = exigirBase();
+  const rechazados: ResultadoPadron["rechazados"] = [];
+
+  const [niveles, programas, planteles] = await Promise.all([
+    sb.from("niveles_academicos").select("id, nivel"),
+    sb.from("programas").select("id, nombre, nivel_id"),
+    sb.from("planteles").select("id, nombre"),
+  ]);
+
+  // Se compara sin acentos ni mayúsculas: el archivo viene de otro sistema y
+  // rechazar «PEDAGOGÍA» frente a «Pedagogía» sería castigar una diferencia que
+  // no significa nada.
+  const clave = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+
+  const idNivel = new Map(
+    ((niveles.data ?? []) as { id: string; nivel: string }[]).map((n) => [clave(n.nivel), n.id]),
+  );
+  const idPrograma = new Map(
+    ((programas.data ?? []) as { id: string; nombre: string; nivel_id: string }[]).map((p) => [
+      clave(p.nombre),
+      p,
+    ]),
+  );
+  const idPlantel = new Map(
+    ((planteles.data ?? []) as { id: string; nombre: string }[]).map((p) => [
+      clave(p.nombre),
+      p.id,
+    ]),
+  );
+
+  const listas: Record<string, unknown>[] = [];
+  for (const a of filas) {
+    const nivel = idNivel.get(clave(a.nivel));
+    const programa = idPrograma.get(clave(a.programa));
+    const plantel = idPlantel.get(clave(a.plantel));
+
+    if (!nivel) {
+      rechazados.push({ matricula: a.matricula, motivo: `Nivel desconocido: "${a.nivel}".` });
+      continue;
+    }
+    if (!programa) {
+      rechazados.push({ matricula: a.matricula, motivo: `Programa desconocido: "${a.programa}".` });
+      continue;
+    }
+    if (programa.nivel_id !== nivel) {
+      rechazados.push({
+        matricula: a.matricula,
+        motivo: `"${a.programa}" no pertenece a ${a.nivel}.`,
+      });
+      continue;
+    }
+    if (!plantel) {
+      rechazados.push({ matricula: a.matricula, motivo: `Plantel desconocido: "${a.plantel}".` });
+      continue;
+    }
+
+    listas.push({
+      matricula: a.matricula,
+      nombre: a.nombre,
+      nivel_id: nivel,
+      programa_id: programa.id,
+      avance: a.avance,
+      grupo: a.grupo ?? null,
+      plantel_id: plantel,
+      dia: a.dia ?? null,
+    });
+  }
+
+  let guardados = 0;
+  for (let i = 0; i < listas.length; i += porLote) {
+    const lote = listas.slice(i, i + porLote);
+    // `upsert` por matrícula: reimportar el archivo actualiza en vez de fallar,
+    // que es lo que pasa de verdad cuando Servicios Escolares manda una versión
+    // corregida.
+    const { error } = await sb.from("padron_alumnos").upsert(lote, { onConflict: "matricula" });
+    if (error) {
+      for (const f of lote)
+        rechazados.push({ matricula: String(f["matricula"]), motivo: error.message });
+      continue;
+    }
+    guardados += lote.length;
+  }
+
+  return { guardados, rechazados };
+}
