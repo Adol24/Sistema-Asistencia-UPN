@@ -1,0 +1,40 @@
+{
+  "name": "XIV Encuentro Internacional de Educación",
+  "short_name": "Encuentro UPN",
+  "description": "Registro, pagos, asistencia y elegibilidad para constancia del XIV Encuentro Internacional de Educación.",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F9FAFD",
+  "theme_color": "#0047BB",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "/icons/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi código QR",
+      "short_name": "Mi QR",
+      "description": "El pase para la entrada",
+      "url": "/portal/qr",
+      "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Escanear asistencia",
+      "short_name": "Escanear",
+      "description": "Para el personal de captura",
+      "url": "/captura/escaneo",
+      "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

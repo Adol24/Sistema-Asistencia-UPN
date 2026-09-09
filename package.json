@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "verificar-conexion": "bun run scripts/verificar-conexion.ts",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "generar-iconos": "bun run scripts/generar-iconos.ts"
   },
   "overrides": {
     "rolldown": "1.2.1"

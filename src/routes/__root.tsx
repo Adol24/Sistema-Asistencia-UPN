@@ -16,6 +16,7 @@ import { EstadoEventoProvider } from "../lib/estado-evento";
 import { SesionProvider } from "../lib/sesion";
 import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
+import { AvisoInstalar, useTrabajadorDeServicio } from "../components/instalar";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
@@ -153,6 +154,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      // iOS ignora el manifiesto para el icono: usa este y solo acepta PNG.
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   /*
@@ -199,6 +203,7 @@ function RootComponent() {
   const publico = Route.useLoaderData();
   // Publica `--teclado` para que las pantallas con formulario dejen sitio.
   useAltoTeclado();
+  useTrabajadorDeServicio();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -212,6 +217,7 @@ function RootComponent() {
             <PortalProvider>
               {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
               <Outlet />
+              <AvisoInstalar />
               <Toaster position="top-center" richColors />
             </PortalProvider>
           </PrototipoProvider>
