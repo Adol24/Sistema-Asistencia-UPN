@@ -143,6 +143,32 @@ function ImportacionPadron() {
     );
   };
 
+  /**
+   * La fila de ejemplo de la plantilla, armada con el catálogo de verdad.
+   *
+   * Antes iba escrita a mano —«Licenciatura en Psicología», «Campus Norte»— y
+   * eran datos del prototipo que ya no existen. Quien descargaba la plantilla y
+   * la llenaba siguiendo el ejemplo obtenía un archivo rechazado entero, y la
+   * culpa parecía suya. Una plantilla que enseña valores inválidos es peor que
+   * no dar plantilla.
+   *
+   * Además la fila tenía siete valores para seis columnas, así que cada dato
+   * caía una casilla corrido.
+   */
+  const ejemplo = useMemo(() => {
+    const nivel = configuracion.catalogoAcademico[0];
+    return [
+      [
+        "20262100037",
+        "MATIAS SANTOS RAMOS",
+        nivel?.programas[0] ?? "",
+        `${nivel?.etiquetaAvance ?? "Semestre"} 1`,
+        "Grupo A",
+        sedes[0] ?? "",
+      ],
+    ];
+  }, [configuracion.catalogoAcademico, sedes]);
+
   return (
     <PantallaPanel
       area="admin"
@@ -153,23 +179,7 @@ function ImportacionPadron() {
         <Button
           variant="outline"
           className="h-11"
-          onClick={() =>
-            descargarCsv(
-              "plantilla-padron.csv",
-              [...COLUMNAS_PADRON],
-              [
-                [
-                  "20262122311",
-                  "BRENDA SOFIA MUÑOZ LARA",
-                  "Licenciatura",
-                  "Licenciatura en Psicología",
-                  "4",
-                  "A2",
-                  "Campus Norte",
-                ],
-              ],
-            )
-          }
+          onClick={() => descargarCsv("plantilla-padron.csv", [...COLUMNAS_PADRON], ejemplo)}
         >
           <Download className="size-4" /> Descargar plantilla
         </Button>
