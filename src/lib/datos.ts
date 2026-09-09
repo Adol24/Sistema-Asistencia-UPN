@@ -71,9 +71,50 @@ const COLS_PARTICIPANTE = `
  * Carga el estado inicial. Devuelve `null` si no hay base configurada, que es la
  * señal para que el contexto siga con los datos simulados.
  */
-export async function cargarTodo(): Promise<Instantanea | null> {
+/** Lo que cualquiera puede leer: el evento, sus días, el catálogo y los talleres. */
+export interface Publico {
+  configuracion: ConfiguracionEvento;
+  talleresBase: ReturnType<typeof aTallerBase>[];
+  idPorClave: Record<string, string>;
+}
+
+/**
+ * Carga solo lo público.
+ *
+ * Se separa de `cargarTodo` para poder pedirla en el servidor, antes de pintar.
+ * El nombre del evento y las fechas llegaban después de la primera pintura, así
+ * que la portada aparecía un instante sin título y luego se rellenaba. Con esto
+ * el HTML sale ya completo.
+ *
+ * Son exactamente las tablas que el rol anónimo puede leer, así que esta llamada
+ * no falla por permisos ni para un visitante sin sesión.
+ */
+/*
+ * Caché de lo público, con vida corta.
+ *
+ * Ahora que esto se pide en el servidor antes de pintar, se consultaría la base
+ * en CADA visita para un dato que cambia dos veces en la vida del evento. Medido
+ * en desarrollo, la portada tardaba cerca de un segundo por ese viaje.
+ *
+ * Se guarda por proceso, no por persona: es información pública e idéntica para
+ * todo el mundo, así que no hay nada de nadie que se pueda filtrar aquí. Y medio
+ * minuto es poco para que a alguien le moleste ver el nombre del evento
+ * desactualizado, y suficiente para que una ráfaga de visitas no se convierta en
+ * una ráfaga de consultas.
+ */
+const VIDA_CACHE = 30_000;
+let cachePublico: { en: number; valor: Publico } | null = null;
+
+/** Se llama al editar la configuración, para que el cambio se vea sin esperar. */
+export function olvidarPublico(): void {
+  cachePublico = null;
+}
+
+export async function cargarPublico(): Promise<Publico | null> {
   if (!supabase) return null;
   const sb = supabase;
+
+  if (cachePublico && Date.now() - cachePublico.en < VIDA_CACHE) return cachePublico.valor;
 
   const [cfg, dias, niveles, talleres] = await Promise.all([
     sb.from("configuracion_evento").select("*").eq("id", 1).single(),
@@ -96,7 +137,26 @@ export async function cargarTodo(): Promise<Instantanea | null> {
   const filasTaller = (talleres.data ?? []) as unknown as FilaTaller[];
   const idPorClave: Record<string, string> = {};
   for (const t of filasTaller) idPorClave[t.clave] = t.id;
-  const claveporId = new Map(filasTaller.map((t) => [t.id, t.clave]));
+
+  const valor: Publico = {
+    configuracion,
+    talleresBase: filasTaller.map(aTallerBase),
+    idPorClave,
+  };
+  cachePublico = { en: Date.now(), valor };
+  return valor;
+}
+
+export async function cargarTodo(): Promise<Instantanea | null> {
+  if (!supabase) return null;
+  const sb = supabase;
+
+  const publico = await cargarPublico();
+  if (!publico) return null;
+  const { configuracion, idPorClave, talleresBase } = publico;
+  // `idPorClave` va de clave a id; aquí hace falta al revés, para nombrar los
+  // talleres que vienen referenciados por id en participantes y asistencias.
+  const claveporId = new Map(Object.entries(idPorClave).map(([clave, id]) => [id, clave]));
   const lugarPorDia = (d: Dia) =>
     configuracion.dias.find((x) => x.dia === d)?.lugar ?? configuracion.dias[0]!.lugar;
 
@@ -154,7 +214,7 @@ export async function cargarTodo(): Promise<Instantanea | null> {
 
   return {
     configuracion,
-    talleresBase: filasTaller.map(aTallerBase),
+    talleresBase,
     idPorClave,
     participantes: ((participantes.data ?? []) as unknown as FilaParticipante[]).map((p) =>
       aParticipante(p, lugarPorDia),

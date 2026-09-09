@@ -155,6 +155,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
+  /*
+   * Lo público se resuelve antes de pintar.
+   *
+   * El nombre del evento y las fechas llegaban con la consulta del cliente, así
+   * que la portada aparecía un instante sin título. Pedirlo en el `loader` hace
+   * que el HTML salga ya completo.
+   *
+   * Si falla —sin base, o la base caída— se devuelve nulo y la aplicación sigue
+   * su camino habitual: el cliente lo reintenta y, mientras, la configuración
+   * está vacía. Una portada sin título es mejor que una pantalla de error.
+   */
+  loader: async () => {
+    try {
+      const { cargarPublico } = await import("@/lib/datos");
+      return await cargarPublico();
+    } catch {
+      return null;
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -177,6 +196,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const publico = Route.useLoaderData();
   // Publica `--teclado` para que las pantallas con formulario dejen sitio.
   useAltoTeclado();
 
@@ -187,7 +207,7 @@ function RootComponent() {
         contra la lista del contexto, que puede haber cambiado en la sesión.
       */}
       <SesionProvider>
-        <EstadoEventoProvider>
+        <EstadoEventoProvider inicial={publico}>
           <PrototipoProvider>
             <PortalProvider>
               {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

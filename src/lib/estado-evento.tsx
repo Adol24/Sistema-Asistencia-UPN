@@ -9,6 +9,7 @@ import {
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { rolHaciaBase } from "@/lib/roles";
+import type { Publico } from "@/lib/datos";
 import { CONFIGURACION_VACIA, type ConfiguracionEvento } from "@/lib/configuracion";
 import type {
   AlumnoPadron,
@@ -347,7 +348,21 @@ const EstadoEventoCtx = createContext<Ctx | null>(null);
 const PUNTOS = ["Puerta A", "Puerta B", "Vestíbulo", "Registro Taller"];
 export const PUNTOS_CAPTURA = PUNTOS;
 
-export function EstadoEventoProvider({ children }: { children: ReactNode }) {
+/**
+ * @param inicial Lo público, ya resuelto en el servidor.
+ *
+ * Sin esto la primera pintura salía con la configuración vacía y el nombre del
+ * evento aparecía un instante después, cuando respondía la consulta del cliente.
+ * El parpadeo se nota especialmente en la portada, donde el título ES la
+ * pantalla.
+ */
+export function EstadoEventoProvider({
+  children,
+  inicial,
+}: {
+  children: ReactNode;
+  inicial?: Publico | null;
+}) {
   const [pagos, setPagos] = useState<PagoRegistrado[]>(() => pagosIniciales());
   const [contadorPagos, setContadorPagos] = useState(0);
 
@@ -367,7 +382,9 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
    * llenas y plausibles. Nadie revisa lo que parece correcto. Vacío se nota, se
    * pregunta y se arregla.
    */
-  const [configuracion, setConfiguracion] = useState<ConfiguracionEvento>(CONFIGURACION_VACIA);
+  const [configuracion, setConfiguracion] = useState<ConfiguracionEvento>(
+    inicial?.configuracion ?? CONFIGURACION_VACIA,
+  );
 
   const [avisos, setAvisos] = useState<Record<string, string[]>>({});
   const agregarAviso = useCallback((folio: string, texto: string) => {
@@ -386,7 +403,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     (dia) => configuracion.dias.find((d) => d.dia === dia) ?? configuracion.dias[0]!,
     [configuracion.dias],
   );
-  const [talleresBase, setTalleresBase] = useState<TallerBase[]>([]);
+  const [talleresBase, setTalleresBase] = useState<TallerBase[]>(inicial?.talleresBase ?? []);
   const [usuarios, setUsuarios] = useState<UsuarioInterno[]>([]);
   const [casos, setCasos] = useState<CasoSoporte[]>([]);
   const [padron, setPadron] = useState<AlumnoPadron[]>([]);
@@ -397,7 +414,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
   const [asistenciasBase, setAsistenciasBase] = useState<Asistencia[]>([]);
   const [evidenciasBase, setEvidenciasBase] = useState<Evidencia[]>([]);
   /** De la clave corta del taller a su uuid, para poder escribir en la base. */
-  const [idPorClave, setIdPorClave] = useState<Record<string, string>>({});
+  const [idPorClave, setIdPorClave] = useState<Record<string, string>>(inicial?.idPorClave ?? {});
   const [conectado, setConectado] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(hayBaseDeDatos);
 
@@ -819,7 +836,9 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     setConfiguracion((prev) => ({ ...prev, ...patch }));
     const columnas = columnasDeConfiguracion(patch);
     if (Object.keys(columnas).length)
-      escribir("la configuración", (d) => d.guardarConfiguracion(columnas));
+      escribir("la configuración", (d) =>
+        d.guardarConfiguracion(columnas).then(() => d.olvidarPublico()),
+      );
   }, []);
 
   // ------------------------------------------------------------ talleres ---
@@ -844,7 +863,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       if (i === -1) return [...prev, t];
       return prev.map((x) => (x.id === t.id ? t : x));
     });
-    escribir("el taller", (d) => d.guardarTallerRemoto(t));
+    escribir("el taller", (d) => d.guardarTallerRemoto(t).then(() => d.olvidarPublico()));
   }, []);
 
   /**
