@@ -16,7 +16,9 @@ import { EstadoEvidenciaBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
-import { usePrototipo } from "@/lib/prototipo";
+import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import type { Participante } from "@/mocks/tipos";
+import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { hora, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
@@ -49,8 +51,20 @@ type Tarjeta =
       revisadaEn?: string | undefined;
     };
 
+/*
+ * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los
+ * hooks: un `return` temprano en medio los llamaría en distinto orden según el
+ * caso, que es lo que React no permite. El de fuera decide; el de dentro dibuja,
+ * y recibe un participante que ya no puede ser nulo.
+ */
 function MisEvidencias() {
-  const { participante: p } = usePrototipo();
+  const p = useParticipanteDelPortal();
+  const { cargando, error } = usePortal();
+  if (!p) return <EsperaDelPortal cargando={cargando} error={error} />;
+  return <MisEvidenciasContenido p={p} />;
+}
+
+function MisEvidenciasContenido({ p }: { p: Participante }) {
   const { asistenciasDe, evidencias: evidenciasCtx, revisiones, infoDia } = useEstadoEvento();
   const mias = evidenciasCtx.filter((e) => e.folio === p.folio);
   const [subidas, setSubidas] = useState<Record<number, { estado: EstadoEvidencia; hora: string }>>(

@@ -7,7 +7,9 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { getTaller } from "@/mocks/talleres";
 import { avanceTexto } from "@/mocks/catalogos";
-import { usePrototipo } from "@/lib/prototipo";
+import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import type { Participante } from "@/mocks/tipos";
+import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -27,8 +29,20 @@ const nodos = ["Pre-registrado", "Comprobante recibido", "Pagado", "QR disponibl
 const indiceDe = (estado: EstadoPago) =>
   estado === "pagado" ? 3 : estado === "comprobante_recibido" ? 1 : 0;
 
+/*
+ * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los
+ * hooks: un `return` temprano en medio los llamaría en distinto orden según el
+ * caso, que es lo que React no permite. El de fuera decide; el de dentro dibuja,
+ * y recibe un participante que ya no puede ser nulo.
+ */
 function EstadoPortal() {
-  const { participante: p } = usePrototipo();
+  const p = useParticipanteDelPortal();
+  const { cargando, error } = usePortal();
+  if (!p) return <EsperaDelPortal cargando={cargando} error={error} />;
+  return <EstadoPortalContenido p={p} />;
+}
+
+function EstadoPortalContenido({ p }: { p: Participante }) {
   const { estadoDe, configuracion: evento, infoDia, avisosDe, descartarAvisos } = useEstadoEvento();
   const estado = estadoDe(p);
   const dia = infoDia(p.dia);

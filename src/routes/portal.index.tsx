@@ -10,6 +10,7 @@ import { getParticipante } from "@/mocks/participantes";
 import { simularLatencia } from "@/lib/formato";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
+import { usePortal } from "@/lib/portal";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { meta } from "@/lib/seo";
 
@@ -28,6 +29,7 @@ const ERROR_ACCESO = "Ese folio y ese dato no coinciden. Revísalos y vuelve a i
 function AccesoPortal() {
   const navigate = useNavigate();
   const { participante, setFolio } = usePrototipo();
+  const { abrir } = usePortal();
   const [folio, setFolioInput] = useState("");
   const [verificacion, setVerificacion] = useState("");
   const [error, setError] = useState("");
@@ -77,6 +79,7 @@ function AccesoPortal() {
     }
 
     setFolio(clave);
+    abrir(clave, credencial);
     navigate({ to: "/portal/estado" });
   };
 

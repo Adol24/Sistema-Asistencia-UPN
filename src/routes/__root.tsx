@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { PrototipoProvider } from "../lib/prototipo";
 import { EstadoEventoProvider } from "../lib/estado-evento";
 import { SesionProvider } from "../lib/sesion";
+import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
@@ -188,9 +189,11 @@ function RootComponent() {
       <SesionProvider>
         <EstadoEventoProvider>
           <PrototipoProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <Toaster position="top-center" richColors />
+            <PortalProvider>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <Toaster position="top-center" richColors />
+            </PortalProvider>
           </PrototipoProvider>
         </EstadoEventoProvider>
       </SesionProvider>

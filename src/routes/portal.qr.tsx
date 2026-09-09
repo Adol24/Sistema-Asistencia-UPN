@@ -8,7 +8,9 @@ import { CodigoQR, PaseAPantallaCompleta, pngDelPase } from "@/components/qr";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { Button } from "@/components/ui/button";
 import { EstadoPagoBadge } from "@/components/estado-badges";
-import { usePrototipo } from "@/lib/prototipo";
+import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import type { Participante } from "@/mocks/tipos";
+import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 
@@ -30,8 +32,20 @@ const faltantesDe = (horas: number): Record<string, string> => ({
   cancelado: "Tu registro fue cancelado. Contacta a soporte si crees que es un error.",
 });
 
+/*
+ * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los
+ * hooks: un `return` temprano en medio los llamaría en distinto orden según el
+ * caso, que es lo que React no permite. El de fuera decide; el de dentro dibuja,
+ * y recibe un participante que ya no puede ser nulo.
+ */
 function MiQr() {
-  const { participante: p } = usePrototipo();
+  const p = useParticipanteDelPortal();
+  const { cargando, error } = usePortal();
+  if (!p) return <EsperaDelPortal cargando={cargando} error={error} />;
+  return <MiQrContenido p={p} />;
+}
+
+function MiQrContenido({ p }: { p: Participante }) {
   // La configuración sale del contexto, no del mock: si administración cambia el
   // plazo o la fecha límite, esta pantalla lo refleja sin recargar.
   const { estadoDe, configuracion: evento } = useEstadoEvento();

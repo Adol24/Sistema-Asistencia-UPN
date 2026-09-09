@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Award, Check, X } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
-import { usePrototipo } from "@/lib/prototipo";
+import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import type { Participante } from "@/mocks/tipos";
+import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -16,8 +18,20 @@ export const Route = createFileRoute("/portal/constancia")({
   component: MiConstancia,
 });
 
+/*
+ * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los
+ * hooks: un `return` temprano en medio los llamaría en distinto orden según el
+ * caso, que es lo que React no permite. El de fuera decide; el de dentro dibuja,
+ * y recibe un participante que ya no puede ser nulo.
+ */
 function MiConstancia() {
-  const { participante: p } = usePrototipo();
+  const p = useParticipanteDelPortal();
+  const { cargando, error } = usePortal();
+  if (!p) return <EsperaDelPortal cargando={cargando} error={error} />;
+  return <MiConstanciaContenido p={p} />;
+}
+
+function MiConstanciaContenido({ p }: { p: Participante }) {
   const { estadoDe, asistenciasDe, evidencias } = useEstadoEvento();
   const estado = estadoDe(p);
   const delDia = asistenciasDe(p.folio, p.dia);

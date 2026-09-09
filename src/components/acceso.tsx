@@ -174,3 +174,37 @@ function Centrado({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/**
+ * Lo que ve el participante mientras sus datos llegan, o cuando no ha entrado.
+ *
+ * Se distingue el «cargando» del «no has entrado» porque son cosas distintas
+ * para quien mira: una se resuelve esperando y la otra volviendo a escribir su
+ * folio. Un rótulo único obligaría a adivinar cuál de las dos es.
+ */
+export function EsperaDelPortal({ cargando, error }: { cargando: boolean; error?: string }) {
+  return (
+    <Centrado>
+      {cargando ? (
+        <>
+          <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" aria-hidden />
+          <p className="mt-3 text-sm text-muted-foreground">Cargando tus datos…</p>
+        </>
+      ) : (
+        <>
+          <ShieldCheck className="mx-auto size-8 text-primary" aria-hidden />
+          <h1 className="mt-3 text-xl font-bold tracking-tight">Entra con tu folio</h1>
+          <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
+            {error || "Para ver tus datos necesitamos que te identifiques."}
+          </p>
+          <Link
+            to="/portal"
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          >
+            Ir al acceso del portal
+          </Link>
+        </>
+      )}
+    </Centrado>
+  );
+}
