@@ -148,7 +148,7 @@ function FichaDe({ p }: { p: Participante }) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Lugar</dt>
-            <dd className="mt-0.5 text-sm font-semibold">{p.sede}</dd>
+            <dd className="mt-0.5 text-sm font-semibold">{p.lugar}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Pago del evento</dt>

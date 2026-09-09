@@ -200,7 +200,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2">
           <p className="text-xs text-muted-foreground">Tu asistencia presencial</p>
           <p className="mt-1 text-sm font-semibold">
-            {dia.etiqueta} — {dia.fecha} · {dia.sede}
+            {dia.etiqueta} — {dia.fecha} · {dia.lugar}
           </p>
         </div>
         {p.programa ? (

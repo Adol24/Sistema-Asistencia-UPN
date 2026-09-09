@@ -34,7 +34,7 @@ export interface Participante {
   plantel?: string | undefined;
   dia: Dia;
   /** El lugar del evento al que le toca asistir, derivado de su día. */
-  sede: string;
+  lugar: string;
   estadoPagoEvento: EstadoPago;
   tallerId?: string | undefined;
   estadoPagoTaller?: EstadoPago | undefined;

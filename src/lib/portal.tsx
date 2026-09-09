@@ -69,7 +69,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       setDatos({
         participante: aParticipante(
           { ...fila, correo: contacto?.correo ?? "", celular: contacto?.celular ?? "" },
-          (d) => infoDia(d).sede,
+          (d) => infoDia(d).lugar,
         ),
         asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
         evidencias: (crudo["evidencias"] ?? []) as DatosPortal["evidencias"],

@@ -97,8 +97,8 @@ export async function cargarTodo(): Promise<Instantanea | null> {
   const idPorClave: Record<string, string> = {};
   for (const t of filasTaller) idPorClave[t.clave] = t.id;
   const claveporId = new Map(filasTaller.map((t) => [t.id, t.clave]));
-  const sedePorDia = (d: Dia) =>
-    configuracion.dias.find((x) => x.dia === d)?.sede ?? configuracion.dias[0]!.sede;
+  const lugarPorDia = (d: Dia) =>
+    configuracion.dias.find((x) => x.dia === d)?.lugar ?? configuracion.dias[0]!.lugar;
 
   // Lo del personal solo llega si quien pregunta tiene permiso: las políticas
   // devuelven cero filas en vez de un error, así que un participante anónimo
@@ -142,7 +142,7 @@ export async function cargarTodo(): Promise<Instantanea | null> {
     talleresBase: filasTaller.map(aTallerBase),
     idPorClave,
     participantes: ((participantes.data ?? []) as unknown as FilaParticipante[]).map((p) =>
-      aParticipante(p, sedePorDia),
+      aParticipante(p, lugarPorDia),
     ),
     padron: ((padron.data ?? []) as unknown as FilaPadron[]).map(aAlumnoPadron),
     asistencias: ((asistencias.data ?? []) as unknown as FilaAsistencia[]).map(aAsistencia),

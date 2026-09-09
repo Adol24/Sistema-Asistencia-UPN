@@ -4,7 +4,7 @@ export interface DiaEvento {
   dia: 1 | 2 | 3;
   etiqueta: string;
   fecha: string;
-  sede: string;
+  lugar: string;
 }
 
 /**
@@ -80,9 +80,9 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   banco: { banco: "", cuenta: "", clabe: "", beneficiario: "" },
   ventanilla: { lugar: "", horario: "" },
   dias: [
-    { dia: 1, etiqueta: "DÍA 1", fecha: "", sede: "" },
-    { dia: 2, etiqueta: "DÍA 2", fecha: "", sede: "" },
-    { dia: 3, etiqueta: "DÍA 3", fecha: "", sede: "" },
+    { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "" },
+    { dia: 2, etiqueta: "DÍA 2", fecha: "", lugar: "" },
+    { dia: 3, etiqueta: "DÍA 3", fecha: "", lugar: "" },
   ],
   registroEntrada: "",
   registroSalida: "",

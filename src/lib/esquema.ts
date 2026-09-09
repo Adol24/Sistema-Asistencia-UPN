@@ -58,6 +58,15 @@ export interface FilaDia {
   dia: Dia;
   etiqueta: string;
   fecha: string;
+  /**
+   * En la base la columna se llama `sede`; en la aplicación, `lugar`.
+   *
+   * La palabra que usa la UPN es «lugar», y el código debería hablar como ellos.
+   * La columna no se renombró porque de ella dependen dos vistas y, a través de
+   * `v_participantes`, la función que alimenta el portal: cambiarle el nombre
+   * obliga a recrear todo eso contra una base en uso, y no compensa por una
+   * palabra. La traducción vive aquí, que es donde ya se traduce el resto.
+   */
   sede: string;
 }
 
@@ -214,7 +223,7 @@ export function aConfiguracion(
       beneficiario: f.banco_beneficiario,
     },
     ventanilla: { lugar: f.ventanilla_lugar, horario: f.ventanilla_horario },
-    dias: dias.map((d) => ({ dia: d.dia, etiqueta: d.etiqueta, fecha: d.fecha, sede: d.sede })),
+    dias: dias.map((d) => ({ dia: d.dia, etiqueta: d.etiqueta, fecha: d.fecha, lugar: d.sede })),
     catalogoAcademico: catalogo,
     avisoPrivacidad: f.aviso_privacidad,
     terminos: f.terminos,
@@ -261,7 +270,7 @@ export const aAlumnoPadron = (f: FilaPadron): AlumnoPadron => ({
   dia: f.dia ?? undefined,
 });
 
-export function aParticipante(f: FilaParticipante, sedePorDia: (d: Dia) => string): Participante {
+export function aParticipante(f: FilaParticipante, lugarPorDia: (d: Dia) => string): Participante {
   return {
     id: f.id,
     folio: f.folio,
@@ -277,7 +286,7 @@ export function aParticipante(f: FilaParticipante, sedePorDia: (d: Dia) => strin
     grupo: f.grupo ?? undefined,
     plantel: f.planteles?.nombre,
     dia: f.dia,
-    sede: sedePorDia(f.dia),
+    lugar: lugarPorDia(f.dia),
     // El estado de pago no viene de la fila: la base lo deriva en `v_estado_pago`
     // y el contexto lo calcula igual que en el prototipo, a partir de los pagos.
     estadoPagoEvento: "pre_registrado",

@@ -393,7 +393,7 @@ function Dashboard() {
                 <li key={d.dia}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                     <span className="font-medium">
-                      {info.etiqueta} <span className="text-muted-foreground">· {info.sede}</span>
+                      {info.etiqueta} <span className="text-muted-foreground">· {info.lugar}</span>
                     </span>
                     <span className="text-muted-foreground">
                       <span className="text-base font-bold text-foreground">{d.entradas}</span> de{" "}

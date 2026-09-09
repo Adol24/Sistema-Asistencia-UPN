@@ -70,7 +70,7 @@ function ConfiguracionSesion() {
                 )}
               >
                 <span className="block text-xl font-extrabold">{d}</span>
-                <span className="block text-[11px] leading-tight opacity-80">{info.sede}</span>
+                <span className="block text-[11px] leading-tight opacity-80">{info.lugar}</span>
               </button>
             );
           })}

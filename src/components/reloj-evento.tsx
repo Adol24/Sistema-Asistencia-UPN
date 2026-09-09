@@ -56,7 +56,7 @@ export function RelojEventoControl({ className }: { className?: string }) {
         />
         <span className="w-14 font-mono text-sm font-bold">{comoHora(reloj.minutos)}</span>
       </label>
-      <span className="self-center text-xs text-muted-foreground">{info?.sede}</span>
+      <span className="self-center text-xs text-muted-foreground">{info?.lugar}</span>
     </div>
   );
 }

@@ -76,7 +76,7 @@ function Comprobante() {
           <div>
             <dt className="text-xs text-muted-foreground">Día y lugar</dt>
             <dd className="font-medium">
-              {dia.etiqueta} — {dia.fecha} · {dia.sede}
+              {dia.etiqueta} — {dia.fecha} · {dia.lugar}
             </dd>
           </div>
           <div>

@@ -175,8 +175,8 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
                     )}
                     <p className="text-xs text-muted-foreground">
                       {t.cierreAutomatico
-                        ? "Tu salida no se escaneó: el sistema la cerró automáticamente al terminar el horario. Este día asististe en la sede, no necesitas subir evidencia."
-                        : "Este día asististe en la sede, no necesitas subir evidencia."}
+                        ? "Tu salida no se escaneó: el sistema la cerró automáticamente al terminar el horario. Este día asististe en persona, no necesitas subir evidencia."
+                        : "Este día asististe en persona, no necesitas subir evidencia."}
                     </p>
                   </div>
                 ) : null}

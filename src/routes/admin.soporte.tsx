@@ -227,7 +227,7 @@ function Soporte() {
                     <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <PerfilBadge perfil={p.perfil} />
                       {p.matricula ? `${p.matricula} · ` : ""}
-                      Día {p.dia} · {p.sede} · {p.correo}
+                      Día {p.dia} · {p.lugar} · {p.correo}
                     </p>
                   ) : null}
                   {esDeNombre ? (

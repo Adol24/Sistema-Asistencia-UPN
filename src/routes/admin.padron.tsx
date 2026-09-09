@@ -231,7 +231,7 @@ function ImportacionPadron() {
             {repartoPorDia().map(({ dia, total }) => (
               <div key={dia} className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">
-                  Día {dia} · {infoDia(dia).sede}
+                  Día {dia} · {infoDia(dia).lugar}
                 </p>
                 <p className="text-2xl font-extrabold tabular-nums">{total}</p>
               </div>

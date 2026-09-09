@@ -122,7 +122,7 @@ function Elegibles() {
         "matricula",
         "perfil",
         "dia",
-        "sede",
+        "lugar",
         "elegible",
         "nombre_en_revision",
         "caso_soporte",
@@ -134,7 +134,7 @@ function Elegibles() {
         f.p.matricula ?? "",
         f.p.perfil,
         f.p.dia,
-        f.p.sede,
+        f.p.lugar,
         f.evento.elegible ? "SI" : "NO",
         f.marca.marcado ? "SI — REVISAR ANTES DE IMPRIMIR" : "NO",
         f.marca.marcado ? f.marca.caso.id : "",
@@ -325,7 +325,7 @@ function Elegibles() {
                 </p>
                 <p className="font-mono text-xs text-muted-foreground">
                   {f.p.folio}
-                  {f.p.matricula ? ` · ${f.p.matricula}` : ""} · Día {f.p.dia} · {f.p.sede}
+                  {f.p.matricula ? ` · ${f.p.matricula}` : ""} · Día {f.p.dia} · {f.p.lugar}
                 </p>
                 <p className="mt-1 text-xs">
                   <span className="text-muted-foreground">Nombre para la constancia: </span>

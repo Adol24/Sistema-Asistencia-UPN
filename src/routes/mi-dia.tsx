@@ -24,7 +24,7 @@ function MiDia() {
 
   return (
     <PantallaPublica
-      titulo="Tu día y sede"
+      titulo="Tu día y lugar"
       descripcion="Tu asistencia presencial ya está asignada. No es posible cambiar de día."
       volverA="/confirmar-nombre"
     >
@@ -43,7 +43,7 @@ function MiDia() {
             <MapPin className="size-5 text-primary" aria-hidden />
             <div>
               <dt className="font-semibold">Lugar</dt>
-              <dd className="text-muted-foreground">{dia.sede}</dd>
+              <dd className="text-muted-foreground">{dia.lugar}</dd>
             </div>
           </div>
           <div className="flex items-center gap-3">

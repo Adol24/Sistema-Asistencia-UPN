@@ -159,7 +159,7 @@ function Configuracion() {
           </div>
         </Seccion>
 
-        <Seccion titulo="Sedes por día" icono={<Building2 className="size-4" aria-hidden />}>
+        <Seccion titulo="Lugares por día" icono={<Building2 className="size-4" aria-hidden />}>
           {b.dias.map((d, i) => (
             <div
               key={d.dia}
@@ -174,11 +174,11 @@ function Configuracion() {
                 }
               />
               <Campo
-                id={`sede-${d.dia}`}
+                id={`lugar-${d.dia}`}
                 etiqueta="Lugar"
-                valor={d.sede}
+                valor={d.lugar}
                 onChange={(v) =>
-                  set({ dias: b.dias.map((x, k) => (k === i ? { ...x, sede: v } : x)) })
+                  set({ dias: b.dias.map((x, k) => (k === i ? { ...x, lugar: v } : x)) })
                 }
               />
             </div>

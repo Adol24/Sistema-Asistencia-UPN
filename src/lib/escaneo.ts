@@ -106,7 +106,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
       ...conPersona,
       color: "rojo",
       titulo: "DÍA EQUIVOCADO",
-      motivo: `Su asistencia es el DÍA ${p.dia} (${p.sede}), hoy se registra el DÍA ${sesion.dia}.`,
+      motivo: `Su asistencia es el DÍA ${p.dia} (${p.lugar}), hoy se registra el DÍA ${sesion.dia}.`,
       accion: "PASAR A MESA DE INCIDENCIAS",
       registra: false,
       autorizable: true,

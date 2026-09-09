@@ -51,7 +51,7 @@ function Monitoreo() {
       acciones={<RelojEventoControl />}
     >
       <p className="mb-4 text-sm text-muted-foreground">
-        {info.etiqueta} — {info.fecha} · {info.sede} · son las{" "}
+        {info.etiqueta} — {info.fecha} · {info.lugar} · son las{" "}
         <span className="font-mono font-semibold text-foreground">{comoHora(reloj.minutos)}</span>{" "}
         en el reloj simulado
       </p>

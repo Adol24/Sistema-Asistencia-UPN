@@ -962,7 +962,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       setPadron((prev) => prev.map((a) => (a.matricula === matricula ? { ...a, dia } : a)));
       if (!p || p.dia === dia) return { movido: !!p, tallerLiberado: undefined };
 
-      const ajuste: Partial<Participante> = { dia, sede: infoDia(dia).sede };
+      const ajuste: Partial<Participante> = { dia, lugar: infoDia(dia).lugar };
       const t = talleres.find((x) => x.id === p.tallerId);
       let tallerLiberado: string | undefined;
       // Si su taller no se imparte el día nuevo, la inscripción se libera:
