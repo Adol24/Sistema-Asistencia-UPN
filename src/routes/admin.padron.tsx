@@ -57,6 +57,7 @@ function ImportacionPadron() {
     padron,
     aplicarPadron,
     guardarPadron,
+    sedes,
     estadoDe,
     registrarBitacora,
     repartoPorDia,
@@ -85,9 +86,10 @@ function ImportacionPadron() {
         padronActual: padron,
         participantes,
         catalogo: configuracion.catalogoAcademico,
+        sedes,
         estadoDe: (p) => ({ evento: estadoDe(p).evento }),
       }),
-    [padron, participantes, configuracion.catalogoAcademico, estadoDe],
+    [padron, participantes, configuracion.catalogoAcademico, sedes, estadoDe],
   );
   const imp = useImportador<FilaPadron>(analizar);
   const { filas, leyendo, archivo, confirmando, aplicando, resumen, visibles } = imp;

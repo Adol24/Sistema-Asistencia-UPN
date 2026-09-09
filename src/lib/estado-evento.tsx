@@ -331,6 +331,7 @@ interface Ctx {
     guardados: number;
     rechazados: { matricula: string; motivo: string }[];
   }>;
+  sedes: string[];
   aplicarPadron: (filas: AlumnoPadron[]) => {
     registros: number;
     altas: number;
@@ -426,6 +427,9 @@ export function EstadoEventoProvider({
   const [evidenciasBase, setEvidenciasBase] = useState<Evidencia[]>([]);
   /** De la clave corta del taller a su uuid, para poder escribir en la base. */
   const [idPorClave, setIdPorClave] = useState<Record<string, string>>(inicial?.idPorClave ?? {});
+  // Las sedes donde estudian los alumnos. Se usan para validar el padrón al
+  // importar, antes de aplicarlo y no después.
+  const [sedes, setSedes] = useState<string[]>(inicial?.sedes ?? []);
   const [conectado, setConectado] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(hayBaseDeDatos);
 
@@ -445,6 +449,7 @@ export function EstadoEventoProvider({
         setConfiguracion(datos.configuracion);
         setTalleresBase(datos.talleresBase);
         setIdPorClave(datos.idPorClave);
+        setSedes(datos.sedes);
         setParticipantesBase(datos.participantes);
         setPadron(datos.padron);
         setAsistenciasBase(datos.asistencias);
@@ -1269,6 +1274,7 @@ export function EstadoEventoProvider({
       padron,
       aplicarPadron,
       guardarPadron,
+      sedes,
       diaDe,
       repartoPorDia,
       sinDiaAsignado,
@@ -1328,6 +1334,7 @@ export function EstadoEventoProvider({
       padron,
       aplicarPadron,
       guardarPadron,
+      sedes,
       diaDe,
       repartoPorDia,
       sinDiaAsignado,

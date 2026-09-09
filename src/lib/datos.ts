@@ -49,6 +49,7 @@ import type { ConfiguracionEvento } from "@/lib/configuracion";
 /** Todo lo que el contexto necesita para arrancar. */
 export interface Instantanea {
   configuracion: ConfiguracionEvento;
+  sedes: string[];
   talleresBase: TallerBase[];
   /** De la clave corta (`T01`) al uuid de la base, para poder escribir después. */
   idPorClave: Record<string, string>;
@@ -74,6 +75,8 @@ const COLS_PARTICIPANTE = `
 /** Lo que cualquiera puede leer: el evento, sus días, el catálogo y los talleres. */
 export interface Publico {
   configuracion: ConfiguracionEvento;
+  /** Las sedes donde estudian los alumnos, para validar el padrón al importar. */
+  sedes: string[];
   talleresBase: ReturnType<typeof aTallerBase>[];
   idPorClave: Record<string, string>;
 }
@@ -116,13 +119,14 @@ export async function cargarPublico(): Promise<Publico | null> {
 
   if (cachePublico && Date.now() - cachePublico.en < VIDA_CACHE) return cachePublico.valor;
 
-  const [cfg, dias, niveles, talleres] = await Promise.all([
+  const [cfg, dias, niveles, talleres, sedes] = await Promise.all([
     sb.from("configuracion_evento").select("*").eq("id", 1).single(),
     sb.from("dias_evento").select("*").order("dia"),
     sb
       .from("niveles_academicos")
       .select("id, nivel, etiqueta_avance, total_avance, orden, programas ( nombre )"),
     sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
+    sb.from("planteles").select("nombre").order("nombre"),
   ]);
 
   const error = cfg.error ?? dias.error ?? niveles.error ?? talleres.error;
@@ -140,6 +144,7 @@ export async function cargarPublico(): Promise<Publico | null> {
 
   const valor: Publico = {
     configuracion,
+    sedes: ((sedes.data ?? []) as { nombre: string }[]).map((p) => p.nombre),
     talleresBase: filasTaller.map(aTallerBase),
     idPorClave,
   };
@@ -214,6 +219,7 @@ export async function cargarTodo(): Promise<Instantanea | null> {
 
   return {
     configuracion,
+    sedes: publico.sedes,
     talleresBase,
     idPorClave,
     participantes: ((participantes.data ?? []) as unknown as FilaParticipante[]).map((p) =>

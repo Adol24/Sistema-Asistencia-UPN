@@ -100,6 +100,12 @@ export interface EntradaAnalisisPadron {
   participantes: Participante[];
   /** Contra qué se validan el nivel, el programa y el avance de cada fila. */
   catalogo: NivelAcademico[];
+  /**
+   * Las sedes que existen. Se validan aquí y no solo al guardar porque esta
+   * pantalla es una vista previa: enseñar una fila en verde y que la base la
+   * rechace después convierte la previsualización en una promesa que no cumple.
+   */
+  sedes: string[];
   /** Estado de pago efectivo, para saber si el cambio afecta a alguien que ya pagó. */
   estadoDe: (p: Participante) => { evento: string };
 }
@@ -175,6 +181,9 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
         `${nivel.etiquetaAvance} inválido: "${avanceTxt}". En ${nivel.nivel} va de 1 a ${nivel.totalAvance}.`,
       );
     if (!plantel) return error("Falta la sede.");
+    const sedeCanonica = e.sedes.find((x) => igual(x, plantel));
+    if (!sedeCanonica)
+      return error(`Sede desconocida: "${plantel}". Las que existen: ${e.sedes.join(", ")}.`);
 
     const repetida = vistas.get(matricula);
     if (repetida)
@@ -192,7 +201,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       programa: programaCanonico,
       avance,
       ...(grupo ? { grupo } : {}),
-      plantel,
+      plantel: sedeCanonica,
       dia: existente?.dia,
     };
 
