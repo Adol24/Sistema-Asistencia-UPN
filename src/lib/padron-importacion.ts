@@ -27,7 +27,6 @@ import type { NivelAcademico } from "@/dominio/catalogos";
 export const COLUMNAS_PADRON = [
   "matricula",
   "nombre",
-  "nivel",
   "programa",
   "avance",
   "grupo",
@@ -45,6 +44,33 @@ export const COLUMNAS_PADRON = [
 const SINONIMOS: Record<string, string[]> = {
   sede: ["plantel", "unidad", "subsede"],
 };
+
+/**
+ * Compara dos textos ignorando acentos, mayúsculas y espacios de más.
+ *
+ * El archivo lo teclean personas: «Maestria en educacion basica» y «Maestría en
+ * Educación Básica» son el mismo programa, y rechazar la fila por los acentos
+ * castigaría una diferencia que no significa nada.
+ */
+const igual = (a: string, b: string) =>
+  a.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toUpperCase() ===
+  b.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
+
+/**
+ * El número de un avance escrito como texto.
+ *
+ * El archivo trae «Semestre 1» o «Modulo 5», no un número suelto. La palabra que
+ * lo acompaña ya la sabe el catálogo —es la etiqueta del nivel— y repetirla en
+ * cada celda solo da ocasión de que no coincida.
+ */
+const soloNumero = (v: string | undefined) => (v ?? "").replace(/[^\d]/g, "").trim();
+
+/** Quita la palabra que precede a un valor: «Grupo A» -> «A». */
+const sinEtiqueta = (v: string | undefined, etiqueta: string) =>
+  (v ?? "")
+    .trim()
+    .replace(new RegExp(`^${etiqueta}\s*[:.-]?\s*`, "i"), "")
+    .trim();
 
 /** El nombre con el que la columna aparece en ESTE archivo, si aparece. */
 const columnaDe = (encabezado: string[], columna: string): string | undefined =>
@@ -94,11 +120,14 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     const error = (motivo: string): FilaPadron => ({ ...base, semaforo: "error", motivo });
 
     const matricula = (crudo["matricula"] ?? "").trim();
-    const nombre = (crudo["nombre"] ?? "").trim();
-    const nivelTxt = (crudo["nivel"] ?? "").trim();
+    // El archivo llega con el nombre tal como lo escribió Servicios Escolares
+    // —«Matias Santos Ramos»— y la base lo quiere en mayúsculas. Se convierte
+    // aquí en vez de rechazar la fila: es una diferencia de forma, no un dato
+    // que falte, y devolverle a alguien dos mil filas por eso sería absurdo.
+    const nombre = (crudo["nombre"] ?? "").trim().toUpperCase();
     const programa = (crudo["programa"] ?? "").trim();
-    const avanceTxt = (crudo["avance"] ?? "").trim();
-    const grupo = (crudo["grupo"] ?? "").trim().toUpperCase();
+    const avanceTxt = soloNumero(crudo["avance"]);
+    const grupo = sinEtiqueta(crudo["grupo"], "grupo").toUpperCase();
     const plantel = (crudo[columnaDe(encabezado, "sede") ?? "sede"] ?? "").trim();
 
     if (!/^\d{11}$/.test(matricula))
@@ -106,21 +135,32 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
         `Matrícula con formato inválido: "${crudo["matricula"]}". Se esperan 11 dígitos.`,
       );
     if (!nombre) return error("Falta el nombre.");
-    if (nombre !== nombre.toUpperCase())
-      return error(`El nombre debe ir en MAYÚSCULAS: "${nombre}".`);
     if (nombre.trim().split(/\s+/).length < 2)
       return error(`El nombre viene incompleto: "${nombre}". Se espera el nombre completo.`);
 
     // El catálogo académico es la única fuente de niveles y programas válidos.
     // Sin esta comprobación, un archivo con un programa mal escrito llega hasta
     // el reporte por programa y lo parte en dos.
-    const nivel = e.catalogo.find((n) => n.nivel === nivelTxt);
+    /*
+     * El nivel se deduce del programa, no se pide aparte.
+     *
+     * En el archivo real ambos van en la misma celda: «Licenciatura en
+     * Administración Educativa». Pedir una columna `nivel` obligaba a Servicios
+     * Escolares a añadir un dato que ya está ahí, y a mantener dos celdas que
+     * pueden contradecirse. Si viene la columna se acepta, pero manda el
+     * catálogo: es él quien sabe a qué nivel pertenece cada programa.
+     */
+    const nivel = e.catalogo.find((n) => n.programas.some((p) => igual(p, programa)));
     if (!nivel)
       return error(
-        `Nivel desconocido: "${nivelTxt}". El catálogo tiene ${e.catalogo.map((n) => n.nivel).join(", ")}.`,
+        `Programa desconocido: "${programa}". El catálogo tiene ${e.catalogo
+          .flatMap((n) => n.programas)
+          .join(", ")}.`,
       );
-    if (!nivel.programas.includes(programa))
-      return error(`"${programa}" no es un programa de ${nivel.nivel}.`);
+    // Se guarda el nombre del catálogo, no el del archivo: así una fila escrita
+    // «Maestria en educacion basica» no crea una segunda versión del programa en
+    // los reportes.
+    const programaCanonico = nivel.programas.find((p) => igual(p, programa))!;
     const avance = Number(avanceTxt);
     if (!/^\d+$/.test(avanceTxt) || avance < 1 || avance > nivel.totalAvance)
       return error(
@@ -141,7 +181,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       matricula,
       nombre,
       nivel: nivel.nivel,
-      programa,
+      programa: programaCanonico,
       avance,
       ...(grupo ? { grupo } : {}),
       plantel,
