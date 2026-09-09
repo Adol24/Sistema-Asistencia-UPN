@@ -93,9 +93,20 @@ function ConfirmarNombre() {
       setErrorIdentidad("Completa los dos datos.");
       return;
     }
+    /*
+     * Ambos datos salen del BORRADOR, que es donde `/alumno` deja lo que
+     * encontró para la matrícula tecleada. `participante` es otra cosa: la
+     * persona del contexto, que solo coincide con quien se está registrando por
+     * casualidad. Comparar contra ella hacía fallar la verificación aunque los
+     * datos fueran correctos, que es justo lo que reportó quien lo probó.
+     *
+     * La misma razón por la que `nombre` ya usaba `borrador.nombre ?? …`; al
+     * programa se le olvidó el borrador.
+     */
+    const programaReal = borrador.programa ?? participante.programa ?? "";
     const ok =
       coincidenNombres(nombresPila, nombre) &&
-      nombreConstancia(programa) === nombreConstancia(participante.programa ?? "");
+      nombreConstancia(programa) === nombreConstancia(programaReal);
     if (ok) {
       setErrorIdentidad("");
       setVerificado(true);
