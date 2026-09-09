@@ -332,6 +332,24 @@ export async function preregistrarAlumno(datos: {
   return data as { id: string; folio: string; dia: Dia };
 }
 
+/**
+ * ¿Este folio va con esta credencial?
+ *
+ * `fn_autenticar_portal` compara dentro de Postgres y devuelve el identificador
+ * del participante, o nulo. La comprobación no puede vivir en el navegador: ahí
+ * haría falta traerse antes al participante, que es justo lo que no se quiere
+ * entregar a quien todavía no ha demostrado ser su dueño.
+ */
+export async function autenticarPortal(folio: string, credencial: string) {
+  const sb = exigirBase();
+  const { data, error } = await sb.rpc("fn_autenticar_portal", {
+    p_folio: folio,
+    p_credencial: credencial,
+  });
+  if (error) throw error;
+  return (data as string | null) ?? null;
+}
+
 export async function estadoDelPortal(folio: string, credencial: string) {
   const sb = exigirBase();
   const { data, error } = await sb.rpc("fn_portal_estado", {

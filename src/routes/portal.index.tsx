@@ -10,6 +10,7 @@ import { getParticipante } from "@/mocks/participantes";
 import { simularLatencia } from "@/lib/formato";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { meta } from "@/lib/seo";
 
 export const Route = createFileRoute("/portal/")({
@@ -20,6 +21,9 @@ export const Route = createFileRoute("/portal/")({
     ),
   component: AccesoPortal,
 });
+
+/** Un único mensaje para folio inexistente y credencial que no corresponde. */
+const ERROR_ACCESO = "Ese folio y ese dato no coinciden. Revísalos y vuelve a intentar.";
 
 function AccesoPortal() {
   const navigate = useNavigate();
@@ -36,19 +40,43 @@ function AccesoPortal() {
       return;
     }
     setCargando(true);
-    await simularLatencia();
-    const p = getParticipante(folio.trim().toUpperCase());
-    setCargando(false);
-    if (!p) {
-      setError("No encontramos ese folio. Revisa que esté completo, por ejemplo PRE-00842.");
-      return;
+
+    /*
+     * La pareja folio-credencial la comprueba la base, no el navegador.
+     *
+     * Antes se traía al participante por folio y se comparaba aquí. Eso obliga a
+     * entregar primero los datos de alguien a quien todavía no se le ha pedido
+     * nada: con solo el folio ya se conocía su nombre y su correo. Ahora
+     * `fn_autenticar_portal` compara dentro de Postgres y solo responde si los
+     * dos casan.
+     *
+     * El mensaje de error es uno solo para los dos casos —folio inexistente y
+     * credencial que no corresponde— a propósito: distinguirlos convertiría esta
+     * pantalla en un buscador de folios válidos.
+     */
+    const credencial = verificacion.trim();
+    const clave = folio.trim().toUpperCase();
+    try {
+      if (hayBaseDeDatos) {
+        const { autenticarPortal } = await import("@/lib/datos");
+        const id = await autenticarPortal(clave, credencial);
+        setCargando(false);
+        if (!id) return setError(ERROR_ACCESO);
+      } else {
+        await simularLatencia();
+        const p = getParticipante(clave);
+        const v = credencial.toLowerCase();
+        const casa =
+          !!p && (v === (p.matricula ?? "").toLowerCase() || v === p.correo.toLowerCase());
+        setCargando(false);
+        if (!casa) return setError(ERROR_ACCESO);
+      }
+    } catch {
+      setCargando(false);
+      return setError("No pudimos comprobar tus datos. Inténtalo de nuevo en un momento.");
     }
-    const v = verificacion.trim().toLowerCase();
-    if (v !== (p.matricula ?? "").toLowerCase() && v !== p.correo.toLowerCase()) {
-      setError("Ese folio no coincide con la matrícula o el correo que capturaste.");
-      return;
-    }
-    setFolio(p.folio);
+
+    setFolio(clave);
     navigate({ to: "/portal/estado" });
   };
 
