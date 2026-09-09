@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarRange, Clock, Info, MapPin, User } from "lucide-react";
+import { CalendarRange, Clock, Info, Loader2, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { EstadoVacio } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { moneda } from "@/lib/formato";
+import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -22,11 +24,46 @@ export const Route = createFileRoute("/talleres")({
 
 function CatalogoTalleres() {
   const navigate = useNavigate();
-  const { setBorrador } = usePrototipo();
+  const { borrador, setBorrador } = usePrototipo();
   const { talleres: catalogo, configuracion } = useEstadoEvento();
   // Un taller inactivo deja de ofrecerse en el catálogo público.
   const talleres = catalogo.filter((t) => t.activo);
   const [seleccion, setSeleccion] = useState<string | null>(null);
+  const [registrando, setRegistrando] = useState(false);
+
+  /*
+   * Aquí se cierra el pre-registro: es el último paso donde se conocen los
+   * cuatro datos que la base necesita —matrícula, correo, celular y taller—.
+   *
+   * `fn_preregistrar_alumno` crea al participante y devuelve el folio de
+   * verdad. Antes no se creaba nada: el pre-registro vivía en memoria y las
+   * pantallas de pago y comprobante enseñaban el folio del participante de
+   * contexto, o sea el de otra persona.
+   */
+  const cerrarPreregistro = async (tallerId: string | undefined) => {
+    setRegistrando(true);
+    try {
+      if (hayBaseDeDatos) {
+        const { preregistrarAlumno } = await import("@/lib/datos");
+        const alta = await preregistrarAlumno({
+          matricula: borrador.matricula ?? "",
+          correo: borrador.correo ?? "",
+          celular: borrador.celular ?? "",
+          tallerId,
+        });
+        setBorrador({ tallerId, folio: alta.folio, dia: alta.dia });
+      } else {
+        setBorrador({ tallerId });
+      }
+      navigate({ to: "/pago" });
+    } catch (e) {
+      // El mensaje de la base es específico —matrícula fuera del padrón, taller
+      // sin cupo, correo con dominio equivocado— y ayuda más que uno genérico.
+      toast.error((e as Error)?.message || "No pudimos guardar tu pre-registro.");
+    } finally {
+      setRegistrando(false);
+    }
+  };
 
   return (
     <PantallaPublica
@@ -134,22 +171,18 @@ function CatalogoTalleres() {
         <Button
           variant="outline"
           className="h-12 text-base"
-          onClick={() => {
-            setBorrador({ tallerId: undefined });
-            navigate({ to: "/pago" });
-          }}
+          disabled={registrando}
+          onClick={() => void cerrarPreregistro(undefined)}
         >
           Continuar sin taller
         </Button>
         <Button
           className="h-12 text-base"
-          disabled={!seleccion}
-          onClick={() => {
-            setBorrador({ tallerId: seleccion ?? undefined });
-            navigate({ to: "/pago" });
-          }}
+          disabled={!seleccion || registrando}
+          onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
         >
-          Continuar con el taller elegido
+          {registrando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+          {registrando ? "Guardando…" : "Continuar con el taller elegido"}
         </Button>
       </div>
     </PantallaPublica>

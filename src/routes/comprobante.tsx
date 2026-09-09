@@ -30,6 +30,8 @@ function Comprobante() {
   const grupo = borrador.grupo ?? participante.grupo;
   const plantel = borrador.plantel ?? participante.plantel;
   const avance_ = avanceTexto(evento.catalogoAcademico, nivel, avance);
+  // El folio del pre-registro recién creado, no el del participante de contexto.
+  const folio = borrador.folio ?? participante.folio;
   const dia = infoDia(borrador.dia ?? participante.dia);
   const taller = getTaller(borrador.tallerId ?? participante.tallerId);
   const nombre = borrador.nombre ?? participante.nombre;
@@ -52,7 +54,7 @@ function Comprobante() {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Folio</dt>
-            <dd className="font-mono text-lg font-bold tabular-nums">{participante.folio}</dd>
+            <dd className="font-mono text-lg font-bold tabular-nums">{folio}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Perfil</dt>
@@ -87,7 +89,7 @@ function Comprobante() {
           </div>
         </dl>
         <div className="justify-self-center">
-          <CodigoQR valor={participante.folio} size={148} />
+          <CodigoQR valor={folio} size={148} />
           <p className="mt-2 text-center text-xs text-muted-foreground">Folio para ventanilla</p>
         </div>
       </div>

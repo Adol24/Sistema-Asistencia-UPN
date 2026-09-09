@@ -52,7 +52,9 @@ function Pago() {
   // Configuración y catálogo salen del contexto: lo que administración cambie se
   // ve aquí sin recargar.
   const { configuracion: evento, getTaller } = useEstadoEvento();
-  const folio = participante.folio;
+  // El folio del pre-registro recién creado. `participante.folio` es el del
+  // contexto —otra persona— y enseñarlo aquí era el fallo más visible del flujo.
+  const folio = borrador.folio ?? participante.folio;
   const taller = getTaller(borrador.tallerId ?? participante.tallerId);
   const [ampliada, setAmpliada] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);

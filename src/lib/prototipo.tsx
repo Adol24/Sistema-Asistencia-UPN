@@ -17,6 +17,10 @@ interface Borrador {
   dia?: 1 | 2 | 3 | undefined;
   tallerId?: string | undefined;
   nombreEnRevision?: boolean | undefined;
+  /** El folio que devuelve la base al crear el pre-registro. Antes no existía:
+   *  las pantallas de pago y comprobante enseñaban el del participante de
+   *  contexto, o sea el de otra persona. */
+  folio?: string | undefined;
 }
 
 interface Ctx {
