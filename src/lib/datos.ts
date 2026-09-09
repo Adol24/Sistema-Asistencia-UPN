@@ -260,9 +260,160 @@ export async function guardarConfiguracion(patch: Record<string, unknown>): Prom
   if (error) throw error;
 }
 
-export async function anotarEnBitacora(accion: string, detalle: string): Promise<void> {
-  if (!supabase) return;
-  await supabase.from("bitacora").insert({ accion, detalle });
+/**
+ * Deja constancia de una acción del personal.
+ *
+ * `usuario_id` sale de la sesión, no de un texto: la bitácora existe para poder
+ * responder «quién hizo esto», y un nombre escrito a mano no responde nada. El
+ * `usuario_texto` queda para lo que no hace una persona —el pre-registro en
+ * línea, un cierre automático—, que si no aparecería sin autor.
+ */
+export async function anotarEnBitacora(
+  accion: string,
+  detalle: string,
+  usuarioTexto?: string,
+): Promise<void> {
+  const sb = exigirBase();
+  const { data: sesion } = await sb.auth.getUser();
+  await sb.from("bitacora").insert({
+    accion,
+    detalle,
+    usuario_id: sesion.user?.id ?? null,
+    usuario_texto: sesion.user?.id ? null : (usuarioTexto ?? "Sistema"),
+  });
+}
+
+/** Da de alta o actualiza un taller. */
+export async function guardarTallerRemoto(t: {
+  id?: string | undefined;
+  /** `T01`, `T02`… La usa el personal para referirse a un taller de viva voz. */
+  clave?: string | undefined;
+  nombre: string;
+  descripcion: string;
+  ponente: string;
+  costo: number;
+  cupoTotal: number;
+  dias: number[];
+  horario: string;
+  lugar: string;
+  activo: boolean;
+}): Promise<void> {
+  const sb = exigirBase();
+  const fila = {
+    ...(t.clave ? { clave: t.clave } : {}),
+    nombre: t.nombre,
+    descripcion: t.descripcion,
+    ponente: t.ponente,
+    costo: t.costo,
+    cupo_total: t.cupoTotal,
+    horario: t.horario,
+    lugar: t.lugar,
+    activo: t.activo,
+  };
+  const { data, error } = t.id
+    ? await sb.from("talleres").update(fila).eq("id", t.id).select("id").single()
+    : await sb.from("talleres").insert(fila).select("id").single();
+  if (error) throw error;
+
+  // Los días viven en su propia tabla: se reemplazan enteros en vez de
+  // calcular la diferencia, que para tres filas no compensa.
+  const id = (data as { id: string }).id;
+  await sb.from("taller_dias").delete().eq("taller_id", id);
+  if (t.dias.length)
+    await sb.from("taller_dias").insert(t.dias.map((dia) => ({ taller_id: id, dia })));
+}
+
+/**
+ * Retira un taller.
+ *
+ * Se desactiva en vez de borrarse cuando ya tiene inscritos: borrarlo dejaría a
+ * esas personas apuntando a un taller inexistente, y la base lo impediría de
+ * todos modos por la llave foránea.
+ */
+export async function eliminarTallerRemoto(id: string): Promise<void> {
+  const sb = exigirBase();
+  const { count } = await sb
+    .from("participantes")
+    .select("id", { count: "exact", head: true })
+    .eq("taller_id", id);
+  if (count && count > 0) {
+    const { error } = await sb.from("talleres").update({ activo: false }).eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  await sb.from("taller_dias").delete().eq("taller_id", id);
+  const { error } = await sb.from("talleres").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Actualiza a una persona del personal.
+ *
+ * Solo modifica: el alta necesita antes una cuenta en Supabase Auth, y crearla
+ * exige la clave de servicio, que nunca debe llegar al navegador. Se hace desde
+ * el panel de Supabase y aquí se completan su nombre y su rol.
+ */
+export async function guardarUsuarioRemoto(u: {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: string;
+  activo: boolean;
+}): Promise<void> {
+  const sb = exigirBase();
+  const { error } = await sb
+    .from("usuarios_internos")
+    .update({ nombre: u.nombre, correo: u.correo, rol: u.rol, activo: u.activo })
+    .eq("id", u.id);
+  if (error) throw error;
+}
+
+/**
+ * Deshace la última revisión: devuelve la evidencia a pendiente.
+ *
+ * No borra la fila de `revisiones`. El esquema lo dice en sus propias palabras
+ * —«una revisión no se edita ni se borra: se agrega otra»— y tiene razón: el
+ * historial es lo que permite explicar por qué cambió una decisión. Además el
+ * disparador que aplica el estado solo actúa al insertar, así que borrar la fila
+ * dejaría la evidencia con la decisión puesta y sin nada que la explique.
+ *
+ * Queda un límite conocido: el rastro de que hubo un «deshacer» vive en la
+ * bitácora, no en `revisiones`. Anotarlo ahí necesitaría una columna nueva.
+ */
+export async function deshacerRevisionRemota(evidenciaId: string): Promise<void> {
+  const sb = exigirBase();
+  const { error } = await sb
+    .from("evidencias")
+    .update({ estado: "pendiente" })
+    .eq("id", evidenciaId);
+  if (error) throw error;
+}
+
+/** Dar de baja desactiva; nunca borra, o la bitácora pierde a su autor. */
+export async function desactivarUsuarioRemoto(id: string): Promise<void> {
+  const sb = exigirBase();
+  const { error } = await sb.from("usuarios_internos").update({ activo: false }).eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Anula una asistencia registrada por error.
+ *
+ * Se marca, no se borra: un registro que desaparece no deja ver que hubo una
+ * corrección, y eso es justo lo que alguien querría revisar después.
+ */
+export async function anularAsistenciaRemota(id: string, motivo: string): Promise<void> {
+  const sb = exigirBase();
+  const { data: sesion } = await sb.auth.getUser();
+  const { error } = await sb
+    .from("asistencias")
+    .update({
+      anulada_en: new Date().toISOString(),
+      anulada_por: sesion.user?.id ?? null,
+      anulacion_motivo: motivo,
+    })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 // =================================================== funciones del portal ===

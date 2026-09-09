@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
+import { rolHaciaBase } from "@/lib/roles";
 import { CONFIGURACION_VACIA, type ConfiguracionEvento } from "@/lib/configuracion";
 import type {
   AlumnoPadron,
@@ -503,6 +504,28 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
         registradoEn: new Date().toISOString(),
       }));
       setPagos((prev) => [...prev, ...nuevos]);
+      /*
+       * La carga masiva es la operación que más dinero mueve de una vez y era de
+       * las que no se guardaban: se aplicaba un archivo con cientos de pagos, la
+       * pantalla los daba por registrados y al recargar no quedaba ninguno.
+       *
+       * Se escriben uno por uno y no en bloque porque cada pago tiene que
+       * resolver su participante por folio, y porque una referencia duplicada
+       * debe rechazar esa fila sin tumbar el resto del lote.
+       */
+      nuevos.forEach((pago) =>
+        escribir(`el pago de ${pago.folio}`, (d) =>
+          d.guardarPago({
+            folio: pago.folio,
+            concepto: pago.concepto,
+            monto: pago.monto,
+            montoEsperado: pago.montoEsperado,
+            referencia: pago.referencia,
+            fechaDeposito: pago.fechaDeposito,
+            nota: pago.nota,
+          }),
+        ),
+      );
       return nuevos;
     },
     [contadorPagos],
@@ -546,6 +569,12 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       ]);
       return siguiente;
     });
+    /*
+     * La bitácora existe para poder responder «quién hizo esto». Vivía solo en
+     * memoria, así que la respuesta se perdía al recargar y el registro no
+     * servía para lo único que se le pide.
+     */
+    escribir("la bitácora", (d) => d.anotarEnBitacora(accion, detalle, usuario));
   }, []);
 
   const bitacora = useMemo<EntradaBitacora[]>(() => [...bitacoraSesion], [bitacoraSesion]);
@@ -568,6 +597,9 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     (id, motivo, usuario) => {
       const a = [...asistenciasBase, ...capturadas].find((x) => x.id === id);
       setAnuladas((prev) => ({ ...prev, [id]: motivo }));
+      // Se marca anulada, no se borra: un registro que desaparece no deja ver
+      // que hubo una corrección, que es justo lo que alguien querría revisar.
+      escribir("la anulación", (d) => d.anularAsistenciaRemota(id, motivo));
       registrarBitacora(
         "Anuló una asistencia",
         a
@@ -674,6 +706,12 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  /*
+   * Deshacer el último escaneo. Igual que `quitarAsistencia`, no toca la base a
+   * propósito: es el «me equivoqué» inmediato del capturista sobre lo que acaba
+   * de pasar por su pantalla, y esa fila puede seguir en la cola sin conexión.
+   * Anular algo ya guardado es otra operación, con motivo y autor.
+   */
   const deshacerUltimo = useCallback<Ctx["deshacerUltimo"]>(() => {
     const ultimo = historial[0];
     if (!ultimo) return undefined;
@@ -686,6 +724,15 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
     return ultimo;
   }, [historial]);
 
+  /*
+   * Deshacer una captura recién hecha. NO escribe en la base a propósito.
+   *
+   * Es el «me equivoqué» inmediato del capturista sobre algo que acaba de pasar
+   * por su pantalla, y en la base esa fila puede no existir todavía —la
+   * escritura va sin esperar— o haber quedado en la cola sin conexión. Anular un
+   * registro que sí está guardado es otra cosa y tiene su propia operación, con
+   * motivo y autor.
+   */
   const quitarAsistencia = useCallback<Ctx["quitarAsistencia"]>((id) => {
     setCapturadas((prev) => prev.filter((a) => a.id !== id));
     setEnCola((prev) => prev.filter((a) => a.id !== id));
@@ -751,6 +798,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       delete copia[id];
       return copia;
     });
+    escribir("el deshacer de la revisión", (d) => d.deshacerRevisionRemota(id));
     return id;
   }, [ordenRevision]);
 
@@ -784,6 +832,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       if (i === -1) return [...prev, t];
       return prev.map((x) => (x.id === t.id ? t : x));
     });
+    escribir("el taller", (d) => d.guardarTallerRemoto(t));
   }, []);
 
   /**
@@ -822,6 +871,7 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
 
   const eliminarTaller = useCallback<Ctx["eliminarTaller"]>((id) => {
     setTalleresBase((prev) => prev.filter((t) => t.id !== id));
+    escribir("el retiro del taller", (d) => d.eliminarTallerRemoto(id));
   }, []);
 
   // ------------------------------------------------------------ usuarios ---
@@ -831,10 +881,14 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
       if (i === -1) return [...prev, u];
       return prev.map((x) => (x.id === u.id ? u : x));
     });
+    escribir("el usuario", (d) => d.guardarUsuarioRemoto({ ...u, rol: rolHaciaBase(u.rol) }));
   }, []);
 
   const eliminarUsuario = useCallback<Ctx["eliminarUsuario"]>((id) => {
     setUsuarios((prev) => prev.filter((u) => u.id !== id));
+    // Desactiva, no borra: sin la fila, cada entrada de bitácora que esa persona
+    // firmó se quedaría sin autor.
+    escribir("la baja del usuario", (d) => d.desactivarUsuarioRemoto(id));
   }, []);
 
   // ------------------------------------------------------------- soporte ---
@@ -850,6 +904,11 @@ export function EstadoEventoProvider({ children }: { children: ReactNode }) {
         canal: "ventanilla",
         creadoEn: fechaHora(),
       };
+      /*
+       * El caso se muestra ya para que soporte lo vea, pero se GUARDA al crear
+       * el participante, en `/talleres`: `casos_soporte.participante_id` es
+       * obligatorio y aquí esa persona todavía no existe en la base.
+       */
       setCasos((prev) => [caso, ...prev]);
       registrarBitacora(
         "Abrió un caso de nombre",

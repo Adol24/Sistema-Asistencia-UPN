@@ -52,6 +52,11 @@ function CatalogoTalleres() {
           tallerId,
         });
         setBorrador({ tallerId, folio: alta.folio, dia: alta.dia });
+        // Ahora sí existe a quién colgarle la corrección de nombre.
+        if (borrador.nombreCorrecto)
+          await import("@/lib/datos").then((d) =>
+            d.abrirCasoNombreRemoto(alta.id, borrador.nombreCorrecto!),
+          );
       } else {
         setBorrador({ tallerId });
       }

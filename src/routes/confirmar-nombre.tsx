@@ -330,9 +330,16 @@ function ConfirmarNombre() {
               return setErrorCorreccion("Escribe tu nombre completo, con apellidos.");
             if (limpio === nombre)
               return setErrorCorreccion("Ese es el nombre que ya tenemos. ¿Seguro que está mal?");
+            // El caso se registra en la lista para que soporte lo vea de
+            // inmediato, pero solo se guarda al crear el participante: la tabla
+            // exige a quién pertenece y aquí todavía no existe.
             abrirCasoNombre({ folio, nombre, nombreCorrecto: limpio });
           }
-          setBorrador({ nombre, nombreEnRevision: opcion === "incorrecto" });
+          setBorrador({
+            nombre,
+            nombreEnRevision: opcion === "incorrecto",
+            ...(opcion === "incorrecto" ? { nombreCorrecto: correccion.trim().toUpperCase() } : {}),
+          });
           navigate({ to: "/completar-datos" });
         }}
       >

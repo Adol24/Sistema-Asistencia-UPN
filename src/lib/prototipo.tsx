@@ -17,6 +17,15 @@ interface Borrador {
   dia?: 1 | 2 | 3 | undefined;
   tallerId?: string | undefined;
   nombreEnRevision?: boolean | undefined;
+  /**
+   * El nombre corregido, si el alumno dijo que el suyo está mal.
+   *
+   * Viaja en el borrador porque `casos_soporte.participante_id` es obligatorio:
+   * el caso no puede abrirse en la pantalla de confirmación, donde el
+   * participante todavía no existe. Se abre al cerrar el pre-registro, que es
+   * cuando hay a quién colgárselo.
+   */
+  nombreCorrecto?: string | undefined;
   /** El folio que devuelve la base al crear el pre-registro. Antes no existía:
    *  las pantallas de pago y comprobante enseñaban el del participante de
    *  contexto, o sea el de otra persona. */
