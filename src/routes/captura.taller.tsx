@@ -55,10 +55,10 @@ function ModoTaller() {
     );
   }, [inscritos, q]);
 
-  const marcar = (folio: string) => {
+  const marcar = async (folio: string) => {
     // Reutiliza el mismo motor del escáner: pase de lista y escaneo aplican las
     // mismas reglas de negocio, solo cambia cómo se dispara.
-    const r = escanear(folio);
+    const r = await escanear(folio);
     retroalimentar(r.color);
   };
 
@@ -148,7 +148,7 @@ function ModoTaller() {
               return (
                 <li key={p.folio}>
                   <button
-                    onClick={() => (listo ? desmarcar(p.folio) : marcar(p.folio))}
+                    onClick={() => (listo ? desmarcar(p.folio) : void marcar(p.folio))}
                     aria-pressed={listo}
                     title={listo ? "Tocar para desmarcar" : "Tocar para marcar asistencia"}
                     className={cn(

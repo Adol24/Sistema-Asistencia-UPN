@@ -187,10 +187,21 @@ interface Ctx {
   setSesion: (s: Partial<SesionCaptura>) => void;
   historial: EscaneoHistorial[];
   /** Evalúa y, si procede, registra. Es síncrono: en la puerta no se espera. */
+  /**
+   * Evalúa un escaneo y lo registra si procede.
+   *
+   * Es asíncrona porque, con conexión, quien decide es la base: el motor local
+   * solo ve lo que este teléfono tiene cargado, y en la puerta eso significa que
+   * un folio escaneado hace diez segundos en OTRO punto le sale verde. Ese es el
+   * error caro —dejar pasar dos veces—, y ninguna cantidad de rapidez lo
+   * compensa.
+   *
+   * Sin conexión decide el motor local, que es para lo que existe.
+   */
   escanear: (
     entrada: string,
     opciones?: { autorizado?: boolean; nota?: string; autorizadoPor?: string },
-  ) => ResultadoEscaneo;
+  ) => Promise<ResultadoEscaneo>;
   deshacerUltimo: () => EscaneoHistorial | undefined;
   /** Cierra el día: salida automática a quien entró y no salió. */
   ejecutarCierreAutomatico: (dia: Dia) => number;
@@ -469,7 +480,35 @@ export function EstadoEventoProvider({
   // Arranca en la hora pico de acceso del día 1.
   const [reloj, setRelojState] = useState<RelojEvento>({ dia: 1, minutos: 8 * 60 + 30 });
 
+  /*
+   * Si hay conexión de verdad, no si alguien pulsó un botón.
+   *
+   * Era un interruptor manual para poder enseñar el modo sin red. Eso servía
+   * para revisar pantallas y no sirve en la puerta: el capturista no va a
+   * pulsarlo cuando se le caiga el wifi, y el sistema seguiría creyendo que
+   * puede preguntarle a la base.
+   *
+   * `navigator.onLine` no es infalible —dice que hay red aunque no llegue a
+   * ningún sitio—, pero acierta en el caso que importa: el wifi que se cae. Lo
+   * que no acierta lo cubre el `catch` del escaneo, que ante un fallo de red
+   * sigue con el motor local.
+   *
+   * El interruptor manual se conserva para poder probar el modo sin red sin
+   * tener que desconectar el aparato.
+   */
   const [enLinea, setEnLinea] = useState(true);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const sincronizar = () => setEnLinea(navigator.onLine);
+    sincronizar();
+    window.addEventListener("online", sincronizar);
+    window.addEventListener("offline", sincronizar);
+    return () => {
+      window.removeEventListener("online", sincronizar);
+      window.removeEventListener("offline", sincronizar);
+    };
+  }, []);
   const [sesion, setSesionState] = useState<SesionCaptura>({
     dia: 1,
     modo: "entrada",
@@ -647,11 +686,11 @@ export function EstadoEventoProvider({
   );
 
   const escanear = useCallback<Ctx["escanear"]>(
-    (entrada, opciones) => {
+    async (entrada, opciones) => {
       const ahora = Date.now();
       // Lo que ya está en cola también cuenta para no duplicar registros.
       const conocidas = [...asistencias, ...enCola];
-      const resultado = evaluarEscaneo({
+      let resultado = evaluarEscaneo({
         entrada,
         sesion,
         participantes,
@@ -660,6 +699,41 @@ export function EstadoEventoProvider({
         ahora,
         ...(opciones?.autorizado !== undefined ? { autorizado: opciones.autorizado } : {}),
       });
+
+      /*
+       * Con conexión, la base tiene la última palabra.
+       *
+       * El motor local acaba de decidir con lo que este teléfono conoce, y eso
+       * basta para la mayoría de los casos —y es lo único que hay sin red—. Pero
+       * si alguien pasó por otro punto de captura hace un momento, aquí no
+       * consta: el duplicado saldría en verde.
+       *
+       * Una excepción autorizada no se reevalúa: el supervisor ya decidió, y
+       * dejar que la base la tumbe convertiría su autorización en un trámite sin
+       * efecto.
+       */
+      if (hayBaseDeDatos && enLinea && !opciones?.autorizado) {
+        try {
+          const { evaluarEscaneoRemoto } = await import("@/lib/datos");
+          const remoto = await evaluarEscaneoRemoto(entrada.trim(), sesion.dia, sesion.modo);
+          if (remoto)
+            resultado = {
+              ...resultado,
+              color: remoto.color,
+              titulo: remoto.titulo,
+              // La base llama «detalle» a lo que aquí es el motivo.
+              motivo: remoto.detalle,
+              autorizable: remoto.autorizable,
+              // Solo se registra si la base lo aprueba; si dice rojo, no se
+              // guarda nada aunque el motor local hubiera dicho que sí.
+              registra: remoto.color !== "rojo" && resultado.registra,
+            };
+        } catch {
+          // La red falló en mitad del escaneo. Se sigue con lo local, que es
+          // exactamente lo que se haría sin conexión: parar la fila por una
+          // consulta caída sería peor que registrar y conciliar después.
+        }
+      }
 
       const n = contadorEscaneos + 1;
       setContadorEscaneos(n);

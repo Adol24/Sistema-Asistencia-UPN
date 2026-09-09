@@ -47,10 +47,18 @@ function PantallaEscaneo() {
 
   const escaneosSesion = historial.length;
 
-  // Sin latencia simulada a propósito: en la puerta la respuesta es inmediata.
-  const disparar = (valor: string, autorizado = false, notaAutorizacion?: string) => {
+  /*
+   * Espera a la base cuando hay conexión.
+   *
+   * Antes respondía al instante con lo que este teléfono conocía. Es más rápido
+   * y a veces está mal: un folio escaneado hace un momento en otro punto salía
+   * verde. En una puerta, dejar pasar dos veces cuesta más que un cuarto de
+   * segundo. Sin conexión sigue siendo instantáneo, porque decide el motor
+   * local.
+   */
+  const disparar = async (valor: string, autorizado = false, notaAutorizacion?: string) => {
     if (!valor.trim()) return;
-    const r = escanear(valor, {
+    const r = await escanear(valor, {
       autorizado,
       ...(notaAutorizacion ? { nota: notaAutorizacion, autorizadoPor: sesion.capturista } : {}),
     });
@@ -133,7 +141,7 @@ function PantallaEscaneo() {
         className="mt-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          disparar(entrada);
+          void disparar(entrada);
         }}
       >
         <Input
@@ -162,7 +170,7 @@ function PantallaEscaneo() {
           {casos.map((c) => (
             <button
               key={`${c.color}-${c.titulo}`}
-              onClick={() => disparar(c.p.folio)}
+              onClick={() => void disparar(c.p.folio)}
               className="flex min-h-12 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-left text-xs hover:bg-muted"
             >
               <span className="min-w-0">
@@ -210,7 +218,7 @@ function PantallaEscaneo() {
                 const texto = nota.trim();
                 setAutorizando(null);
                 setNota("");
-                disparar(folio, true, texto);
+                void disparar(folio, true, texto);
               }}
             >
               Autorizar y registrar
