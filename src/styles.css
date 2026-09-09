@@ -284,6 +284,21 @@
      * en una fila.
      */
     -webkit-text-size-adjust: 100%;
+
+    /*
+     * Se reserva el sitio de la barra de desplazamiento aunque no haga falta.
+     *
+     * Sin esto, una pantalla que cabe entera no tiene barra y otra que no cabe
+     * sí, y entre las dos el ancho útil cambia unos quince píxeles: el contenido
+     * centrado salta al pasar de una a otra. En los paneles, donde se navega
+     * entre pestañas todo el rato, parece que cada pantalla tuviera un ancho
+     * distinto.
+     *
+     * `both-edges` mantiene además el contenido centrado de verdad, reservando
+     * el mismo espacio a los dos lados; con solo `stable` la reserva va únicamente
+     * del lado de la barra y el centro queda ligeramente corrido.
+     */
+    scrollbar-gutter: stable both-edges;
   }
 
   body {
