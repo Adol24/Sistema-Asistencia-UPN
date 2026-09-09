@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { buscarEnPadron } from "@/mocks/alumnosPadron";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
@@ -40,30 +41,37 @@ function IdentificacionAlumno() {
     setError("");
     setNoEncontrada(false);
     setCargando(true);
-    await simularLatencia();
-    const alumno = buscarEnPadron(matricula);
+
+    /*
+     * Este paso solo pregunta si la matrícula existe. Nada más.
+     *
+     * Antes traía aquí el expediente completo —nombre, programa, plantel— y lo
+     * dejaba en el borrador, así que el nombre estaba en el navegador ANTES de
+     * comprobar la identidad. La pantalla siguiente lo tapaba, pero taparlo no
+     * es lo mismo que no tenerlo: cualquiera podía leerlo en la memoria de la
+     * página. Ahora el expediente lo entrega el servidor solo después del reto,
+     * en `/confirmar-nombre`.
+     */
+    let existe: boolean;
+    try {
+      if (hayBaseDeDatos) {
+        const { existeEnPadronRemoto } = await import("@/lib/datos");
+        existe = (await existeEnPadronRemoto(matricula)).existe;
+      } else {
+        await simularLatencia();
+        existe = !!buscarEnPadron(matricula);
+      }
+    } catch {
+      setCargando(false);
+      return setError("No pudimos consultar el padrón. Inténtalo de nuevo en un momento.");
+    }
     setCargando(false);
 
-    if (!alumno) return setNoEncontrada(true);
+    if (!existe) return setNoEncontrada(true);
 
-    setBorrador({
-      perfil: "alumno",
-      matricula: alumno.matricula,
-      nombre: alumno.nombre,
-      // Lo académico viaja tal como lo entregó Servicios Escolares: el alumno no
-      // lo captura, solo lo ve.
-      nivel: alumno.nivel,
-      programa: alumno.programa,
-      avance: alumno.avance,
-      grupo: alumno.grupo,
-      plantel: alumno.plantel,
-      // Si la organización todavía no repartió su día, se le asigna ahora el que
-      // va más vacío. Nadie debería quedarse sin pre-registrarse porque una
-      // tarea interna esté pendiente.
-      dia: diaDe(alumno.matricula),
-    });
-    // El nombre se confirma en la pantalla siguiente: ahí el alumno ve a quién
-    // corresponde la matrícula que escribió y puede corregir si se equivocó.
+    setBorrador({ perfil: "alumno", matricula });
+    // La identidad se comprueba en la pantalla siguiente. Solo si se supera, el
+    // servidor devuelve a quién corresponde esta matrícula.
     navigate({ to: "/confirmar-nombre" });
   };
 

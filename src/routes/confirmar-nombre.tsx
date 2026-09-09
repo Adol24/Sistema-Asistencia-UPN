@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Info, MessageCircle, ShieldCheck } from "lucide-react";
+import { Info, Loader2, MessageCircle, ShieldCheck } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
+import { buscarEnPadron } from "@/mocks/alumnosPadron";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { nombreConstancia } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
@@ -46,7 +48,10 @@ export const Route = createFileRoute("/confirmar-nombre")({
 function ConfirmarNombre() {
   const navigate = useNavigate();
   const { borrador, participante, setBorrador } = usePrototipo();
-  const { abrirCasoNombre, configuracion: evento } = useEstadoEvento();
+  const { abrirCasoNombre, configuracion: evento, diaDe } = useEstadoEvento();
+  // La matrícula es lo único que `/alumno` deja: el resto lo entrega el servidor
+  // cuando se supera el reto.
+  const matricula = borrador.matricula ?? participante.matricula ?? "";
   const nombre = borrador.nombre ?? participante.nombre;
   const folio = participante.folio;
   const [opcion, setOpcion] = useState<"correcto" | "incorrecto" | null>(null);
@@ -77,6 +82,7 @@ function ConfirmarNombre() {
   const [programa, setPrograma] = useState("");
   const [errorIdentidad, setErrorIdentidad] = useState("");
   const [intentos, setIntentos] = useState(0);
+  const [comprobando, setComprobando] = useState(false);
   const bloqueado = intentos >= INTENTOS;
 
   const programas = useMemo(
@@ -88,25 +94,67 @@ function ConfirmarNombre() {
     "Hola, no puedo confirmar mis datos para el pre-registro.",
   )}`;
 
-  function verificar() {
+  /*
+   * El reto lo resuelve el servidor cuando hay base de datos.
+   *
+   * `fn_padron_confirmar` recibe la matrícula, los nombres y el programa, y
+   * devuelve el expediente solo si los tres casan; si no, devuelve nulo. Así la
+   * comprobación deja de ser una condición del navegador —que cualquiera puede
+   * saltarse llamando a la API— y el nombre no llega al cliente hasta que se
+   * gana el derecho a verlo. La función lleva además el límite por IP.
+   *
+   * Sin base configurada se comprueba en local contra el padrón simulado, que es
+   * lo único que hay, y se anota como tal.
+   */
+  async function verificar() {
     if (!nombresPila.trim() || !programa) {
       setErrorIdentidad("Completa los dos datos.");
       return;
     }
-    /*
-     * Ambos datos salen del BORRADOR, que es donde `/alumno` deja lo que
-     * encontró para la matrícula tecleada. `participante` es otra cosa: la
-     * persona del contexto, que solo coincide con quien se está registrando por
-     * casualidad. Comparar contra ella hacía fallar la verificación aunque los
-     * datos fueran correctos, que es justo lo que reportó quien lo probó.
-     *
-     * La misma razón por la que `nombre` ya usaba `borrador.nombre ?? …`; al
-     * programa se le olvidó el borrador.
-     */
-    const programaReal = borrador.programa ?? participante.programa ?? "";
-    const ok =
-      coincidenNombres(nombresPila, nombre) &&
-      nombreConstancia(programa) === nombreConstancia(programaReal);
+    setComprobando(true);
+    let ok = false;
+    try {
+      if (hayBaseDeDatos) {
+        const { confirmarEnPadronRemoto } = await import("@/lib/datos");
+        const ficha = await confirmarEnPadronRemoto(matricula, nombresPila, programa);
+        if (ficha) {
+          ok = true;
+          // El expediente llega ahora, no antes. Se guarda para los pasos
+          // siguientes del pre-registro.
+          setBorrador({
+            nombre: ficha.nombre,
+            nivel: ficha.nivel,
+            programa: ficha.programa,
+            avance: ficha.avance,
+            grupo: ficha.grupo ?? undefined,
+            plantel: ficha.plantel,
+            dia: diaDe(matricula),
+          });
+        }
+      } else {
+        const alumno = buscarEnPadron(matricula);
+        ok =
+          !!alumno &&
+          coincidenNombres(nombresPila, alumno.nombre) &&
+          nombreConstancia(programa) === nombreConstancia(alumno.programa);
+        if (ok && alumno)
+          setBorrador({
+            nombre: alumno.nombre,
+            nivel: alumno.nivel,
+            programa: alumno.programa,
+            avance: alumno.avance,
+            grupo: alumno.grupo,
+            plantel: alumno.plantel,
+            dia: diaDe(matricula),
+          });
+      }
+    } catch {
+      setComprobando(false);
+      setErrorIdentidad("No pudimos comprobar tus datos. Inténtalo de nuevo en un momento.");
+      return;
+    }
+    setComprobando(false);
+
     if (ok) {
       setErrorIdentidad("");
       setVerificado(true);
@@ -192,8 +240,13 @@ function ConfirmarNombre() {
               <MessageCircle className="size-4" aria-hidden /> Escribir a soporte
             </a>
           ) : (
-            <Button className="mt-5 h-12 w-full text-base" onClick={verificar}>
-              Continuar
+            <Button
+              className="mt-5 h-12 w-full text-base"
+              disabled={comprobando}
+              onClick={() => void verificar()}
+            >
+              {comprobando ? <Loader2 className="size-5 animate-spin" aria-hidden /> : null}
+              {comprobando ? "Comprobando…" : "Continuar"}
             </Button>
           )}
         </div>
