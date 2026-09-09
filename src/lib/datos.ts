@@ -100,10 +100,22 @@ export async function cargarTodo(): Promise<Instantanea | null> {
   const lugarPorDia = (d: Dia) =>
     configuracion.dias.find((x) => x.dia === d)?.lugar ?? configuracion.dias[0]!.lugar;
 
-  // Lo del personal solo llega si quien pregunta tiene permiso: las políticas
-  // devuelven cero filas en vez de un error, así que un participante anónimo
-  // recibe listas vacías y las pantallas internas simplemente no tienen qué
-  // mostrar. Es el comportamiento correcto, no un fallo que ocultar.
+  /*
+   * Lo del personal solo llega si quien pregunta tiene permiso.
+   *
+   * Aquí decía que las políticas devuelven cero filas en vez de un error, y no
+   * es verdad: sin permiso de SELECT sobre la tabla, PostgREST responde 401
+   * antes de que ninguna política se evalúe. Comprobado contra el proyecto real
+   * con la clave publicable: las seis tablas del personal dan 401.
+   *
+   * La diferencia importaba mucho más de lo que parecía. Un solo error tumbaba
+   * la carga entera, así que un visitante anónimo se quedaba SIN la
+   * configuración del evento —que sí puede leer— y las pantallas públicas salían
+   * sin nombre ni fechas.
+   *
+   * Ahora se piden aparte y su fallo no arrastra al resto: quien no tiene
+   * permiso recibe listas vacías, que es lo que ya se decía que pasaba.
+   */
   const [participantes, padron, asistencias, evidencias, usuarios, casos] = await Promise.all([
     sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
     sb
@@ -134,8 +146,11 @@ export async function cargarTodo(): Promise<Instantanea | null> {
       .order("creado_en", { ascending: false }),
   ]);
 
-  const errorDatos = participantes.error ?? padron.error ?? asistencias.error ?? evidencias.error;
-  if (errorDatos) throw errorDatos;
+  // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
+  // público ya se cargó arriba. Solo lo público es imprescindible.
+  const sinPermiso = participantes.error ?? padron.error ?? asistencias.error ?? evidencias.error;
+  if (sinPermiso && import.meta.env.DEV)
+    console.info("Sin permiso para las tablas del personal; se cargan vacías.", sinPermiso.message);
 
   return {
     configuracion,
