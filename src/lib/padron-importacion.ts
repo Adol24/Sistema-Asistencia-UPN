@@ -65,11 +65,19 @@ const igual = (a: string, b: string) =>
  */
 const soloNumero = (v: string | undefined) => (v ?? "").replace(/[^\d]/g, "").trim();
 
-/** Quita la palabra que precede a un valor: «Grupo A» -> «A». */
+/**
+ * Quita la palabra que precede a un valor: «Grupo A» -> «A».
+ *
+ * La expresión se arma con `String.raw` porque dentro de una plantilla normal
+ * `\s` se convierte en una simple «s» antes de llegar al constructor, y la
+ * expresión deja de ser la que está escrita. Funcionaba por casualidad —el
+ * `trim()` final se comía el espacio que `\s` debía absorber— hasta que un valor
+ * viniera como «Grupo: A».
+ */
 const sinEtiqueta = (v: string | undefined, etiqueta: string) =>
   (v ?? "")
     .trim()
-    .replace(new RegExp(`^${etiqueta}\s*[:.-]?\s*`, "i"), "")
+    .replace(new RegExp(String.raw`^${etiqueta}\s*[:.\-]?\s*`, "i"), "")
     .trim();
 
 /** El nombre con el que la columna aparece en ESTE archivo, si aparece. */
