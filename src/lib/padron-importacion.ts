@@ -31,8 +31,24 @@ export const COLUMNAS_PADRON = [
   "programa",
   "avance",
   "grupo",
-  "plantel",
+  "sede",
 ] as const;
+
+/**
+ * Nombres alternativos que puede traer una columna.
+ *
+ * El archivo lo genera Servicios Escolares, no este sistema, y su encabezado no
+ * se puede imponer. La columna de la sede llegó llamándose «plantel» en el
+ * prototipo y «sede» en el uso real; aceptar los dos evita que un archivo
+ * correcto se rechace entero por una palabra del encabezado.
+ */
+const SINONIMOS: Record<string, string[]> = {
+  sede: ["plantel", "unidad", "subsede"],
+};
+
+/** El nombre con el que la columna aparece en ESTE archivo, si aparece. */
+const columnaDe = (encabezado: string[], columna: string): string | undefined =>
+  [columna, ...(SINONIMOS[columna] ?? [])].find((n) => encabezado.includes(n));
 
 export type SemaforoPadron = "listo" | "advertencia" | "error";
 
@@ -59,7 +75,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
   if (lineas.length < 2)
     throw new Error("El archivo no tiene filas de datos debajo del encabezado.");
   const encabezado = partirLinea(lineas[0]!).map((h) => h.toLowerCase());
-  const faltantes = COLUMNAS_PADRON.filter((c) => !encabezado.includes(c));
+  const faltantes = COLUMNAS_PADRON.filter((c) => !columnaDe(encabezado, c));
   if (faltantes.length)
     throw new Error(`Al archivo le faltan estas columnas: ${faltantes.join(", ")}.`);
 
@@ -83,7 +99,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     const programa = (crudo["programa"] ?? "").trim();
     const avanceTxt = (crudo["avance"] ?? "").trim();
     const grupo = (crudo["grupo"] ?? "").trim().toUpperCase();
-    const plantel = (crudo["plantel"] ?? "").trim();
+    const plantel = (crudo[columnaDe(encabezado, "sede") ?? "sede"] ?? "").trim();
 
     if (!/^\d{11}$/.test(matricula))
       return error(
@@ -110,7 +126,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       return error(
         `${nivel.etiquetaAvance} inválido: "${avanceTxt}". En ${nivel.nivel} va de 1 a ${nivel.totalAvance}.`,
       );
-    if (!plantel) return error("Falta el plantel.");
+    if (!plantel) return error("Falta la sede.");
 
     const repetida = vistas.get(matricula);
     if (repetida)

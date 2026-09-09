@@ -445,7 +445,7 @@ function ImportacionPadron() {
                     "Programa",
                     "Avance",
                     "Grupo",
-                    "Plantel",
+                    "Sede",
                     "Día",
                     "Resultado",
                   ].map((h) => (
@@ -472,7 +472,7 @@ function ImportacionPadron() {
                       {f.crudo["grupo"] || "—"}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {f.crudo["plantel"]}
+                      {f.crudo["sede"] ?? f.crudo["plantel"]}
                     </td>
                     <td className="px-3 py-2">{f.alumno?.dia ?? "—"}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>

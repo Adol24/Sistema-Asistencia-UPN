@@ -73,7 +73,7 @@ function Reportes() {
           "programa",
           "avance",
           "grupo",
-          "plantel",
+          "sede",
           "dia_evento",
         ],
         filas: padron.map((a) => [
@@ -98,7 +98,7 @@ function Reportes() {
           "programa",
           "avance",
           "grupo",
-          "plantel",
+          "sede",
           "correo",
           "celular",
         ],
