@@ -755,3 +755,30 @@ export async function guardarPadronRemoto(
 
   return { guardados, rechazados };
 }
+
+/**
+ * Guarda el día que la organización asignó a un conjunto de alumnos.
+ *
+ * Esto faltaba por completo: repartir los días movía el estado de React y nada
+ * más, así que recargar la página deshacía el trabajo de repartir dos mil
+ * alumnos y nadie se enteraba hasta que un capturista veía a alguien sin día en
+ * la puerta.
+ *
+ * Va por lotes por la misma razón que la importación: una sola petición con dos
+ * mil matrículas en un `in (...)` es una URL de decenas de miles de caracteres,
+ * y hay intermediarios que la cortan.
+ */
+export async function asignarDiaRemoto(
+  matriculas: string[],
+  dia: number | null,
+  porLote = 200,
+): Promise<void> {
+  const sb = exigirBase();
+  for (let i = 0; i < matriculas.length; i += porLote) {
+    const { error } = await sb
+      .from("padron_alumnos")
+      .update({ dia })
+      .in("matricula", matriculas.slice(i, i + porLote));
+    if (error) throw new Error(error.message);
+  }
+}

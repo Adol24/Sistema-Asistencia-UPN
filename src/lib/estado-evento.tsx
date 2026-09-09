@@ -318,6 +318,16 @@ interface Ctx {
     matricula: string,
     dia: Dia,
   ) => { movido: boolean; tallerLiberado?: string | undefined };
+  /**
+   * Asigna un día a un conjunto entero: la sede de Huehuetla, un grupo, los que
+   * queden de un programa. Es como se reparte de verdad —una sede viaja junta,
+   * no se parte en tres días— y devuelve a cuántos movió y a cuántos les liberó
+   * el taller.
+   */
+  asignarDiaAVarios: (
+    matriculas: string[],
+    dia: Dia,
+  ) => { movidos: number; talleresLiberados: number };
 
   /**
    * Guarda el padrón en la base y dice qué aceptó y qué no.
@@ -1054,35 +1064,78 @@ export function EstadoEventoProvider({
    * vive aquí, en una sola función, para que la use tanto el reparto masivo
    * como el cambio de una persona.
    */
+  /**
+   * Asigna un día a un conjunto de alumnos, con todo lo que eso arrastra.
+   *
+   * Es la función de fondo: mover a alguien de día no es cambiar un número,
+   * cambia el lugar al que tiene que ir y puede dejarlo inscrito en un taller
+   * que ese día no se imparte. Esa cadena vive en un solo sitio para que la
+   * usen igual el cambio de una persona y el de una sede entera.
+   *
+   * Trabaja sobre el conjunto completo en una sola pasada en vez de llamarse a
+   * sí misma por alumno: con dos mil matrículas, una actualización de estado
+   * por cabeza recorre la lista dos mil veces y la pantalla se congela.
+   */
+  const asignarDiaAVarios = useCallback<Ctx["asignarDiaAVarios"]>(
+    (matriculas, dia) => {
+      const conjunto = new Set(matriculas);
+      if (!conjunto.size) return { movidos: 0, talleresLiberados: 0 };
+
+      setPadron((prev) => prev.map((a) => (conjunto.has(a.matricula) ? { ...a, dia } : a)));
+
+      const lugar = infoDia(dia).lugar;
+      const ajustes: Record<string, Partial<Participante>> = {};
+      let talleresLiberados = 0;
+      let movidos = 0;
+
+      for (const p of participantes) {
+        if (!p.matricula || !conjunto.has(p.matricula) || p.dia === dia) continue;
+        movidos += 1;
+        const ajuste: Partial<Participante> = { dia, lugar };
+        const t = talleres.find((x) => x.id === p.tallerId);
+        // Si su taller no se imparte el día nuevo, la inscripción se libera:
+        // mantenerla rompería `taller-vs-dia` y lo dejaría con un pago sin a
+        // qué corresponder.
+        if (t && !t.dias.includes(dia)) {
+          ajuste.tallerId = undefined;
+          ajuste.estadoPagoTaller = undefined;
+          ajuste.montoEsperadoTaller = undefined;
+          talleresLiberados += 1;
+          agregarAviso(
+            p.folio,
+            `Cambiaste al día ${dia} y el taller «${t.nombre}» no se imparte ese día, así que tu inscripción se liberó. Puedes elegir otro taller; si ya lo habías pagado, acude a Servicios Financieros.`,
+          );
+        }
+        ajustes[p.folio] = ajuste;
+      }
+
+      if (Object.keys(ajustes).length)
+        setAjustesParticipante((prev) => {
+          const siguiente = { ...prev };
+          for (const [folio, ajuste] of Object.entries(ajustes))
+            siguiente[folio] = { ...(siguiente[folio] ?? {}), ...ajuste };
+          return siguiente;
+        });
+
+      escribir(`el día de ${conjunto.size} alumnos`, (d) => d.asignarDiaRemoto([...conjunto], dia));
+      return { movidos, talleresLiberados };
+    },
+    [participantes, talleres, infoDia, agregarAviso],
+  );
+
   const reasignarDia = useCallback<Ctx["reasignarDia"]>(
     (matricula, dia) => {
       const p = participantes.find((x) => x.matricula === matricula);
-      setPadron((prev) => prev.map((a) => (a.matricula === matricula ? { ...a, dia } : a)));
-      if (!p || p.dia === dia) return { movido: !!p, tallerLiberado: undefined };
-
-      const ajuste: Partial<Participante> = { dia, lugar: infoDia(dia).lugar };
-      const t = talleres.find((x) => x.id === p.tallerId);
-      let tallerLiberado: string | undefined;
-      // Si su taller no se imparte el día nuevo, la inscripción se libera:
-      // mantenerla rompería `taller-vs-dia` y lo dejaría con un pago sin a qué
-      // corresponder.
-      if (t && !t.dias.includes(dia)) {
-        ajuste.tallerId = undefined;
-        ajuste.estadoPagoTaller = undefined;
-        ajuste.montoEsperadoTaller = undefined;
-        tallerLiberado = t.id;
-        agregarAviso(
-          p.folio,
-          `Cambiaste al día ${dia} y el taller «${t.nombre}» no se imparte ese día, así que tu inscripción se liberó. Puedes elegir otro taller; si ya lo habías pagado, acude a Servicios Financieros.`,
-        );
-      }
-      setAjustesParticipante((prev) => ({
-        ...prev,
-        [p.folio]: { ...(prev[p.folio] ?? {}), ...ajuste },
-      }));
-      return { movido: true, tallerLiberado };
+      const t = talleres.find((x) => x.id === p?.tallerId);
+      const r = asignarDiaAVarios([matricula], dia);
+      // `movido` dice si esa persona tenía registro de participante, no si el
+      // día cambió: sin registro no hay a quién avisar ni taller que liberar.
+      return {
+        movido: !!p,
+        tallerLiberado: r.talleresLiberados > 0 ? t?.id : undefined,
+      };
     },
-    [participantes, talleres, infoDia, agregarAviso],
+    [participantes, talleres, asignarDiaAVarios],
   );
 
   const diaDe = useCallback<Ctx["diaDe"]>(
@@ -1138,6 +1191,14 @@ export function EstadoEventoProvider({
           asignaciones.has(a.matricula) ? { ...a, dia: asignaciones.get(a.matricula)! } : a,
         ),
       );
+      escribir(`el reparto de ${asignaciones.size} días`, async (d) => {
+        // Se agrupa por día para no mandar una petición por alumno: son tres
+        // actualizaciones en vez de dos mil.
+        for (const dia of [1, 2, 3] as Dia[]) {
+          const suyas = [...asignaciones].filter(([, x]) => x === dia).map(([m]) => m);
+          if (suyas.length) await d.asignarDiaRemoto(suyas, dia);
+        }
+      });
       registrarBitacora(
         "Repartió los días del padrón",
         `${asignaciones.size} alumnos sin día quedaron repartidos: ${([1, 2, 3] as Dia[])
@@ -1280,6 +1341,7 @@ export function EstadoEventoProvider({
       sinDiaAsignado,
       repartirDiasPendientes,
       reasignarDia,
+      asignarDiaAVarios,
       bitacora,
       registrarBitacora,
       usuarioActual,
@@ -1340,6 +1402,7 @@ export function EstadoEventoProvider({
       sinDiaAsignado,
       repartirDiasPendientes,
       reasignarDia,
+      asignarDiaAVarios,
       bitacora,
       registrarBitacora,
       usuarioActual,

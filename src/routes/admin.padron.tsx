@@ -64,6 +64,7 @@ function ImportacionPadron() {
     sinDiaAsignado,
     repartirDiasPendientes,
     reasignarDia,
+    asignarDiaAVarios,
     infoDia,
     configuracion,
   } = useEstadoEvento();
@@ -140,6 +141,51 @@ function ImportacionPadron() {
       r.asignados === 0
         ? "Nadie estaba esperando día."
         : `${r.asignados} alumnos quedaron repartidos entre los tres días.`,
+    );
+  };
+
+  // ------------------------------------------------- filtro del reparto ---
+  // El día no se reparte alumno por alumno ni al azar: una sede viaja junta
+  // desde su municipio, así que partirla en tres días obligaría a tres viajes
+  // al mismo pueblo. Se filtra por sede, programa o grupo y se le da el día al
+  // conjunto entero.
+  const [fSede, setFSede] = useState("todas");
+  const [fPrograma, setFPrograma] = useState("todos");
+  const [fGrupo, setFGrupo] = useState("todos");
+  const [fDia, setFDia] = useState("sin-dia");
+
+  const grupos = useMemo(
+    () => [...new Set(padron.map((a) => a.grupo).filter((g): g is string => !!g))].sort(),
+    [padron],
+  );
+
+  const seleccion = useMemo(
+    () =>
+      padron.filter(
+        (a) =>
+          (fSede === "todas" || a.plantel === fSede) &&
+          (fPrograma === "todos" || a.programa === fPrograma) &&
+          (fGrupo === "todos" || a.grupo === fGrupo) &&
+          (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))),
+      ),
+    [padron, fSede, fPrograma, fGrupo, fDia],
+  );
+
+  const asignarASeleccion = (dia: 1 | 2 | 3) => {
+    const r = asignarDiaAVarios(
+      seleccion.map((a) => a.matricula),
+      dia,
+    );
+    registrarBitacora(
+      "Asignó día a un conjunto del padrón",
+      `${seleccion.length} alumnos al día ${dia}` +
+        ` (sede ${fSede}, programa ${fPrograma}, grupo ${fGrupo})`,
+    );
+    toast.success(
+      `${seleccion.length} alumnos quedaron en el día ${dia}.` +
+        (r.talleresLiberados
+          ? ` A ${r.talleresLiberados} se les liberó el taller porque no se imparte ese día.`
+          : ""),
     );
   };
 
@@ -268,6 +314,76 @@ function ImportacionPadron() {
             </div>
           </div>
 
+          <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
+            <h3 className="text-sm font-semibold">Asignar día a un conjunto</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Una sede viaja junta desde su municipio, así que se reparte por sede, por programa o
+              por grupo, no alumno por alumno. Filtra y dale el día al conjunto entero.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Campo etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
+                {sedes.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </Campo>
+              <Campo etiqueta="Programa" valor={fPrograma} alCambiar={setFPrograma} todos="todos">
+                {configuracion.catalogoAcademico.flatMap((n) =>
+                  n.programas.map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  )),
+                )}
+              </Campo>
+              <Campo etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
+                {grupos.map((x) => (
+                  <option key={x} value={x}>
+                    {x}
+                  </option>
+                ))}
+              </Campo>
+              <Campo etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
+                <option value="sin-dia">Sin día</option>
+                {([1, 2, 3] as const).map((d) => (
+                  <option key={d} value={String(d)}>
+                    Día {d}
+                  </option>
+                ))}
+              </Campo>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+              <p className="text-sm">
+                <span className="text-2xl font-extrabold tabular-nums">{seleccion.length}</span>{" "}
+                <span className="text-muted-foreground">
+                  {seleccion.length === 1 ? "alumno coincide" : "alumnos coinciden"}
+                </span>
+              </p>
+              <span className="flex flex-wrap gap-2 sm:ml-auto">
+                {([1, 2, 3] as const).map((d) => (
+                  <Button
+                    key={d}
+                    variant="outline"
+                    className="h-11"
+                    disabled={seleccion.length === 0}
+                    onClick={() => asignarASeleccion(d)}
+                  >
+                    <CalendarDays className="size-4" /> Al día {d} · {infoDia(d).lugar}
+                  </Button>
+                ))}
+              </span>
+            </div>
+            {seleccion.length > 0 && seleccion.some((a) => a.dia) ? (
+              <p className="mt-2 text-xs text-estado-discrepancia">
+                {seleccion.filter((a) => a.dia).length} de estos ya tenían día. Se les cambia, y a
+                quien tuviera un taller que no se imparte el día nuevo se le libera la inscripción.
+              </p>
+            ) : null}
+          </div>
+
           {pendientes.length > 0 ? (
             <>
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -284,7 +400,8 @@ function ImportacionPadron() {
                   )}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Cada uno cae en el día que va más vacío. También puedes asignarlos a mano abajo.
+                  Salida rápida: cada uno cae en el día que va más vacío, sin mirar de qué sede
+                  viene. Para repartir por sede usa el filtro de arriba.
                 </p>
               </div>
 
@@ -525,5 +642,40 @@ function ImportacionPadron() {
         </AlertDialogContent>
       </AlertDialog>
     </PantallaPanel>
+  );
+}
+
+/**
+ * Un select del filtro. Existe para no repetir cuatro veces la misma etiqueta,
+ * el mismo alto de toque y la misma opción «todos».
+ */
+function Campo({
+  etiqueta,
+  valor,
+  alCambiar,
+  todos,
+  children,
+}: {
+  etiqueta: string;
+  valor: string;
+  alCambiar: (v: string) => void;
+  /** El valor que significa «sin filtrar»; cambia de género según la etiqueta. */
+  todos: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {etiqueta}
+      </span>
+      <select
+        value={valor}
+        onChange={(e) => alCambiar(e.target.value)}
+        className="h-11 max-w-56 rounded-md border border-input bg-card px-2 text-sm"
+      >
+        <option value={todos}>{todos === "todas" ? "Todas" : "Todos"}</option>
+        {children}
+      </select>
+    </label>
   );
 }
