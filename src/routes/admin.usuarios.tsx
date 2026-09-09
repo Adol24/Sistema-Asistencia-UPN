@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { etiquetaRol } from "@/mocks/usuariosInternos";
+import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -211,7 +212,9 @@ function AdminUsuarios() {
           inicial={editando}
           existe={usuarios.some((u) => u.id === editando.id)}
           onCerrar={() => setEditando(null)}
-          onGuardar={(u) => {
+          onGuardar={(crudo) => {
+            // Se convierte al guardar, no al teclear: ver `CAMPO_MAYUSCULAS`.
+            const u = { ...crudo, nombre: crudo.nombre.trim().toUpperCase() };
             const editado = usuarios.some((x) => x.id === u.id);
             guardarUsuario(u);
             registrarBitacora(
@@ -294,8 +297,9 @@ function FormularioUsuario({
             <Input
               id="u-nombre"
               value={u.nombre}
-              onChange={(e) => setU({ ...u, nombre: e.target.value.toUpperCase() })}
-              className="mt-1 h-11"
+              onChange={(e) => setU({ ...u, nombre: e.target.value })}
+              {...CAMPO_MAYUSCULAS}
+              className="mt-1 h-11 uppercase"
               placeholder="SOFIA RAMIREZ BAÑUELOS"
             />
           </div>

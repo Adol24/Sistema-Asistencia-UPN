@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { retroalimentar } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
 import { meta } from "@/lib/seo";
@@ -138,10 +139,11 @@ function PantallaEscaneo() {
         <Input
           ref={campo}
           value={entrada}
-          onChange={(e) => setEntrada(e.target.value.toUpperCase())}
+          onChange={(e) => setEntrada(e.target.value)}
+          {...CAMPO_MAYUSCULAS}
           placeholder="Folio o matrícula"
           aria-label="Capturar folio o matrícula a mano"
-          className="h-14 font-mono text-base"
+          className="h-14 font-mono text-base uppercase"
         />
         <Button type="submit" className="h-14 px-6 text-base font-bold" disabled={!entrada.trim()}>
           <Keyboard className="size-5" /> Registrar

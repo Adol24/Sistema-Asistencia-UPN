@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getParticipante } from "@/mocks/participantes";
 import { simularLatencia } from "@/lib/formato";
+import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
 
@@ -71,9 +72,10 @@ function AccesoPortal() {
             <Input
               id="folio"
               value={folio}
-              onChange={(e) => setFolioInput(e.target.value.toUpperCase())}
+              onChange={(e) => setFolioInput(e.target.value)}
+              {...CAMPO_MAYUSCULAS}
               placeholder={participante.folio}
-              className="mt-1 h-12 text-base"
+              className="mt-1 h-12 text-base uppercase"
             />
           </div>
           <div>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
+import { CAMPO_MAYUSCULAS, LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
@@ -53,8 +53,7 @@ function RegistroExterno() {
   const set = (k: keyof Campos) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setC((prev) => ({
       ...prev,
-      [k]:
-        k === "celular" ? soloDigitos(e.target.value, LARGO.celular) : e.target.value.toUpperCase(),
+      [k]: k === "celular" ? soloDigitos(e.target.value, LARGO.celular) : e.target.value,
     }));
 
   const enviar = async () => {
@@ -83,7 +82,8 @@ function RegistroExterno() {
     if (Object.keys(e).length) return;
 
     setPorConfirmar({
-      nombre: [c.nombres, c.paterno, c.materno].map((x) => x.trim()).join(" "),
+      // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
+      nombre: [c.nombres, c.paterno, c.materno].map((x) => x.trim().toUpperCase()).join(" "),
       correo: c.correo.trim().toLowerCase(),
     });
   };
@@ -191,7 +191,8 @@ function RegistroExterno() {
                 value={c[k]}
                 onChange={set(k)}
                 placeholder={ph}
-                className="mt-1 h-12 text-base"
+                className={k === "correo" ? "mt-1 h-12 text-base" : "mt-1 h-12 text-base uppercase"}
+                {...(k === "correo" || k === "celular" ? {} : CAMPO_MAYUSCULAS)}
                 aria-invalid={!!errores[k]}
                 {...(k === "celular"
                   ? { inputMode: "numeric" as const, autoComplete: "tel", maxLength: LARGO.celular }

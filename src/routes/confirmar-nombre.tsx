@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { nombreConstancia } from "@/lib/elegibilidad";
@@ -130,14 +131,15 @@ function ConfirmarNombre() {
                 id="nombres"
                 value={nombresPila}
                 onChange={(e) => {
-                  setNombresPila(e.target.value.toUpperCase());
+                  setNombresPila(e.target.value);
                   setErrorIdentidad("");
                 }}
+                {...CAMPO_MAYUSCULAS}
                 placeholder="JUAN CARLOS"
                 autoFocus
                 autoComplete="off"
                 disabled={bloqueado}
-                className="mt-1.5 h-12 text-base"
+                className="mt-1.5 h-12 text-base uppercase"
                 aria-invalid={!!errorIdentidad}
               />
             </div>
@@ -242,11 +244,12 @@ function ConfirmarNombre() {
             id="correccion"
             value={correccion}
             onChange={(e) => {
-              setCorreccion(e.target.value.toUpperCase());
+              setCorreccion(e.target.value);
               setErrorCorreccion("");
             }}
             placeholder={nombre}
-            className="mt-1.5 h-12 text-base"
+            className="mt-1.5 h-12 text-base uppercase"
+            {...CAMPO_MAYUSCULAS}
             aria-invalid={!!errorCorreccion}
           />
           {errorCorreccion ? (
@@ -273,7 +276,8 @@ function ConfirmarNombre() {
         disabled={!opcion}
         onClick={() => {
           if (opcion === "incorrecto") {
-            const limpio = correccion.trim().replace(/\s+/g, " ");
+            // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
+            const limpio = correccion.trim().replace(/\s+/g, " ").toUpperCase();
             if (limpio.split(" ").length < 2)
               return setErrorCorreccion("Escribe tu nombre completo, con apellidos.");
             if (limpio === nombre)
