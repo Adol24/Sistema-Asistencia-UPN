@@ -112,7 +112,43 @@ function MiDia() {
     );
   }
 
-  const dia = infoDia(elegido ?? 1);
+  /*
+   * Puede que Servicios Escolares todavía no le haya repartido día.
+   *
+   * Antes esto no se distinguía: un `?? 1` anunciaba el DÍA 1 a quien no tenía
+   * ninguno, y con el catálogo de talleres acotado por día eso lo mandaba a
+   * elegir entre los talleres equivocados. Se dice la verdad, que es que su día
+   * se fija al confirmar el registro.
+   */
+  if (!elegido) {
+    return (
+      <PantallaPublica
+        titulo="Tu día y lugar"
+        descripcion="Servicios Escolares todavía no reparte tu día."
+        volverA="/confirmar-nombre"
+      >
+        <div className="rounded-lg border border-border bg-card p-5">
+          <p className="text-sm">
+            Tu día se fija al confirmar tu registro, y lo verás enseguida en tu comprobante y en tu
+            portal. Si eliges taller, se te asignará un día en el que ese taller se imparta.
+          </p>
+          <p className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+            <Clock className="size-5 text-primary" aria-hidden />
+            Registro de entrada {evento.registroEntrada}
+          </p>
+        </div>
+
+        <Button
+          className="mt-6 h-12 w-full text-base"
+          onClick={() => navigate({ to: "/talleres" })}
+        >
+          Continuar a talleres
+        </Button>
+      </PantallaPublica>
+    );
+  }
+
+  const dia = infoDia(elegido);
 
   return (
     <PantallaPublica

@@ -13,6 +13,7 @@ import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { nombreConstancia } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
+import type { Dia } from "@/dominio/tipos";
 
 /** Intentos antes de cerrar la pantalla y mandar a soporte. */
 const INTENTOS = 3;
@@ -47,7 +48,7 @@ export const Route = createFileRoute("/confirmar-nombre")({
 function ConfirmarNombre() {
   const navigate = useNavigate();
   const { borrador, participante, setBorrador } = usePrototipo();
-  const { abrirCasoNombre, configuracion: evento, diaDe } = useEstadoEvento();
+  const { abrirCasoNombre, configuracion: evento } = useEstadoEvento();
   // La matrícula es lo único que `/alumno` deja: el resto lo entrega el servidor
   // cuando se supera el reto.
   const matricula = borrador.matricula ?? participante?.matricula ?? "";
@@ -129,7 +130,23 @@ function ConfirmarNombre() {
           avance: ficha.avance,
           grupo: ficha.grupo ?? undefined,
           plantel: ficha.plantel,
-          dia: diaDe(matricula),
+          /*
+           * El día viene de la base, no se calcula aquí.
+           *
+           * Antes salía de `diaDe`, que busca en el padrón que tiene cargado
+           * esta pestaña. Pero quien se pre-registra es un ANÓNIMO, y las
+           * políticas le cierran `padron_alumnos`: esa lista está vacía, así
+           * que el cálculo del «día más vacío» corría sobre cero alumnos y
+           * devolvía siempre el DÍA 1.
+           *
+           * Con el catálogo de talleres acotado por día, eso significaba
+           * enseñarle a todo el mundo los talleres del día 1 y, si su día real
+           * era otro, el alta moría contra la llave foránea `(taller_id, dia)`.
+           *
+           * `undefined` cuando el padrón aún no le repartió día: es distinto de
+           * «día 1» y las pantallas lo tratan distinto.
+           */
+          dia: (ficha.dia as Dia | null) ?? undefined,
         });
       }
     } catch {

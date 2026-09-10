@@ -114,7 +114,7 @@ function CatalogoTalleres() {
       descripcion={
         dia
           ? `Estos son los talleres del día ${dia}. Puedes elegir máximo uno, con costo adicional que se paga por separado.`
-          : "Puedes elegir máximo un taller. Cada taller tiene costo adicional y se paga por separado."
+          : "Puedes elegir máximo uno. Como todavía no tienes día asignado, se te dará uno en el que se imparta el taller que elijas."
       }
     >
       {seleccion ? (

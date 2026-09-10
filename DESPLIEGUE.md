@@ -161,6 +161,12 @@ operación, pero conviene antes del evento.
 
 ## Lo que sigue pendiente
 
+- **Ejecutar `20260910200000_taller_compatible_con_el_dia.sql`.** Hasta que se
+  aplique, elegir taller falla: `fn_padron_confirmar` no devuelve el día, así
+  que el catálogo no se puede acotar y el alta choca con la llave foránea
+  `(taller_id, dia)`. La migración devuelve el día y hace que el alta no pueda
+  contradecirse con el taller elegido.
+
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
   enseña una barra de progreso, espera un momento simulado y responde «Tu
   evidencia quedó en revisión», pero la foto no sale del navegador: no hay

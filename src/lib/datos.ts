@@ -807,6 +807,12 @@ export async function confirmarEnPadronRemoto(
     etiqueta_avance: string;
     grupo: string | null;
     plantel: string;
+    /**
+     * El día que le repartió Servicios Escolares, o `null` si todavía no se ha
+     * repartido. Sin él, la pantalla no puede acotar el catálogo de talleres
+     * y el alta acababa chocando con la llave foránea `(taller_id, dia)`.
+     */
+    dia: number | null;
     ya_registrado: boolean;
   } | null;
 }
