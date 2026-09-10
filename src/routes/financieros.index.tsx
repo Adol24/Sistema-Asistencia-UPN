@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, QrCode, SearchX } from "lucide-react";
+import { Ban, Check, CheckCircle2, Info, QrCode, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { CamaraQR } from "@/components/camara-qr";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -48,11 +49,17 @@ function Ventanilla() {
     cargandoDatos,
     registrarPago,
     registrarBitacora,
+    pagos,
   } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [camara, setCamara] = useState(false);
+  /** Folio leído por la cámara, o null. Se guarda el folio y no la persona para
+   *  que la tarjeta se repinte sola al confirmar un pago desde ella. */
+  const [escaneado, setEscaneado] = useState<string | null>(null);
+  /** Lo que se leyó cuando no corresponde a ningún pre-registro. */
+  const [noEncontrado, setNoEncontrado] = useState<string | null>(null);
   /**
    * Conceptos ya confirmados en esta sesión, para que un doble clic no registre
    * dos pagos.
@@ -70,10 +77,29 @@ function Ventanilla() {
     ref.current?.focus();
   }, []);
 
+  // Al corriente es haber pagado TODO lo que debe. Quien tiene el evento pagado
+  // y el taller a medias sigue teniendo algo que cobrar, y contarlo entre los
+  // pagados es justo lo que haría que se le pasara.
+  const alCorriente = (p: Participante) => {
+    const e = estadoDe(p);
+    return e.evento === "pagado" && (!e.taller || e.taller === "pagado");
+  };
+
+  const escaneadoP = escaneado ? getParticipante(escaneado) : undefined;
+
+  /** Cuándo y por dónde se registró lo último que pagó, para poder decirlo. */
+  const ultimoPagoTexto = (folio: string) => {
+    const suyos = pagos.filter((g) => g.folio === folio);
+    const ultimo = suyos[suyos.length - 1];
+    if (!ultimo) return "";
+    const via = ultimo.origen === "ventanilla" ? "en ventanilla" : "por la carga del banco";
+    return `El último cobro se registró ${via} el ${ultimo.fechaDeposito}.`;
+  };
+
   const lista = useMemo(() => {
-    // Al corriente es haber pagado TODO lo que debe. Quien tiene el evento
-    // pagado y el taller a medias sigue teniendo algo que cobrar, y contarlo
-    // entre los pagados es justo lo que haría que se le pasara.
+    // La misma regla, repetida dentro del memo a propósito: la de arriba se
+    // crea en cada render, y meterla en las dependencias recalcularía la lista
+    // entera cada vez, que es justo lo que este memo evita.
     const alCorriente = (p: Participante) => {
       const e = estadoDe(p);
       return e.evento === "pagado" && (!e.taller || e.taller === "pagado");
@@ -284,7 +310,13 @@ function Ventanilla() {
         )}
       </div>
 
-      <Dialog open={camara} onOpenChange={setCamara}>
+      <Dialog
+        open={camara}
+        onOpenChange={(abierto) => {
+          setCamara(abierto);
+          if (!abierto) setNoEncontrado(null);
+        }}
+      >
         <DialogContent>
           <DialogTitle>Escanea el código del participante</DialogTitle>
           {/*
@@ -292,23 +324,128 @@ function Ventanilla() {
             dejaría encendida durante toda la jornada de ventanilla, calentando
             el equipo sin que nadie la esté mirando.
 
-            El escaneo solo FILTRA la lista; no confirma nada. Quien cobra tiene
-            que ver a quién le está cobrando antes de pulsar.
+            El escaneo nunca confirma por sí solo. Abre la tarjeta de esa
+            persona con su estado, y ahí se decide: quien cobra tiene que ver a
+            quién le está cobrando antes de pulsar.
           */}
+          {noEncontrado ? (
+            <Alert variant="destructive">
+              <Ban className="size-4" />
+              <AlertTitle>Ese código no corresponde a nadie</AlertTitle>
+              <AlertDescription>
+                Se leyó <span className="font-mono">{noEncontrado}</span>, y no hay ningún
+                pre-registro con ese folio. Puede que sea el código de otro evento, o que la persona
+                nunca completara su pre-registro. Búscala por nombre o matrícula antes de cobrarle.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {camara ? (
             <CamaraQR
               onLeer={(valor) => {
-                const folio = valor.trim().toUpperCase();
-                if (!getParticipante(folio)) {
-                  toast.error(`No encontramos el folio ${valor.trim()}.`);
+                const leido = valor.trim().toUpperCase();
+                if (!getParticipante(leido)) {
+                  // El diálogo se queda abierto a propósito: lo normal tras un
+                  // código que no cuadra es volver a intentarlo, no reabrir la
+                  // cámara desde cero.
+                  setNoEncontrado(leido || "(vacío)");
                   return;
                 }
+                setNoEncontrado(null);
                 setCamara(false);
-                setFiltro("todos");
-                setQ(folio);
+                setEscaneado(leido);
               }}
             />
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/*
+        El resultado del escaneo, con lo que quien cobra necesita saber antes de
+        tocar nada: a quién leyó, si ya pagó y cuándo. Antes el escaneo solo
+        filtraba la lista y no decía nada de eso.
+      */}
+      <Dialog open={escaneado !== null} onOpenChange={(a) => !a && setEscaneado(null)}>
+        <DialogContent>
+          {escaneadoP ? (
+            <>
+              <DialogTitle>{escaneadoP.nombre}</DialogTitle>
+              <p className="-mt-2 font-mono text-xs text-muted-foreground">
+                {escaneadoP.folio}
+                {escaneadoP.matricula ? ` · ${escaneadoP.matricula}` : ""}
+              </p>
+
+              {alCorriente(escaneadoP) ? (
+                <Alert>
+                  <CheckCircle2 className="size-4" />
+                  <AlertTitle>Ya está pagado</AlertTitle>
+                  <AlertDescription>
+                    No hay nada que cobrarle. {ultimoPagoTexto(escaneadoP.folio)}
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <Info className="size-4" />
+                  <AlertTitle>Tiene un cobro pendiente</AlertTitle>
+                  <AlertDescription>
+                    Verifica su comprobante y confirma el concepto que corresponda.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <dl className="grid gap-3">
+                <ConceptoEscaneado
+                  titulo="Evento"
+                  estado={estadoDe(escaneadoP).evento}
+                  monto={escaneadoP.montoEsperadoEvento}
+                  onConfirmar={() =>
+                    confirmar(escaneadoP, "evento", escaneadoP.montoEsperadoEvento)
+                  }
+                />
+                {escaneadoP.tallerId && estadoDe(escaneadoP).taller ? (
+                  <ConceptoEscaneado
+                    titulo="Taller"
+                    estado={estadoDe(escaneadoP).taller!}
+                    monto={escaneadoP.montoEsperadoTaller ?? 0}
+                    onConfirmar={() =>
+                      confirmar(escaneadoP, "taller", escaneadoP.montoEsperadoTaller ?? 0)
+                    }
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">No eligió taller.</p>
+                )}
+              </dl>
+
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => abrirFicha(escaneadoP)}>
+                  Ver su ficha
+                </Button>
+                <Button variant="outline" onClick={() => setEscaneado(null)}>
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEscaneado(null);
+                    setCamara(true);
+                  }}
+                >
+                  <QrCode className="size-4" /> Escanear otro
+                </Button>
+              </div>
+            </>
+          ) : (
+            /* Solo se llega aquí si la lista se recargó bajo los pies —cambio de
+               sesión— y el folio leído ya no está. Sin esta rama el diálogo se
+               quedaría vacío y sin botón para salir. */
+            <>
+              <DialogTitle>Ese participante ya no está en la lista</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Vuelve a escanear su código o búscalo por nombre.
+              </p>
+              <Button variant="outline" onClick={() => setEscaneado(null)}>
+                Cerrar
+              </Button>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </PantallaPanel>
@@ -342,6 +479,43 @@ function Celda({
         Confirmar {moneda(monto)}
       </Button>
       <EstadoPagoBadge estado={estado} />
+    </div>
+  );
+}
+
+/**
+ * Un concepto dentro de la tarjeta del escaneo: qué se le cobra, en qué estado
+ * está y —si procede— el botón para confirmarlo.
+ *
+ * Repite la decisión de la tabla a propósito: el importe va escrito en el
+ * botón. Es el único dato que quien cobra tiene que contrastar contra el
+ * comprobante que tiene en la mano.
+ */
+function ConceptoEscaneado({
+  titulo,
+  estado,
+  monto,
+  onConfirmar,
+}: {
+  titulo: string;
+  estado: EstadoPago;
+  monto: number;
+  onConfirmar: () => void;
+}) {
+  const resuelto = estado === "pagado" || estado === "discrepancia" || estado === "cancelado";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+      <div>
+        <dt className="text-sm font-semibold">{titulo}</dt>
+        <dd className="text-xs text-muted-foreground">{moneda(monto)}</dd>
+      </div>
+      {resuelto ? (
+        <EstadoPagoBadge estado={estado} />
+      ) : (
+        <Button size="sm" className="h-9" onClick={onConfirmar}>
+          <Check className="size-4" /> Confirmar {moneda(monto)}
+        </Button>
+      )}
     </div>
   );
 }
