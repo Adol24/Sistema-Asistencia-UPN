@@ -154,6 +154,7 @@ Las del 10 de septiembre están ejecutadas:
 | `20260910160000_preregistro_docente_externo` | `fn_preregistrar_externo` existe, el anónimo puede llamarla y valida el perfil |
 | `20260910180000_correo_personal_del_alumno` | `dominio_institucional` está en NULL: se acepta cualquier correo |
 | `20260910200000_taller_compatible_con_el_dia` | Aplicada por el usuario |
+| `20260910220000_cambiar_dia_mueve_al_participante` | `fn_asignar_dia_a_varios` existe y está cerrada al anónimo: responde «permission denied **for function**», no «does not exist» |
 
 Sigue **sin aplicar** `20260910100000_vistas_security_invoker.sql`, que corrige
 que las seis vistas se salten la seguridad a nivel de fila. No bloquea la
@@ -161,10 +162,6 @@ operación, pero conviene antes del evento.
 
 ## Lo que sigue pendiente
 
-- **Ejecutar `20260910220000_cambiar_dia_mueve_al_participante.sql`.** Sin ella,
-  cambiar el día de alguien en Administración se ve bien en pantalla pero no
-  mueve al participante en la base, y la puerta lo rechaza por DÍA EQUIVOCADO
-  al escanear su código.
 
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
