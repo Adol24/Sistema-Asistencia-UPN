@@ -1126,7 +1126,14 @@ export function EstadoEventoProvider({
       if (i === -1) return [...prev, t];
       return prev.map((x) => (x.id === t.id ? t : x));
     });
-    escribir("el taller", (d) => d.guardarTallerRemoto(t).then(() => d.olvidarPublico()));
+    // `TallerBase.id` ES la clave corta (`T01`), no el uuid de la base: así lo
+    // arma `aTallerBase` y así lo llama el personal. Se pasa con su nombre para
+    // que la frontera con la base no vuelva a confundir una cosa con la otra.
+    escribir(
+      "el taller",
+      (d) => d.guardarTallerRemoto({ ...t, clave: t.id }).then(() => d.olvidarPublico()),
+      () => avisarFallo(`No se pudo guardar el taller ${t.id}. Vuelve a intentarlo.`),
+    );
   }, []);
 
   /**
@@ -1165,7 +1172,11 @@ export function EstadoEventoProvider({
 
   const eliminarTaller = useCallback<Ctx["eliminarTaller"]>((id) => {
     setTalleresBase((prev) => prev.filter((t) => t.id !== id));
-    escribir("el retiro del taller", (d) => d.eliminarTallerRemoto(id));
+    escribir(
+      "el retiro del taller",
+      (d) => d.eliminarTallerRemoto(id).then(() => d.olvidarPublico()),
+      () => avisarFallo(`No se pudo retirar el taller ${id}.`),
+    );
   }, []);
 
   // ------------------------------------------------------------ usuarios ---

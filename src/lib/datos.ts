@@ -467,10 +467,27 @@ export async function anotarEnBitacora(
 }
 
 /** Da de alta o actualiza un taller. */
+/**
+ * Guarda un taller identificándolo por su CLAVE, no por su uuid.
+ *
+ * Toda la aplicación llama a los talleres `T01`, `T02`… —es lo que el personal
+ * dice de viva voz y lo que sale en los reportes—, así que `TallerBase.id` es
+ * la clave corta y no la llave primaria. Esta función recibía ese valor y lo
+ * usaba como uuid:
+ *
+ *   .eq("id", "T01")  →  [22P02] invalid input syntax for type uuid: "T01"
+ *
+ * PostgreSQL rechazaba la consulta, el error moría en la consola y el taller
+ * no se guardaba nunca. En pantalla parecía guardado, porque la lista se
+ * actualiza en memoria antes de escribir.
+ *
+ * Se resuelve con `upsert` sobre la clave, que es `unique`: sirve igual para el
+ * taller nuevo y para el que ya existía, y devuelve el uuid que hace falta para
+ * sus días.
+ */
 export async function guardarTallerRemoto(t: {
-  id?: string | undefined;
   /** `T01`, `T02`… La usa el personal para referirse a un taller de viva voz. */
-  clave?: string | undefined;
+  clave: string;
   nombre: string;
   descripcion: string;
   ponente: string;
@@ -482,49 +499,67 @@ export async function guardarTallerRemoto(t: {
   activo: boolean;
 }): Promise<void> {
   const sb = exigirBase();
-  const fila = {
-    ...(t.clave ? { clave: t.clave } : {}),
-    nombre: t.nombre,
-    descripcion: t.descripcion,
-    ponente: t.ponente,
-    costo: t.costo,
-    cupo_total: t.cupoTotal,
-    horario: t.horario,
-    lugar: t.lugar,
-    activo: t.activo,
-  };
-  const { data, error } = t.id
-    ? await sb.from("talleres").update(fila).eq("id", t.id).select("id").single()
-    : await sb.from("talleres").insert(fila).select("id").single();
+  const { data, error } = await sb
+    .from("talleres")
+    .upsert(
+      {
+        clave: t.clave,
+        nombre: t.nombre,
+        descripcion: t.descripcion,
+        ponente: t.ponente,
+        costo: t.costo,
+        cupo_total: t.cupoTotal,
+        horario: t.horario,
+        lugar: t.lugar,
+        activo: t.activo,
+      },
+      { onConflict: "clave" },
+    )
+    .select("id")
+    .single();
   if (error) throw error;
 
   // Los días viven en su propia tabla: se reemplazan enteros en vez de
   // calcular la diferencia, que para tres filas no compensa.
   const id = (data as { id: string }).id;
-  await sb.from("taller_dias").delete().eq("taller_id", id);
-  if (t.dias.length)
-    await sb.from("taller_dias").insert(t.dias.map((dia) => ({ taller_id: id, dia })));
+  const { error: eBorrado } = await sb.from("taller_dias").delete().eq("taller_id", id);
+  if (eBorrado) throw eBorrado;
+  if (t.dias.length) {
+    const { error: eDias } = await sb
+      .from("taller_dias")
+      .insert(t.dias.map((dia) => ({ taller_id: id, dia })));
+    // Se lanza en vez de callarse: un taller sin sus días no se imparte ningún
+    // día, y nadie podría inscribirse. Antes este error se perdía.
+    if (eDias) throw eDias;
+  }
 }
 
-/**
- * Retira un taller.
- *
- * Se desactiva en vez de borrarse cuando ya tiene inscritos: borrarlo dejaría a
- * esas personas apuntando a un taller inexistente, y la base lo impediría de
- * todos modos por la llave foránea.
- */
-export async function eliminarTallerRemoto(id: string): Promise<void> {
+/** También por clave, y por la misma razón que `guardarTallerRemoto`. */
+export async function eliminarTallerRemoto(clave: string): Promise<void> {
   const sb = exigirBase();
+  const { data, error: eBusca } = await sb
+    .from("talleres")
+    .select("id")
+    .eq("clave", clave)
+    .maybeSingle();
+  if (eBusca) throw eBusca;
+  // Ya no está: no hay nada que retirar y tampoco es un fallo.
+  if (!data) return;
+  const id = (data as { id: string }).id;
+
   const { count } = await sb
     .from("participantes")
     .select("id", { count: "exact", head: true })
     .eq("taller_id", id);
+  // Con inscritos no se borra, se desactiva: desactivar no es cancelar, y
+  // borrarlo dejaría sus inscripciones apuntando a algo que ya no existe.
   if (count && count > 0) {
     const { error } = await sb.from("talleres").update({ activo: false }).eq("id", id);
     if (error) throw error;
     return;
   }
-  await sb.from("taller_dias").delete().eq("taller_id", id);
+  const { error: eDias } = await sb.from("taller_dias").delete().eq("taller_id", id);
+  if (eDias) throw eDias;
   const { error } = await sb.from("talleres").delete().eq("id", id);
   if (error) throw error;
 }

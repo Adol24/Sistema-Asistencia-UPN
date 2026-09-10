@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { avanceTexto } from "@/dominio/catalogos";
 import { descargarCsv } from "@/lib/exportar";
@@ -50,6 +51,7 @@ function Reportes() {
   } = useEstadoEvento();
   const [activo, setActivo] = useState<IdReporte>("pagos");
   const [pagina, setPagina] = useState(1);
+  const [q, setQ] = useState("");
 
   // Todo sale del contexto compartido: un reporte generado después de registrar
   // pagos en la misma sesión los incluye, sin recargar.
@@ -276,15 +278,35 @@ function Reportes() {
 
   const r = reportes.find((x) => x.id === activo)!;
 
-  // La vista pagina; la exportación siempre lleva el reporte completo.
+  /*
+   * El buscador mira todas las columnas del reporte activo.
+   *
+   * Es genérico a propósito: son siete reportes con encabezados distintos, y
+   * enseñarle a cada uno cuál es su columna «buscable» los ataría a esta
+   * pantalla. Recorrer la fila entera acierta con matrícula, nombre, folio,
+   * referencia o clave de taller sin saber cuál es cuál.
+   *
+   * Con 50 filas por página, buscar un alumno entre cientos significaba pasar
+   * páginas o exportar el CSV y abrirlo en Excel.
+   */
+  const filas = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return r.filas;
+    return r.filas.filter((f) => f.some((c) => String(c).toLowerCase().includes(t)));
+  }, [r.filas, q]);
+
+  // La vista pagina; la exportación lleva lo que se está viendo, filtro incluido.
   const POR_PAGINA = 50;
-  const totalPaginas = Math.max(1, Math.ceil(r.filas.length / POR_PAGINA));
+  const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * POR_PAGINA;
-  const visibles = r.filas.slice(desde, desde + POR_PAGINA);
+  const visibles = filas.slice(desde, desde + POR_PAGINA);
 
   const exportar = () => {
-    const n = descargarCsv(`reporte-${r.id}.csv`, r.encabezados, r.filas);
+    // Se exporta lo filtrado, no el reporte entero: quien acotó a un grupo y
+    // pulsa exportar espera ese grupo, y llevarse todo pasa inadvertido hasta
+    // que alguien abre el archivo.
+    const n = descargarCsv(`reporte-${r.id}.csv`, r.encabezados, filas);
     registrarBitacora("Exportó un reporte", `${r.titulo} · ${n} registros`);
     toast.success(`Exportamos ${n} registros de «${r.titulo}».`);
   };
@@ -297,7 +319,7 @@ function Reportes() {
       nav={navAdmin}
       acciones={
         <Button className="h-11" onClick={exportar}>
-          <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({r.filas.length})
+          <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
         </Button>
       }
     >
@@ -321,6 +343,24 @@ function Reportes() {
             <span className="text-xs opacity-70">{x.filas.length}</span>
           </button>
         ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPagina(1);
+          }}
+          placeholder="Buscar en este reporte: matrícula, nombre, folio…"
+          aria-label="Buscar en el reporte"
+          className="h-11 max-w-md"
+        />
+        {q.trim() ? (
+          <span className="text-sm text-muted-foreground">
+            {filas.length} de {r.filas.length}
+          </span>
+        ) : null}
       </div>
 
       <p className="mt-3 text-sm text-muted-foreground">{r.nota}</p>

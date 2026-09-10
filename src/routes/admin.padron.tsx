@@ -17,6 +17,7 @@ import { PantallaPanel } from "@/components/layouts";
 import { SemaforoFilaBadge } from "@/components/estado-badges";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -153,23 +154,34 @@ function ImportacionPadron() {
   const [fPrograma, setFPrograma] = useState("todos");
   const [fGrupo, setFGrupo] = useState("todos");
   const [fDia, setFDia] = useState("sin-dia");
+  /** Búsqueda libre por matrícula o nombre, para dar con una persona concreta. */
+  const [q, setQ] = useState("");
 
   const grupos = useMemo(
     () => [...new Set(padron.map((a) => a.grupo).filter((g): g is string => !!g))].sort(),
     [padron],
   );
 
-  const seleccion = useMemo(
-    () =>
-      padron.filter(
-        (a) =>
-          (fSede === "todas" || a.plantel === fSede) &&
-          (fPrograma === "todos" || a.programa === fPrograma) &&
-          (fGrupo === "todos" || a.grupo === fGrupo) &&
-          (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))),
-      ),
-    [padron, fSede, fPrograma, fGrupo, fDia],
-  );
+  /*
+   * La búsqueda es un filtro más, no algo aparte, y eso importa: lo que la
+   * asignación en bloque mueve es exactamente lo que se está viendo. Si buscar
+   * dejara la selección intacta, se buscaría a una persona, se pulsaría «día 2»
+   * y se movería a todo el grupo sin darse cuenta.
+   */
+  const seleccion = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return padron.filter(
+      (a) =>
+        (fSede === "todas" || a.plantel === fSede) &&
+        (fPrograma === "todos" || a.programa === fPrograma) &&
+        (fGrupo === "todos" || a.grupo === fGrupo) &&
+        (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))) &&
+        (!t ||
+          a.matricula.toLowerCase().includes(t) ||
+          a.nombre.toLowerCase().includes(t) ||
+          (a.grupo ?? "").toLowerCase().includes(t)),
+    );
+  }, [padron, fSede, fPrograma, fGrupo, fDia, q]);
 
   const asignarASeleccion = (dia: 1 | 2 | 3) => {
     const r = asignarDiaAVarios(
@@ -353,6 +365,21 @@ function ImportacionPadron() {
                   </option>
                 ))}
               </Campo>
+            </div>
+
+            <div className="mt-3">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por matrícula, nombre o grupo"
+                aria-label="Buscar en el padrón"
+                className="h-11"
+              />
+              {q.trim() ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  La búsqueda acota la selección: lo que asignes abajo se aplica solo a estos.
+                </p>
+              ) : null}
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
