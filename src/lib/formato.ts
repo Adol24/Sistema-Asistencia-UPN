@@ -37,3 +37,29 @@ export const isoAFecha = (iso: string) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 };
+
+/**
+ * La vuelta: DD/MM/AAAA a AAAA-MM-DD, para escribir en la base.
+ *
+ * Hace falta porque toda la aplicación maneja DD/MM/AAAA —es lo que se lee en
+ * pantalla y lo que trae el archivo del banco—, pero la columna es de tipo
+ * `date` y PostgreSQL la interpreta con `DateStyle`, que en Supabase viene en
+ * `ISO, MDY`. Mandar «10/09/2026» tal cual se guardaba como 9 de OCTUBRE, y
+ * «15/09/2026» reventaba con «date/time field value out of range». Un pago con
+ * la fecha cambiada no se nota al registrarlo: se nota cuando hay que conciliar
+ * contra el estado de cuenta del banco.
+ *
+ * Lo que no reconoce lo devuelve intacto, para que la base rechace un formato
+ * raro en vez de que esta función se invente una fecha.
+ */
+export const fechaAIso = (fecha: string) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(fecha.trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : fecha.trim();
+};
+
+/** Hoy en AAAA-MM-DD, en la zona horaria del equipo. */
+export const hoyIso = () => {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};

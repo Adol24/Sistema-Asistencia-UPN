@@ -29,6 +29,7 @@ import type {
 import type { NivelAcademico } from "@/dominio/catalogos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import type { PagoRegistrado } from "@/lib/pagos-logica";
+import { isoAFecha } from "@/lib/formato";
 import { rolDesdeBase } from "@/lib/roles";
 
 // ============================================================ filas crudas ===
@@ -323,7 +324,9 @@ export const aPago = (f: FilaPago): PagoRegistrado => ({
   monto: Number(f.monto),
   montoEsperado: Number(f.monto_esperado),
   referencia: f.referencia,
-  fechaDeposito: f.fecha_deposito,
+  // La base devuelve AAAA-MM-DD; el resto de la aplicación habla DD/MM/AAAA.
+  // Traducir aquí evita que convivan los dos formatos en la misma lista.
+  fechaDeposito: isoAFecha(f.fecha_deposito),
   nota: f.nota ?? undefined,
   resultado: f.resultado,
   origen: f.origen,

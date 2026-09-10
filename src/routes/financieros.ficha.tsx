@@ -1,43 +1,23 @@
-import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  Ban,
-  Check,
-  CheckCircle2,
-  Info,
-  Loader2,
-  QrCode,
-  Search,
-  SearchX,
-  UserRound,
-} from "lucide-react";
-import { toast } from "sonner";
+import { AlertTriangle, Search, SearchX, UserRound } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
 import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoVacio } from "@/components/tipografia";
 import type { Participante } from "@/dominio/tipos";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
-import { soloImporte } from "@/lib/campos";
 import { avanceTexto } from "@/dominio/catalogos";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-import { isoAFecha, moneda, simularLatencia } from "@/lib/formato";
+import { moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { parsearMonto, type Concepto, type Diagnostico } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/financieros/ficha")({
   head: () =>
     meta(
       "Ficha del participante — Servicios Financieros",
-      "Ficha del participante con montos esperados, estados de pago separados de evento y taller, y registro de pago en ventanilla.",
+      "Ficha de consulta: montos esperados, estado de pago de evento y taller, y el historial de pagos ya registrados.",
     ),
   component: FichaFinancieros,
 });
@@ -70,24 +50,28 @@ function SinParticipante() {
 }
 
 function FichaDe({ p }: { p: Participante }) {
-  const { estadoDe, configuracion, infoDia, getTaller } = useEstadoEvento();
+  const { estadoDe, configuracion, infoDia, getTaller, pagos } = useEstadoEvento();
   const taller = getTaller(p.tallerId);
   const dia = infoDia(p.dia);
   const estado = estadoDe(p);
   const totalEsperado = p.montoEsperadoEvento + (taller?.costo ?? 0);
+  // Del más antiguo al más reciente, que es el orden en que ocurrieron. Una
+  // corrección se registra como un pago más, así que la última fila es la que
+  // manda y verlas todas es lo que permite entender cómo se llegó ahí.
+  const suyos = pagos.filter((g) => g.folio === p.folio);
 
   return (
     <PantallaPanel
       area="financieros"
       titulo="Ficha del participante"
-      descripcion="Verifica los montos que el sistema espera y registra el pago."
+      descripcion="Consulta los montos que el sistema espera y los pagos ya registrados."
       nav={navFinancieros}
       acciones={
         <Link
           to="/financieros"
           className="flex h-11 items-center rounded-md border border-input px-4 text-sm font-medium hover:bg-muted"
         >
-          Buscar a otra persona
+          Volver a la lista
         </Link>
       }
     >
@@ -179,313 +163,68 @@ function FichaDe({ p }: { p: Participante }) {
         ) : null}
       </section>
 
-      <h2 className="mt-8 text-base font-semibold">Registro de pago</h2>
+      <h2 className="mt-8 text-base font-semibold">Pagos registrados</h2>
       <p className="text-sm text-muted-foreground">
-        Un bloque por concepto. El sistema ya sabe cuánto debía pagar: solo captura lo que dice el
-        voucher.
+        Esta pantalla es de consulta. El cobro se confirma desde la lista, con el botón de cada
+        concepto.
       </p>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <BloquePago
-          concepto="evento"
-          titulo="Depósito 1 — Evento"
-          referenciaEsperada={`ENCUENTRO-${p.folio}`}
-          montoEsperado={p.montoEsperadoEvento}
-          estadoActual={estado.evento}
-          folio={p.folio}
-        />
-        {taller ? (
-          <BloquePago
-            concepto="taller"
-            titulo="Depósito 2 — Taller"
-            referenciaEsperada={`TALLER-${p.folio}`}
-            montoEsperado={taller.costo}
-            estadoActual={estado.taller ?? "pre_registrado"}
-            folio={p.folio}
-          />
-        ) : (
+      <div className="mt-4">
+        {suyos.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-muted/40 p-6 text-center">
             <SearchX className="mx-auto size-7 text-muted-foreground" aria-hidden />
-            <p className="mt-2 text-sm font-semibold">Esta persona no eligió taller</p>
+            <p className="mt-2 text-sm font-semibold">Todavía no tiene ningún pago</p>
             <p className="text-sm text-muted-foreground">
-              Solo debe entregar el voucher del evento.
+              Confírmalo desde la lista cuando presente su comprobante.
             </p>
           </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[38rem] text-left text-sm">
+              <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  {["Concepto", "Monto", "Fecha", "Origen", "Referencia", "Resultado"].map((h) => (
+                    <th key={h} className="px-3 py-2 font-semibold">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {suyos.map((g) => (
+                  <tr key={g.id} className="border-t border-border">
+                    <td className="px-3 py-2 capitalize">{g.concepto}</td>
+                    <td className="px-3 py-2 font-semibold tabular-nums">{moneda(g.monto)}</td>
+                    <td className="px-3 py-2">{g.fechaDeposito}</td>
+                    <td className="px-3 py-2">
+                      {g.origen === "ventanilla" ? "Ventanilla" : "Carga masiva"}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                      {/* Los de ventanilla no la traen: quien cobró verificó el
+                          comprobante en mano. Se dice, en vez de dejar el hueco. */}
+                      {g.referencia ?? "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <EstadoPagoBadge estado={g.resultado} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
+        {/*
+          La nota solo existe cuando el monto no cuadró, y es lo que explica la
+          discrepancia. Sin ella, el registro no dice nada tres semanas después.
+        */}
+        {suyos
+          .filter((g) => g.nota)
+          .map((g) => (
+            <p key={`${g.id}-nota`} className="mt-2 rounded-md bg-muted p-3 text-sm">
+              <span className="font-semibold capitalize">{g.concepto}:</span> {g.nota}
+            </p>
+          ))}
       </div>
     </PantallaPanel>
-  );
-}
-
-function BloquePago({
-  concepto,
-  titulo,
-  referenciaEsperada,
-  montoEsperado,
-  estadoActual,
-  folio,
-}: {
-  concepto: Concepto;
-  titulo: string;
-  referenciaEsperada: string;
-  montoEsperado: number;
-  estadoActual: string;
-  folio: string;
-}) {
-  const { diagnosticar, registrarPago, registrarBitacora } = useEstadoEvento();
-  const [monto, setMonto] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [nota, setNota] = useState("");
-  const [guardando, setGuardando] = useState(false);
-  const [hecho, setHecho] = useState<"pagado" | "discrepancia" | null>(null);
-  const [tocado, setTocado] = useState(false);
-
-  /*
-   * Ventanilla ya no captura la referencia bancaria ni fotografía el voucher.
-   *
-   * Quien cobra tiene el comprobante en la mano y lo verifica ahí mismo, así
-   * que pedir los dos datos solo alargaba cada cobro. La foto además no se
-   * guardaba en ningún sitio —era una URL temporal del navegador que moría al
-   * recargar—, de modo que bloqueaba el registro a cambio de un respaldo que
-   * no existía.
-   *
-   * El diagnóstico se queda con lo que sí decide: el monto. La carga masiva
-   * del banco sigue mandando referencia, y ahí el control antiduplicados sigue
-   * entero.
-   */
-  const d = diagnosticar({ monto, montoEsperado });
-  const requiereNota = d.clase === "menor" || d.clase === "mayor";
-  const bloqueado = d.clase === "duplicada" || d.clase === "invalido";
-  const faltaFecha = !fecha;
-  const puedeGuardar =
-    !bloqueado &&
-    (d.clase === "exacto" || requiereNota) &&
-    !faltaFecha &&
-    (!requiereNota || nota.trim().length >= 10) &&
-    !guardando;
-
-  const guardar = async () => {
-    const n = parsearMonto(monto);
-    if (n === null) return;
-    setGuardando(true);
-    await simularLatencia();
-    const resultado = d.clase === "exacto" ? "pagado" : "discrepancia";
-    registrarPago({
-      folio,
-      concepto,
-      monto: n,
-      montoEsperado,
-      fechaDeposito: isoAFecha(fecha),
-      resultado,
-      origen: "ventanilla",
-      ...(nota.trim() ? { nota: nota.trim() } : {}),
-    });
-    registrarBitacora(
-      resultado === "pagado" ? "Registró un pago" : "Registró un pago con discrepancia",
-      `${folio} · ${concepto} · $${n.toFixed(2)} · ventanilla`,
-    );
-    setGuardando(false);
-    setHecho(resultado);
-    toast.success(
-      resultado === "pagado"
-        ? "Pago registrado y QR generado"
-        : "Pago registrado como discrepancia",
-    );
-  };
-
-  if (hecho) {
-    return (
-      <section
-        className={cn(
-          "rounded-lg border-2 p-5",
-          hecho === "pagado"
-            ? "border-estado-pagado/40 bg-estado-pagado-bg"
-            : "border-estado-discrepancia/40 bg-estado-discrepancia-bg",
-        )}
-      >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {titulo}
-        </p>
-        {hecho === "pagado" ? (
-          <>
-            <p className="mt-2 flex items-center gap-2 text-lg font-bold text-estado-pagado">
-              <CheckCircle2 className="size-5" aria-hidden /> Pagado
-            </p>
-            <p className="mt-3 flex items-start gap-2 rounded-md bg-card p-3 text-sm">
-              <QrCode className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-              Su código QR ya está disponible en su portal, para que lo descargue él mismo. Si
-              pregunta en ventanilla, dile que entre con su folio y su matrícula.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="mt-2 flex items-center gap-2 text-lg font-bold text-estado-discrepancia">
-              <AlertTriangle className="size-5" aria-hidden /> Registrado con discrepancia
-            </p>
-            <p className="mt-3 rounded-md bg-card p-3 text-sm">
-              El concepto queda en discrepancia y no genera QR todavía. La nota que capturaste viaja
-              con el caso para que se resuelva.
-            </p>
-          </>
-        )}
-        <Button variant="outline" className="mt-4 h-11" onClick={() => setHecho(null)}>
-          Corregir este registro
-        </Button>
-      </section>
-    );
-  }
-
-  return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {titulo}
-        </p>
-        <span className="text-xs text-muted-foreground">Estado actual: {estadoActual}</span>
-      </div>
-      <p className="mt-1 font-mono text-xs text-muted-foreground">Concepto: {referenciaEsperada}</p>
-      <p className="mt-2 text-sm">
-        Monto esperado por el sistema:{" "}
-        <span className="text-lg font-bold tabular-nums">{moneda(montoEsperado)}</span>
-      </p>
-
-      <div className="mt-4 grid gap-4">
-        <div>
-          <Label htmlFor={`monto-${concepto}`}>Monto del voucher</Label>
-          <Input
-            id={`monto-${concepto}`}
-            inputMode="decimal"
-            value={monto}
-            // El campo no admite letras. `diagnosticarPago` conserva su rama de
-            // monto inválido porque la carga masiva sí recibe texto de un CSV.
-            onChange={(e) => setMonto(soloImporte(e.target.value))}
-            onBlur={() => setTocado(true)}
-            placeholder={String(montoEsperado)}
-            className="mt-1 h-12 text-base"
-            aria-invalid={d.clase === "menor" || d.clase === "mayor" || d.clase === "invalido"}
-          />
-        </div>
-        <div>
-          <Label htmlFor={`fecha-${concepto}`}>Fecha del depósito</Label>
-          <Input
-            id={`fecha-${concepto}`}
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            onBlur={() => setTocado(true)}
-            className="mt-1 h-12 text-base"
-            aria-invalid={tocado && faltaFecha}
-          />
-          {tocado && faltaFecha ? (
-            <p className="mt-1 text-xs font-medium text-destructive">
-              Captura la fecha que aparece impresa en el voucher.
-            </p>
-          ) : fecha ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Se registrará como <span className="font-mono">{isoAFecha(fecha)}</span>
-            </p>
-          ) : null}
-        </div>
-
-        <AvisoValidacion d={d} />
-
-        {requiereNota ? (
-          <div>
-            <Label htmlFor={`nota-${concepto}`}>Nota obligatoria — explica la diferencia</Label>
-            <Textarea
-              id={`nota-${concepto}`}
-              value={nota}
-              onChange={(e) => setNota(e.target.value)}
-              rows={3}
-              placeholder="Por ejemplo: depositó $600, se le pidió complementar $50 antes del viernes."
-              className="mt-1 text-base"
-              aria-invalid={nota.trim().length > 0 && nota.trim().length < 10}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {nota.trim().length < 10
-                ? `Escribe al menos 10 caracteres (llevas ${nota.trim().length}).`
-                : "Nota lista."}
-            </p>
-          </div>
-        ) : null}
-
-        <Button className="h-12 text-base" disabled={!puedeGuardar} onClick={() => void guardar()}>
-          {guardando ? (
-            <>
-              <Loader2 className="size-5 animate-spin" /> Registrando el pago…
-            </>
-          ) : (
-            <>
-              <Check className="size-5" /> Registrar pago del {concepto}
-            </>
-          )}
-        </Button>
-        {!puedeGuardar && !guardando ? (
-          <p className="text-center text-xs text-muted-foreground">
-            {bloqueado
-              ? "Corrige el monto para poder registrar."
-              : d.clase === "vacio"
-                ? "Captura el monto para continuar."
-                : requiereNota && nota.trim().length < 10
-                  ? "La nota es obligatoria cuando el monto no coincide."
-                  : faltaFecha
-                    ? "Falta la fecha del depósito."
-                    : "Completa los campos para registrar."}
-          </p>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function AvisoValidacion({ d }: { d: Diagnostico }) {
-  if (d.clase === "vacio") return null;
-
-  if (d.clase === "duplicada")
-    return (
-      <Alert variant="destructive">
-        <Ban className="size-4" />
-        <AlertTitle>Referencia bancaria duplicada</AlertTitle>
-        <AlertDescription>
-          {d.mensaje} No registres este voucher: verifica que no sea una copia del comprobante de
-          otra persona.
-        </AlertDescription>
-      </Alert>
-    );
-
-  if (d.clase === "invalido")
-    return (
-      <Alert variant="destructive">
-        <Ban className="size-4" />
-        <AlertTitle>Dato inválido</AlertTitle>
-        <AlertDescription>{d.mensaje}</AlertDescription>
-      </Alert>
-    );
-
-  if (d.clase === "menor" || d.clase === "mayor")
-    return (
-      <div className="rounded-md border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3">
-        <p className="flex items-start gap-2 text-sm font-semibold text-estado-discrepancia">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-          {d.clase === "menor" ? "Monto menor al esperado" : "Monto mayor al esperado"}
-        </p>
-        <p className="mt-1 text-sm text-estado-discrepancia">{d.mensaje}</p>
-        <p className="mt-1 text-xs text-estado-discrepancia">
-          Puedes continuar: el concepto quedará en discrepancia.
-        </p>
-      </div>
-    );
-
-  return (
-    <div className="rounded-md border-2 border-estado-pagado/40 bg-estado-pagado-bg p-3">
-      <p className="flex items-start gap-2 text-sm font-semibold text-estado-pagado">
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
-        {d.mensaje}
-      </p>
-      <p className="mt-1 flex items-start gap-2 text-xs text-estado-pagado">
-        <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Al registrar pasa a pagado y su código QR queda disponible en su portal.
-      </p>
-    </div>
   );
 }

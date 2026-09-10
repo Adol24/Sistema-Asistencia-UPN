@@ -49,6 +49,7 @@ import type {
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import { fechaAIso } from "@/lib/formato";
 import type { PagoRegistrado } from "@/lib/pagos-logica";
 
 /** Todo lo que el contexto necesita para arrancar. */
@@ -373,7 +374,9 @@ export async function guardarPago(p: {
     // sigue protegiendo la carga masiva del banco, porque en PostgreSQL dos
     // nulos no chocan entre sí.
     referencia: p.referencia?.trim() || null,
-    fecha_deposito: p.fechaDeposito,
+    // A ISO antes de escribir: la columna es `date` y PostgreSQL la lee con
+    // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
+    fecha_deposito: fechaAIso(p.fechaDeposito),
     resultado: p.monto === p.montoEsperado ? "pagado" : "discrepancia",
     nota: p.nota ?? null,
   });
