@@ -138,6 +138,43 @@ export interface FilaParticipante {
   planteles: { nombre: string } | null;
 }
 
+/**
+ * Una fila de `v_participantes`, que **no** tiene la forma de la tabla.
+ *
+ * La vista ya resolvió los enlaces y entrega el nivel, el programa y el plantel
+ * planos, más el estado de pago que deriva de los pagos. El portal la recibía
+ * afirmando que era una `FilaParticipante` —la forma de la tabla, con los
+ * enlaces anidados—, así que el nivel, el programa y el plantel salían vacíos y
+ * el estado de pago se fijaba en `pre_registrado` pasara lo que pasara.
+ *
+ * Eso último se veía: el alumno pagaba en ventanilla y su portal seguía
+ * diciendo «comprobante recibido», con la línea de tiempo detenida y sin
+ * generar su código QR.
+ */
+export interface FilaVistaParticipante {
+  id: string;
+  folio: string;
+  perfil: Perfil;
+  matricula: string | null;
+  nombre: string;
+  nombre_en_revision: boolean;
+  correo: string;
+  celular: string;
+  institucion: string;
+  nivel: string | null;
+  programa: string | null;
+  plantel: string | null;
+  avance: number | null;
+  grupo: string | null;
+  dia: Dia;
+  taller_id: string | null;
+  monto_esperado_evento: number;
+  monto_esperado_taller: number | null;
+  estado_pago_evento: EstadoPago;
+  estado_pago_taller: EstadoPago | null;
+  creado_en: string;
+}
+
 export interface FilaPago {
   id: string;
   concepto: "evento" | "taller";
@@ -332,6 +369,32 @@ export const aPago = (f: FilaPago): PagoRegistrado => ({
   origen: f.origen,
   registradoEn: f.registrado_en,
 });
+
+/**
+ * Traduce una fila de `v_participantes` reusando `aParticipante`.
+ *
+ * Se rearman los enlaces que la vista trae planos y se le pasa el estado de
+ * pago que ella ya derivó. Reusar el mapeo en vez de escribir otro evita tener
+ * dos formas de convertir a la misma persona, que es como empiezan a
+ * desincronizarse.
+ */
+export function aParticipanteDeVista(
+  f: FilaVistaParticipante,
+  lugarPorDia: (d: Dia) => string,
+): Participante {
+  return aParticipante(
+    {
+      ...f,
+      programas: f.programa
+        ? { nombre: f.programa, niveles_academicos: f.nivel ? { nivel: f.nivel } : null }
+        : null,
+      planteles: f.plantel ? { nombre: f.plantel } : null,
+    },
+    lugarPorDia,
+    (_id, concepto) =>
+      concepto === "evento" ? f.estado_pago_evento : (f.estado_pago_taller ?? undefined),
+  );
+}
 
 export function aParticipante(
   f: FilaParticipante,

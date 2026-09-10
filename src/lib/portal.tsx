@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 
 import { hayBaseDeDatos } from "@/lib/supabase-config";
-import { aParticipante, type FilaParticipante } from "@/lib/esquema";
+import { aParticipanteDeVista, type FilaVistaParticipante } from "@/lib/esquema";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
 import type { Participante } from "@/dominio/tipos";
@@ -28,13 +28,66 @@ interface Ctx {
 
 const PortalCtx = createContext<Ctx | null>(null);
 
+const CLAVE = "portal.sesion";
+
+/**
+ * Lee y escribe la sesión en `sessionStorage`, sin reventar si no existe.
+ *
+ * **`sessionStorage` y no `localStorage`, y la diferencia es el punto entero.**
+ * `sessionStorage` vive mientras la pestaña siga abierta: sobrevive a una
+ * recarga y a navegar entre las pantallas del portal, y desaparece al cerrarla.
+ * `localStorage` sobreviviría también al cierre, y eso es justo lo que no
+ * queremos: un folio guardado en un teléfono prestado es una puerta abierta que
+ * nadie recuerda haber dejado.
+ *
+ * Todo va protegido porque en navegación privada, o con las cookies bloqueadas,
+ * el acceso lanza. Si no se puede guardar, el portal funciona igual que antes:
+ * la recarga vuelve a pedir el folio, que es molesto pero no roto.
+ */
+const almacen = () => {
+  try {
+    return typeof window === "undefined" ? null : window.sessionStorage;
+  } catch {
+    return null;
+  }
+};
+
+const leerSesion = (): { folio: string; credencial: string } | null => {
+  try {
+    const crudo = almacen()?.getItem(CLAVE);
+    if (!crudo) return null;
+    const v = JSON.parse(crudo) as { folio?: unknown; credencial?: unknown };
+    return typeof v.folio === "string" && typeof v.credencial === "string"
+      ? { folio: v.folio, credencial: v.credencial }
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const guardarSesion = (s: { folio: string; credencial: string } | null) => {
+  try {
+    if (s) almacen()?.setItem(CLAVE, JSON.stringify(s));
+    else almacen()?.removeItem(CLAVE);
+  } catch {
+    /* Sin almacenamiento, la sesión vive solo en memoria. */
+  }
+};
+
 /**
  * La sesión del participante en su portal.
  *
  * No hay sesión de verdad: el participante entra con folio y credencial, y esos
- * dos datos viajan en cada llamada. Se guardan en memoria y no en el navegador
- * a propósito —cerrar la pestaña cierra la sesión—, porque un folio guardado en
- * un teléfono prestado es una puerta abierta que nadie recuerda haber dejado.
+ * dos datos viajan en cada llamada. Se guardan en `sessionStorage`, así que
+ * recargar la página no lo echa fuera pero cerrar la pestaña sí. Antes vivían
+ * solo en memoria y cualquier recarga —o un giro de pantalla que reiniciara la
+ * aplicación— lo devolvía a la pantalla de entrada a teclear su folio y su
+ * matrícula otra vez.
+ *
+ * Que la base vuelva a comprobar la credencial en cada llamada es lo que hace
+ * esto aceptable: lo guardado no es un permiso, son las mismas credenciales que
+ * se van a verificar de nuevo. Si el folio deja de ser válido, la siguiente
+ * llamada lo rechaza igual.
  *
  * Todo lo que el portal muestra viene de `fn_portal_estado`, una sola llamada
  * que la base resuelve comprobando otra vez la credencial. Las cuatro pantallas
@@ -42,7 +95,7 @@ const PortalCtx = createContext<Ctx | null>(null);
  * completas que un participante no puede ni debe poder leer.
  */
 export function PortalProvider({ children }: { children: ReactNode }) {
-  const [sesion, setSesion] = useState<Ctx["sesion"]>(null);
+  const [sesion, setSesion] = useState<Ctx["sesion"]>(leerSesion);
   const [datos, setDatos] = useState<DatosPortal | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -57,17 +110,23 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       const { estadoDelPortal } = await import("@/lib/datos");
       const crudo = await estadoDelPortal(sesion.folio, sesion.credencial);
       if (!crudo) {
+        // Se borra lo guardado: una credencial que la base ya rechaza no debe
+        // sobrevivir a la siguiente recarga para volver a fallar igual.
+        guardarSesion(null);
+        setSesion(null);
         setDatos(null);
         setError("Tu sesión ya no es válida. Vuelve a entrar con tu folio.");
         return;
       }
-      // Se reutiliza el mismo mapeo que usa la carga del personal: la vista es
-      // la misma, así que inventar aquí otra conversión sería tener dos formas
-      // de leer una fila y que se desincronicen.
-      const fila = crudo["participante"] as FilaParticipante;
+      // `fn_portal_estado` devuelve una fila de `v_participantes`, no de la
+      // tabla: el nivel, el programa y el plantel vienen planos, y el estado de
+      // pago viene ya derivado. Aquí se decía que era una `FilaParticipante` y
+      // no lo es, así que los tres primeros salían vacíos y el estado de pago
+      // se quedaba clavado en `pre_registrado` aunque la persona hubiera pagado.
+      const fila = crudo["participante"] as FilaVistaParticipante;
       const contacto = crudo["contacto"] as { correo?: string; celular?: string } | null;
       setDatos({
-        participante: aParticipante(
+        participante: aParticipanteDeVista(
           { ...fila, correo: contacto?.correo ?? "", celular: contacto?.celular ?? "" },
           (d) => infoDia(d).lugar,
         ),
@@ -91,8 +150,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       datos,
       cargando,
       error,
-      abrir: (folio, credencial) => setSesion({ folio, credencial }),
+      abrir: (folio, credencial) => {
+        const s = { folio, credencial };
+        guardarSesion(s);
+        setSesion(s);
+      },
       cerrar: () => {
+        guardarSesion(null);
         setSesion(null);
         setDatos(null);
       },
