@@ -128,13 +128,15 @@ pre-registro nuevo, un cobro de otra ventanilla o una asistencia de la puerta
 llegan solos, sin que nadie pulse nada. La ventanilla lo dice con una insignia
 **En vivo**, y la puerta avisa cuando falta.
 
-Requiere **ejecutar `20260910140000_tiempo_real.sql`**. Supabase solo entrega
-los cambios de las tablas que estén en la publicación `supabase_realtime`, y esa
-migración las añade. Sin ella la aplicación funciona igual pero vuelve a
-comportarse como una foto: habrá que pulsar «Actualizar».
+`20260910140000_tiempo_real.sql` ya está aplicada: añade las tablas a la
+publicación `supabase_realtime`, que es lo único que Supabase entrega por
+WebSocket. Comprobado antes contra el proyecto real que Realtime responde y el
+canal llega a `SUBSCRIBED`.
 
-Comprobado contra el proyecto real que Realtime responde y el canal llega a
-`SUBSCRIBED`.
+Que los cambios lleguen de verdad solo se ve operando: abre la ventanilla en
+dos equipos, confirma un cobro en uno y comprueba que el otro se actualiza sin
+tocar nada. La insignia **En vivo** dice si el canal está escuchando; si sale
+«sin conexión en vivo», el botón «Actualizar» sigue estando.
 
 Publicar una tabla **no la abre**: Realtime evalúa las políticas de fila de
 quien escucha antes de entregarle nada, así que a un capturista le siguen sin
@@ -142,17 +144,22 @@ llegar los pagos. El anónimo no escucha nada, y por eso el portal del
 participante se mantiene al día de otra forma: pregunta por `fn_portal_estado`
 cada 20 segundos, y solo con la pestaña al frente.
 
-## Lo que sigue pendiente
+## Migraciones aplicadas
 
-- **Ejecutar `20260910180000_correo_personal_del_alumno.sql`.** La base se
-  sembró con el dominio de ejemplo `alumnos.universidad.mx`, así que hoy ningún
-  alumno con correo personal puede pre-registrarse. La migración lo deja en
-  NULL —que acepta cualquier correo— y evita que un valor en blanco vuelva a
-  cerrar la puerta. Si algún día sí hay dominio institucional, se reactiva
-  escribiéndolo en Administración → Configuración.
-- **Ejecutar `20260910160000_preregistro_docente_externo.sql`.** Hasta que se
-  aplique, un docente o un visitante externo no puede pre-registrarse: la única
-  puerta era `fn_preregistrar_alumno`, que exige una matrícula del padrón.
+Las tres del 10 de septiembre están ejecutadas y comprobadas contra el proyecto
+real:
+
+| Migración | Comprobación |
+| --- | --- |
+| `20260910140000_tiempo_real` | Realtime responde; el canal llega a `SUBSCRIBED` |
+| `20260910160000_preregistro_docente_externo` | `fn_preregistrar_externo` existe, el anónimo puede llamarla y valida el perfil |
+| `20260910180000_correo_personal_del_alumno` | `dominio_institucional` está en NULL: se acepta cualquier correo |
+
+Sigue **sin aplicar** `20260910100000_vistas_security_invoker.sql`, que corrige
+que las seis vistas se salten la seguridad a nivel de fila. No bloquea la
+operación, pero conviene antes del evento.
+
+## Lo que sigue pendiente
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
   enseña una barra de progreso, espera un momento simulado y responde «Tu
