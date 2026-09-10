@@ -94,14 +94,23 @@ export interface FilaTaller {
   taller_dias: { dia: Dia }[];
 }
 
+/**
+ * El nivel llega anidado dentro del programa porque es el único camino que
+ * PostgREST puede enlazar: ni `padron_alumnos` ni `participantes` tienen llave
+ * foránea propia hacia `niveles_academicos`. Ver `COLS_PARTICIPANTE`.
+ */
+interface ProgramaConNivel {
+  nombre: string;
+  niveles_academicos: { nivel: string } | null;
+}
+
 export interface FilaPadron {
   matricula: string;
   nombre: string;
   avance: number;
   grupo: string | null;
   dia: Dia | null;
-  niveles_academicos: { nivel: string } | null;
-  programas: { nombre: string } | null;
+  programas: ProgramaConNivel | null;
   planteles: { nombre: string } | null;
 }
 
@@ -122,8 +131,7 @@ export interface FilaParticipante {
   monto_esperado_evento: number;
   monto_esperado_taller: number | null;
   creado_en: string;
-  niveles_academicos: { nivel: string } | null;
-  programas: { nombre: string } | null;
+  programas: ProgramaConNivel | null;
   planteles: { nombre: string } | null;
 }
 
@@ -262,7 +270,7 @@ export const aTallerBase = (f: FilaTaller): TallerBase => ({
 export const aAlumnoPadron = (f: FilaPadron): AlumnoPadron => ({
   matricula: f.matricula,
   nombre: f.nombre,
-  nivel: f.niveles_academicos?.nivel ?? "",
+  nivel: f.programas?.niveles_academicos?.nivel ?? "",
   programa: f.programas?.nombre ?? "",
   avance: f.avance,
   grupo: f.grupo ?? undefined,
@@ -280,7 +288,7 @@ export function aParticipante(f: FilaParticipante, lugarPorDia: (d: Dia) => stri
     correo: f.correo,
     celular: f.celular,
     institucion: f.institucion,
-    nivel: f.niveles_academicos?.nivel,
+    nivel: f.programas?.niveles_academicos?.nivel,
     programa: f.programas?.nombre,
     avance: f.avance ?? undefined,
     grupo: f.grupo ?? undefined,

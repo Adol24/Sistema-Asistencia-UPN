@@ -61,11 +61,37 @@ export interface Instantanea {
   casos: CasoSoporte[];
 }
 
+/*
+ * El nivel se pide DENTRO de `programas`, y no es un capricho de estilo.
+ *
+ * PostgREST solo sabe enlazar dos tablas si hay una llave foránea que las una.
+ * `participantes.nivel_id` no tiene la suya: la única que existe es la
+ * compuesta `(programa_id, nivel_id) -> programas (id, nivel_id)`. Pedir
+ * `niveles_academicos ( nivel )` al mismo nivel que las demás columnas era, por
+ * tanto, imposible de resolver, y la respuesta completa se perdía:
+ *
+ *   [PGRST200] Could not find a relationship between 'participantes'
+ *              and 'niveles_academicos' in the schema cache
+ *
+ * Un embed que no resuelve no devuelve esa columna vacía: **tumba la consulta
+ * entera**. Por eso Servicios Financieros abría sin un solo participante aunque
+ * la sesión, el rol y las políticas estuvieran bien. Comprobado contra el
+ * proyecto real, no deducido.
+ *
+ * `programas` sí enlaza con `niveles_academicos` por su propia `nivel_id`, así
+ * que el nivel se alcanza en dos saltos y la consulta vuelve a resolver.
+ */
 const COLS_PARTICIPANTE = `
   id, folio, perfil, matricula, nombre, nombre_en_revision, correo, celular,
   institucion, avance, grupo, dia, taller_id, monto_esperado_evento,
   monto_esperado_taller, creado_en,
-  niveles_academicos ( nivel ), programas ( nombre ), planteles ( nombre )
+  programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
+`;
+
+/** El padrón arrastra exactamente el mismo enlace, y el mismo arreglo. */
+const COLS_PADRON = `
+  matricula, nombre, avance, grupo, dia,
+  programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
 `;
 
 /**
@@ -191,12 +217,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
    */
   const [participantes, padron, asistencias, evidencias, usuarios, casos] = await Promise.all([
     sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
-    sb
-      .from("padron_alumnos")
-      .select(
-        "matricula, nombre, avance, grupo, dia, niveles_academicos ( nivel ), programas ( nombre ), planteles ( nombre )",
-      )
-      .order("matricula"),
+    sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
     sb
       .from("asistencias")
       .select(
