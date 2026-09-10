@@ -1452,7 +1452,23 @@ export function EstadoEventoProvider({
           return siguiente;
         });
 
-      escribir(`el día de ${conjunto.size} alumnos`, (d) => d.asignarDiaRemoto([...conjunto], dia));
+      /*
+       * Ahora esto mueve también al participante, no solo su fila del padrón.
+       *
+       * Escribir solo el padrón hacía que la pantalla se viera bien —la lista se
+       * acababa de mover en memoria— mientras la base dejaba al participante en
+       * su día viejo. La puerta lee `participantes.dia`, así que rechazaba por
+       * DÍA EQUIVOCADO a quien acababa de ser reasignado, y al recargar el
+       * cambio desaparecía porque nunca se había guardado.
+       */
+      escribir(
+        `el día de ${conjunto.size} alumnos`,
+        (d) => d.asignarDiaRemoto([...conjunto], dia),
+        () =>
+          avisarFallo(
+            `No se pudo guardar el cambio de día. Recarga para ver cómo quedó de verdad.`,
+          ),
+      );
       return { movidos, talleresLiberados };
     },
     [participantes, talleres, infoDia, agregarAviso],

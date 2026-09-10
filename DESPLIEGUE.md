@@ -161,6 +161,11 @@ operación, pero conviene antes del evento.
 
 ## Lo que sigue pendiente
 
+- **Ejecutar `20260910220000_cambiar_dia_mueve_al_participante.sql`.** Sin ella,
+  cambiar el día de alguien en Administración se ve bien en pantalla pero no
+  mueve al participante en la base, y la puerta lo rechaza por DÍA EQUIVOCADO
+  al escanear su código.
+
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
   enseña una barra de progreso, espera un momento simulado y responde «Tu

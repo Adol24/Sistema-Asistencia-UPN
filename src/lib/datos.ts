@@ -982,12 +982,6 @@ export async function repartirDiasRemoto(): Promise<number> {
   return (data as number) ?? 0;
 }
 
-export async function reasignarDiaRemoto(matricula: string, dia: Dia): Promise<void> {
-  const sb = exigirBase();
-  const { error } = await sb.rpc("fn_reasignar_dia", { p_matricula: matricula, p_dia: dia });
-  if (error) throw error;
-}
-
 /** Lo que ocurrió al guardar el padrón. Se enseña tal cual en la pantalla. */
 export interface ResultadoPadron {
   guardados: number;
@@ -1123,17 +1117,44 @@ export async function guardarPadronRemoto(
  * mil matrículas en un `in (...)` es una URL de decenas de miles de caracteres,
  * y hay intermediarios que la cortan.
  */
+/**
+ * Mueve de día a un conjunto de alumnos.
+ *
+ * **Escribía solo el padrón, y ese era el fallo.** El día vive en dos sitios:
+ * `padron_alumnos.dia` es el que reparte Servicios Escolares, y
+ * `participantes.dia` es al que de verdad va a asistir esa persona. El escáner
+ * de la puerta decide con el segundo.
+ *
+ * Reasignar a alguien desde Administración se veía correcto en pantalla —la
+ * aplicación lo movía en memoria— pero en la base el participante seguía en su
+ * día viejo. Al escanear su código, la puerta respondía DÍA EQUIVOCADO a quien
+ * acababa de ser reasignado, y al recargar la pantalla el cambio desaparecía.
+ *
+ * Ahora lo hace `fn_asignar_dia_a_varios`, que mueve los dos y libera la
+ * inscripción de quien se quede con un taller que su día nuevo no imparte.
+ * Tiene que ser una sola operación en la base: el día y el taller se cambian en
+ * la misma sentencia porque la llave foránea `(taller_id, dia)` no admite ni un
+ * instante con el día nuevo y el taller viejo.
+ *
+ * @returns Las matrículas cuya inscripción a un taller se liberó, con su clave.
+ */
 export async function asignarDiaRemoto(
   matriculas: string[],
   dia: number | null,
   porLote = 200,
-): Promise<void> {
+): Promise<{ matricula: string; taller: string }[]> {
   const sb = exigirBase();
+  const liberados: { matricula: string; taller: string }[] = [];
+  // Se sigue troceando: un arreglo de miles de matrículas en un solo parámetro
+  // hace una petición enorme, y el tamaño de lote ya estaba elegido.
   for (let i = 0; i < matriculas.length; i += porLote) {
-    const { error } = await sb
-      .from("padron_alumnos")
-      .update({ dia })
-      .in("matricula", matriculas.slice(i, i + porLote));
+    const { data, error } = await sb.rpc("fn_asignar_dia_a_varios", {
+      p_matriculas: matriculas.slice(i, i + porLote),
+      p_dia: dia,
+    });
     if (error) throw new Error(error.message);
+    for (const f of (data ?? []) as { matricula: string; taller_liberado: string }[])
+      liberados.push({ matricula: f.matricula, taller: f.taller_liberado });
   }
+  return liberados;
 }
