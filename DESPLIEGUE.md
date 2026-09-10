@@ -144,6 +144,12 @@ cada 20 segundos, y solo con la pestaña al frente.
 
 ## Lo que sigue pendiente
 
+- **Ejecutar `20260910180000_correo_personal_del_alumno.sql`.** La base se
+  sembró con el dominio de ejemplo `alumnos.universidad.mx`, así que hoy ningún
+  alumno con correo personal puede pre-registrarse. La migración lo deja en
+  NULL —que acepta cualquier correo— y evita que un valor en blanco vuelva a
+  cerrar la puerta. Si algún día sí hay dominio institucional, se reactiva
+  escribiéndolo en Administración → Configuración.
 - **Ejecutar `20260910160000_preregistro_docente_externo.sql`.** Hasta que se
   aplique, un docente o un visitante externo no puede pre-registrarse: la única
   puerta era `fn_preregistrar_alumno`, que exige una matrícula del padrón.

@@ -53,7 +53,16 @@ function DatosDeContacto() {
    * propósito de ese paso; ver `confirmar-nombre`.
    */
 
-  const dominio = evento.dominioInstitucional;
+  /*
+   * Vacío o en blanco significa «cualquier correo», igual que en la base.
+   *
+   * Se recorta aquí y no se confía en que el campo del panel lo haya hecho: la
+   * comprobación de verdad vive en `fn_preregistrar_alumno`, y esta solo está
+   * para que la persona vea el error antes de llegar al final del recorrido.
+   * Si las dos no coinciden, el formulario deja pasar lo que la base rechaza —o
+   * al revés, que es peor: nadie puede registrarse y aquí no se ve por qué.
+   */
+  const dominio = evento.dominioInstitucional.trim();
 
   const continuar = async () => {
     const e: Errores = {};
