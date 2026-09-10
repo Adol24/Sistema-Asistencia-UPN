@@ -43,6 +43,9 @@ import {
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
+/** Cuántas filas del padrón se pintan de una vez. Ver el aviso del final. */
+const TOPE_LISTA = 100;
+
 export const Route = createFileRoute("/admin/padron")({
   head: () =>
     meta(
@@ -153,7 +156,17 @@ function ImportacionPadron() {
   const [fSede, setFSede] = useState("todas");
   const [fPrograma, setFPrograma] = useState("todos");
   const [fGrupo, setFGrupo] = useState("todos");
-  const [fDia, setFDia] = useState("sin-dia");
+  /*
+   * Arranca en «todos», no en «sin día».
+   *
+   * Antes empezaba filtrando a los pendientes porque era lo único accionable:
+   * no había lista, solo un contador, y ver «0 alumnos coinciden» era la única
+   * señal de que el reparto estaba completo. Ahora que la tabla existe, la
+   * pregunta más frecuente es la contraria —a quién le tocó qué día— y llegar a
+   * una pantalla vacía cuando todo está asignado escondía justamente eso. Los
+   * pendientes siguen a un clic, y su botón de reparto no depende del filtro.
+   */
+  const [fDia, setFDia] = useState("todos");
   /** Búsqueda libre por matrícula o nombre, para dar con una persona concreta. */
   const [q, setQ] = useState("");
 
@@ -412,66 +425,109 @@ function ImportacionPadron() {
           </div>
 
           {pendientes.length > 0 ? (
-            <>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button className="h-11" disabled={repartiendo} onClick={() => void repartir()}>
-                  {repartiendo ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" /> Repartiendo…
-                    </>
-                  ) : (
-                    <>
-                      <CalendarDays className="size-4" /> Repartir los {pendientes.length}{" "}
-                      pendientes
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Salida rápida: cada uno cae en el día que va más vacío, sin mirar de qué sede
-                  viene. Para repartir por sede usa el filtro de arriba.
-                </p>
-              </div>
-
-              <ul className="mt-3 grid gap-2">
-                {pendientes.slice(0, 12).map((a) => (
-                  <li
-                    key={a.matricula}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
-                  >
-                    <span>
-                      <span className="font-semibold">{a.nombre}</span>{" "}
-                      <span className="font-mono text-xs text-muted-foreground">{a.matricula}</span>
-                    </span>
-                    <span className="flex gap-1">
-                      {([1, 2, 3] as const).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => {
-                            reasignarDia(a.matricula, d);
-                            toast.success(`${a.nombre} queda en el día ${d}.`);
-                          }}
-                          className="h-10 rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted"
-                        >
-                          Día {d}
-                        </button>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-                {pendientes.length > 12 ? (
-                  <li className="text-xs text-muted-foreground">
-                    … y {pendientes.length - 12} más. Con estos volúmenes conviene repartirlos de
-                    golpe.
-                  </li>
-                ) : null}
-              </ul>
-            </>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button className="h-11" disabled={repartiendo} onClick={() => void repartir()}>
+                {repartiendo ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Repartiendo…
+                  </>
+                ) : (
+                  <>
+                    <CalendarDays className="size-4" /> Repartir los {pendientes.length} pendientes
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Salida rápida: cada uno cae en el día que va más vacío, sin mirar de qué sede viene.
+                Para repartir por sede usa el filtro de arriba.
+              </p>
+            </div>
           ) : (
             <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
               Los {padron.length} alumnos del padrón tienen día asignado.
             </p>
           )}
+
+          {/*
+            La lista de quienes coinciden con los filtros.
+            Antes solo se listaban los pendientes —y solo doce—, así que filtrar
+            por «Día 1» decía cuántos había pero nunca quiénes: no se podía
+            comprobar a quién le tocaba qué, ni corregir a una persona sin
+            mover a todo su grupo.
+          */}
+          {seleccion.length > 0 ? (
+            <div className="mt-4">
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full min-w-[40rem] text-left text-sm">
+                  <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Alumno</th>
+                      <th className="px-3 py-2 font-semibold">Grupo · sede</th>
+                      <th className="px-3 py-2 font-semibold">Día</th>
+                      <th className="px-3 py-2 font-semibold">Cambiar a</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {seleccion.slice(0, TOPE_LISTA).map((a) => (
+                      <tr key={a.matricula} className="border-t border-border align-middle">
+                        <td className="px-3 py-2">
+                          <span className="font-semibold">{a.nombre}</span>
+                          <span className="block font-mono text-xs text-muted-foreground">
+                            {a.matricula}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {a.grupo ?? "sin grupo"} · {a.plantel}
+                        </td>
+                        <td className="px-3 py-2">
+                          {a.dia ? (
+                            <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
+                              Día {a.dia} · {infoDia(a.dia).lugar}
+                            </span>
+                          ) : (
+                            <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
+                              Sin día
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="flex gap-1">
+                            {([1, 2, 3] as const).map((d) => (
+                              <button
+                                key={d}
+                                type="button"
+                                // El día que ya tiene no se ofrece: pulsarlo no
+                                // haría nada y ocupa el sitio de los que sí.
+                                disabled={a.dia === d}
+                                onClick={() => {
+                                  reasignarDia(a.matricula, d);
+                                  toast.success(`${a.nombre} queda en el día ${d}.`);
+                                }}
+                                className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
+                              >
+                                {d}
+                              </button>
+                            ))}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/*
+                El tope se anuncia en vez de recortar en silencio: una lista
+                truncada sin aviso se lee como «no hay más», y aquí eso
+                significaría dar por asignado a quien nadie llegó a ver.
+              */}
+              {seleccion.length > TOPE_LISTA ? (
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Se muestran {TOPE_LISTA} de {seleccion.length}. Acota con los filtros o el
+                  buscador; los botones de arriba sí aplican a los {seleccion.length}.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
