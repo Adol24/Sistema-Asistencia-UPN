@@ -1,26 +1,118 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Clock, MapPin } from "lucide-react";
+import { Check, Clock, MapPin } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
+import { cn } from "@/lib/utils";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/mi-dia")({
   head: () =>
     meta(
       "Tu día y lugar — XIV Encuentro Internacional de Educación",
-      "Consulta el día, el lugar y el horario de registro asignados para tu asistencia presencial al XIV Encuentro Internacional de Educación.",
+      "Consulta o elige el día, el lugar y el horario de registro de tu asistencia presencial al XIV Encuentro Internacional de Educación.",
     ),
   component: MiDia,
 });
 
+/**
+ * El día de la asistencia presencial.
+ *
+ * **Quién lo decide depende del perfil, y esa es toda la pantalla.**
+ *
+ * Al alumno se lo reparte Servicios Escolares: viene en el padrón, sale de
+ * `fn_dia_de` y no es negociable —cambiarlo desbalancearía las sedes—. Al
+ * docente y al visitante externo no los reparte nadie, porque no están en
+ * ningún padrón: elegir es la única respuesta correcta.
+ *
+ * Antes esta pantalla les decía a los tres lo mismo, «tu asistencia ya está
+ * asignada, no es posible cambiar de día», y al docente le enseñaba el DÍA 1.
+ * Ese 1 no lo había decidido nadie: era el valor por defecto de un `?? 1` en el
+ * navegador, sobre un dato que para él no existía todavía.
+ */
 function MiDia() {
   const navigate = useNavigate();
-  const { borrador, participante } = usePrototipo();
+  const { borrador, participante, setBorrador } = usePrototipo();
   const { configuracion: evento, infoDia } = useEstadoEvento();
-  const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);
+
+  const perfil = borrador.perfil ?? participante?.perfil ?? "alumno";
+  const eligeSuDia = perfil === "docente" || perfil === "externo";
+  const elegido = borrador.dia ?? participante?.dia;
+
+  if (eligeSuDia) {
+    return (
+      <PantallaPublica
+        titulo="Elige tu día"
+        descripcion="El encuentro se imparte tres días con el mismo programa en sedes distintas. Escoge al que asistirás."
+        volverA="/registro"
+      >
+        <ul className="grid gap-3">
+          {evento.dias.map((d) => {
+            const activo = elegido === d.dia;
+            return (
+              <li key={d.dia}>
+                <button
+                  type="button"
+                  onClick={() => setBorrador({ dia: d.dia as Dia })}
+                  aria-pressed={activo}
+                  className={cn(
+                    "w-full rounded-lg border p-4 text-left transition-colors",
+                    activo
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/25"
+                      : "border-border bg-card hover:bg-muted",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-base font-extrabold">
+                      {d.etiqueta} — {d.fecha}
+                    </p>
+                    {activo ? (
+                      <span className="flex items-center gap-1 text-sm font-semibold text-primary">
+                        <Check className="size-4" aria-hidden /> Elegido
+                      </span>
+                    ) : null}
+                  </div>
+                  <dl className="mt-3 grid gap-1.5 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="size-4 text-primary" aria-hidden /> {d.lugar}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="size-4 text-primary" aria-hidden />
+                      Registro de entrada {evento.registroEntrada}
+                    </div>
+                  </dl>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/*
+          Los talleres se imparten en días concretos, así que el día acota el
+          catálogo. Se dice aquí y no al llegar a la lista, donde ya sería
+          tarde: quien buscaba un taller en particular tiene que poder volver y
+          cambiar de día antes de elegir, no descubrir que no está.
+        */}
+        <p className="mt-4 text-sm text-muted-foreground">
+          Cada taller se imparte en días concretos, así que el que elijas define cuáles puedes
+          tomar. Podrás volver aquí antes de pagar.
+        </p>
+
+        <Button
+          className="mt-6 h-12 w-full text-base"
+          disabled={!elegido}
+          onClick={() => navigate({ to: "/talleres" })}
+        >
+          {elegido ? "Continuar a talleres" : "Elige un día para continuar"}
+        </Button>
+      </PantallaPublica>
+    );
+  }
+
+  const dia = infoDia(elegido ?? 1);
 
   return (
     <PantallaPublica

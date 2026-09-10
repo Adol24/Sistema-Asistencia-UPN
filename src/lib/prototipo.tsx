@@ -8,6 +8,8 @@ interface Borrador {
   nombre?: string | undefined;
   correo?: string | undefined;
   celular?: string | undefined;
+  /** Solo la capturan el docente y el externo; el alumno la hereda del padrón. */
+  institucion?: string | undefined;
   /** Datos académicos que vienen del padrón. El alumno no los captura. */
   nivel?: string | undefined;
   programa?: string | undefined;

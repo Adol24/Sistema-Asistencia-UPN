@@ -684,6 +684,40 @@ export async function confirmarEnPadronRemoto(
   } | null;
 }
 
+/**
+ * Alta de un docente o un visitante externo.
+ *
+ * Va aparte de `preregistrarAlumno` porque son altas distintas, no variantes de
+ * la misma: aquella parte de una matrícula del padrón y hereda de ahí el día y
+ * lo académico; esta no tiene padrón del que heredar, así que recibe el nombre
+ * y la institución que la persona declara, y **el día que ella eligió**.
+ */
+export async function preregistrarExterno(datos: {
+  perfil: "docente" | "externo";
+  nombre: string;
+  correo: string;
+  celular: string;
+  institucion: string;
+  dia: number;
+  tallerId?: string | undefined;
+}) {
+  const sb = exigirBase();
+  const { data, error } = await sb.rpc("fn_preregistrar_externo", {
+    p_perfil: datos.perfil,
+    p_nombre: datos.nombre,
+    p_correo: datos.correo,
+    p_celular: datos.celular,
+    p_institucion: datos.institucion,
+    p_dia: datos.dia,
+    p_taller: datos.tallerId ?? null,
+  });
+  // Se lanza el error tal cual, como en el alta de alumno: el mensaje viene de
+  // un `raise exception` de la función y es específico —«ese taller no se
+  // imparte el día 2»—, que ayuda más que uno genérico.
+  if (error) throw error;
+  return data as { id: string; folio: string; dia: Dia };
+}
+
 export async function preregistrarAlumno(datos: {
   matricula: string;
   correo: string;

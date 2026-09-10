@@ -92,7 +92,21 @@ function RegistroExterno() {
     setCargando(true);
     await simularLatencia();
     setCargando(false);
-    setBorrador({ perfil, ...porConfirmar! });
+    /*
+     * Van los cuatro datos, no solo los dos que se enseñan en la confirmación.
+     *
+     * El celular y la institución se quedaban aquí: la pantalla de confirmar
+     * solo repasa nombre y correo, que es lo que se teclea mal, y el borrador
+     * heredaba justo eso. Cuando el alta pasó a existir de verdad para este
+     * perfil, los dos campos llegaban vacíos y la base rechazaba el registro
+     * por falta de institución.
+     */
+    setBorrador({
+      perfil,
+      ...porConfirmar!,
+      celular: c.celular.trim(),
+      institucion: c.institucion.trim(),
+    });
     navigate({ to: "/mi-dia" });
   };
 

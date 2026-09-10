@@ -26,8 +26,24 @@ function CatalogoTalleres() {
   const navigate = useNavigate();
   const { borrador, setBorrador } = usePrototipo();
   const { talleres: catalogo, configuracion } = useEstadoEvento();
-  // Un taller inactivo deja de ofrecerse en el catálogo público.
-  const talleres = catalogo.filter((t) => t.activo);
+
+  /*
+   * El catálogo se acota al día de quien está eligiendo.
+   *
+   * No es cosmético: la tabla `participantes` tiene una llave foránea
+   * `(taller_id, dia) -> taller_dias`, así que inscribirse a un taller que no
+   * se imparte tu día es imposible en la base. Ofrecerlo igualmente solo
+   * consigue que el alta falle al final del recorrido, con la persona ya
+   * decidida, y con un mensaje sobre una restricción que no le dice nada.
+   *
+   * Sin día conocido —el prototipo sin base— se enseñan todos: es preferible a
+   * una lista vacía para quien está revisando pantallas.
+   */
+  const dia = borrador.dia;
+  const talleres = catalogo.filter(
+    // Un taller inactivo deja de ofrecerse en el catálogo público.
+    (t) => t.activo && (!dia || t.dias.includes(dia)),
+  );
   const [seleccion, setSeleccion] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
 
@@ -44,19 +60,39 @@ function CatalogoTalleres() {
     setRegistrando(true);
     try {
       if (hayBaseDeDatos) {
-        const { preregistrarAlumno } = await import("@/lib/datos");
-        const alta = await preregistrarAlumno({
-          matricula: borrador.matricula ?? "",
-          correo: borrador.correo ?? "",
-          celular: borrador.celular ?? "",
-          tallerId,
-        });
+        const d = await import("@/lib/datos");
+        /*
+         * Dos altas distintas, no dos variantes de la misma.
+         *
+         * La del alumno parte de su matrícula y hereda del padrón el día y lo
+         * académico. El docente y el externo no están en ningún padrón: traen
+         * el nombre y la institución que declararon, y el día que ELIGIERON.
+         *
+         * Antes solo existía la primera, así que un docente llegaba hasta aquí
+         * y el alta reventaba con «esa matrícula no está en el padrón» —porque
+         * mandaba una cadena vacía—. No quedaba registrado.
+         */
+        const externo = borrador.perfil === "docente" || borrador.perfil === "externo";
+        const alta = externo
+          ? await d.preregistrarExterno({
+              perfil: borrador.perfil as "docente" | "externo",
+              nombre: borrador.nombre ?? "",
+              correo: borrador.correo ?? "",
+              celular: borrador.celular ?? "",
+              institucion: borrador.institucion ?? "",
+              dia: borrador.dia ?? 1,
+              tallerId,
+            })
+          : await d.preregistrarAlumno({
+              matricula: borrador.matricula ?? "",
+              correo: borrador.correo ?? "",
+              celular: borrador.celular ?? "",
+              tallerId,
+            });
         setBorrador({ tallerId, folio: alta.folio, dia: alta.dia });
         // Ahora sí existe a quién colgarle la corrección de nombre.
         if (borrador.nombreCorrecto)
-          await import("@/lib/datos").then((d) =>
-            d.abrirCasoNombreRemoto(alta.id, borrador.nombreCorrecto!),
-          );
+          await d.abrirCasoNombreRemoto(alta.id, borrador.nombreCorrecto);
       } else {
         setBorrador({ tallerId });
       }
@@ -75,7 +111,11 @@ function CatalogoTalleres() {
       volverA="/mi-dia"
       ancho="lg"
       titulo="Elige un taller (opcional)"
-      descripcion="Puedes elegir máximo un taller. Cada taller tiene costo adicional y se paga por separado."
+      descripcion={
+        dia
+          ? `Estos son los talleres del día ${dia}. Puedes elegir máximo uno, con costo adicional que se paga por separado.`
+          : "Puedes elegir máximo un taller. Cada taller tiene costo adicional y se paga por separado."
+      }
     >
       {seleccion ? (
         <Alert className="mb-5">
@@ -88,7 +128,9 @@ function CatalogoTalleres() {
       {talleres.length === 0 ? (
         <EstadoVacio
           icono={<Info className="size-8" aria-hidden />}
-          titulo="Por ahora no hay talleres disponibles"
+          titulo={
+            dia ? `Ningún taller se imparte el día ${dia}` : "Por ahora no hay talleres disponibles"
+          }
         >
           Puedes continuar sin taller; tu registro al evento no depende de esto.
         </EstadoVacio>

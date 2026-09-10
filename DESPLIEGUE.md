@@ -144,6 +144,10 @@ cada 20 segundos, y solo con la pestaña al frente.
 
 ## Lo que sigue pendiente
 
+- **Ejecutar `20260910160000_preregistro_docente_externo.sql`.** Hasta que se
+  aplique, un docente o un visitante externo no puede pre-registrarse: la única
+  puerta era `fn_preregistrar_alumno`, que exige una matrícula del padrón.
+
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
   enseña una barra de progreso, espera un momento simulado y responde «Tu
   evidencia quedó en revisión», pero la foto no sale del navegador: no hay
