@@ -20,6 +20,7 @@ import {
   aCatalogo,
   aConfiguracion,
   aEvidencia,
+  aPago,
   aParticipante,
   aTallerBase,
   aUsuario,
@@ -27,9 +28,11 @@ import {
   type FilaCaso,
   type FilaConfiguracion,
   type FilaDia,
+  type FilaEstadoPago,
   type FilaEvidencia,
   type FilaNivel,
   type FilaPadron,
+  type FilaPago,
   type FilaParticipante,
   type FilaTaller,
   type FilaUsuario,
@@ -39,12 +42,14 @@ import type {
   Asistencia,
   CasoSoporte,
   Dia,
+  EstadoPago,
   Evidencia,
   Participante,
   TallerBase,
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { PagoRegistrado } from "@/lib/pagos-logica";
 
 /** Todo lo que el contexto necesita para arrancar. */
 export interface Instantanea {
@@ -54,6 +59,13 @@ export interface Instantanea {
   /** De la clave corta (`T01`) al uuid de la base, para poder escribir después. */
   idPorClave: Record<string, string>;
   participantes: Participante[];
+  /**
+   * Los pagos ya registrados. Llegan vacíos para quien no puede leerlos
+   * —`pagos_lectura` es de administración, financieros y soporte—, y eso es
+   * correcto: el estado que necesita la puerta viaja aparte, ya derivado, en
+   * cada participante.
+   */
+  pagos: PagoRegistrado[];
   padron: AlumnoPadron[];
   asistencias: Asistencia[];
   evidencias: Evidencia[];
@@ -86,6 +98,16 @@ const COLS_PARTICIPANTE = `
   institucion, avance, grupo, dia, taller_id, monto_esperado_evento,
   monto_esperado_taller, creado_en,
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
+`;
+
+/**
+ * El pago guarda `participante_id`, pero todo lo demás en la aplicación habla
+ * de folios. La llave foránea a `participantes` existe y es simple, así que el
+ * folio se trae en la misma consulta en vez de cruzarlo después a mano.
+ */
+const COLS_PAGO = `
+  id, concepto, monto, monto_esperado, referencia, fecha_deposito,
+  resultado, origen, nota, registrado_en, participantes ( folio )
 `;
 
 /** El padrón arrastra exactamente el mismo enlace, y el mismo arreglo. */
@@ -215,34 +237,61 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
    * Ahora se piden aparte y su fallo no arrastra al resto: quien no tiene
    * permiso recibe listas vacías, que es lo que ya se decía que pasaba.
    */
-  const [participantes, padron, asistencias, evidencias, usuarios, casos] = await Promise.all([
-    sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
-    sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
-    sb
-      .from("asistencias")
-      .select(
-        "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-      )
-      .is("anulada_en", null)
-      .order("registrada_en"),
-    sb
-      .from("evidencias")
-      .select(
-        "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
-      )
-      .order("dia"),
-    sb.from("usuarios_internos").select("*").order("nombre"),
-    sb
-      .from("casos_soporte")
-      .select(
-        "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
-      )
-      .order("creado_en", { ascending: false }),
-  ]);
+  const [participantes, estadoPago, pagos, padron, asistencias, evidencias, usuarios, casos] =
+    await Promise.all([
+      sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
+      /*
+       * El estado derivado, que puede leer cualquier miembro del personal.
+       * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
+       * pagó nadie ni con qué referencia.
+       */
+      sb.from("v_estado_pago").select("participante_id, concepto, estado"),
+      /*
+       * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
+       * los demás las políticas les devuelven cero filas, sin error.
+       *
+       * Se ordenan del más antiguo al más reciente porque `estadoDePagos`
+       * recorre la lista al revés y se queda con la primera coincidencia: el
+       * último pago de un concepto es el que manda, y ese orden es el que lo
+       * garantiza.
+       */
+      sb.from("pagos").select(COLS_PAGO).order("registrado_en"),
+      sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
+      sb
+        .from("asistencias")
+        .select(
+          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+        )
+        .is("anulada_en", null)
+        .order("registrada_en"),
+      sb
+        .from("evidencias")
+        .select(
+          "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
+        )
+        .order("dia"),
+      sb.from("usuarios_internos").select("*").order("nombre"),
+      sb
+        .from("casos_soporte")
+        .select(
+          "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
+        )
+        .order("creado_en", { ascending: false }),
+    ]);
 
   // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
   // público ya se cargó arriba. Solo lo público es imprescindible.
-  const sinPermiso = participantes.error ?? padron.error ?? asistencias.error ?? evidencias.error;
+  // Los pagos y el estado derivado entran en la comprobación aunque las
+  // políticas nunca los hagan fallar por rol —filtran filas, no dan error—,
+  // porque lo que sí puede romperlos es un enlace mal escrito, y ese fallo ya
+  // pasó inadvertido una vez.
+  const sinPermiso =
+    participantes.error ??
+    estadoPago.error ??
+    pagos.error ??
+    padron.error ??
+    asistencias.error ??
+    evidencias.error;
   if (sinPermiso && conSesion)
     console.error(
       "Hay sesión pero las tablas del personal responden sin permiso; las pantallas internas saldrán vacías.",
@@ -251,14 +300,26 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
   else if (sinPermiso && import.meta.env.DEV)
     console.info("Sin permiso para las tablas del personal; se cargan vacías.", sinPermiso.message);
 
+  /*
+   * El estado derivado, indexado por participante y concepto. Se arma antes de
+   * mapear a los participantes porque cada uno lo consulta una vez, y recorrer
+   * la lista entera por cada participante sería cuadrático.
+   */
+  const porParticipante = new Map<string, EstadoPago>();
+  for (const e of (estadoPago.data ?? []) as unknown as FilaEstadoPago[])
+    porParticipante.set(`${e.participante_id}:${e.concepto}`, e.estado);
+  const estadoDeriva = (id: string, concepto: "evento" | "taller") =>
+    porParticipante.get(`${id}:${concepto}`);
+
   return {
     configuracion,
     sedes: publico.sedes,
     talleresBase,
     idPorClave,
     participantes: ((participantes.data ?? []) as unknown as FilaParticipante[]).map((p) =>
-      aParticipante(p, lugarPorDia),
+      aParticipante(p, lugarPorDia, estadoDeriva),
     ),
+    pagos: ((pagos.data ?? []) as unknown as FilaPago[]).map(aPago),
     padron: ((padron.data ?? []) as unknown as FilaPadron[]).map(aAlumnoPadron),
     asistencias: ((asistencias.data ?? []) as unknown as FilaAsistencia[]).map(aAsistencia),
     evidencias: ((evidencias.data ?? []) as unknown as FilaEvidencia[]).map((e) =>

@@ -386,7 +386,27 @@ export function EstadoEventoProvider({
   children: ReactNode;
   inicial?: Publico | null;
 }) {
-  const [pagos, setPagos] = useState<PagoRegistrado[]>(() => pagosIniciales());
+  /*
+   * Los pagos llegan de dos sitios y hay que distinguirlos.
+   *
+   * `pagosBase` son los que ya estaban registrados en la base; `pagosSesion`,
+   * los que se capturan aquí y ahora. Antes solo existían los segundos, así que
+   * ventanilla abría cada mañana como si nadie hubiera pagado nunca: quien
+   * depositó ayer aparecía en `pre_registrado` y el escáner de la puerta lo
+   * detenía en rojo.
+   *
+   * El orden de la concatenación es la regla: `estadoDePagos` recorre la lista
+   * al revés y se queda con la primera coincidencia, de modo que lo capturado
+   * en esta sesión pesa más que lo que se leyó al entrar. Es lo correcto
+   * mientras la escritura sea optimista —la pantalla se adelanta a la base—,
+   * porque si no, un cobro recién hecho parpadearía de vuelta a «sin pagar».
+   */
+  const [pagosBase, setPagosBase] = useState<PagoRegistrado[]>([]);
+  const [pagosSesion, setPagosSesion] = useState<PagoRegistrado[]>(() => pagosIniciales());
+  const pagos = useMemo<PagoRegistrado[]>(
+    () => [...pagosBase, ...pagosSesion],
+    [pagosBase, pagosSesion],
+  );
   const [contadorPagos, setContadorPagos] = useState(0);
 
   const [capturadas, setCapturadas] = useState<Asistencia[]>([]);
@@ -486,6 +506,7 @@ export function EstadoEventoProvider({
         setIdPorClave(datos.idPorClave);
         setSedes(datos.sedes);
         setParticipantesBase(datos.participantes);
+        setPagosBase(datos.pagos);
         setPadron(datos.padron);
         setAsistenciasBase(datos.asistencias);
         setEvidenciasBase(datos.evidencias);
@@ -579,7 +600,7 @@ export function EstadoEventoProvider({
         id: idPago(n, entrada.concepto),
         registradoEn: new Date().toISOString(),
       };
-      setPagos((prev) => [...prev, pago]);
+      setPagosSesion((prev) => [...prev, pago]);
 
       // Se escribe sin esperar: la pantalla ya se actualizó. Si la base rechaza
       // —una referencia duplicada que dos ventanillas capturaron a la vez— el
@@ -611,7 +632,7 @@ export function EstadoEventoProvider({
         id: idPago(base + k + 1, e.concepto),
         registradoEn: new Date().toISOString(),
       }));
-      setPagos((prev) => [...prev, ...nuevos]);
+      setPagosSesion((prev) => [...prev, ...nuevos]);
       /*
        * La carga masiva es la operación que más dinero mueve de una vez y era de
        * las que no se guardaban: se aplicaba un archivo con cientos de pagos, la

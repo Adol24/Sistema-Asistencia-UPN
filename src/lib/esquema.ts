@@ -18,6 +18,7 @@ import type {
   CasoSoporte,
   Dia,
   EstadoEvidencia,
+  EstadoPago,
   Evidencia,
   Participante,
   Perfil,
@@ -27,6 +28,7 @@ import type {
 } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { PagoRegistrado } from "@/lib/pagos-logica";
 import { rolDesdeBase } from "@/lib/roles";
 
 // ============================================================ filas crudas ===
@@ -133,6 +135,35 @@ export interface FilaParticipante {
   creado_en: string;
   programas: ProgramaConNivel | null;
   planteles: { nombre: string } | null;
+}
+
+export interface FilaPago {
+  id: string;
+  concepto: "evento" | "taller";
+  monto: string | number;
+  monto_esperado: string | number;
+  referencia: string;
+  fecha_deposito: string;
+  resultado: "pagado" | "discrepancia";
+  origen: "ventanilla" | "carga_masiva";
+  nota: string | null;
+  registrado_en: string;
+  participantes: { folio: string } | null;
+}
+
+/**
+ * El estado derivado que publica `v_estado_pago`: una fila por participante y
+ * concepto, sin montos ni referencias.
+ *
+ * Existe aparte de `FilaPago` porque no todo el personal puede leer los pagos
+ * —`pagos_lectura` es de administración, financieros y soporte— pero el escáner
+ * de la puerta sí necesita saber si alguien pagó. Esta vista da exactamente eso
+ * y nada más: ni cuánto, ni con qué referencia.
+ */
+export interface FilaEstadoPago {
+  participante_id: string;
+  concepto: "evento" | "taller";
+  estado: EstadoPago;
 }
 
 export interface FilaAsistencia {
@@ -278,7 +309,33 @@ export const aAlumnoPadron = (f: FilaPadron): AlumnoPadron => ({
   dia: f.dia ?? undefined,
 });
 
-export function aParticipante(f: FilaParticipante, lugarPorDia: (d: Dia) => string): Participante {
+/**
+ * `numeric` de PostgreSQL llega como cadena, no como número: el driver no lo
+ * convierte porque `numeric` admite más precisión de la que aguanta un `number`
+ * de JavaScript. Aquí sí conviene, porque son importes de cuatro cifras, pero
+ * hay que pedirlo: sin `Number()`, `monto - montoEsperado` concatena en vez de
+ * restar y toda discrepancia se calcula mal.
+ */
+export const aPago = (f: FilaPago): PagoRegistrado => ({
+  id: f.id,
+  folio: f.participantes?.folio ?? "",
+  concepto: f.concepto,
+  monto: Number(f.monto),
+  montoEsperado: Number(f.monto_esperado),
+  referencia: f.referencia,
+  fechaDeposito: f.fecha_deposito,
+  nota: f.nota ?? undefined,
+  resultado: f.resultado,
+  origen: f.origen,
+  registradoEn: f.registrado_en,
+});
+
+export function aParticipante(
+  f: FilaParticipante,
+  lugarPorDia: (d: Dia) => string,
+  /** Estado derivado por `v_estado_pago`. Ausente cuando quien pregunta no puede leerla. */
+  estado?: (participanteId: string, concepto: "evento" | "taller") => EstadoPago | undefined,
+): Participante {
   return {
     id: f.id,
     folio: f.folio,
@@ -295,11 +352,13 @@ export function aParticipante(f: FilaParticipante, lugarPorDia: (d: Dia) => stri
     plantel: f.planteles?.nombre,
     dia: f.dia,
     lugar: lugarPorDia(f.dia),
-    // El estado de pago no viene de la fila: la base lo deriva en `v_estado_pago`
-    // y el contexto lo calcula igual que en el prototipo, a partir de los pagos.
-    estadoPagoEvento: "pre_registrado",
+    // El estado de pago no vive en esta fila: la base lo deriva en
+    // `v_estado_pago`, y de ahí llega. Antes se fijaba a `pre_registrado` sin
+    // más, así que quien había pagado ayer aparecía hoy como si no, y el
+    // escáner de la puerta lo detenía en rojo.
+    estadoPagoEvento: estado?.(f.id, "evento") ?? "pre_registrado",
     tallerId: f.taller_id ?? undefined,
-    estadoPagoTaller: f.taller_id ? "pre_registrado" : undefined,
+    estadoPagoTaller: f.taller_id ? (estado?.(f.id, "taller") ?? "pre_registrado") : undefined,
     nombreEnRevision: f.nombre_en_revision,
     montoEsperadoEvento: Number(f.monto_esperado_evento),
     montoEsperadoTaller:

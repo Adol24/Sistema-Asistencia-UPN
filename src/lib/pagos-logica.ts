@@ -123,10 +123,15 @@ export function pagosIniciales(): PagoRegistrado[] {
 }
 
 /**
- * Estado de pago efectivo de un participante: el del mock, salvo que en esta
- * sesión se haya registrado un pago para ese concepto, en cuyo caso manda el
- * más reciente. Es la regla que une Servicios Financieros con el portal y con
- * el escáner de la puerta.
+ * Estado de pago efectivo de un participante: el que trae él —derivado por
+ * `v_estado_pago` al cargar—, salvo que en la lista haya un pago para ese
+ * concepto, en cuyo caso manda el último. Es la regla que une Servicios
+ * Financieros con el portal y con el escáner de la puerta.
+ *
+ * El respaldo del participante importa más de lo que parece: quien no puede
+ * leer la tabla `pagos` —un capturista en la puerta— recibe la lista vacía y
+ * decide con ese estado derivado, que sí puede ver y no revela ni importes ni
+ * referencias.
  */
 export function estadoDePagos(
   pagos: PagoRegistrado[],
