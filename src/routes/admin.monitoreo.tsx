@@ -25,7 +25,8 @@ export const Route = createFileRoute("/admin/monitoreo")({
 
 function Monitoreo() {
   const { participantes, asistencias, estadoDe, configuracion, reloj } = useEstadoEvento();
-  // El día lo manda el reloj simulado: es lo que permite situarse en la hora pico.
+  // El día lo manda el reloj, que normalmente sigue la hora real y solo se
+  // detiene si alguien lo mueve a mano para ensayar.
   const dia = reloj.dia;
   const info = configuracion.dias.find((d) => d.dia === dia)!;
 
@@ -52,8 +53,20 @@ function Monitoreo() {
     >
       <p className="mb-4 text-sm text-muted-foreground">
         {info.etiqueta} — {info.fecha} · {info.lugar} · son las{" "}
-        <span className="font-mono font-semibold text-foreground">{comoHora(reloj.minutos)}</span>{" "}
-        en el reloj simulado
+        <span className="font-mono font-semibold text-foreground">{comoHora(reloj.minutos)}</span>
+        {/*
+          Decir de dónde sale la hora, porque de ella depende el ritmo. «Son las
+          9:15» a secas se lee como un dato del sistema, y si el reloj está
+          detenido eso es exactamente lo que no es.
+        */}
+        {reloj.automatico ? (
+          ""
+        ) : (
+          <span className="font-semibold text-estado-discrepancia">
+            {" "}
+            en el reloj detenido a mano, no la hora real
+          </span>
+        )}
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

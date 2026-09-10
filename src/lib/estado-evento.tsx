@@ -166,6 +166,15 @@ export interface RelojEvento {
   dia: Dia;
   /** Minutos desde medianoche. */
   minutos: number;
+  /**
+   * Sigue la hora real, en vez de la que alguien dejó puesta con el deslizador.
+   *
+   * Encendido es lo normal, y es lo que hace falta el dia del evento: el ritmo
+   * de entrada se calcula contra esta hora, así que una hora congelada da un
+   * ritmo falso —y más falso cuanto más avanza la jornada—. Se apaga solo
+   * cuando alguien mueve el control a mano, para ensayar.
+   */
+  automatico: boolean;
 }
 
 /** Decisión de revisión tomada en esta sesión sobre una evidencia. */
@@ -678,7 +687,18 @@ export function EstadoEventoProvider({
   const [bitacoraSesion, setBitacoraSesion] = useState<EntradaBitacora[]>([]);
   const [contadorBitacora, setContadorBitacora] = useState(0);
   // Arranca en la hora pico de acceso del día 1.
-  const [reloj, setRelojState] = useState<RelojEvento>({ dia: 1, minutos: 8 * 60 + 30 });
+  /*
+   * Arranca en un valor fijo y pasa a la hora real despues de montar.
+   *
+   * Leer `new Date()` durante el render daría una hora en el servidor y otra en
+   * el navegador, y React vería dos árboles distintos al hidratar. El valor
+   * inicial es el mismo en los dos lados y el efecto de abajo lo corrige.
+   */
+  const [reloj, setRelojState] = useState<RelojEvento>({
+    dia: 1,
+    minutos: 8 * 60 + 30,
+    automatico: true,
+  });
 
   /*
    * Si hay conexión de verdad, no si alguien pulsó un botón.
@@ -1656,10 +1676,63 @@ export function EstadoEventoProvider({
   }, []);
 
   // --------------------------------------------------------------- reloj ---
+  /*
+   * Tocar el control apaga el seguimiento de la hora real.
+   *
+   * Es lo que se espera: quien mueve el deslizador quiere ver otro momento, y
+   * que el reloj se lo corrigiera un segundo después sería pelearse con la
+   * pantalla. Para volver, `setReloj({ automatico: true })`.
+   */
   const setReloj = useCallback<Ctx["setReloj"]>(
-    (r) => setRelojState((prev) => ({ ...prev, ...r })),
+    (r) => setRelojState((prev) => ({ ...prev, automatico: false, ...r })),
     [],
   );
+
+  /*
+   * El día del evento que corresponde a hoy, o `null` si hoy no es ninguno.
+   *
+   * Se compara contra la fecha local, no contra UTC: a las 19:00 en México ya
+   * es el día siguiente en UTC, y el monitoreo saltaría al día 2 con la jornada
+   * del 1 todavía en marcha.
+   */
+  const diaDeHoy = useCallback((): Dia | null => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    const hoy = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    return (configuracion.dias.find((x) => x.fecha.slice(0, 10) === hoy)?.dia as Dia) ?? null;
+  }, [configuracion.dias]);
+
+  /*
+   * Mientras siga la hora real, se pone al dia solo.
+   *
+   * Cada treinta segundos y no cada minuto porque el ritmo se mide en personas
+   * por minuto: con un minuto de resolución el número daría saltos visibles
+   * justo cuando alguien lo está mirando.
+   *
+   * Si hoy no es ninguno de los tres días, el día no se toca: se respeta el que
+   * hubiera, que es lo útil para preparar la jornada la víspera.
+   */
+  useEffect(() => {
+    if (!reloj.automatico) return;
+
+    const poner = () => {
+      const ahora = new Date();
+      const hoy = diaDeHoy();
+      setRelojState((prev) =>
+        prev.automatico
+          ? {
+              ...prev,
+              minutos: ahora.getHours() * 60 + ahora.getMinutes(),
+              ...(hoy ? { dia: hoy } : {}),
+            }
+          : prev,
+      );
+    };
+
+    poner();
+    const t = setInterval(poner, 30_000);
+    return () => clearInterval(t);
+  }, [reloj.automatico, diaDeHoy]);
 
   // --------------------------------------------------------------- red ---
   const alternarConexion = useCallback(() => {
