@@ -9,7 +9,12 @@ import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { avanceTexto } from "@/dominio/catalogos";
 import { descargarCsv } from "@/lib/exportar";
-import { elegibilidadEvento, nombreConstancia, nombreEnRevisionActivo } from "@/lib/elegibilidad";
+import {
+  elegibilidadEvento,
+  nombreConstancia,
+  nombreEnRevisionActivo,
+  useEntornoConstancias,
+} from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
@@ -49,6 +54,7 @@ function Reportes() {
     registrarBitacora,
     configuracion,
   } = useEstadoEvento();
+  const entorno = useEntornoConstancias();
   const [activo, setActivo] = useState<IdReporte>("pagos");
   const [pagina, setPagina] = useState(1);
   const [q, setQ] = useState("");
@@ -56,13 +62,6 @@ function Reportes() {
   // Todo sale del contexto compartido: un reporte generado después de registrar
   // pagos en la misma sesión los incluye, sin recargar.
   const reportes = useMemo<Reporte[]>(() => {
-    const entorno = {
-      estadoDe,
-      asistenciasDe,
-      evidencias,
-      diasTallerDe: (id: string | undefined) => (getTaller(id)?.dias ?? []) as Dia[],
-    };
-
     return [
       {
         id: "padron",
@@ -262,16 +261,17 @@ function Reportes() {
         }),
       },
     ];
+    // `entorno` sustituye a `asistenciasDe`, `evidencias`, `getTaller` y
+    // `estadoDe`: los cuatro se agrupan ahí, y el hook los memoiza, así que
+    // enumerarlos aquí además sería recalcular por partida doble.
   }, [
     participantes,
     padron,
     pagos,
     asistencias,
-    asistenciasDe,
     evidencias,
     talleres,
-    getTaller,
-    estadoDe,
+    entorno,
     casos,
     configuracion.catalogoAcademico,
   ]);

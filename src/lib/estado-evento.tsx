@@ -828,9 +828,19 @@ export function EstadoEventoProvider({
     [participantesBase, ajustesParticipante],
   );
 
+  /*
+   * Los participantes indexados por folio.
+   *
+   * `getParticipante` recorría la lista entera en cada llamada, y se llama
+   * mucho: por fila de la ventanilla, en cada escaneo de la puerta, al pintar
+   * cada asistencia del historial. El índice se arma una vez por cambio de la
+   * lista y cada búsqueda pasa a ser inmediata.
+   */
+  const porFolio = useMemo(() => new Map(participantes.map((p) => [p.folio, p])), [participantes]);
+
   const getParticipante = useCallback<Ctx["getParticipante"]>(
-    (folio) => participantes.find((p) => p.folio === folio),
-    [participantes],
+    (folio) => porFolio.get(folio),
+    [porFolio],
   );
 
   // ----------------------------------------------------------- bitácora ---
@@ -909,10 +919,30 @@ export function EstadoEventoProvider({
     [capturadas, asistenciasBase, registrarBitacora],
   );
 
+  /*
+   * Las asistencias agrupadas por folio.
+   *
+   * `asistenciasDe` filtraba la lista entera en cada llamada, y el listado de
+   * elegibles la llama dos veces por participante: con quinientos participantes
+   * y mil quinientas asistencias eso era millon y medio de comparaciones cada
+   * vez que se repinta la pantalla.
+   */
+  const porFolioAsistencias = useMemo(() => {
+    const indice = new Map<string, Asistencia[]>();
+    for (const a of asistencias) {
+      const suyas = indice.get(a.folio);
+      if (suyas) suyas.push(a);
+      else indice.set(a.folio, [a]);
+    }
+    return indice;
+  }, [asistencias]);
+
   const asistenciasDe = useCallback<Ctx["asistenciasDe"]>(
-    (folio, dia) =>
-      asistencias.filter((a) => a.folio === folio && (dia === undefined || a.dia === dia)),
-    [asistencias],
+    (folio, dia) => {
+      const suyas = porFolioAsistencias.get(folio) ?? [];
+      return dia === undefined ? suyas : suyas.filter((a) => a.dia === dia);
+    },
+    [porFolioAsistencias],
   );
 
   const escanear = useCallback<Ctx["escanear"]>(
@@ -1146,15 +1176,23 @@ export function EstadoEventoProvider({
   }, []);
 
   // ------------------------------------------------------------ talleres ---
-  // `cupoOcupado` es derivado: nunca se escribe a mano.
-  const talleres = useMemo<Taller[]>(
-    () =>
-      talleresBase.map(({ ocupadosPrevios, ...t }) => ({
-        ...t,
-        cupoOcupado: ocupadosPrevios + participantes.filter((p) => p.tallerId === t.id).length,
-      })),
-    [talleresBase, participantes],
-  );
+  /*
+   * `cupoOcupado` es derivado: nunca se escribe a mano.
+   *
+   * Se cuenta en UNA pasada por los participantes, no una por taller. Antes
+   * cada taller filtraba la lista completa, así que el coste era el producto de
+   * los dos: con diez talleres y quinientos participantes, cinco mil
+   * comparaciones cada vez que alguien se registra o cambia de día.
+   */
+  const talleres = useMemo<Taller[]>(() => {
+    const inscritos = new Map<string, number>();
+    for (const p of participantes)
+      if (p.tallerId) inscritos.set(p.tallerId, (inscritos.get(p.tallerId) ?? 0) + 1);
+    return talleresBase.map(({ ocupadosPrevios, ...t }) => ({
+      ...t,
+      cupoOcupado: ocupadosPrevios + (inscritos.get(t.id) ?? 0),
+    }));
+  }, [talleresBase, participantes]);
 
   const getTaller = useCallback<Ctx["getTaller"]>(
     (id) => talleres.find((t) => t.id === id),

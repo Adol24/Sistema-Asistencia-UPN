@@ -12,7 +12,10 @@
  * por qué fulano no aparece en el listado.
  */
 
+import { useMemo } from "react";
+
 import type { Asistencia, CasoSoporte, EstadoPago, Evidencia, Participante } from "@/dominio/tipos";
+import { useEstadoEvento } from "@/lib/estado-evento";
 
 /** Los dos listados que el sistema entrega por separado. */
 export type TipoListado = "evento" | "taller";
@@ -37,7 +40,14 @@ export const EVIDENCIAS_REQUERIDAS = 2;
 export interface EntornoConstancias {
   estadoDe: (p: Participante) => { evento: EstadoPago; taller: EstadoPago | undefined };
   asistenciasDe: (folio: string, dia?: 1 | 2 | 3) => Asistencia[];
-  evidencias: Evidencia[];
+  /**
+   * Las evidencias de esa persona, ordenadas por día.
+   *
+   * Antes se recibía la lista completa y cada participante la filtraba y
+   * ordenaba entera. Quien arma el entorno las agrupa de una pasada para todos,
+   * que es lo que convierte un coste cuadrático en lineal.
+   */
+  evidenciasDe: (folio: string) => Evidencia[];
   /** Días en los que se imparte el taller del participante, si tiene. */
   diasTallerDe: (tallerId?: string) => (1 | 2 | 3)[];
 }
@@ -48,29 +58,32 @@ export interface EntornoConstancias {
  * El cierre automático cuenta como salida válida: no salir escaneando es lo
  * normal cuando el evento termina y la gente se va en bloque, y penalizarlo
  * dejaría sin constancia a quien sí asistió el día completo.
+ *
+ * Recibe las asistencias del día en vez de ir a buscarlas: quien la llama ya
+ * las tiene, y pedirlas dos veces era recorrer la lista dos veces por persona.
  */
-export function asistioElDia(entorno: EntornoConstancias, p: Participante): boolean {
-  const delDia = entorno.asistenciasDe(p.folio, p.dia);
+export function asistioElDia(delDia: Asistencia[]): boolean {
   return delDia.some((a) => a.tipo === "entrada") && delDia.some((a) => a.tipo === "salida");
 }
 
 /** Elegibilidad para la constancia del EVENTO, según el perfil. */
 export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante): Elegibilidad {
   const estado = entorno.estadoDe(p);
-  const asistio = asistioElDia(entorno, p);
-  const aprobadas = entorno.evidencias.filter(
-    (e) => e.folio === p.folio && e.estado === "aprobada",
-  ).length;
+  // Las asistencias del día se piden UNA vez y de ahí sale todo. Se pedían dos
+  // —una aquí y otra dentro de `asistioElDia`— y la entrada se buscaba otras
+  // dos, para el mismo dato.
+  const delDia = entorno.asistenciasDe(p.folio, p.dia);
+  const asistio = asistioElDia(delDia);
+  const aprobadas = entorno.evidenciasDe(p.folio).filter((e) => e.estado === "aprobada").length;
 
   // El detalle tiene que alcanzar para responder sin abrir otra pantalla: es la
   // pregunta que va a llegar cientos de veces cuando se entreguen los documentos.
-  const delDia = entorno.asistenciasDe(p.folio, p.dia);
-  const tieneEntrada = delDia.some((a) => a.tipo === "entrada");
+  const entrada = delDia.find((a) => a.tipo === "entrada");
   const salida = delDia.find((a) => a.tipo === "salida");
-  const detalleAsistencia = !tieneEntrada
+  const detalleAsistencia = !entrada
     ? `No tiene entrada registrada el día ${p.dia}. Revisa la captura de asistencia de ese día.`
     : !salida
-      ? `Tiene entrada (${delDia.find((a) => a.tipo === "entrada")?.hora}) pero no salida del día ${p.dia}. Ejecuta el cierre automático del día para completarla.`
+      ? `Tiene entrada (${entrada.hora}) pero no salida del día ${p.dia}. Ejecuta el cierre automático del día para completarla.`
       : "";
 
   const requisitos: Requisito[] = [
@@ -91,9 +104,7 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
   if (p.perfil === "alumno") {
     // Se enumera evidencia por evidencia, con su día y su estado, para no obligar
     // a nadie a ir al panel de revisión a averiguar cuál falta.
-    const suyas = entorno.evidencias
-      .filter((e) => e.folio === p.folio)
-      .sort((a, b) => a.dia - b.dia);
+    const suyas = entorno.evidenciasDe(p.folio);
     const problemas = suyas
       .filter((e) => e.estado !== "aprobada")
       .map((e) => {
@@ -186,4 +197,42 @@ export function nombreConstancia(nombre: string): string {
     .replace(new RegExp(MARCA, "g"), "Ñ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * Arma el entorno de constancias desde el estado del evento.
+ *
+ * Lo construían tres pantallas por su cuenta —elegibles, el panel y reportes—
+ * con el mismo objeto escrito tres veces, y las tres pasaban las listas
+ * completas para que cada participante las recorriera entera. Aquí se agrupan
+ * una sola vez y se comparten.
+ *
+ * Vive junto a la lógica que alimenta, no en el contexto del evento: el
+ * contexto no tiene por qué saber qué necesita el cálculo de constancias, y
+ * separarlos deja que este cambie sin tocar el estado global.
+ */
+export function useEntornoConstancias(): EntornoConstancias {
+  const { estadoDe, asistenciasDe, evidencias, getTaller } = useEstadoEvento();
+
+  // Se agrupan y ordenan de una pasada, no una vez por participante.
+  const porFolio = useMemo(() => {
+    const indice = new Map<string, Evidencia[]>();
+    for (const e of evidencias) {
+      const suyas = indice.get(e.folio);
+      if (suyas) suyas.push(e);
+      else indice.set(e.folio, [e]);
+    }
+    for (const suyas of indice.values()) suyas.sort((a, b) => a.dia - b.dia);
+    return indice;
+  }, [evidencias]);
+
+  return useMemo(
+    () => ({
+      estadoDe,
+      asistenciasDe,
+      evidenciasDe: (folio) => porFolio.get(folio) ?? [],
+      diasTallerDe: (id) => getTaller(id)?.dias ?? [],
+    }),
+    [estadoDe, asistenciasDe, porFolio, getTaller],
+  );
 }

@@ -15,7 +15,7 @@ import {
   nombreConstancia,
   nombreEnRevisionActivo,
   type Elegibilidad,
-  type EntornoConstancias,
+  useEntornoConstancias,
 } from "@/lib/elegibilidad";
 import { descargarCsv } from "@/lib/exportar";
 import { meta } from "@/lib/seo";
@@ -41,29 +41,12 @@ interface Fila {
 }
 
 function Elegibles() {
-  const {
-    participantes,
-    estadoDe,
-    asistenciasDe,
-    evidencias,
-    casos,
-    getTaller,
-    registrarBitacora,
-  } = useEstadoEvento();
+  const { participantes, casos, getTaller, registrarBitacora } = useEstadoEvento();
+  const entorno = useEntornoConstancias();
   const [q, setQ] = useState("");
   const [perfil, setPerfil] = useState<"todos" | "alumno" | "docente" | "externo">("todos");
   const [dia, setDia] = useState<"todos" | Dia>("todos");
   const [estado, setEstado] = useState<FiltroEstado>("todos");
-
-  const entorno = useMemo<EntornoConstancias>(
-    () => ({
-      estadoDe,
-      asistenciasDe,
-      evidencias,
-      diasTallerDe: (id) => (getTaller(id)?.dias ?? []) as Dia[],
-    }),
-    [estadoDe, asistenciasDe, evidencias, getTaller],
-  );
 
   const filas = useMemo<Fila[]>(
     () =>

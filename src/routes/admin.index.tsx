@@ -34,7 +34,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import {
   elegibilidadEvento,
   nombreEnRevisionActivo,
-  type EntornoConstancias,
+  useEntornoConstancias,
 } from "@/lib/elegibilidad";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
@@ -61,18 +61,17 @@ function Dashboard() {
   const {
     participantes,
     estadoDe,
-    asistenciasDe,
     asistencias,
     evidencias,
     casos,
     talleres,
-    getTaller,
     configuracion,
     reloj,
     usuarios,
     padron,
     anularAsistencia,
   } = useEstadoEvento();
+  const entorno = useEntornoConstancias();
   const infoDelDia = configuracion.dias.find((d) => d.dia === reloj.dia);
   const [anulando, setAnulando] = useState<Asistencia | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -103,16 +102,6 @@ function Dashboard() {
     const diaDe = new Map(participantes.map((p) => [p.folio, p.dia]));
     return asistencias.filter((a) => diaDe.has(a.folio) && diaDe.get(a.folio) !== a.dia);
   }, [asistencias, participantes]);
-
-  const entorno = useMemo<EntornoConstancias>(
-    () => ({
-      estadoDe,
-      asistenciasDe,
-      evidencias,
-      diasTallerDe: (id: string | undefined) => (getTaller(id)?.dias ?? []) as Dia[],
-    }),
-    [estadoDe, asistenciasDe, evidencias, getTaller],
-  );
 
   // Todo se calcula del contexto compartido: un pago registrado en ventanilla,
   // un escaneo en la puerta o una evidencia aprobada mueven estos números sin
