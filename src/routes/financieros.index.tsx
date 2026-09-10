@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Ban, Check, CheckCircle2, Info, QrCode, SearchX } from "lucide-react";
+import { Ban, Check, CheckCircle2, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { CamaraQR } from "@/components/camara-qr";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { hoyIso, isoAFecha, moneda } from "@/lib/formato";
+import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -50,6 +50,8 @@ function Ventanilla() {
     registrarPago,
     registrarBitacora,
     pagos,
+    recargar,
+    cargadoEn,
   } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
@@ -76,6 +78,17 @@ function Ventanilla() {
   useEffect(() => {
     ref.current?.focus();
   }, []);
+
+  /*
+   * Tras cada carga se olvida qué se confirmó en esta sesión.
+   *
+   * El guardia contra el doble clic es una lista en memoria, y los datos que
+   * acaban de llegar ya dicen quién pagó. Si un cobro no llegó a guardarse, su
+   * botón vuelve a aparecer, y con el guardia puesto sería imposible pulsarlo.
+   */
+  useEffect(() => {
+    if (!cargandoDatos) confirmados.current.clear();
+  }, [cargandoDatos]);
 
   // Al corriente es haber pagado TODO lo que debe. Quien tiene el evento pagado
   // y el taller a medias sigue teniendo algo que cobrar, y contarlo entre los
@@ -211,12 +224,22 @@ function Ventanilla() {
         <span className="ml-auto text-xs text-muted-foreground">
           {cargandoDatos ? "Cargando…" : `${lista.length} de ${participantes.length} participantes`}
         </span>
+        <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
+          <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
+          Actualizar
+        </Button>
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
         Atajos: <kbd className="rounded border border-border px-1">Esc</kbd> limpiar ·{" "}
         <kbd className="rounded border border-border px-1">F2</kbd> escanear · toca el nombre para
         ver su ficha
+        {/*
+          Se dice de cuándo son los datos. La lista es una foto, y quien atiende
+          tiene derecho a saber si es de hace un minuto o de hace tres horas
+          antes de decirle a alguien que su folio no existe.
+        */}
+        {cargadoEn ? ` · datos de las ${hora(new Date(cargadoEn))}` : ""}
       </p>
 
       <div className="mt-6">
@@ -334,9 +357,26 @@ function Ventanilla() {
               <AlertTitle>Ese código no corresponde a nadie</AlertTitle>
               <AlertDescription>
                 Se leyó <span className="font-mono">{noEncontrado}</span>, y no hay ningún
-                pre-registro con ese folio. Puede que sea el código de otro evento, o que la persona
-                nunca completara su pre-registro. Búscala por nombre o matrícula antes de cobrarle.
+                pre-registro con ese folio <strong>en los datos que tiene esta pantalla</strong>. Si
+                acaba de registrarse, actualiza y vuelve a escanear. Si sigue sin aparecer, puede
+                ser el código de otro evento o un pre-registro sin terminar: búscalo por nombre o
+                matrícula antes de cobrarle.
               </AlertDescription>
+              {/*
+                La salida más probable va aquí mismo. La lista es una foto del
+                momento en que se inició sesión, así que el motivo número uno de
+                este aviso es alguien que se pre-registró hace cinco minutos.
+              */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2"
+                onClick={recargar}
+                disabled={cargandoDatos}
+              >
+                <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
+                Actualizar y volver a intentar
+              </Button>
             </Alert>
           ) : null}
           {camara ? (

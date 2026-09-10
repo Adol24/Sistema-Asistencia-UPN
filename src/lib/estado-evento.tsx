@@ -225,6 +225,11 @@ interface Ctx {
    */
   conectado: boolean;
   cargandoDatos: boolean;
+  /** Cuándo terminó la última carga, en milisegundos, o null si aún no hubo. */
+  cargadoEn: number | null;
+  /** Vuelve a pedirlo todo a la base. La pantalla trabaja con una foto y esta
+   *  es la forma de renovarla sin recargar el navegador. */
+  recargar: () => void;
 
   configuracion: ConfiguracionEvento;
   actualizarConfiguracion: (patch: Partial<ConfiguracionEvento>) => void;
@@ -485,44 +490,85 @@ export function EstadoEventoProvider({
    * es lo correcto: los datos de la fila no deben sobrevivir al cierre de
    * sesión en la memoria del navegador.
    */
+  /** Cuándo terminó la última carga, en milisegundos. Para poder decirlo. */
+  const [cargadoEn, setCargadoEn] = useState<number | null>(null);
+
+  const cargar = useCallback(async () => {
+    if (!hayBaseDeDatos || cargandoSesion) return;
+    setCargandoDatos(true);
+    try {
+      const m = await import("@/lib/datos");
+      // El público se cachea 30 segundos dentro de `cargarPublico`; al recargar
+      // a mano hay que olvidarlo o la configuración recién cambiada no llega.
+      m.olvidarPublico();
+      const datos = await m.cargarTodo(personaId !== null);
+      if (!datos) return;
+      setConfiguracion(datos.configuracion);
+      setTalleresBase(datos.talleresBase);
+      setIdPorClave(datos.idPorClave);
+      setSedes(datos.sedes);
+      setParticipantesBase(datos.participantes);
+      setPagosBase(datos.pagos);
+      /*
+       * Los pagos de la sesión se descartan, y es deliberado.
+       *
+       * Lo que se escribió bien acaba de volver dentro de `datos.pagos`, así que
+       * conservarlos los contaría DOS VECES en los totales de conciliación. Y lo
+       * que no volvió es que no llegó a guardarse: desaparecer de la pantalla es
+       * exactamente lo que debe pasar, en vez de seguir enseñando un cobro que
+       * la base no tiene.
+       */
+      setPagosSesion([]);
+      setPadron(datos.padron);
+      setAsistenciasBase(datos.asistencias);
+      setEvidenciasBase(datos.evidencias);
+      // Las tablas del personal devuelven cero filas a quien no tiene permiso,
+      // en vez de un error. Se conservan las simuladas para que las pantallas
+      // internas no queden vacías cuando las mira alguien sin sesión.
+      if (datos.usuarios.length) setUsuarios(datos.usuarios);
+      if (datos.casos.length) setCasos(datos.casos);
+      setConectado(true);
+      setCargadoEn(Date.now());
+    } catch (e: unknown) {
+      console.error("No se pudo cargar de la base.", e);
+    } finally {
+      setCargandoDatos(false);
+    }
+  }, [cargandoSesion, personaId]);
+
+  const recargar = useCallback(() => {
+    void cargar();
+  }, [cargar]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  /*
+   * Volver a la pestaña vuelve a pedir los datos.
+   *
+   * Sin esto la pantalla trabajaba con una foto del instante en que se inició
+   * sesión: quien se pre-registrara después no existía para esa pestaña, y
+   * escanear su código respondía «ese folio no existe» a alguien que sí había
+   * completado el proceso. Lo mismo con los cobros de otra ventanilla y con las
+   * asistencias de la puerta.
+   *
+   * Se ata al foco y no a un temporizador porque es cuando el dato importa —se
+   * vuelve a la pantalla para atender a alguien— y porque un sondeo constante
+   * en tres ventanillas es tráfico que nadie mira.
+   */
   useEffect(() => {
     if (!hayBaseDeDatos) return;
-    // Ni dentro ni fuera todavía. Pedir ahora es pedir sin credencial.
-    if (cargandoSesion) return;
-    let vigente = true;
-    setCargandoDatos(true);
-
-    void import("@/lib/datos")
-      .then((m) => m.cargarTodo(personaId !== null))
-      .then((datos) => {
-        if (!vigente || !datos) return;
-        setConfiguracion(datos.configuracion);
-        setTalleresBase(datos.talleresBase);
-        setIdPorClave(datos.idPorClave);
-        setSedes(datos.sedes);
-        setParticipantesBase(datos.participantes);
-        setPagosBase(datos.pagos);
-        setPadron(datos.padron);
-        setAsistenciasBase(datos.asistencias);
-        setEvidenciasBase(datos.evidencias);
-        // Las tablas del personal devuelven cero filas a quien no tiene permiso,
-        // en vez de un error. Se conservan las simuladas para que las pantallas
-        // internas no queden vacías cuando las mira alguien sin sesión.
-        if (datos.usuarios.length) setUsuarios(datos.usuarios);
-        if (datos.casos.length) setCasos(datos.casos);
-        setConectado(true);
-      })
-      .catch((e: unknown) => {
-        console.error("No se pudo cargar de la base; se usan los datos simulados.", e);
-      })
-      .finally(() => {
-        if (vigente) setCargandoDatos(false);
-      });
-
-    return () => {
-      vigente = false;
+    const alVolver = () => {
+      if (document.visibilityState === "visible") void cargar();
     };
-  }, [cargandoSesion, personaId]);
+    document.addEventListener("visibilitychange", alVolver);
+    window.addEventListener("focus", alVolver);
+    return () => {
+      document.removeEventListener("visibilitychange", alVolver);
+      window.removeEventListener("focus", alVolver);
+    };
+  }, [cargar]);
   /**
    * Cambios de la sesión sobre los participantes, por folio. Hoy solo los
    * produce la importación del padrón, que es la única pantalla que puede mover
@@ -1342,6 +1388,8 @@ export function EstadoEventoProvider({
       deshacerRevision,
       conectado,
       cargandoDatos,
+      cargadoEn,
+      recargar,
       configuracion,
       actualizarConfiguracion,
       infoDia,
@@ -1401,6 +1449,8 @@ export function EstadoEventoProvider({
       deshacerRevision,
       conectado,
       cargandoDatos,
+      cargadoEn,
+      recargar,
       configuracion,
       actualizarConfiguracion,
       infoDia,

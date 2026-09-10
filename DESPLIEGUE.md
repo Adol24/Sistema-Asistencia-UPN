@@ -123,6 +123,14 @@ fuera a los demás.
 
 ## Lo que sigue pendiente
 
+- **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
+  enseña una barra de progreso, espera un momento simulado y responde «Tu
+  evidencia quedó en revisión», pero la foto no sale del navegador: no hay
+  bucket de Storage en el proyecto y `datos.ts` no tiene ninguna escritura sobre
+  `evidencias` —solo la lectura de la carga y el `update` que usa el revisor—.
+  El revisor no verá nada, y como la elegibilidad exige dos evidencias
+  aprobadas, hoy nadie puede llegar a elegible por esa vía. Es el mismo caso que
+  tenía la foto del voucher en ventanilla, que ya se retiró.
 - Revisar que cada persona tenga su propia cuenta antes del primer día.
 - Las dos migraciones nuevas (`20260908120000` y `20260908140000`) **no se han
   ejecutado contra un Postgres**: en esta máquina no hay ni `psql` ni el CLI de
