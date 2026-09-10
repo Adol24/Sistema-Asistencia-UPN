@@ -5,7 +5,7 @@ export const navFinancieros = (
   <NavPanel
     items={
       [
-        { to: "/financieros", label: "Búsqueda" },
+        { to: "/financieros", label: "Lista" },
         { to: "/financieros/ficha", label: "Ficha y pago" },
         { to: "/financieros/carga-masiva", label: "Carga masiva" },
         { to: "/financieros/conciliacion", label: "Conciliación" },

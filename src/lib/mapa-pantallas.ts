@@ -98,7 +98,7 @@ export const modulos: ModuloIndice[] = [
     titulo: "Servicios Financieros",
     nota: "Optimizado para atender fila",
     rutas: [
-      { estado: "listo", to: "/financieros", label: "Búsqueda y escaneo" },
+      { estado: "listo", to: "/financieros", label: "Lista, búsqueda y escaneo" },
       { estado: "listo", to: "/financieros/ficha", label: "Ficha y registro de pago" },
       { estado: "listo", to: "/financieros/carga-masiva", label: "Carga masiva por Excel" },
       { estado: "listo", to: "/financieros/conciliacion", label: "Conciliación" },

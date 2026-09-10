@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Copy, Download, Search, TimerOff, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 
 import { moneda } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,8 @@ type Filtro = "todos" | "pagado" | "discrepancia" | "por_vencer";
 
 function Conciliacion() {
   const { participantes, pagos, estadoDe, configuracion: evento } = useEstadoEvento();
+  const navigate = useNavigate();
+  const { setFolio } = usePrototipo();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
@@ -237,8 +240,29 @@ function Conciliacion() {
             </tr>
           </thead>
           <tbody>
+            {/*
+              La fila abre la ficha de esa persona. Antes la tabla era un
+              callejón sin salida: se veía aquí a quién le faltaba pagar y había
+              que volver a la lista y teclear su nombre otra vez.
+            */}
             {filas.map((f) => (
-              <tr key={f.p.folio} className="border-b border-border last:border-0">
+              <tr
+                key={f.p.folio}
+                onClick={() => {
+                  setFolio(f.p.folio);
+                  void navigate({ to: "/financieros/ficha" });
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`Abrir la ficha de ${f.p.nombre}`}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  setFolio(f.p.folio);
+                  void navigate({ to: "/financieros/ficha" });
+                }}
+                className="cursor-pointer border-b border-border last:border-0 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
                 <td className="px-3 py-2 font-mono text-xs">{f.p.folio}</td>
                 <td className="px-3 py-2">{f.p.nombre}</td>
                 <td className="px-3 py-2">
