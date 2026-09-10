@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
+import { useSesion } from "@/lib/sesion";
 import { rolHaciaBase } from "@/lib/roles";
 import type { Publico } from "@/lib/datos";
 import { CONFIGURACION_VACIA, type ConfiguracionEvento } from "@/lib/configuracion";
@@ -443,17 +444,41 @@ export function EstadoEventoProvider({
   const [conectado, setConectado] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(hayBaseDeDatos);
 
+  /*
+   * Quién está dentro. La carga tiene que esperarlo y repetirse cuando cambia:
+   * las tablas del personal se piden con la credencial de quien pregunta.
+   */
+  const { persona, cargando: cargandoSesion } = useSesion();
+  const personaId = persona?.id ?? null;
+
   /**
-   * Carga inicial desde Supabase. Si no hay base configurada, o si la carga
-   * falla, se queda con los datos simulados: un prototipo que se cae en blanco
-   * porque falta una llave no le sirve a quien iba a revisar pantallas.
+   * Carga desde Supabase. Si no hay base configurada, o si la carga falla, se
+   * queda con lo que ya hubiera: un prototipo que se cae en blanco porque falta
+   * una llave no le sirve a quien iba a revisar pantallas.
+   *
+   * **Depende de la sesión, y esa dependencia es el punto.** Antes corría una
+   * sola vez al montar, con la lista de dependencias vacía. En ese instante
+   * Supabase todavía no ha restaurado el token —lo lee de `localStorage` de
+   * forma asíncrona—, así que las consultas del personal salían sin credencial
+   * y PostgREST las respondía con 401 antes de evaluar ninguna política. El
+   * fallo se traga a propósito, porque un visitante anónimo no debe quedarse
+   * sin la configuración pública por eso. El resultado era que Servicios
+   * Financieros abría con cero participantes y la búsqueda por folio no
+   * encontraba a nadie: estaba filtrando un arreglo vacío, no fallando.
+   *
+   * Volver a pedir al cambiar de persona también vacía la lista al salir, que
+   * es lo correcto: los datos de la fila no deben sobrevivir al cierre de
+   * sesión en la memoria del navegador.
    */
   useEffect(() => {
     if (!hayBaseDeDatos) return;
+    // Ni dentro ni fuera todavía. Pedir ahora es pedir sin credencial.
+    if (cargandoSesion) return;
     let vigente = true;
+    setCargandoDatos(true);
 
     void import("@/lib/datos")
-      .then((m) => m.cargarTodo())
+      .then((m) => m.cargarTodo(personaId !== null))
       .then((datos) => {
         if (!vigente || !datos) return;
         setConfiguracion(datos.configuracion);
@@ -481,7 +506,7 @@ export function EstadoEventoProvider({
     return () => {
       vigente = false;
     };
-  }, []);
+  }, [cargandoSesion, personaId]);
   /**
    * Cambios de la sesión sobre los participantes, por folio. Hoy solo los
    * produce la importación del padrón, que es la única pantalla que puede mover

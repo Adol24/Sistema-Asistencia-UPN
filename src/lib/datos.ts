@@ -152,7 +152,15 @@ export async function cargarPublico(): Promise<Publico | null> {
   return valor;
 }
 
-export async function cargarTodo(): Promise<Instantanea | null> {
+/**
+ * @param conSesion Si quien pregunta ya se identificó como personal interno.
+ *   Solo cambia cómo se REPORTA el fallo de las tablas del personal, nunca lo
+ *   que se pide: sin sesión el 401 es lo esperado y callarlo es correcto; con
+ *   sesión significa que a esa cuenta le falta permiso o su fila en
+ *   `usuarios_internos`, y eso tiene que verse aunque nadie abra las
+ *   herramientas de desarrollo.
+ */
+export async function cargarTodo(conSesion = false): Promise<Instantanea | null> {
   if (!supabase) return null;
   const sb = supabase;
 
@@ -214,7 +222,12 @@ export async function cargarTodo(): Promise<Instantanea | null> {
   // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
   // público ya se cargó arriba. Solo lo público es imprescindible.
   const sinPermiso = participantes.error ?? padron.error ?? asistencias.error ?? evidencias.error;
-  if (sinPermiso && import.meta.env.DEV)
+  if (sinPermiso && conSesion)
+    console.error(
+      "Hay sesión pero las tablas del personal responden sin permiso; las pantallas internas saldrán vacías.",
+      sinPermiso.message,
+    );
+  else if (sinPermiso && import.meta.env.DEV)
     console.info("Sin permiso para las tablas del personal; se cargan vacías.", sinPermiso.message);
 
   return {
