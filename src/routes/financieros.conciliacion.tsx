@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { moneda } from "@/lib/formato";
+import { folioDeEjemplo } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { porVencer as vencible } from "@/lib/pagos-logica";
 import { usePrototipo } from "@/lib/prototipo";
@@ -31,6 +32,7 @@ function Conciliacion() {
   const { participantes, pagos, estadoDe, configuracion: evento } = useEstadoEvento();
   const navigate = useNavigate();
   const { setFolio } = usePrototipo();
+  const ejemplo = folioDeEjemplo(participantes);
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
@@ -290,8 +292,10 @@ function Conciliacion() {
                 <td colSpan={8} className="px-3 py-12 text-center">
                   <p className="text-sm font-semibold">Sin resultados para ese filtro</p>
                   <p className="text-sm text-muted-foreground">
-                    Prueba con el folio completo, por ejemplo {participantes[0]!.folio}, o quita el
-                    filtro de estado.
+                    {ejemplo
+                      ? `Prueba con el folio completo, por ejemplo ${ejemplo}, o quita `
+                      : "Quita "}
+                    el filtro de estado.
                   </p>
                 </td>
               </tr>

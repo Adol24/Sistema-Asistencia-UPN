@@ -9,6 +9,7 @@ import { PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { folioDeEjemplo } from "@/lib/busqueda";
 import {
   elegibilidadEvento,
   elegibilidadTaller,
@@ -43,6 +44,7 @@ interface Fila {
 function Elegibles() {
   const { participantes, casos, getTaller, registrarBitacora } = useEstadoEvento();
   const entorno = useEntornoConstancias();
+  const ejemplo = folioDeEjemplo(participantes);
   const [q, setQ] = useState("");
   const [perfil, setPerfil] = useState<"todos" | "alumno" | "docente" | "externo">("todos");
   const [dia, setDia] = useState<"todos" | Dia>("todos");
@@ -340,8 +342,8 @@ function Elegibles() {
           <li className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
             <p className="text-sm font-semibold">Sin participantes con estos filtros</p>
             <p className="text-sm text-muted-foreground">
-              Cambia el perfil o el estado, o busca por folio, por ejemplo {participantes[0]!.folio}
-              .
+              Cambia el perfil o el estado
+              {ejemplo ? `, o busca por folio, por ejemplo ${ejemplo}` : ""}.
             </p>
           </li>
         ) : null}
