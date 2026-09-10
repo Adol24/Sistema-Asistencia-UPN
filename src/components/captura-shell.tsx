@@ -20,7 +20,7 @@ const RUTAS = [
  * descubrirse al final del día.
  */
 export function BarraConexion() {
-  const { enLinea, pendientes, alternarConexion } = useEstadoEvento();
+  const { enLinea, pendientes, alternarConexion, enVivo } = useEstadoEvento();
   return (
     <div
       className={cn(
@@ -45,6 +45,17 @@ export function BarraConexion() {
         {enLinea
           ? "EN LÍNEA"
           : `SIN CONEXIÓN — ${pendientes} ${pendientes === 1 ? "pendiente" : "pendientes"}`}
+        {/*
+          En línea y en vivo no son lo mismo, y en la puerta la diferencia
+          decide. Con red pero sin escucha, esta pantalla no se entera de que
+          Servicios Financieros acaba de cobrarle a quien tiene delante, y lo
+          detendría en rojo por un pago que ya existe. Se dice cuando falta.
+        */}
+        {enLinea && !enVivo ? (
+          <span className="rounded-full bg-black/25 px-2 py-0.5 text-xs font-medium">
+            sin escucha en vivo
+          </span>
+        ) : null}
       </span>
       <button
         onClick={alternarConexion}

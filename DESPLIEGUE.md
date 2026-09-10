@@ -121,6 +121,27 @@ Si no hay ninguna cabecera de IP —desarrollo local— no se limita. Inventar u
 agruparía a todo el mundo bajo la misma cuenta y bastaría un usuario para dejar
 fuera a los demás.
 
+## Tiempo real
+
+Las pantallas del personal escuchan los cambios de la base por WebSocket: un
+pre-registro nuevo, un cobro de otra ventanilla o una asistencia de la puerta
+llegan solos, sin que nadie pulse nada. La ventanilla lo dice con una insignia
+**En vivo**, y la puerta avisa cuando falta.
+
+Requiere **ejecutar `20260910140000_tiempo_real.sql`**. Supabase solo entrega
+los cambios de las tablas que estén en la publicación `supabase_realtime`, y esa
+migración las añade. Sin ella la aplicación funciona igual pero vuelve a
+comportarse como una foto: habrá que pulsar «Actualizar».
+
+Comprobado contra el proyecto real que Realtime responde y el canal llega a
+`SUBSCRIBED`.
+
+Publicar una tabla **no la abre**: Realtime evalúa las políticas de fila de
+quien escucha antes de entregarle nada, así que a un capturista le siguen sin
+llegar los pagos. El anónimo no escucha nada, y por eso el portal del
+participante se mantiene al día de otra forma: pregunta por `fn_portal_estado`
+cada 20 segundos, y solo con la pestaña al frente.
+
 ## Lo que sigue pendiente
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`

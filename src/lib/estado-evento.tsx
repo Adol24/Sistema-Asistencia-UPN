@@ -94,11 +94,29 @@ function columnasDeConfiguracion(patch: Partial<ConfiguracionEvento>): Record<st
   );
 }
 
-function escribir(descripcion: string, accion: (datos: ModuloDatos) => Promise<unknown>): void {
+/**
+ * Avisa en pantalla de una escritura que la base rechazó.
+ *
+ * Se importa el aviso al vuelo en vez de arriba porque este módulo lo cargan
+ * todas las pantallas, incluidas las del participante en el teléfono, y una
+ * escritura fallida es la excepción: no vale la pena que el paquete de la
+ * portada arrastre la librería de avisos por un caso que casi nunca ocurre.
+ */
+function avisarFallo(mensaje: string): void {
+  void import("sonner").then(({ toast }) => toast.error(mensaje));
+}
+
+function escribir(
+  descripcion: string,
+  accion: (datos: ModuloDatos) => Promise<unknown>,
+  /** Se llama si la base rechazó la escritura, para poder deshacer lo pintado. */
+  alFallar?: (e: unknown) => void,
+): void {
   if (!hayBaseDeDatos) return;
-  void import("@/lib/datos")
-    .then(accion)
-    .catch((e: unknown) => console.error(`No se pudo guardar ${descripcion}`, e));
+  void import("@/lib/datos").then(accion).catch((e: unknown) => {
+    console.error(`No se pudo guardar ${descripcion}`, e);
+    alFallar?.(e);
+  });
 }
 
 /**
@@ -225,6 +243,8 @@ interface Ctx {
    */
   conectado: boolean;
   cargandoDatos: boolean;
+  /** El canal de cambios está escuchando de verdad, no solo intentándolo. */
+  enVivo: boolean;
   /** Cuándo terminó la última carga, en milisegundos, o null si aún no hubo. */
   cargadoEn: number | null;
   /** Vuelve a pedirlo todo a la base. La pantalla trabaja con una foto y esta
@@ -493,48 +513,71 @@ export function EstadoEventoProvider({
   /** Cuándo terminó la última carga, en milisegundos. Para poder decirlo. */
   const [cargadoEn, setCargadoEn] = useState<number | null>(null);
 
-  const cargar = useCallback(async () => {
-    if (!hayBaseDeDatos || cargandoSesion) return;
-    setCargandoDatos(true);
-    try {
-      const m = await import("@/lib/datos");
-      // El público se cachea 30 segundos dentro de `cargarPublico`; al recargar
-      // a mano hay que olvidarlo o la configuración recién cambiada no llega.
-      m.olvidarPublico();
-      const datos = await m.cargarTodo(personaId !== null);
-      if (!datos) return;
-      setConfiguracion(datos.configuracion);
-      setTalleresBase(datos.talleresBase);
-      setIdPorClave(datos.idPorClave);
-      setSedes(datos.sedes);
-      setParticipantesBase(datos.participantes);
-      setPagosBase(datos.pagos);
-      /*
-       * Los pagos de la sesión se descartan, y es deliberado.
-       *
-       * Lo que se escribió bien acaba de volver dentro de `datos.pagos`, así que
-       * conservarlos los contaría DOS VECES en los totales de conciliación. Y lo
-       * que no volvió es que no llegó a guardarse: desaparecer de la pantalla es
-       * exactamente lo que debe pasar, en vez de seguir enseñando un cobro que
-       * la base no tiene.
-       */
-      setPagosSesion([]);
-      setPadron(datos.padron);
-      setAsistenciasBase(datos.asistencias);
-      setEvidenciasBase(datos.evidencias);
-      // Las tablas del personal devuelven cero filas a quien no tiene permiso,
-      // en vez de un error. Se conservan las simuladas para que las pantallas
-      // internas no queden vacías cuando las mira alguien sin sesión.
-      if (datos.usuarios.length) setUsuarios(datos.usuarios);
-      if (datos.casos.length) setCasos(datos.casos);
-      setConectado(true);
-      setCargadoEn(Date.now());
-    } catch (e: unknown) {
-      console.error("No se pudo cargar de la base.", e);
-    } finally {
-      setCargandoDatos(false);
-    }
-  }, [cargandoSesion, personaId]);
+  /**
+   * @param silencioso No enciende el indicador de carga.
+   *
+   * Lo usan las recargas que nadie pidió —la escucha en vivo y el regreso a la
+   * pestaña—. Sin esto, cada cambio ajeno cambiaría la tabla de la ventanilla
+   * por un esqueleto durante medio segundo, y con varias ventanillas cobrando
+   * a la vez eso es la pantalla parpadeando sola toda la jornada. La recarga
+   * que sí pidió alguien conserva su indicador, porque ahí la espera se
+   * entiende: la pulsó.
+   */
+  const cargar = useCallback(
+    async (silencioso = false) => {
+      if (!hayBaseDeDatos || cargandoSesion) return;
+      if (!silencioso) setCargandoDatos(true);
+      try {
+        const m = await import("@/lib/datos");
+        // El público se cachea 30 segundos dentro de `cargarPublico`; al recargar
+        // a mano hay que olvidarlo o la configuración recién cambiada no llega.
+        m.olvidarPublico();
+        const datos = await m.cargarTodo(personaId !== null);
+        if (!datos) return;
+        setConfiguracion(datos.configuracion);
+        setTalleresBase(datos.talleresBase);
+        setIdPorClave(datos.idPorClave);
+        setSedes(datos.sedes);
+        setParticipantesBase(datos.participantes);
+        setPagosBase(datos.pagos);
+        /*
+         * De los pagos de la sesión se descartan los que ya volvieron de la base,
+         * y solo esos.
+         *
+         * Conservarlos todos los contaría DOS VECES en los totales de
+         * conciliación. Pero vaciarlos todos —que es lo que se hacía— rompe con
+         * la escucha en vivo: la escritura es optimista, así que entre pintar el
+         * cobro y confirmarlo hay un hueco, y en ese hueco el cambio de OTRA
+         * ventanilla dispara una recarga. El cobro recién hecho desaparecería de
+         * la pantalla y su botón volvería a aparecer, invitando a cobrar de nuevo.
+         *
+         * Se emparejan por folio, concepto, monto y fecha porque la fila de la
+         * base no conserva el identificador que se inventó aquí. Dos cobros que
+         * coincidieran en los cuatro serían el mismo cobro repetido, que es
+         * justamente lo que no debe existir.
+         */
+        const huella = (g: PagoRegistrado) =>
+          `${g.folio}|${g.concepto}|${g.monto}|${g.fechaDeposito}`;
+        const confirmados = new Set(datos.pagos.map(huella));
+        setPagosSesion((prev) => prev.filter((g) => !confirmados.has(huella(g))));
+        setPadron(datos.padron);
+        setAsistenciasBase(datos.asistencias);
+        setEvidenciasBase(datos.evidencias);
+        // Las tablas del personal devuelven cero filas a quien no tiene permiso,
+        // en vez de un error. Se conservan las simuladas para que las pantallas
+        // internas no queden vacías cuando las mira alguien sin sesión.
+        if (datos.usuarios.length) setUsuarios(datos.usuarios);
+        if (datos.casos.length) setCasos(datos.casos);
+        setConectado(true);
+        setCargadoEn(Date.now());
+      } catch (e: unknown) {
+        console.error("No se pudo cargar de la base.", e);
+      } finally {
+        if (!silencioso) setCargandoDatos(false);
+      }
+    },
+    [cargandoSesion, personaId],
+  );
 
   const recargar = useCallback(() => {
     void cargar();
@@ -545,22 +588,58 @@ export function EstadoEventoProvider({
   }, [cargar]);
 
   /*
+   * La escucha en vivo.
+   *
+   * Con ella la pantalla deja de ser una foto: un pre-registro nuevo, un cobro
+   * de otra ventanilla o una asistencia de la puerta llegan sin que nadie pulse
+   * nada. Solo se abre con sesión de personal: el anónimo no puede leer estas
+   * tablas y suscribirlo sería abrir un canal que nunca va a recibir nada.
+   *
+   * `cargar` está en las dependencias, y por eso la escucha se rehace al
+   * cambiar de persona. Es lo correcto: el canal lleva la credencial de quien
+   * lo abrió, y Realtime decide con ella qué filas entrega.
+   */
+  const [enVivo, setEnVivo] = useState(false);
+
+  useEffect(() => {
+    if (!hayBaseDeDatos || cargandoSesion || personaId === null) {
+      setEnVivo(false);
+      return;
+    }
+    let escucha: { cerrar: () => void } | null = null;
+    let vigente = true;
+
+    void import("@/lib/tiempo-real")
+      .then((m) => m.escucharCambios(() => void cargar(true), setEnVivo))
+      .then((e) => {
+        // Si el efecto se limpió mientras se abría el canal, se cierra en vez de
+        // quedar colgado sin nadie que lo apague.
+        if (!vigente) e.cerrar();
+        else escucha = e;
+      })
+      .catch((e: unknown) => {
+        console.error("No se pudo abrir la escucha en vivo.", e);
+        setEnVivo(false);
+      });
+
+    return () => {
+      vigente = false;
+      escucha?.cerrar();
+    };
+  }, [cargar, cargandoSesion, personaId]);
+
+  /*
    * Volver a la pestaña vuelve a pedir los datos.
    *
-   * Sin esto la pantalla trabajaba con una foto del instante en que se inició
-   * sesión: quien se pre-registrara después no existía para esa pestaña, y
-   * escanear su código respondía «ese folio no existe» a alguien que sí había
-   * completado el proceso. Lo mismo con los cobros de otra ventanilla y con las
-   * asistencias de la puerta.
-   *
-   * Se ata al foco y no a un temporizador porque es cuando el dato importa —se
-   * vuelve a la pantalla para atender a alguien— y porque un sondeo constante
-   * en tres ventanillas es tráfico que nadie mira.
+   * Sigue haciendo falta con la escucha en vivo puesta, y no es redundante: el
+   * navegador puede dormir el WebSocket de una pestaña en segundo plano, y los
+   * cambios de ese rato no se reenvían al despertar. Volver al frente es
+   * exactamente el momento en que hay que ponerse al día.
    */
   useEffect(() => {
     if (!hayBaseDeDatos) return;
     const alVolver = () => {
-      if (document.visibilityState === "visible") void cargar();
+      if (document.visibilityState === "visible") void cargar(true);
     };
     document.addEventListener("visibilitychange", alVolver);
     window.addEventListener("focus", alVolver);
@@ -633,20 +712,32 @@ export function EstadoEventoProvider({
       };
       setPagosSesion((prev) => [...prev, pago]);
 
-      // Se escribe sin esperar: la pantalla ya se actualizó. Si la base rechaza
-      // —una referencia duplicada que dos ventanillas capturaron a la vez— el
-      // error queda en consola y hay que recargar. Es el límite conocido de
-      // escribir de forma optimista, y está anotado.
-      escribir("el pago", (d) =>
-        d.guardarPago({
-          folio: pago.folio,
-          concepto: pago.concepto,
-          monto: pago.monto,
-          montoEsperado: pago.montoEsperado,
-          referencia: pago.referencia,
-          fechaDeposito: pago.fechaDeposito,
-          nota: pago.nota,
-        }),
+      /*
+       * Se escribe sin esperar: la pantalla ya se actualizó y la fila no puede
+       * quedarse parada mirando un indicador.
+       *
+       * Pero si la base rechaza —una referencia duplicada que dos ventanillas
+       * capturaron a la vez, un permiso que caducó—, el cobro pintado se
+       * retira. Antes se quedaba puesto y solo lo delataba un error en la
+       * consola que nadie tiene abierta: la ventanilla creía haber cobrado algo
+       * que la base nunca guardó, y eso solo se descubría al conciliar.
+       */
+      escribir(
+        "el pago",
+        (d) =>
+          d.guardarPago({
+            folio: pago.folio,
+            concepto: pago.concepto,
+            monto: pago.monto,
+            montoEsperado: pago.montoEsperado,
+            referencia: pago.referencia,
+            fechaDeposito: pago.fechaDeposito,
+            nota: pago.nota,
+          }),
+        () => {
+          setPagosSesion((prev) => prev.filter((g) => g.id !== pago.id));
+          avisarFallo(`No se pudo guardar el pago de ${pago.folio}. Vuelve a intentarlo.`);
+        },
       );
 
       return pago;
@@ -674,16 +765,22 @@ export function EstadoEventoProvider({
        * debe rechazar esa fila sin tumbar el resto del lote.
        */
       nuevos.forEach((pago) =>
-        escribir(`el pago de ${pago.folio}`, (d) =>
-          d.guardarPago({
-            folio: pago.folio,
-            concepto: pago.concepto,
-            monto: pago.monto,
-            montoEsperado: pago.montoEsperado,
-            referencia: pago.referencia,
-            fechaDeposito: pago.fechaDeposito,
-            nota: pago.nota,
-          }),
+        escribir(
+          `el pago de ${pago.folio}`,
+          (d) =>
+            d.guardarPago({
+              folio: pago.folio,
+              concepto: pago.concepto,
+              monto: pago.monto,
+              montoEsperado: pago.montoEsperado,
+              referencia: pago.referencia,
+              fechaDeposito: pago.fechaDeposito,
+              nota: pago.nota,
+            }),
+          () => {
+            setPagosSesion((prev) => prev.filter((g) => g.id !== pago.id));
+            avisarFallo(`No se pudo guardar el pago de ${pago.folio}.`);
+          },
         ),
       );
       return nuevos;
@@ -1388,6 +1485,7 @@ export function EstadoEventoProvider({
       deshacerRevision,
       conectado,
       cargandoDatos,
+      enVivo,
       cargadoEn,
       recargar,
       configuracion,
@@ -1449,6 +1547,7 @@ export function EstadoEventoProvider({
       deshacerRevision,
       conectado,
       cargandoDatos,
+      enVivo,
       cargadoEn,
       recargar,
       configuracion,

@@ -52,6 +52,7 @@ function Ventanilla() {
     pagos,
     recargar,
     cargadoEn,
+    enVivo,
   } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
@@ -224,6 +225,33 @@ function Ventanilla() {
         <span className="ml-auto text-xs text-muted-foreground">
           {cargandoDatos ? "Cargando…" : `${lista.length} de ${participantes.length} participantes`}
         </span>
+        {/*
+          Se dice si la pantalla está escuchando de verdad o no. «En vivo»
+          cuando nadie lo comprobó es peor que no decir nada: quien atiende
+          dejaría de actualizar creyendo que no hace falta.
+        */}
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
+            enVivo
+              ? "border-estado-pagado/40 text-estado-pagado"
+              : "border-border text-muted-foreground",
+          )}
+          title={
+            enVivo
+              ? "Los cambios de otras ventanillas y los pre-registros nuevos llegan solos."
+              : "Sin escucha en vivo: pulsa Actualizar para ver los cambios de otros."
+          }
+        >
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              enVivo ? "animate-pulse bg-estado-pagado" : "bg-muted-foreground/50",
+            )}
+            aria-hidden
+          />
+          {enVivo ? "En vivo" : "Sin conexión en vivo"}
+        </span>
         <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
           <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
           Actualizar
@@ -239,7 +267,9 @@ function Ventanilla() {
           tiene derecho a saber si es de hace un minuto o de hace tres horas
           antes de decirle a alguien que su folio no existe.
         */}
-        {cargadoEn ? ` · datos de las ${hora(new Date(cargadoEn))}` : ""}
+        {/* Con la escucha puesta la hora sobra y solo distrae: los datos son
+            de hace un instante siempre. Se enseña justo cuando deja de serlo. */}
+        {!enVivo && cargadoEn ? ` · datos de las ${hora(new Date(cargadoEn))}` : ""}
       </p>
 
       <div className="mt-6">

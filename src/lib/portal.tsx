@@ -144,6 +144,41 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     void cargar();
   }, [cargar, intento]);
 
+  /*
+   * El portal se mantiene al día preguntando, no escuchando.
+   *
+   * El participante no tiene sesión: es un anónimo, y las políticas le cierran
+   * `participantes`, `pagos` y todo lo demás. Suscribirlo a los cambios de esas
+   * tablas abriría un canal que nunca recibiría nada, porque Realtime evalúa
+   * las políticas de quien escucha. Su único camino es `fn_portal_estado`, que
+   * comprueba folio y credencial en cada llamada, así que aquí «tiempo real»
+   * significa volver a llamarla.
+   *
+   * Cada 20 segundos y solo con la pestaña al frente. Lo que este alumno espera
+   * ver aparecer es su pago confirmado en ventanilla —está de pie delante de la
+   * caja— y 20 segundos es más rápido que sacar el tema. Con la pestaña oculta
+   * no se pregunta: sería gastar batería y llamadas por una pantalla que nadie
+   * mira, y al volver se refresca de inmediato.
+   */
+  useEffect(() => {
+    if (!sesion || !hayBaseDeDatos) return;
+
+    const alFrente = () => document.visibilityState === "visible";
+    const t = setInterval(() => {
+      if (alFrente()) void cargar();
+    }, 20_000);
+
+    const alVolver = () => {
+      if (alFrente()) void cargar();
+    };
+    document.addEventListener("visibilitychange", alVolver);
+
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [sesion, cargar]);
+
   const valor = useMemo<Ctx>(
     () => ({
       sesion,
