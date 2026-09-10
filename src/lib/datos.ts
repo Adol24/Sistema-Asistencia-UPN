@@ -655,6 +655,57 @@ export async function cambiarEstadoCasoRemoto(
 }
 
 /**
+ * Corrige el nombre de un participante.
+ *
+ * Es la pieza que faltaba en la cadena del nombre mal escrito. El alumno lo
+ * reportaba al pre-registrarse, se abría su caso y quedaba marcado en el
+ * listado de elegibles, pero nadie podía escribir el nombre correcto: resolver
+ * el caso solo quitaba la marca, y el documento se habría impreso igual de mal.
+ *
+ * Se corrige en los dos sitios. `participantes.nombre` es el que sale en la
+ * constancia; `padron_alumnos.nombre` es el origen del error y de él salen los
+ * reportes, así que dejarlo mal haría que las dos listas se contradijeran justo
+ * en la persona por la que alguien preguntó.
+ *
+ * En mayúsculas porque las dos tablas lo exigen —`nombre = upper(nombre)`— y
+ * porque el padrón además pide al menos dos palabras. Se normaliza aquí en vez
+ * de confiar en el formulario, que es lo mismo que no comprobarlo.
+ *
+ * NO toca `nombre_en_revision`: esa marca la mantiene el disparador
+ * `trg_caso_marca_nombre` a partir de los casos abiertos. Ponerla a mano
+ * garantizaría que un día la marca y su caso digan cosas distintas.
+ */
+export async function corregirNombreRemoto(folio: string, nombre: string): Promise<void> {
+  const sb = exigirBase();
+  const limpio = nombre.trim().replace(/\s+/g, " ").toUpperCase();
+  if (limpio.split(" ").length < 2) {
+    throw new Error("Escribe el nombre completo, con apellidos.");
+  }
+
+  const { data, error: eBusca } = await sb
+    .from("participantes")
+    .select("id, matricula")
+    .eq("folio", folio)
+    .maybeSingle();
+  if (eBusca) throw eBusca;
+  if (!data) throw new Error(`No encontramos el folio ${folio}.`);
+  const fila = data as { id: string; matricula: string | null };
+
+  const { error } = await sb.from("participantes").update({ nombre: limpio }).eq("id", fila.id);
+  if (error) throw error;
+
+  // El padrón solo tiene fila si es alumno; el docente y el externo no están en
+  // ninguno, y ahí no hay nada más que corregir.
+  if (fila.matricula) {
+    const { error: ePadron } = await sb
+      .from("padron_alumnos")
+      .update({ nombre: limpio })
+      .eq("matricula", fila.matricula);
+    if (ePadron) throw ePadron;
+  }
+}
+
+/**
  * Abre un caso desde el panel de soporte.
  *
  * Hasta ahora los casos solo nacían de una vía: el alumno reportando que su

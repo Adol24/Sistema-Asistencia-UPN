@@ -13,6 +13,7 @@ import {
   Search,
   Smartphone,
   Store,
+  UserPen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
@@ -70,12 +71,29 @@ const CANAL: Record<CasoSoporte["canal"], { etiqueta: string; Icono: typeof Mail
 const canalDe = (canal: CasoSoporte["canal"]) =>
   CANAL[canal] ?? { etiqueta: canal, Icono: HelpCircle };
 
+/**
+ * Saca el nombre propuesto del detalle del caso.
+ *
+ * `fn_abrir_caso_nombre` lo escribe con un formato fijo: Dice "X" y debe decir
+ * "Y". Se lee el segundo entrecomillado para dejar el campo ya lleno, que es lo
+ * que ahorra el trabajo: quien corrige suele confirmar, no teclear.
+ *
+ * Si el formato no cuadra —un caso escrito a mano, por ejemplo— devuelve el
+ * nombre actual y quien corrige lo escribe. Adivinar mal sería peor que no
+ * adivinar: el nombre es lo que se imprime en la constancia.
+ */
+const nombrePropuesto = (detalle: string, actual: string): string => {
+  const m = /debe decir "([^"]+)"/i.exec(detalle);
+  return m?.[1]?.trim() || actual;
+};
+
 function Soporte() {
   const {
     casos,
     participantes,
     abrirCaso,
     cambiarEstadoCaso,
+    corregirNombre,
     editarCaso,
     registrarBitacora,
     usuarioActual,
@@ -102,6 +120,12 @@ function Soporte() {
     canal: CasoSoporte["canal"];
   } | null>(null);
   const [guardando, setGuardando] = useState(false);
+  /** El caso cuyo nombre se está corrigiendo, y el nombre propuesto. */
+  const [corrigiendo, setCorrigiendo] = useState<{
+    id: string;
+    folio: string;
+    nombre: string;
+  } | null>(null);
 
   // Se busca entre los participantes porque `casos_soporte.participante_id` es
   // obligatorio: un caso siempre es de alguien. No se puede abrir «en general».
@@ -417,10 +441,82 @@ function Soporte() {
                     </p>
                   ) : null}
                   {esDeNombre ? (
-                    <p className="mt-3 rounded-md bg-muted p-3 text-sm">
-                      Al marcar este caso como resuelto, {c.nombre} deja de aparecer marcado en el
-                      listado de elegibles y su nombre puede imprimirse.
-                    </p>
+                    <div className="mt-3 rounded-md bg-muted p-3 text-sm">
+                      {/*
+                        Corregir el nombre es lo que faltaba en toda la cadena.
+                        El alumno lo reportaba, el caso se abría y quedaba
+                        marcado en elegibles, pero nadie podía escribir el
+                        nombre bueno: resolver el caso solo quitaba la marca, y
+                        la constancia se habría impreso igual de mal.
+                      */}
+                      {corrigiendo?.id === c.id ? (
+                        <div className="grid gap-2">
+                          <label className="grid gap-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                              Nombre correcto
+                            </span>
+                            <Input
+                              autoFocus
+                              value={corrigiendo.nombre}
+                              onChange={(e) =>
+                                setCorrigiendo({ ...corrigiendo, nombre: e.target.value })
+                              }
+                              className="h-11 uppercase"
+                            />
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            Se guarda en mayúsculas y sustituye al que aparece en la constancia y en
+                            el padrón. Sigue en revisión hasta que marques el caso como resuelto.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              className="h-11"
+                              disabled={corrigiendo.nombre.trim().split(/\s+/).length < 2}
+                              onClick={() => {
+                                const nuevo = corrigiendo.nombre.trim().toUpperCase();
+                                corregirNombre(c.folio, nuevo);
+                                registrarBitacora(
+                                  "Corrigió el nombre de un participante",
+                                  `${c.folio} · «${c.nombre}» pasa a «${nuevo}»`,
+                                );
+                                setCorrigiendo(null);
+                                toast.success(`El nombre de ${c.folio} quedó como ${nuevo}.`);
+                              }}
+                            >
+                              <Check className="size-4" /> Guardar el nombre
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-11"
+                              onClick={() => setCorrigiendo(null)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p>
+                            Al marcar este caso como resuelto, {c.nombre} deja de aparecer marcado
+                            en el listado de elegibles y su nombre puede imprimirse.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 h-9"
+                            onClick={() =>
+                              setCorrigiendo({
+                                id: c.id,
+                                folio: c.folio,
+                                nombre: nombrePropuesto(c.detalle, c.nombre),
+                              })
+                            }
+                          >
+                            <UserPen className="size-4" /> Corregir el nombre
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {ESTADOS.filter((e) => e.valor !== c.estado).map((e) => (

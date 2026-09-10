@@ -288,6 +288,11 @@ interface Ctx {
     detalle: string;
     canal: CasoSoporte["canal"];
   }) => Promise<CasoSoporte>;
+  /**
+   * Escribe el nombre correcto de un participante. Es lo que cierra la cadena
+   * del nombre mal escrito: sin esto, resolver el caso solo quitaba la marca.
+   */
+  corregirNombre: (folio: string, nombre: string) => void;
   /** Corrige el contenido de un caso. El estado va aparte, por `cambiarEstadoCaso`. */
   editarCaso: (id: string, cambios: Pick<CasoSoporte, "asunto" | "detalle" | "canal">) => void;
   /**
@@ -1320,6 +1325,39 @@ export function EstadoEventoProvider({
   );
 
   /**
+   * Corrige el nombre de un participante.
+   *
+   * Se apoya en `ajustesParticipante`, que ya existía para los cambios de la
+   * sesión sobre alguien concreto, así que la corrección se ve al instante en
+   * todas las pantallas —elegibles, ventanilla, la puerta— sin esperar a que
+   * vuelva de la base.
+   *
+   * No toca `nombreEnRevision`: esa marca la mantiene el disparador
+   * `trg_caso_marca_nombre` según los casos abiertos, y se apaga sola al
+   * resolver el caso. Ponerla aquí a mano garantizaría que un día la marca y su
+   * caso digan cosas distintas.
+   */
+  const corregirNombre = useCallback<Ctx["corregirNombre"]>((folio, nombre) => {
+    const limpio = nombre.trim().replace(/\s+/g, " ").toUpperCase();
+    let previo: string | undefined;
+    setAjustesParticipante((prev) => {
+      previo = prev[folio]?.nombre;
+      return { ...prev, [folio]: { ...prev[folio], nombre: limpio } };
+    });
+    escribir(
+      "el nombre",
+      (d) => d.corregirNombreRemoto(folio, limpio),
+      () => {
+        setAjustesParticipante((prev) => ({
+          ...prev,
+          [folio]: { ...prev[folio], nombre: previo },
+        }));
+        avisarFallo(`No se pudo guardar el nombre de ${folio}. Sigue como estaba.`);
+      },
+    );
+  }, []);
+
+  /**
    * Corrige lo que dice un caso.
    *
    * Quien atiende por teléfono anota lo que le cuentan y luego lo reescribe con
@@ -1627,6 +1665,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      corregirNombre,
       abrirCaso,
       editarCaso,
       casoDeNombreAbierto,
@@ -1691,6 +1730,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      corregirNombre,
       abrirCaso,
       editarCaso,
       casoDeNombreAbierto,

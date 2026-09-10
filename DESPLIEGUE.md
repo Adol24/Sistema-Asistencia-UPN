@@ -146,14 +146,14 @@ cada 20 segundos, y solo con la pestaña al frente.
 
 ## Migraciones aplicadas
 
-Las tres del 10 de septiembre están ejecutadas y comprobadas contra el proyecto
-real:
+Las del 10 de septiembre están ejecutadas:
 
 | Migración | Comprobación |
 | --- | --- |
 | `20260910140000_tiempo_real` | Realtime responde; el canal llega a `SUBSCRIBED` |
 | `20260910160000_preregistro_docente_externo` | `fn_preregistrar_externo` existe, el anónimo puede llamarla y valida el perfil |
 | `20260910180000_correo_personal_del_alumno` | `dominio_institucional` está en NULL: se acepta cualquier correo |
+| `20260910200000_taller_compatible_con_el_dia` | Aplicada por el usuario |
 
 Sigue **sin aplicar** `20260910100000_vistas_security_invoker.sql`, que corrige
 que las seis vistas se salten la seguridad a nivel de fila. No bloquea la
@@ -161,11 +161,6 @@ operación, pero conviene antes del evento.
 
 ## Lo que sigue pendiente
 
-- **Ejecutar `20260910200000_taller_compatible_con_el_dia.sql`.** Hasta que se
-  aplique, elegir taller falla: `fn_padron_confirmar` no devuelve el día, así
-  que el catálogo no se puede acotar y el alta choca con la llave foránea
-  `(taller_id, dia)`. La migración devuelve el día y hace que el alta no pueda
-  contradecirse con el taller elegido.
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
   enseña una barra de progreso, espera un momento simulado y responde «Tu
