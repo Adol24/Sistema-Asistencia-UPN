@@ -145,7 +145,15 @@ export interface CasoSoporte {
   asunto: string;
   detalle: string;
   estado: "abierto" | "en_proceso" | "resuelto";
-  canal: "whatsapp" | "correo" | "ventanilla";
+  /**
+   * De dónde llegó el caso. Los cuatro valores del enum `canal_caso`.
+   *
+   * `portal` faltaba, y era el único que se usaba de verdad:
+   * `fn_abrir_caso_nombre` —la única vía por la que se crea un caso hoy— lo
+   * inserta con ese valor. La pantalla de soporte buscaba su icono en una tabla
+   * de tres entradas y reventaba al pintar el primero.
+   */
+  canal: "whatsapp" | "correo" | "ventanilla" | "portal";
   creadoEn: string;
   atiende?: string | undefined;
 }

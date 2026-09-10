@@ -808,31 +808,44 @@ export function EstadoEventoProvider({
   // ----------------------------------------------------------- bitácora ---
   // Registra lo que pasa en la sesión, no solo lo sembrado en los mocks: sin eso
   // no se puede aclarar ninguna inconformidad, que es para lo que sirve.
-  const usuarioActual = "SOFIA RAMIREZ BAÑUELOS";
+  //
+  // Quien firma es quien tiene la sesión abierta. Estaba fijo a un nombre de
+  // ejemplo, así que en pantalla todo lo hacía siempre la misma persona sin
+  // importar quién hubiera entrado. En la base ya se firmaba bien —`anotarEnBitacora`
+  // toma el id de la sesión de Auth—, de modo que lo escrito y lo mostrado se
+  // contradecían, y la bitácora existe justo para que eso no pase.
+  const usuarioActual = persona?.nombre ?? "Sin sesión";
 
-  const registrarBitacora = useCallback<Ctx["registrarBitacora"]>((accion, detalle, usuario) => {
-    setContadorBitacora((n) => {
-      const siguiente = n + 1;
-      setBitacoraSesion((prev) => [
-        {
-          id: `BS-${String(siguiente).padStart(4, "0")}`,
-          fecha: fechaHora(),
-          usuario: usuario ?? usuarioActual,
-          accion,
-          detalle,
-          deLaSesion: true,
-        },
-        ...prev,
-      ]);
-      return siguiente;
-    });
-    /*
-     * La bitácora existe para poder responder «quién hizo esto». Vivía solo en
-     * memoria, así que la respuesta se perdía al recargar y el registro no
-     * servía para lo único que se le pide.
-     */
-    escribir("la bitácora", (d) => d.anotarEnBitacora(accion, detalle, usuario));
-  }, []);
+  const registrarBitacora = useCallback<Ctx["registrarBitacora"]>(
+    (accion, detalle, usuario) => {
+      setContadorBitacora((n) => {
+        const siguiente = n + 1;
+        setBitacoraSesion((prev) => [
+          {
+            id: `BS-${String(siguiente).padStart(4, "0")}`,
+            fecha: fechaHora(),
+            usuario: usuario ?? usuarioActual,
+            accion,
+            detalle,
+            deLaSesion: true,
+          },
+          ...prev,
+        ]);
+        return siguiente;
+      });
+      /*
+       * La bitácora existe para poder responder «quién hizo esto». Vivía solo en
+       * memoria, así que la respuesta se perdía al recargar y el registro no
+       * servía para lo único que se le pide.
+       */
+      escribir("la bitácora", (d) => d.anotarEnBitacora(accion, detalle, usuario));
+      // `usuarioActual` va en las dependencias porque ya no es una constante: sale
+      // de la sesión. Sin él, el callback se quedaría con el valor del primer
+      // render —cuando todavía no había nadie dentro— y la bitácora seguiría
+      // firmando como «Sin sesión» después de entrar.
+    },
+    [usuarioActual],
+  );
 
   const bitacora = useMemo<EntradaBitacora[]>(() => [...bitacoraSesion], [bitacoraSesion]);
 
@@ -1206,7 +1219,10 @@ export function EstadoEventoProvider({
         asunto: "Nombre incorrecto en el registro",
         detalle: `Dice "${nombre}" y debe decir "${nombreCorrecto}". Lo reportó el alumno al confirmar su nombre.`,
         estado: "abierto",
-        canal: "ventanilla",
+        // El mismo canal con el que lo va a guardar `fn_abrir_caso_nombre`.
+        // Decía «ventanilla», así que la fila que se pintaba al vuelo no
+        // coincidía con la que después devolvía la base.
+        canal: "portal",
         creadoEn: fechaHora(),
       };
       /*
@@ -1226,8 +1242,32 @@ export function EstadoEventoProvider({
   );
 
   const cambiarEstadoCaso = useCallback<Ctx["cambiarEstadoCaso"]>((id, estado, atiende) => {
-    setCasos((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, estado, ...(atiende ? { atiende } : {}) } : c)),
+    // Se guarda cómo estaba para poder devolverlo si la base rechaza. Sin esto,
+    // un caso que no llegó a cambiar se queda en pantalla como si sí, y la
+    // siguiente persona que lo mire lo dará por atendido.
+    let previo: CasoSoporte | undefined;
+    setCasos((prev) => {
+      previo = prev.find((c) => c.id === id);
+      return prev.map((c) => (c.id === id ? { ...c, estado, ...(atiende ? { atiende } : {}) } : c));
+    });
+
+    /*
+     * Y ahora sí se guarda.
+     *
+     * Esto no estaba: cambiar un caso a «en proceso» o «resuelto» solo movía la
+     * lista en memoria, así que al recargar volvía a estar abierto. Era todo el
+     * módulo de soporte, porque cambiar de estado es lo único que hace.
+     *
+     * Va por clave —`CS-001`—, que es lo que `aCaso` pone en `id`. Escribirlo
+     * como si fuera el uuid daba `22P02: invalid input syntax for type uuid`.
+     */
+    escribir(
+      "el estado del caso",
+      (d) => d.cambiarEstadoCasoRemoto(id, estado),
+      () => {
+        if (previo) setCasos((prev) => prev.map((c) => (c.id === id ? previo! : c)));
+        avisarFallo(`No se pudo guardar el cambio del caso ${id}. Sigue como estaba.`);
+      },
     );
   }, []);
 

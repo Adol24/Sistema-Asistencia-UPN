@@ -608,6 +608,51 @@ export async function deshacerRevisionRemota(evidenciaId: string): Promise<void>
 }
 
 /** Dar de baja desactiva; nunca borra, o la bitácora pierde a su autor. */
+/**
+ * Cambia el estado de un caso de soporte.
+ *
+ * Se identifica por su CLAVE (`CS-001`), no por el uuid, por la misma razón
+ * que los talleres: `aCaso` construye `CasoSoporte.id` con la clave, que es lo
+ * que el personal se dice por teléfono y lo que sale en pantalla.
+ *
+ * Antes esto no existía. Cambiar un caso a «en proceso» o «resuelto» solo movía
+ * la lista en memoria, así que al recargar volvía a estar abierto y el módulo
+ * de soporte parecía no funcionar: nada de lo que se hacía en él duraba.
+ *
+ * `resuelto_en` no es opcional. La tabla tiene
+ * `chk_resuelto_con_fecha`, que exige fecha cuando el estado es «resuelto» y la
+ * prohíbe cuando no lo es; mandar solo el estado hace que la base rechace la
+ * escritura entera.
+ */
+export async function cambiarEstadoCasoRemoto(
+  clave: string,
+  estado: "abierto" | "en_proceso" | "resuelto",
+): Promise<void> {
+  const sb = exigirBase();
+  const { data, error: eBusca } = await sb
+    .from("casos_soporte")
+    .select("id")
+    .eq("clave", clave)
+    .maybeSingle();
+  if (eBusca) throw eBusca;
+  if (!data) throw new Error(`El caso ${clave} ya no existe.`);
+
+  // Quien atiende es quien tiene la sesión abierta. Se toma de aquí y no de un
+  // nombre que llegue desde la pantalla: `usuarios_internos.id` ES el id de
+  // `auth.users`, así que la propia sesión ya lo dice sin poder equivocarse.
+  const { data: sesion } = await sb.auth.getUser();
+
+  const { error } = await sb
+    .from("casos_soporte")
+    .update({
+      estado,
+      resuelto_en: estado === "resuelto" ? new Date().toISOString() : null,
+      ...(sesion.user?.id ? { atiende_id: sesion.user.id } : {}),
+    })
+    .eq("id", (data as { id: string }).id);
+  if (error) throw error;
+}
+
 export async function desactivarUsuarioRemoto(id: string): Promise<void> {
   const sb = exigirBase();
   const { error } = await sb.from("usuarios_internos").update({ activo: false }).eq("id", id);

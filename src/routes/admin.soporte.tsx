@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, LifeBuoy, Mail, MessageCircle, Search, Store } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  HelpCircle,
+  LifeBuoy,
+  Mail,
+  MessageCircle,
+  Search,
+  Smartphone,
+  Store,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
@@ -27,11 +37,32 @@ const ESTADOS = [
   { valor: "resuelto", etiqueta: "Resuelto" },
 ] as const;
 
-const CANAL = {
+/**
+ * Los cuatro canales del enum `canal_caso`.
+ *
+ * `portal` faltaba, y era el único que se usaba: `fn_abrir_caso_nombre` —la
+ * única vía por la que hoy se crea un caso— lo inserta con ese valor. Al pintar
+ * el primer caso real, `CANAL[c.canal]` daba `undefined` y leer `.Icono` de ahí
+ * tumbaba la pantalla entera. El módulo de soporte no fallaba: no llegaba a
+ * dibujarse.
+ */
+const CANAL: Record<CasoSoporte["canal"], { etiqueta: string; Icono: typeof Mail }> = {
   whatsapp: { etiqueta: "WhatsApp", Icono: MessageCircle },
   correo: { etiqueta: "Correo", Icono: Mail },
   ventanilla: { etiqueta: "Ventanilla", Icono: Store },
-} as const;
+  portal: { etiqueta: "Portal del participante", Icono: Smartphone },
+};
+
+/**
+ * El canal, o un marcador si es uno que esta pantalla no conoce.
+ *
+ * La lección de `portal`: si mañana se añade un quinto valor al enum y aquí no,
+ * la bandeja de soporte vuelve a caerse entera por un icono. Un caso que no se
+ * sabe etiquetar se enseña igual —su contenido es lo que importa— y el canal
+ * desconocido se dice, en vez de llevarse la pantalla por delante.
+ */
+const canalDe = (canal: CasoSoporte["canal"]) =>
+  CANAL[canal] ?? { etiqueta: canal, Icono: HelpCircle };
 
 function Soporte() {
   const { casos, cambiarEstadoCaso, registrarBitacora, usuarioActual, getParticipante } =
@@ -187,7 +218,7 @@ function Soporte() {
       <ul className="mt-3 grid gap-2">
         {visibles.map((c) => {
           const p = getParticipante(c.folio);
-          const Icono = CANAL[c.canal].Icono;
+          const Icono = canalDe(c.canal).Icono;
           const esDeNombre = /nombre/i.test(c.asunto);
           const expandido = abierto === c.id;
           return (
@@ -214,7 +245,7 @@ function Soporte() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Icono className="size-3.5" aria-hidden /> {CANAL[c.canal].etiqueta}
+                    <Icono className="size-3.5" aria-hidden /> {canalDe(c.canal).etiqueta}
                   </span>
                   <EstadoCasoBadge estado={c.estado} />
                 </div>
