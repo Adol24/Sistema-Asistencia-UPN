@@ -7,6 +7,7 @@
  */
 
 import type { Asistencia, Dia, EstadoPago, Participante } from "@/dominio/tipos";
+import { sinAcreditar } from "@/lib/pagos-logica";
 
 export type Modo = "entrada" | "salida" | "taller";
 export type Color = "verde" | "amarillo" | "rojo";
@@ -41,8 +42,6 @@ const ETIQUETA_MODO: Record<Modo, string> = {
   salida: "SALIDA",
   taller: "TALLER",
 };
-
-const SIN_PAGAR: EstadoPago[] = ["pre_registrado", "comprobante_recibido", "expirado", "cancelado"];
 
 const MOTIVO_SIN_PAGAR: Record<string, string> = {
   pre_registrado: "No ha entregado su comprobante de pago.",
@@ -115,7 +114,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
   const estado = estadoDe(p);
 
   // --- Sin pagar ---
-  if (SIN_PAGAR.includes(estado.evento))
+  if (sinAcreditar(estado.evento))
     return {
       ...conPersona,
       color: "rojo",
@@ -136,7 +135,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
         accion: "PASAR A MESA DE INCIDENCIAS",
         registra: false,
       };
-    if (estado.taller && SIN_PAGAR.includes(estado.taller))
+    if (estado.taller && sinAcreditar(estado.taller))
       return {
         ...conPersona,
         color: "rojo",

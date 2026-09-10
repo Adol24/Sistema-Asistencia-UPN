@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { alCorriente, resuelto } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago, Participante } from "@/dominio/tipos";
@@ -91,14 +92,6 @@ function Ventanilla() {
     if (!cargandoDatos) confirmados.current.clear();
   }, [cargandoDatos]);
 
-  // Al corriente es haber pagado TODO lo que debe. Quien tiene el evento pagado
-  // y el taller a medias sigue teniendo algo que cobrar, y contarlo entre los
-  // pagados es justo lo que haría que se le pasara.
-  const alCorriente = (p: Participante) => {
-    const e = estadoDe(p);
-    return e.evento === "pagado" && (!e.taller || e.taller === "pagado");
-  };
-
   const escaneadoP = escaneado ? getParticipante(escaneado) : undefined;
 
   /** Cuándo y por dónde se registró lo último que pagó, para poder decirlo. */
@@ -110,17 +103,22 @@ function Ventanilla() {
     return `El último cobro se registró ${via} el ${ultimo.fechaDeposito}.`;
   };
 
+  /*
+   * `alCorriente` viene de `pagos-logica` y eso resuelve dos cosas de golpe.
+   *
+   * Estaba escrita dos veces en este mismo archivo: una para la tarjeta del
+   * escaneo y otra DENTRO del memo, porque una función creada en cada render
+   * cambia de identidad y meterla en las dependencias recalcularía la lista
+   * entera cada vez. Una función de módulo no cambia de identidad, así que
+   * sirve para las dos sin duplicarse ni ensuciar las dependencias.
+   *
+   * Y la regla deja de vivir en una pantalla: es la misma que decide quién
+   * aparece en conciliación y a quién detiene la puerta.
+   */
   const lista = useMemo(() => {
-    // La misma regla, repetida dentro del memo a propósito: la de arriba se
-    // crea en cada render, y meterla en las dependencias recalcularía la lista
-    // entera cada vez, que es justo lo que este memo evita.
-    const alCorriente = (p: Participante) => {
-      const e = estadoDe(p);
-      return e.evento === "pagado" && (!e.taller || e.taller === "pagado");
-    };
     const base = q.trim() ? buscarEnParticipantes(participantes, q) : participantes;
     if (filtro === "todos") return base;
-    return base.filter((p) => alCorriente(p) === (filtro === "pagados"));
+    return base.filter((p) => alCorriente(estadoDe(p)) === (filtro === "pagados"));
   }, [participantes, q, filtro, estadoDe]);
 
   const visibles = lista.slice(0, TOPE);
@@ -444,7 +442,7 @@ function Ventanilla() {
                 {escaneadoP.matricula ? ` · ${escaneadoP.matricula}` : ""}
               </p>
 
-              {alCorriente(escaneadoP) ? (
+              {alCorriente(estadoDe(escaneadoP)) ? (
                 <Alert>
                   <CheckCircle2 className="size-4" />
                   <AlertTitle>Ya está pagado</AlertTitle>
@@ -539,8 +537,7 @@ function Celda({
 }) {
   // Ya resuelto: no hay nada que confirmar. La discrepancia se arregla desde la
   // ficha o con la carga masiva, no volviendo a pulsar aquí.
-  if (estado === "pagado" || estado === "discrepancia" || estado === "cancelado")
-    return <EstadoPagoBadge estado={estado} />;
+  if (resuelto(estado)) return <EstadoPagoBadge estado={estado} />;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -572,14 +569,13 @@ function ConceptoEscaneado({
   monto: number;
   onConfirmar: () => void;
 }) {
-  const resuelto = estado === "pagado" || estado === "discrepancia" || estado === "cancelado";
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
       <div>
         <dt className="text-sm font-semibold">{titulo}</dt>
         <dd className="text-xs text-muted-foreground">{moneda(monto)}</dd>
       </div>
-      {resuelto ? (
+      {resuelto(estado) ? (
         <EstadoPagoBadge estado={estado} />
       ) : (
         <Button size="sm" className="h-9" onClick={onConfirmar}>

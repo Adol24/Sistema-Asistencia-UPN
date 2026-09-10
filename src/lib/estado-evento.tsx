@@ -27,6 +27,7 @@ import type {
 } from "@/dominio/tipos";
 import {
   estadoDePagos,
+  indexarPagos,
   pagosIniciales,
   type Concepto,
   type PagoRegistrado,
@@ -806,7 +807,16 @@ export function EstadoEventoProvider({
     [contadorPagos],
   );
 
-  const estadoDe = useCallback<Ctx["estadoDe"]>((p) => estadoDePagos(pagos, p), [pagos]);
+  /*
+   * El índice se arma una vez por cada cambio de la lista de pagos, no una vez
+   * por consulta. `estadoDe` se llama varias veces por fila en la ventanilla y
+   * en el escáner, y antes cada llamada copiaba y recorría todos los pagos.
+   */
+  const indicePagos = useMemo(() => indexarPagos(pagos), [pagos]);
+  const estadoDe = useCallback<Ctx["estadoDe"]>(
+    (p) => estadoDePagos(indicePagos, p),
+    [indicePagos],
+  );
 
   // -------------------------------------------------------- participantes ---
   const participantes = useMemo<Participante[]>(

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 
 import { moneda } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { porVencer as vencible } from "@/lib/pagos-logica";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -50,10 +51,7 @@ function Conciliacion() {
     });
     const duplicadas = [...porReferencia.entries()].filter(([, g]) => g.length > 1);
 
-    const porVencer = participantes.filter((p) => {
-      const e = estadoDe(p);
-      return e.evento === "pre_registrado" || e.evento === "comprobante_recibido";
-    });
+    const porVencer = participantes.filter((p) => vencible(estadoDe(p).evento));
 
     return {
       total: suma(pagos),

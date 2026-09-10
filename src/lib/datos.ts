@@ -12,6 +12,8 @@
  * informe, y es el primer límite que se va a topar.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { exigirBase, supabase } from "@/lib/supabase";
 import {
   aAlumnoPadron,
@@ -51,7 +53,7 @@ import type {
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import { fechaAIso } from "@/lib/formato";
-import type { PagoRegistrado } from "@/lib/pagos-logica";
+import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
 
 /** Todo lo que el contexto necesita para arrancar. */
 export interface Instantanea {
@@ -345,6 +347,37 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
  * una cola de reintento como la que ya existe para los escaneos sin conexión.
  */
 
+/**
+ * Traduce un identificador de la aplicacion al uuid de la base.
+ *
+ * **Esta funcion existe por un fallo que aparecio tres veces.** La aplicacion
+ * nombra las cosas como las nombra la gente: el folio `PRE-00842`, la clave
+ * `T01` del taller, el `CS-001` del caso. La base las nombra con uuid. Cada
+ * escritura tenia que traducir, cada una lo escribia a mano, y tres de ellas se
+ * saltaron el paso: mandaron el nombre corto donde iba el uuid y PostgreSQL
+ * respondio `22P02 invalid input syntax for type uuid`, que moria en un
+ * `console.error` que nadie tiene abierto.
+ *
+ * Con la traduccion en un solo sitio, saltarsela deja de ser posible: no hay
+ * ningun `.eq("id", ...)` suelto donde equivocarse.
+ *
+ * @param noExiste Que decir si no aparece. En un mensaje que va a leer alguien
+ *   en ventanilla, «no encontramos el folio PRE-00842» sirve; el codigo de
+ *   PostgREST no.
+ */
+async function idDe(
+  sb: SupabaseClient,
+  tabla: string,
+  columna: string,
+  valor: string,
+  noExiste: string,
+): Promise<string> {
+  const { data, error } = await sb.from(tabla).select("id").eq(columna, valor).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error(noExiste);
+  return (data as { id: string }).id;
+}
+
 export async function guardarPago(p: {
   folio: string;
   concepto: "evento" | "taller";
@@ -355,18 +388,19 @@ export async function guardarPago(p: {
   nota?: string | undefined;
 }): Promise<void> {
   const sb = exigirBase();
-  const { data: participante, error: e1 } = await sb
-    .from("participantes")
-    .select("id")
-    .eq("folio", p.folio)
-    .single();
-  if (e1) throw e1;
+  const participanteId = await idDe(
+    sb,
+    "participantes",
+    "folio",
+    p.folio,
+    `No encontramos el folio ${p.folio}.`,
+  );
 
   // `resultado` no se manda: lo decide un disparador comparando el monto contra
   // lo esperado. Enviarlo desde aquí permitiría marcar como pagada una
   // discrepancia con solo elegir mal en un desplegable.
   const { error } = await sb.from("pagos").insert({
-    participante_id: participante.id,
+    participante_id: participanteId,
     concepto: p.concepto,
     monto: p.monto,
     monto_esperado: p.montoEsperado,
@@ -378,7 +412,7 @@ export async function guardarPago(p: {
     // A ISO antes de escribir: la columna es `date` y PostgreSQL la lee con
     // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
     fecha_deposito: fechaAIso(p.fechaDeposito),
-    resultado: p.monto === p.montoEsperado ? "pagado" : "discrepancia",
+    resultado: resultadoDe(p.monto, p.montoEsperado),
     nota: p.nota ?? null,
   });
   if (error) throw error;
@@ -392,12 +426,13 @@ export async function guardarAsistencia(a: {
   autorizacionMotivo?: string | undefined;
 }): Promise<void> {
   const sb = exigirBase();
-  const { data: p, error: e1 } = await sb
-    .from("participantes")
-    .select("id")
-    .eq("folio", a.folio)
-    .single();
-  if (e1) throw e1;
+  const participanteId = await idDe(
+    sb,
+    "participantes",
+    "folio",
+    a.folio,
+    `No encontramos el folio ${a.folio}.`,
+  );
 
   /*
    * Cada escaneo se firma con quien lo hizo.
@@ -412,7 +447,7 @@ export async function guardarAsistencia(a: {
   const { data: sesion } = await sb.auth.getUser();
 
   const { error } = await sb.from("asistencias").insert({
-    participante_id: p.id,
+    participante_id: participanteId,
     dia: a.dia,
     tipo: a.tipo,
     punto: a.punto,
@@ -538,15 +573,11 @@ export async function guardarTallerRemoto(t: {
 /** También por clave, y por la misma razón que `guardarTallerRemoto`. */
 export async function eliminarTallerRemoto(clave: string): Promise<void> {
   const sb = exigirBase();
-  const { data, error: eBusca } = await sb
-    .from("talleres")
-    .select("id")
-    .eq("clave", clave)
-    .maybeSingle();
-  if (eBusca) throw eBusca;
-  // Ya no está: no hay nada que retirar y tampoco es un fallo.
-  if (!data) return;
-  const id = (data as { id: string }).id;
+  // Ya no está: no hay nada que retirar y tampoco es un fallo, así que este
+  // es el único sitio donde la ausencia no se convierte en error.
+  const { data: fila } = await sb.from("talleres").select("id").eq("clave", clave).maybeSingle();
+  if (!fila) return;
+  const id = (fila as { id: string }).id;
 
   const { count } = await sb
     .from("participantes")
@@ -630,13 +661,7 @@ export async function cambiarEstadoCasoRemoto(
   estado: "abierto" | "en_proceso" | "resuelto",
 ): Promise<void> {
   const sb = exigirBase();
-  const { data, error: eBusca } = await sb
-    .from("casos_soporte")
-    .select("id")
-    .eq("clave", clave)
-    .maybeSingle();
-  if (eBusca) throw eBusca;
-  if (!data) throw new Error(`El caso ${clave} ya no existe.`);
+  const id = await idDe(sb, "casos_soporte", "clave", clave, `El caso ${clave} ya no existe.`);
 
   // Quien atiende es quien tiene la sesión abierta. Se toma de aquí y no de un
   // nombre que llegue desde la pantalla: `usuarios_internos.id` ES el id de
@@ -650,7 +675,7 @@ export async function cambiarEstadoCasoRemoto(
       resuelto_en: estado === "resuelto" ? new Date().toISOString() : null,
       ...(sesion.user?.id ? { atiende_id: sesion.user.id } : {}),
     })
-    .eq("id", (data as { id: string }).id);
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -730,18 +755,18 @@ export async function abrirCasoRemoto(datos: {
   canal: string;
 }): Promise<{ clave: string; creadoEn: string }> {
   const sb = exigirBase();
-  const { data: p, error: eBusca } = await sb
-    .from("participantes")
-    .select("id")
-    .eq("folio", datos.folio)
-    .maybeSingle();
-  if (eBusca) throw eBusca;
-  if (!p) throw new Error(`No encontramos el folio ${datos.folio}.`);
+  const participanteId = await idDe(
+    sb,
+    "participantes",
+    "folio",
+    datos.folio,
+    `No encontramos el folio ${datos.folio}.`,
+  );
 
   const { data, error } = await sb
     .from("casos_soporte")
     .insert({
-      participante_id: (p as { id: string }).id,
+      participante_id: participanteId,
       asunto: datos.asunto.trim(),
       detalle: datos.detalle.trim(),
       canal: datos.canal,
@@ -767,13 +792,7 @@ export async function guardarCasoRemoto(
   cambios: { asunto: string; detalle: string; canal: string },
 ): Promise<void> {
   const sb = exigirBase();
-  const { data, error: eBusca } = await sb
-    .from("casos_soporte")
-    .select("id")
-    .eq("clave", clave)
-    .maybeSingle();
-  if (eBusca) throw eBusca;
-  if (!data) throw new Error(`El caso ${clave} ya no existe.`);
+  const id = await idDe(sb, "casos_soporte", "clave", clave, `El caso ${clave} ya no existe.`);
 
   const { error } = await sb
     .from("casos_soporte")
@@ -782,7 +801,7 @@ export async function guardarCasoRemoto(
       detalle: cambios.detalle.trim(),
       canal: cambios.canal,
     })
-    .eq("id", (data as { id: string }).id);
+    .eq("id", id);
   if (error) throw error;
 }
 

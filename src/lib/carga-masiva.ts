@@ -8,8 +8,8 @@
  */
 
 import {
-  buscarReferenciaEn,
   parsearMonto,
+  resultadoDe,
   referenciaValida,
   type Concepto,
   type PagoRegistrado,
@@ -89,6 +89,21 @@ export function analizarArchivo(
   // Las referencias repetidas dentro del propio archivo también son duplicados.
   const vistasEnArchivo = new Map<string, number>();
 
+  /*
+   * Las referencias ya registradas, indexadas una sola vez.
+   *
+   * Se comprobaban recorriendo la lista entera de pagos por cada fila del
+   * archivo. Un corte del banco con quinientas filas contra mil pagos ya
+   * registrados son medio millón de comparaciones, y la vista previa se
+   * congelaba justo cuando alguien está mirando si el archivo está bien.
+   */
+  const yaRegistradas = new Map<string, string>();
+  for (const g of pagosRegistrados) {
+    const r = g.referencia?.trim().toLowerCase();
+    // Los pagos de ventanilla no llevan referencia y no pueden chocar con nada.
+    if (r) yaRegistradas.set(r, g.folio);
+  }
+
   return lineas.slice(1).map((linea, k) => {
     const celdas = partirLinea(linea);
     const crudo: Record<string, string> = {};
@@ -122,10 +137,10 @@ export function analizarArchivo(
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(fecha))
       return error(`Fecha inválida: "${fecha}". Se espera DD/MM/AAAA.`, p.nombre);
 
-    const yaRegistrada = buscarReferenciaEn(pagosRegistrados, referencia);
-    if (yaRegistrada)
+    const folioEnConflicto = yaRegistradas.get(referencia.trim().toLowerCase());
+    if (folioEnConflicto)
       return error(
-        `Referencia duplicada: ya está registrada con el folio ${yaRegistrada.folio}.`,
+        `Referencia duplicada: ya está registrada con el folio ${folioEnConflicto}.`,
         p.nombre,
       );
     const repetida = vistasEnArchivo.get(referencia.toLowerCase());
@@ -149,7 +164,7 @@ export function analizarArchivo(
       referencia: referencia.trim(),
       fechaDeposito: fecha,
       origen: "carga_masiva" as const,
-      resultado: (monto === esperado ? "pagado" : "discrepancia") as "pagado" | "discrepancia",
+      resultado: resultadoDe(monto, esperado),
     };
 
     if (concepto === "taller" && taller && taller.cupoOcupado > taller.cupoTotal)
