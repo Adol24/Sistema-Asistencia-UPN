@@ -36,8 +36,18 @@ grant execute on function es_interno_activo() to authenticated;
 grant execute on function tiene_rol(rol_interno[]) to authenticated;
 
 -- --------------------------------------------------------------- vistas ---
--- Las vistas heredan las políticas de sus tablas, así que conceder SELECT no
--- abre nada que las tablas no permitieran ya.
+-- ATENCIÓN: lo que decía aquí era falso, y se corrige en
+-- `20260910100000_vistas_security_invoker.sql`.
+--
+-- Decía que «las vistas heredan las políticas de sus tablas, así que conceder
+-- SELECT no abre nada que las tablas no permitieran ya». Una vista de
+-- PostgreSQL corre con los permisos de quien la creó, no de quien la consulta,
+-- salvo que se declare `security_invoker = true`. Ninguna de estas lo hacía, y
+-- las creó el dueño de las tablas: las seis se saltaban RLS.
+--
+-- Otro efecto del orden de este archivo: el `grant` sobre `v_talleres` de más
+-- abajo lo deshace el `revoke all on all tables ... from anon` que le sigue,
+-- porque «ALL TABLES» incluye las vistas. También se repone allí.
 grant select on v_participantes, v_estado_pago, v_talleres, v_elegibles,
                 v_reparto_dias, v_evidencias_duplicadas
   to authenticated;

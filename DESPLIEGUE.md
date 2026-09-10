@@ -128,3 +128,10 @@ fuera a los demás.
   ejecutado contra un Postgres**: en esta máquina no hay ni `psql` ni el CLI de
   Supabase. Están revisadas leyéndolas, no probadas. Aplícalas primero en un
   proyecto de prueba.
+- `20260910100000_vistas_security_invoker.sql` **tampoco se ha ejecutado**, y
+  cambia permisos, así que conviene aún más probarla antes. Corrige que las seis
+  vistas se saltaran la seguridad a nivel de fila. Dos se dejan como estaban a
+  propósito y el archivo explica por qué: `v_estado_pago`, porque es lo único
+  que permite al capturista saber quién pagó sin ver importes ni referencias, y
+  `v_talleres`, porque cuenta inscritos para el cartel público. Marcar
+  `v_estado_pago` como `security_invoker` deja la puerta en rojo para todos.
