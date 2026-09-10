@@ -26,12 +26,9 @@ import type {
   UsuarioInterno,
 } from "@/dominio/tipos";
 import {
-  buscarReferenciaEn,
-  diagnosticarPago,
   estadoDePagos,
   pagosIniciales,
   type Concepto,
-  type Diagnostico,
   type PagoRegistrado,
 } from "@/lib/pagos-logica";
 import {
@@ -165,13 +162,6 @@ interface Ctx {
   pagos: PagoRegistrado[];
   /** Estado de pago efectivo, con los pagos de la sesión aplicados. */
   estadoDe: (p: Participante) => { evento: EstadoPago; taller: EstadoPago | undefined };
-  buscarReferencia: (referencia: string, ignorarId?: string) => PagoRegistrado | undefined;
-  /** La referencia es opcional: ventanilla no la captura, la carga masiva sí. */
-  diagnosticar: (e: {
-    referencia?: string | undefined;
-    monto: string;
-    montoEsperado: number;
-  }) => Diagnostico;
   registrarPago: (p: Omit<PagoRegistrado, "id" | "registradoEn">) => PagoRegistrado;
   registrarLote: (ps: Omit<PagoRegistrado, "id" | "registradoEn">[]) => PagoRegistrado[];
 
@@ -583,16 +573,6 @@ export function EstadoEventoProvider({
   });
 
   // ---------------------------------------------------------------- pagos ---
-  const buscarReferencia = useCallback<Ctx["buscarReferencia"]>(
-    (referencia, ignorarId) => buscarReferenciaEn(pagos, referencia, ignorarId),
-    [pagos],
-  );
-
-  const diagnosticar = useCallback<Ctx["diagnosticar"]>(
-    (entrada) => diagnosticarPago(pagos, entrada),
-    [pagos],
-  );
-
   const idPago = (n: number, concepto: Concepto) =>
     `PG-${String(n).padStart(4, "0")}-${concepto === "evento" ? "EV" : "TA"}`;
 
@@ -1344,8 +1324,6 @@ export function EstadoEventoProvider({
     () => ({
       pagos,
       estadoDe,
-      buscarReferencia,
-      diagnosticar,
       registrarPago,
       registrarLote,
       asistencias,
@@ -1405,8 +1383,6 @@ export function EstadoEventoProvider({
     [
       pagos,
       estadoDe,
-      buscarReferencia,
-      diagnosticar,
       registrarPago,
       registrarLote,
       asistencias,

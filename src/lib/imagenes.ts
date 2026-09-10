@@ -13,6 +13,5 @@
 const marcador = (texto: string, fondo: string) =>
   `https://placehold.co/800x1000/${fondo}/f1f5f9?text=${encodeURIComponent(texto)}`;
 
-export const IMAGEN_VOUCHER = marcador("VOUCHER", "334155");
 export const IMAGEN_VOUCHER_OK = marcador("VOUCHER LEGIBLE", "334155");
 export const IMAGEN_VOUCHER_MAL = marcador("VOUCHER BORROSO", "7f1d1d");
