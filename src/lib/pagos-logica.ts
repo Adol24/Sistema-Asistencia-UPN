@@ -15,7 +15,13 @@ export interface PagoRegistrado {
   concepto: Concepto;
   monto: number;
   montoEsperado: number;
-  referencia: string;
+  /**
+   * La referencia bancaria. **Opcional**: en ventanilla no se captura, porque
+   * quien cobra tiene el voucher en la mano y lo verifica ahí mismo. La carga
+   * masiva del banco sí la trae, y para esas filas sigue siendo el control que
+   * impide registrar dos veces el mismo depósito.
+   */
+  referencia?: string | undefined;
   fechaDeposito: string;
   nota?: string | undefined;
   /** Resultado con el que quedó el concepto tras registrar este pago. */
@@ -54,20 +60,28 @@ export function buscarReferenciaEn(
 ): PagoRegistrado | undefined {
   const r = referencia.trim().toLowerCase();
   if (!r) return undefined;
-  return pagos.find((p) => p.referencia.toLowerCase() === r && p.id !== ignorarId);
+  // Los pagos de ventanilla no tienen referencia, así que no pueden chocar con
+  // ninguna: se saltan en vez de compararse contra una cadena vacía, que haría
+  // que todos parecieran el mismo.
+  return pagos.find((p) => p.referencia?.toLowerCase() === r && p.id !== ignorarId);
 }
 
 /**
- * Evalúa monto y referencia contra los pagos ya registrados.
+ * Evalúa monto y —cuando la hay— referencia contra los pagos ya registrados.
  *
  * El orden importa: la referencia duplicada gana sobre cualquier aviso de monto,
- * porque es el control que impide registrar dos veces el mismo voucher.
+ * porque es el control que impide registrar dos veces el mismo depósito.
+ *
+ * La referencia es opcional porque ventanilla dejó de capturarla: quien cobra
+ * tiene el voucher delante y lo verifica ahí. Sin ella no hay nada que
+ * comparar, y el diagnóstico se limita al monto. La carga masiva del banco sí
+ * la manda, y ahí el control sigue entero.
  */
 export function diagnosticarPago(
   pagos: PagoRegistrado[],
-  entrada: { referencia: string; monto: string; montoEsperado: number },
+  entrada: { referencia?: string | undefined; monto: string; montoEsperado: number },
 ): Diagnostico {
-  const ref = entrada.referencia.trim();
+  const ref = (entrada.referencia ?? "").trim();
   const n = parsearMonto(entrada.monto);
 
   if (!ref && !entrada.monto.trim()) return { clase: "vacio" };

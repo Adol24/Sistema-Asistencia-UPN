@@ -39,9 +39,13 @@ function Conciliacion() {
     const taller_ = pagos.filter((p) => p.concepto === "taller");
     const suma = (xs: typeof pagos) => xs.reduce((a, p) => a + p.monto, 0);
 
+    // Solo los pagos que traen referencia entran en el conteo de duplicadas.
+    // Los de ventanilla ya no la capturan, y meterlos con la cadena vacía haría
+    // que todos aparecieran como duplicados unos de otros.
     const porReferencia = new Map<string, typeof pagos>();
     pagos.forEach((p) => {
-      const k = p.referencia.toLowerCase();
+      const k = p.referencia?.trim().toLowerCase();
+      if (!k) return;
       porReferencia.set(k, [...(porReferencia.get(k) ?? []), p]);
     });
     const duplicadas = [...porReferencia.entries()].filter(([, g]) => g.length > 1);

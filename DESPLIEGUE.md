@@ -135,3 +135,7 @@ fuera a los demás.
   que permite al capturista saber quién pagó sin ver importes ni referencias, y
   `v_talleres`, porque cuenta inscritos para el cartel público. Marcar
   `v_estado_pago` como `security_invoker` deja la puerta en rojo para todos.
+- `20260910120000_referencia_opcional_en_ventanilla.sql` **tampoco se ha
+  ejecutado**, y hasta que se aplique la ventanilla no puede registrar cobros:
+  la columna sigue siendo `not null` en la base y el insert será rechazado. Es
+  la única de las tres que bloquea la operación si falta.

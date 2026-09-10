@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Ban,
-  Camera,
   Check,
   CheckCircle2,
   Info,
@@ -27,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-import { IMAGEN_VOUCHER } from "@/lib/imagenes";
 import { isoAFecha, moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -236,26 +234,33 @@ function BloquePago({
 }) {
   const { diagnosticar, registrarPago, registrarBitacora } = useEstadoEvento();
   const [monto, setMonto] = useState("");
-  const [referencia, setReferencia] = useState("");
   const [fecha, setFecha] = useState("");
   const [nota, setNota] = useState("");
-  const [voucher, setVoucher] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [hecho, setHecho] = useState<"pagado" | "discrepancia" | null>(null);
   const [tocado, setTocado] = useState(false);
 
-  // Se evalúa en cada tecla, no al enviar: en ventanilla el aviso tiene que
-  // llegar antes de que la persona termine de capturar.
-  const d = diagnosticar({ referencia, monto, montoEsperado });
+  /*
+   * Ventanilla ya no captura la referencia bancaria ni fotografía el voucher.
+   *
+   * Quien cobra tiene el comprobante en la mano y lo verifica ahí mismo, así
+   * que pedir los dos datos solo alargaba cada cobro. La foto además no se
+   * guardaba en ningún sitio —era una URL temporal del navegador que moría al
+   * recargar—, de modo que bloqueaba el registro a cambio de un respaldo que
+   * no existía.
+   *
+   * El diagnóstico se queda con lo que sí decide: el monto. La carga masiva
+   * del banco sigue mandando referencia, y ahí el control antiduplicados sigue
+   * entero.
+   */
+  const d = diagnosticar({ monto, montoEsperado });
   const requiereNota = d.clase === "menor" || d.clase === "mayor";
   const bloqueado = d.clase === "duplicada" || d.clase === "invalido";
   const faltaFecha = !fecha;
-  const faltaVoucher = !voucher;
   const puedeGuardar =
     !bloqueado &&
     (d.clase === "exacto" || requiereNota) &&
     !faltaFecha &&
-    !faltaVoucher &&
     (!requiereNota || nota.trim().length >= 10) &&
     !guardando;
 
@@ -270,7 +275,6 @@ function BloquePago({
       concepto,
       monto: n,
       montoEsperado,
-      referencia: referencia.trim(),
       fechaDeposito: isoAFecha(fecha),
       resultado,
       origen: "ventanilla",
@@ -278,7 +282,7 @@ function BloquePago({
     });
     registrarBitacora(
       resultado === "pagado" ? "Registró un pago" : "Registró un pago con discrepancia",
-      `${folio} · ${concepto} · $${n.toFixed(2)} · ref ${referencia.trim()}`,
+      `${folio} · ${concepto} · $${n.toFixed(2)} · ventanilla`,
     );
     setGuardando(false);
     setHecho(resultado);
@@ -362,18 +366,6 @@ function BloquePago({
           />
         </div>
         <div>
-          <Label htmlFor={`ref-${concepto}`}>Referencia bancaria</Label>
-          <Input
-            id={`ref-${concepto}`}
-            value={referencia}
-            onChange={(e) => setReferencia(e.target.value)}
-            onBlur={() => setTocado(true)}
-            placeholder="REF482910"
-            className="mt-1 h-12 font-mono text-base"
-            aria-invalid={bloqueado}
-          />
-        </div>
-        <div>
           <Label htmlFor={`fecha-${concepto}`}>Fecha del depósito</Label>
           <Input
             id={`fecha-${concepto}`}
@@ -391,39 +383,6 @@ function BloquePago({
           ) : fecha ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Se registrará como <span className="font-mono">{isoAFecha(fecha)}</span>
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <Label htmlFor={`voucher-${concepto}`}>Foto del voucher</Label>
-          <label
-            htmlFor={`voucher-${concepto}`}
-            className="mt-1 flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border bg-muted/40 p-4 text-center text-sm hover:bg-muted"
-          >
-            <Camera className="size-5 text-muted-foreground" aria-hidden />
-            <span className="font-medium">Tomar foto o elegir archivo</span>
-            <span className="text-xs text-muted-foreground">Cámara simulada en el prototipo</span>
-            <input
-              id={`voucher-${concepto}`}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                setVoucher(f ? URL.createObjectURL(f) : IMAGEN_VOUCHER);
-              }}
-            />
-          </label>
-          {voucher ? (
-            <img
-              src={voucher}
-              alt="Vista previa del voucher capturado"
-              className="mt-2 h-40 w-full rounded-md border border-border object-cover"
-            />
-          ) : tocado ? (
-            <p className="mt-1 text-xs font-medium text-destructive">
-              Falta la foto del voucher: es el respaldo del registro.
             </p>
           ) : null}
         </div>
@@ -464,16 +423,14 @@ function BloquePago({
         {!puedeGuardar && !guardando ? (
           <p className="text-center text-xs text-muted-foreground">
             {bloqueado
-              ? "Corrige la referencia bancaria para poder registrar."
+              ? "Corrige el monto para poder registrar."
               : d.clase === "vacio"
-                ? "Captura monto y referencia para continuar."
+                ? "Captura el monto para continuar."
                 : requiereNota && nota.trim().length < 10
                   ? "La nota es obligatoria cuando el monto no coincide."
                   : faltaFecha
                     ? "Falta la fecha del depósito."
-                    : faltaVoucher
-                      ? "Falta la foto del voucher."
-                      : "Completa los campos para registrar."}
+                    : "Completa los campos para registrar."}
           </p>
         ) : null}
       </div>

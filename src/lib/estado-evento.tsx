@@ -166,7 +166,12 @@ interface Ctx {
   /** Estado de pago efectivo, con los pagos de la sesión aplicados. */
   estadoDe: (p: Participante) => { evento: EstadoPago; taller: EstadoPago | undefined };
   buscarReferencia: (referencia: string, ignorarId?: string) => PagoRegistrado | undefined;
-  diagnosticar: (e: { referencia: string; monto: string; montoEsperado: number }) => Diagnostico;
+  /** La referencia es opcional: ventanilla no la captura, la carga masiva sí. */
+  diagnosticar: (e: {
+    referencia?: string | undefined;
+    monto: string;
+    montoEsperado: number;
+  }) => Diagnostico;
   registrarPago: (p: Omit<PagoRegistrado, "id" | "registradoEn">) => PagoRegistrado;
   registrarLote: (ps: Omit<PagoRegistrado, "id" | "registradoEn">[]) => PagoRegistrado[];
 

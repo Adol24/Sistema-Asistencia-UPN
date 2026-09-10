@@ -348,7 +348,7 @@ export async function guardarPago(p: {
   concepto: "evento" | "taller";
   monto: number;
   montoEsperado: number;
-  referencia: string;
+  referencia?: string | undefined;
   fechaDeposito: string;
   nota?: string | undefined;
 }): Promise<void> {
@@ -368,7 +368,11 @@ export async function guardarPago(p: {
     concepto: p.concepto,
     monto: p.monto,
     monto_esperado: p.montoEsperado,
-    referencia: p.referencia,
+    // Nula en ventanilla: la columna dejó de ser obligatoria porque quien cobra
+    // verifica el voucher en mano. La restricción de unicidad sigue puesta y
+    // sigue protegiendo la carga masiva del banco, porque en PostgreSQL dos
+    // nulos no chocan entre sí.
+    referencia: p.referencia?.trim() || null,
     fecha_deposito: p.fechaDeposito,
     resultado: p.monto === p.montoEsperado ? "pagado" : "discrepancia",
     nota: p.nota ?? null,
