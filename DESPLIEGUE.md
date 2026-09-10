@@ -169,6 +169,15 @@ no se ve con la clave anónima.
 
 ## Lo que sigue pendiente
 
+- **Ejecutar `20260911100000_preregistro_reentrante.sql`.** Sin ella, retroceder
+  en el pre-registro para cambiar de taller rompe el recorrido: al alumno con
+  «duplicate key … participantes_matricula_key», y al docente o externo en
+  silencio, creando un participante duplicado con otro folio cada vez. La
+  migración vuelve reentrantes las dos altas y el caso de nombre.
+- Después de aplicarla, revisar si ese fallo ya dejó duplicados. La consulta
+  está al final de esa misma migración; se resuelven a mano desde
+  Administración, no se borran automáticamente.
+
 
 
 - **La subida de evidencias del alumno no llega a la base.** `portal/evidencias`
