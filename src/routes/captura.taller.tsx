@@ -59,7 +59,7 @@ function ModoTaller() {
     // Reutiliza el mismo motor del escáner: pase de lista y escaneo aplican las
     // mismas reglas de negocio, solo cambia cómo se dispara.
     const r = await escanear(folio);
-    retroalimentar(r.color);
+    retroalimentar(r);
   };
 
   // Con 25 casillas, corregir un error tiene que ser tan directo como marcarlo.

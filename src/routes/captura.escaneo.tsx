@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Keyboard, ScanLine, ShieldCheck, Zap } from "lucide-react";
+import { CheckCircle2, Keyboard, ScanLine, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { CamaraQR } from "@/components/camara-qr";
 import { PerfilBadge, PuntoSemaforo } from "@/components/estado-badges";
@@ -19,10 +19,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
-import { retroalimentar } from "@/lib/retro";
+import { estaSilenciado, probar, retroalimentar, silenciar, type Aviso } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
+
+/** Los siete avisos, con el nombre que usa quien está en la puerta. */
+const PRUEBAS: [Aviso, string][] = [
+  ["correcto", "Registrada"],
+  ["folio_invalido", "Folio inválido"],
+  ["dia_equivocado", "Día equivocado"],
+  ["denegado", "Sin pagar"],
+  ["ya_registrado", "Ya registrado"],
+  ["reingreso", "Reingreso"],
+  ["advertencia", "Pasa con aviso"],
+];
 
 export const Route = createFileRoute("/captura/escaneo")({
   head: () =>
@@ -41,6 +52,14 @@ function PantallaEscaneo() {
     useEstadoEvento();
   const [entrada, setEntrada] = useState("");
   const [resultado, setResultado] = useState<ResultadoEscaneo | null>(null);
+  const [mudo, setMudo] = useState(false);
+
+  // El ajuste se lee después de montar y no al crear el estado: en el servidor
+  // no hay `localStorage`, y leerlo durante el render haría que la primera
+  // pintura del cliente no coincidiera con la del servidor.
+  useEffect(() => {
+    setMudo(estaSilenciado());
+  }, []);
   const [retenido, setRetenido] = useState(false);
   const [autorizando, setAutorizando] = useState<string | null>(null);
   const [nota, setNota] = useState("");
@@ -63,7 +82,7 @@ function PantallaEscaneo() {
       autorizado,
       ...(notaAutorizacion ? { nota: notaAutorizacion, autorizadoPor: sesion.capturista } : {}),
     });
-    retroalimentar(r.color);
+    retroalimentar(r);
     setResultado(r);
     setRetenido(false);
     setEntrada("");
@@ -159,6 +178,59 @@ function PantallaEscaneo() {
         El campo es el plan B para quien llega sin código.
         {!enLinea ? ` Sin conexión: ${pendientes} escaneos esperando sincronización.` : ""}
       </p>
+
+      {/*
+        La prueba de sonido va aquí, en la pantalla donde se usa.
+        El volumen de la puerta se ajusta ANTES de que llegue la fila, no
+        descubriendo a media jornada que el teléfono estaba en silencio.
+      */}
+      <section className="mt-5 rounded-lg border border-border bg-card p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <Volume2 className="size-3.5" aria-hidden /> Avisos sonoros
+          </h2>
+          <Button
+            type="button"
+            variant={mudo ? "destructive" : "outline"}
+            size="sm"
+            onClick={() => {
+              const v = !mudo;
+              silenciar(v);
+              setMudo(v);
+              // Al reactivar suena, para confirmar que el altavoz responde.
+              if (!v) probar("correcto");
+            }}
+          >
+            {mudo ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            {mudo ? "Sonido apagado" : "Sonido encendido"}
+          </Button>
+        </div>
+        {mudo ? (
+          <p className="mt-2 text-xs font-medium text-destructive">
+            Con el sonido apagado tendrás que mirar la pantalla en cada escaneo. La vibración sigue
+            funcionando.
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Escúchalos antes de abrir la puerta: cada situación suena distinto para no tener que
+              leer la pantalla.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {PRUEBAS.map(([aviso, etiqueta]) => (
+                <button
+                  key={aviso}
+                  type="button"
+                  onClick={() => probar(aviso)}
+                  className="min-h-11 rounded-md border border-border bg-muted/40 px-3 text-left text-xs font-medium hover:bg-muted"
+                >
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
 
       <section className="mt-5 rounded-lg border border-dashed border-border bg-muted/40 p-3">
         <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
