@@ -155,6 +155,7 @@ Las del 10 de septiembre están ejecutadas:
 | `20260910160000_preregistro_docente_externo` | `fn_preregistrar_externo` existe, el anónimo puede llamarla y valida el perfil |
 | `20260910180000_correo_personal_del_alumno` | `dominio_institucional` está en NULL: se acepta cualquier correo |
 | `20260910200000_taller_compatible_con_el_dia` | Aplicada por el usuario |
+| `20260911100000_preregistro_reentrante` | `fn_cambiar_taller` existe y está cerrada a todos: responde «permission denied for function» |
 | `20260910220000_cambiar_dia_mueve_al_participante` | `fn_asignar_dia_a_varios` existe y está cerrada al anónimo: responde «permission denied **for function**», no «does not exist» |
 
 Todas las migraciones del repositorio están aplicadas.
@@ -169,14 +170,13 @@ no se ve con la clave anónima.
 
 ## Lo que sigue pendiente
 
-- **Ejecutar `20260911100000_preregistro_reentrante.sql`.** Sin ella, retroceder
-  en el pre-registro para cambiar de taller rompe el recorrido: al alumno con
-  «duplicate key … participantes_matricula_key», y al docente o externo en
-  silencio, creando un participante duplicado con otro folio cada vez. La
-  migración vuelve reentrantes las dos altas y el caso de nombre.
-- Después de aplicarla, revisar si ese fallo ya dejó duplicados. La consulta
-  está al final de esa misma migración; se resuelven a mano desde
-  Administración, no se borran automáticamente.
+- **Revisar si el pre-registro dejó participantes duplicados**, antes del
+  evento. Hasta `20260911100000` cada vuelta atrás en la pantalla de talleres
+  creaba otro participante para el docente y el externo —su matrícula es NULL y
+  la restricción de unicidad no los detenía—. La consulta para localizarlos está
+  al final de esa migración. Se resuelven a mano desde Administración: no se
+  borran automáticamente porque alguno puede tener ya un pago o una asistencia
+  colgando.
 
 
 
