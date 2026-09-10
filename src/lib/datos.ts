@@ -895,6 +895,30 @@ export async function confirmarEnPadronRemoto(
  * lo académico; esta no tiene padrón del que heredar, así que recibe el nombre
  * y la institución que la persona declara, y **el día que ella eligió**.
  */
+/**
+ * El uuid del taller a partir de su clave, o `null` si no eligió ninguno.
+ *
+ * **Tercera vez que este identificador se manda sin traducir.** `TallerBase.id`
+ * es la clave corta —`T01`—, porque es como lo llama el personal y como sale en
+ * los reportes; `aTallerBase` lo construye así. Pero `participantes.taller_id`
+ * es un uuid, y las dos funciones de alta lo recibían tal cual:
+ *
+ *   invalid input syntax for type uuid: "T01"
+ *
+ * Reventaba justo al final del pre-registro, cuando el alumno elegía taller y
+ * pulsaba continuar. Con el catálogo sin taller pasaba inadvertido, porque
+ * `p_taller` iba nulo y no había nada que convertir.
+ *
+ * Se traduce aquí, en la frontera, que es donde vive el resto de traducciones.
+ */
+async function uuidDelTaller(
+  sb: SupabaseClient,
+  clave: string | undefined,
+): Promise<string | null> {
+  if (!clave) return null;
+  return idDe(sb, "talleres", "clave", clave, `El taller ${clave} ya no está disponible.`);
+}
+
 export async function preregistrarExterno(datos: {
   perfil: "docente" | "externo";
   nombre: string;
@@ -912,7 +936,7 @@ export async function preregistrarExterno(datos: {
     p_celular: datos.celular,
     p_institucion: datos.institucion,
     p_dia: datos.dia,
-    p_taller: datos.tallerId ?? null,
+    p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
   // Se lanza el error tal cual, como en el alta de alumno: el mensaje viene de
   // un `raise exception` de la función y es específico —«ese taller no se
@@ -932,7 +956,7 @@ export async function preregistrarAlumno(datos: {
     p_matricula: datos.matricula,
     p_correo: datos.correo,
     p_celular: datos.celular,
-    p_taller: datos.tallerId ?? null,
+    p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
   if (error) throw error;
   return data as { id: string; folio: string; dia: Dia };
