@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Check, Copy, Download, Loader2, Printer, QrCode } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { AlertTriangle, Check, Copy, KeyRound, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
+import { AccionesDelPase } from "@/components/pase";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
 import { moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
@@ -56,43 +57,79 @@ function Pago() {
   // El folio del pre-registro recién creado. `participante?.folio` es el del
   // contexto —otra persona— y enseñarlo aquí era el fallo más visible del flujo.
   const folio = borrador.folio ?? participante?.folio;
+  // El nombre va impreso en la imagen del pase, para que se reconozca de quién
+  // es sin tener que abrirla y leer el folio.
+  const nombre = borrador.nombre ?? participante?.nombre ?? "";
   const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
   const [ampliada, setAmpliada] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
+  const [copiadoFolio, setCopiadoFolio] = useState(false);
 
   return (
     <PantallaPublica titulo="Instrucciones de pago" volverA="/talleres" ancho="lg">
+      {/*
+        Un solo botón, y hace lo que dice.
+        Eran dos —«Descargar PDF» e «Imprimir»— y ninguno hacía nada: los dos
+        enseñaban un aviso de éxito sin generar ni un archivo. La página ya
+        tiene su hoja de impresión —las clases `print:hidden` están puestas—,
+        así que abrir el diálogo del navegador imprime de verdad, y desde él se
+        elige «Guardar como PDF», que es como se descarga un PDF en realidad.
+      */}
       <div className="flex flex-wrap gap-2 print:hidden">
-        <Button
-          variant="outline"
-          className="h-11"
-          onClick={() => toast.success("Descargamos tu PDF con las instrucciones.")}
-        >
-          <Download className="size-4" /> Descargar PDF
-        </Button>
-        <Button
-          variant="outline"
-          className="h-11"
-          disabled={enviando}
-          onClick={async () => {
-            setEnviando(true);
-            await simularLatencia();
-            setEnviando(false);
-            toast.success("Descargamos las instrucciones.");
-          }}
-        >
-          {enviando ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
-          Imprimir
+        <Button variant="outline" className="h-11" onClick={() => window.print()}>
+          <Printer className="size-4" /> Imprimir o guardar en PDF
         </Button>
       </div>
 
+      {/*
+        El folio no es un número de referencia: es la llave del portal.
+        Con él y su matrícula —o su correo— el alumno entra a ver su estado de
+        pago, sus evidencias y su código QR. Si lo pierde, no hay forma de que
+        entre, así que la pantalla se lo dice y le da las tres maneras de
+        guardarlo: copiarlo, descargar la imagen o imprimir la hoja.
+      */}
       <section className="mt-4 rounded-lg border border-border bg-card p-5 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Tu folio
         </p>
         <p className="mt-1 text-4xl font-extrabold tracking-tight sm:text-5xl">{folio}</p>
+
+        <div className="mt-3 flex justify-center print:hidden">
+          <Button
+            variant="outline"
+            className="h-11"
+            onClick={() => {
+              void navigator.clipboard?.writeText(folio ?? "");
+              setCopiadoFolio(true);
+              setTimeout(() => setCopiadoFolio(false), 1800);
+            }}
+          >
+            {copiadoFolio ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copiadoFolio ? "Folio copiado" : "Copiar mi folio"}
+          </Button>
+        </div>
+
         <div className="mt-4 flex justify-center">
           <CodigoQR valor={folio ?? ""} size={148} />
+        </div>
+
+        <div className="mx-auto mt-4 max-w-md rounded-md border-2 border-primary/30 bg-primary/5 p-3 text-left">
+          <p className="flex items-start gap-2 text-sm font-semibold">
+            <KeyRound className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+            Guarda tu folio: es como entras a tu portal.
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Con tu folio y tu matrícula —o tu correo— entras a{" "}
+            <Link to="/portal" className="font-semibold text-primary underline">
+              tu portal
+            </Link>
+            , donde ves si tu pago ya se registró, subes tus evidencias y obtienes tu código QR para
+            la entrada. Sin el folio no hay forma de entrar.
+          </p>
+        </div>
+
+        {/* La descarga es real: genera la imagen del pase y la guarda. */}
+        <div className="print:hidden">
+          <AccionesDelPase folio={folio ?? ""} nombre={nombre} evento={evento.nombre} />
         </div>
       </section>
 
