@@ -277,6 +277,17 @@ interface Ctx {
   // --- Casos de soporte ---
   casos: CasoSoporte[];
   cambiarEstadoCaso: (id: string, estado: CasoSoporte["estado"], atiende?: string) => void;
+  /**
+   * Abre un caso desde el panel. Devuelve el creado, con la clave que puso la
+   * base. Es `async` a propósito: ver `abrirCaso`.
+   */
+  abrirCaso: (datos: {
+    folio: string;
+    nombre: string;
+    asunto: string;
+    detalle: string;
+    canal: CasoSoporte["canal"];
+  }) => Promise<CasoSoporte>;
   /** Corrige el contenido de un caso. El estado va aparte, por `cambiarEstadoCaso`. */
   editarCaso: (id: string, cambios: Pick<CasoSoporte, "asunto" | "detalle" | "canal">) => void;
   /**
@@ -1274,6 +1285,41 @@ export function EstadoEventoProvider({
   }, []);
 
   /**
+   * Abre un caso desde el panel de soporte.
+   *
+   * Es la única escritura del contexto que **espera** a la base, en vez de
+   * pintar primero y guardar después. La clave `CS-004` la genera una secuencia
+   * de la base, y no hay forma honesta de adivinarla aquí: inventarla chocaría
+   * con la que reciba el siguiente caso. Y a diferencia de un escaneo en la
+   * puerta, quien llena este formulario puede esperar.
+   */
+  const abrirCaso = useCallback<Ctx["abrirCaso"]>(
+    async (datos) => {
+      let clave = `CS-${String(casos.length + 1).padStart(3, "0")}`;
+      let creadoEn = fechaHora();
+      if (hayBaseDeDatos) {
+        const d = await import("@/lib/datos");
+        const creado = await d.abrirCasoRemoto(datos);
+        clave = creado.clave;
+        creadoEn = creado.creadoEn;
+      }
+      const caso: CasoSoporte = {
+        id: clave,
+        folio: datos.folio,
+        nombre: datos.nombre,
+        asunto: datos.asunto.trim(),
+        detalle: datos.detalle.trim(),
+        estado: "abierto",
+        canal: datos.canal,
+        creadoEn,
+      };
+      setCasos((prev) => [caso, ...prev]);
+      return caso;
+    },
+    [casos.length],
+  );
+
+  /**
    * Corrige lo que dice un caso.
    *
    * Quien atiende por teléfono anota lo que le cuentan y luego lo reescribe con
@@ -1581,6 +1627,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      abrirCaso,
       editarCaso,
       casoDeNombreAbierto,
       participantes,
@@ -1644,6 +1691,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      abrirCaso,
       editarCaso,
       casoDeNombreAbierto,
       participantes,

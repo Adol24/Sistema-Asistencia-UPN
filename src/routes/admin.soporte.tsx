@@ -5,9 +5,11 @@ import {
   Check,
   HelpCircle,
   LifeBuoy,
+  Loader2,
   Mail,
   MessageCircle,
   Pencil,
+  Plus,
   Search,
   Smartphone,
   Store,
@@ -19,6 +21,8 @@ import { EstadoCasoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { buscarEnParticipantes } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -69,6 +73,8 @@ const canalDe = (canal: CasoSoporte["canal"]) =>
 function Soporte() {
   const {
     casos,
+    participantes,
+    abrirCaso,
     cambiarEstadoCaso,
     editarCaso,
     registrarBitacora,
@@ -86,6 +92,23 @@ function Soporte() {
   const [estado, setEstado] = useState<"todos" | CasoSoporte["estado"]>("todos");
   const [canal, setCanal] = useState<"todos" | CasoSoporte["canal"]>("todos");
   const [abierto, setAbierto] = useState<string | null>(null);
+  /** El borrador del caso nuevo, o null si el diálogo está cerrado. */
+  const [nuevo, setNuevo] = useState<{
+    folio: string;
+    nombre: string;
+    busqueda: string;
+    asunto: string;
+    detalle: string;
+    canal: CasoSoporte["canal"];
+  } | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  // Se busca entre los participantes porque `casos_soporte.participante_id` es
+  // obligatorio: un caso siempre es de alguien. No se puede abrir «en general».
+  const candidatos = useMemo(
+    () => (nuevo?.busqueda.trim() ? buscarEnParticipantes(participantes, nuevo.busqueda) : []),
+    [participantes, nuevo?.busqueda],
+  );
 
   const conteos = useMemo(
     () => ({
@@ -134,6 +157,23 @@ function Soporte() {
       titulo="Casos de soporte"
       descripcion="Contraparte del botón de WhatsApp y de la casilla de nombre incorrecto del pre-registro."
       nav={navAdmin}
+      acciones={
+        <Button
+          className="h-11"
+          onClick={() =>
+            setNuevo({
+              folio: "",
+              nombre: "",
+              busqueda: "",
+              asunto: "",
+              detalle: "",
+              canal: "whatsapp",
+            })
+          }
+        >
+          <Plus className="size-4" /> Abrir caso
+        </Button>
+      }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {ESTADOS.map((e) => (
@@ -410,6 +450,165 @@ function Soporte() {
           </li>
         ) : null}
       </ul>
+
+      {/*
+        Abrir un caso a mano: la contraparte de quien llama por WhatsApp o llega
+        a ventanilla. Hasta ahora solo nacían del alumno reportando su nombre.
+      */}
+      <Dialog open={nuevo !== null} onOpenChange={(a) => !a && setNuevo(null)}>
+        <DialogContent>
+          <DialogTitle>Abrir un caso</DialogTitle>
+          {nuevo ? (
+            <div className="grid gap-3">
+              {/*
+                Primero de quién es. `casos_soporte.participante_id` es
+                obligatorio: un caso siempre es de alguien, no se puede abrir
+                sin participante, y por eso este paso va antes que el asunto.
+              */}
+              {nuevo.folio ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+                  <span>
+                    <span className="font-semibold">{nuevo.nombre}</span>
+                    <span className="block font-mono text-xs text-muted-foreground">
+                      {nuevo.folio}
+                    </span>
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNuevo({ ...nuevo, folio: "", nombre: "", busqueda: "" })}
+                  >
+                    Cambiar
+                  </Button>
+                </div>
+              ) : (
+                <label className="grid gap-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    ¿De quién es el caso?
+                  </span>
+                  <Input
+                    autoFocus
+                    value={nuevo.busqueda}
+                    onChange={(e) => setNuevo({ ...nuevo, busqueda: e.target.value })}
+                    placeholder="Folio, matrícula, nombre o correo"
+                    className="h-11"
+                  />
+                  {candidatos.length > 0 ? (
+                    <ul className="mt-1 grid max-h-48 gap-1 overflow-y-auto">
+                      {candidatos.slice(0, 8).map((x) => (
+                        <li key={x.folio}>
+                          <button
+                            type="button"
+                            onClick={() => setNuevo({ ...nuevo, folio: x.folio, nombre: x.nombre })}
+                            className="w-full rounded-md border border-border px-3 py-2 text-left text-sm hover:bg-muted"
+                          >
+                            <span className="font-semibold">{x.nombre}</span>
+                            <span className="block font-mono text-xs text-muted-foreground">
+                              {x.folio}
+                              {x.matricula ? ` · ${x.matricula}` : ""}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : nuevo.busqueda.trim() ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sin coincidencias. Solo se puede abrir un caso a alguien ya pre-registrado.
+                    </p>
+                  ) : null}
+                </label>
+              )}
+
+              <label className="grid gap-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Asunto
+                </span>
+                <Input
+                  value={nuevo.asunto}
+                  onChange={(e) => setNuevo({ ...nuevo, asunto: e.target.value })}
+                  placeholder="No le llegó su código QR"
+                  className="h-11"
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Detalle
+                </span>
+                <Textarea
+                  value={nuevo.detalle}
+                  onChange={(e) => setNuevo({ ...nuevo, detalle: e.target.value })}
+                  placeholder="Qué reporta y qué se le respondió."
+                  rows={4}
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Canal
+                </span>
+                <select
+                  value={nuevo.canal}
+                  onChange={(e) =>
+                    setNuevo({ ...nuevo, canal: e.target.value as CasoSoporte["canal"] })
+                  }
+                  className="h-11 rounded-md border border-input bg-card px-2 text-sm"
+                >
+                  {Object.entries(CANAL).map(([v, x]) => (
+                    <option key={v} value={v}>
+                      {x.etiqueta}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <Button
+                className="h-11"
+                disabled={
+                  guardando || !nuevo.folio || !nuevo.asunto.trim() || !nuevo.detalle.trim()
+                }
+                onClick={() => {
+                  setGuardando(true);
+                  /*
+                   * Se espera a la base, al revés que el resto del sistema. La
+                   * clave CS-004 la pone una secuencia de la base y no hay forma
+                   * honesta de adivinarla aquí; enseñar una inventada y
+                   * corregirla después sería peor que esperar un momento.
+                   */
+                  void abrirCaso({
+                    folio: nuevo.folio,
+                    nombre: nuevo.nombre,
+                    asunto: nuevo.asunto,
+                    detalle: nuevo.detalle,
+                    canal: nuevo.canal,
+                  })
+                    .then((caso) => {
+                      registrarBitacora(
+                        "Abrió un caso de soporte",
+                        `${caso.id} · ${caso.folio} · ${caso.asunto}`,
+                      );
+                      toast.success(`${caso.id} abierto.`);
+                      setNuevo(null);
+                      setAbierto(caso.id);
+                    })
+                    .catch((e: unknown) =>
+                      toast.error((e as Error)?.message || "No pudimos abrir el caso."),
+                    )
+                    .finally(() => setGuardando(false));
+                }}
+              >
+                {guardando ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Abriendo…
+                  </>
+                ) : (
+                  <>
+                    <Plus className="size-4" /> Abrir caso
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </PantallaPanel>
   );
 }

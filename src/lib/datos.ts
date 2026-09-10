@@ -16,6 +16,7 @@ import { exigirBase, supabase } from "@/lib/supabase";
 import {
   aAlumnoPadron,
   aAsistencia,
+  aFechaHora,
   aCaso,
   aCatalogo,
   aConfiguracion,
@@ -651,6 +652,55 @@ export async function cambiarEstadoCasoRemoto(
     })
     .eq("id", (data as { id: string }).id);
   if (error) throw error;
+}
+
+/**
+ * Abre un caso desde el panel de soporte.
+ *
+ * Hasta ahora los casos solo nacían de una vía: el alumno reportando que su
+ * nombre está mal, por `fn_abrir_caso_nombre`. Quien llamaba por WhatsApp o
+ * llegaba a ventanilla no podía quedar registrado, aunque el enum `canal_caso`
+ * tiene esos valores justo para eso.
+ *
+ * Va por inserción directa y no por una función `security definer` como la del
+ * portal: quien abre el caso aquí ya tiene sesión, y `casos_escritura` —de
+ * administración y soporte— es exactamente la comprobación que hace falta.
+ * Meter una función en medio saltaría esa política en vez de apoyarse en ella.
+ *
+ * **No es optimista, y aquí eso es lo correcto.** La clave `CS-004` la genera
+ * una secuencia de la base; inventarla en el navegador chocaría con la que el
+ * siguiente caso reciba de verdad. Se espera la respuesta —quien está llenando
+ * un formulario puede esperar 200 ms— y se devuelve la clave real.
+ */
+export async function abrirCasoRemoto(datos: {
+  folio: string;
+  asunto: string;
+  detalle: string;
+  canal: string;
+}): Promise<{ clave: string; creadoEn: string }> {
+  const sb = exigirBase();
+  const { data: p, error: eBusca } = await sb
+    .from("participantes")
+    .select("id")
+    .eq("folio", datos.folio)
+    .maybeSingle();
+  if (eBusca) throw eBusca;
+  if (!p) throw new Error(`No encontramos el folio ${datos.folio}.`);
+
+  const { data, error } = await sb
+    .from("casos_soporte")
+    .insert({
+      participante_id: (p as { id: string }).id,
+      asunto: datos.asunto.trim(),
+      detalle: datos.detalle.trim(),
+      canal: datos.canal,
+    })
+    .select("clave, creado_en")
+    .single();
+  if (error) throw error;
+
+  const fila = data as { clave: string; creado_en: string };
+  return { clave: fila.clave, creadoEn: aFechaHora(fila.creado_en) };
 }
 
 /**
