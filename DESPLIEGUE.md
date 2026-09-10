@@ -150,15 +150,22 @@ Las del 10 de septiembre están ejecutadas:
 
 | Migración | Comprobación |
 | --- | --- |
+| `20260910100000_vistas_security_invoker` | `v_talleres` volvió a ser legible por el anónimo —antes daba «permission denied for view»— y le enseña 0 talleres dados de baja, así que el filtro nuevo está puesto |
 | `20260910140000_tiempo_real` | Realtime responde; el canal llega a `SUBSCRIBED` |
 | `20260910160000_preregistro_docente_externo` | `fn_preregistrar_externo` existe, el anónimo puede llamarla y valida el perfil |
 | `20260910180000_correo_personal_del_alumno` | `dominio_institucional` está en NULL: se acepta cualquier correo |
 | `20260910200000_taller_compatible_con_el_dia` | Aplicada por el usuario |
 | `20260910220000_cambiar_dia_mueve_al_participante` | `fn_asignar_dia_a_varios` existe y está cerrada al anónimo: responde «permission denied **for function**», no «does not exist» |
 
-Sigue **sin aplicar** `20260910100000_vistas_security_invoker.sql`, que corrige
-que las seis vistas se salten la seguridad a nivel de fila. No bloquea la
-operación, pero conviene antes del evento.
+Todas las migraciones del repositorio están aplicadas.
+
+Queda una comprobación que **no se puede hacer desde fuera** y conviene hacer
+antes del evento: `20260910100000` marcó cuatro vistas con `security_invoker` y
+dejó `v_estado_pago` sin marcar a propósito. Si esa se hubiera marcado, el
+capturista dejaría de ver quién pagó y **la puerta rechazaría a todo el mundo**.
+Se comprueba entrando con una cuenta `capturista` y escaneando el código de
+alguien que ya pagó: tiene que dar verde. Es la única vista cuyo comportamiento
+no se ve con la clave anónima.
 
 ## Lo que sigue pendiente
 
