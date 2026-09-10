@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Rotulo } from "@/components/tipografia";
 
 /**
  * Tarjeta de indicador de los paneles.
@@ -38,10 +39,10 @@ export function Indicador({
         className,
       )}
     >
-      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <Rotulo className="flex items-center gap-2">
         {icono}
         {etiqueta}
-      </p>
+      </Rotulo>
       {/*
        * `tabular-nums` no es cosmético: en una rejilla de indicadores que se
        * refresca, las cifras proporcionales cambian de ancho al pasar de 1 a 2

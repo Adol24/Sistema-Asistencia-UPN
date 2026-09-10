@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, Keyboard, ScanLine, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
+import { Rotulo } from "@/components/tipografia";
 import { CamaraQR } from "@/components/camara-qr";
 import { PerfilBadge, PuntoSemaforo } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
@@ -186,9 +187,9 @@ function PantallaEscaneo() {
       */}
       <section className="mt-5 rounded-lg border border-border bg-card p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <Rotulo className="flex items-center gap-2">
             <Volume2 className="size-3.5" aria-hidden /> Avisos sonoros
-          </h2>
+          </Rotulo>
           <Button
             type="button"
             variant={mudo ? "destructive" : "outline"}
@@ -233,9 +234,9 @@ function PantallaEscaneo() {
       </section>
 
       <section className="mt-5 rounded-lg border border-dashed border-border bg-muted/40 p-3">
-        <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <Rotulo className="flex items-center gap-2">
           <Zap className="size-3.5" aria-hidden /> Casos de prueba del prototipo
-        </h2>
+        </Rotulo>
         <div className="mt-2 grid gap-2">
           {casos.map((c) => (
             <button

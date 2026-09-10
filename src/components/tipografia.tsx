@@ -29,16 +29,67 @@ import { cn } from "@/lib/utils";
  * una jerarquía de lectura.
  */
 
-export function Rotulo({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * @param como Qué etiqueta HTML usar. `p` por defecto; `span` para cuando el
+ *   rótulo va dentro de un `<label>`, donde un párrafo no es válido.
+ *
+ * Existía desde el principio, pero solo lo usaba una pantalla: las demás
+ * repetían la cadena de clases a mano, treinta y cuatro veces. La razón era
+ * esta: casi siempre hace de etiqueta de un campo, y ahí tiene que ser un
+ * `span`. Se le da la opción y deja de haber motivo para copiarlo.
+ */
+export function Rotulo({
+  children,
+  className,
+  como: Como = "p",
+}: {
+  children: ReactNode;
+  className?: string;
+  como?: "p" | "span";
+}) {
   return (
-    <p
+    <Como
       className={cn(
         "text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
         className,
       )}
     >
       {children}
-    </p>
+    </Como>
+  );
+}
+
+/**
+ * Un campo con su etiqueta encima.
+ *
+ * Es la forma más repetida de toda la aplicación: un `<label>` en rejilla, el
+ * rótulo, y debajo el control. Estaba escrita a mano en cada formulario, con su
+ * cadena de clases completa cada vez, así que un cambio de estilo obligaba a
+ * encontrar las treinta y cuatro.
+ *
+ * El `<label>` envuelve al control en vez de apuntarlo con `htmlFor`, que es lo
+ * que evita tener que inventar un `id` único en cada uso —y que ese id se
+ * repita al copiar y pegar, que rompe el clic en la etiqueta sin que se note—.
+ *
+ * @param ayuda Texto bajo el control: una explicación, o el error si lo hay.
+ */
+export function Campo({
+  etiqueta,
+  ayuda,
+  children,
+  className,
+}: {
+  etiqueta: ReactNode;
+  ayuda?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={cn("grid gap-1", className)}>
+      <Rotulo como="span">{etiqueta}</Rotulo>
+      {children}
+      {ayuda}
+    </label>
   );
 }
 

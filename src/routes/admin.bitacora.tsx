@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Download, History, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Campo } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,10 +106,7 @@ function Bitacora() {
             aria-label="Buscar en la bitácora"
           />
         </div>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Usuario
-          </span>
+        <Campo etiqueta="Usuario">
           <select
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
@@ -121,11 +119,8 @@ function Bitacora() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Acción
-          </span>
+        </Campo>
+        <Campo etiqueta="Acción">
           <select
             value={accion}
             onChange={(e) => setAccion(e.target.value)}
@@ -138,29 +133,23 @@ function Bitacora() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Desde
-          </span>
+        </Campo>
+        <Campo etiqueta="Desde">
           <Input
             type="date"
             value={desde}
             onChange={(e) => setDesde(e.target.value)}
             className="h-11 w-40"
           />
-        </label>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Hasta
-          </span>
+        </Campo>
+        <Campo etiqueta="Hasta">
           <Input
             type="date"
             value={hasta}
             onChange={(e) => setHasta(e.target.value)}
             className="h-11 w-40"
           />
-        </label>
+        </Campo>
         {desde || hasta || usuario !== "todos" || accion !== "todas" || q ? (
           <Button
             variant="outline"

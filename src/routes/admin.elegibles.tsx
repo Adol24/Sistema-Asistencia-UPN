@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Check, Download, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Campo, Rotulo } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
@@ -205,9 +206,7 @@ function Elegibles() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {conteos.porPerfil.map((r) => (
           <article key={r.perfil} className="rounded-lg border border-border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {r.perfil}s elegibles
-            </p>
+            <Rotulo>{r.perfil}s elegibles</Rotulo>
             <p className="mt-2 text-3xl font-extrabold tabular-nums">
               {r.elegibles}
               <span className="text-base font-medium text-muted-foreground"> / {r.total}</span>
@@ -218,9 +217,7 @@ function Elegibles() {
           </article>
         ))}
         <article className="rounded-lg border border-primary/40 bg-secondary p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Elegibles de taller
-          </p>
+          <Rotulo>Elegibles de taller</Rotulo>
           <p className="mt-2 text-3xl font-extrabold tabular-nums">{conteos.taller}</p>
           <p className="mt-1 text-xs text-muted-foreground">Listado independiente</p>
         </article>
@@ -230,9 +227,7 @@ function Elegibles() {
             conteos.enRevision > 0 ? "border-estado-discrepancia/40" : "border-border",
           )}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Nombre en revisión
-          </p>
+          <Rotulo>Nombre en revisión</Rotulo>
           <p
             className={cn(
               "mt-2 text-3xl font-extrabold tabular-nums",
@@ -384,10 +379,7 @@ function Selector({
   opciones: [string, string][];
 }) {
   return (
-    <label className="grid gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {etiqueta}
-      </span>
+    <Campo etiqueta={etiqueta}>
       <select
         value={valor}
         onChange={(e) => onChange(e.target.value)}
@@ -399,7 +391,7 @@ function Selector({
           </option>
         ))}
       </select>
-    </label>
+    </Campo>
   );
 }
 

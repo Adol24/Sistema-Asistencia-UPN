@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Protegido } from "@/components/acceso";
+import { Campo } from "@/components/tipografia";
 import { EstadoEvidenciaBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -565,17 +566,6 @@ function PanelRevision() {
         </Sheet>
       </div>
     </Protegido>
-  );
-}
-
-function Campo({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <label className="grid gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {etiqueta}
-      </span>
-      {children}
-    </label>
   );
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Search, Users } from "lucide-react";
 import { PantallaCaptura } from "@/components/captura-shell";
+import { Campo } from "@/components/tipografia";
 import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Input } from "@/components/ui/input";
@@ -88,15 +89,8 @@ function ModoTaller() {
         </EstadoVacio>
       ) : (
         <>
-          <div className="mt-4 grid gap-1">
-            <label
-              htmlFor="taller"
-              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              Taller
-            </label>
+          <Campo etiqueta="Taller" className="mt-4">
             <select
-              id="taller"
               value={tallerId}
               onChange={(e) => setTallerId(e.target.value)}
               className="h-14 rounded-md border border-input bg-card px-3 text-base font-semibold"
@@ -107,7 +101,7 @@ function ModoTaller() {
                 </option>
               ))}
             </select>
-          </div>
+          </Campo>
 
           {taller ? (
             <p className="mt-2 text-xs text-muted-foreground">

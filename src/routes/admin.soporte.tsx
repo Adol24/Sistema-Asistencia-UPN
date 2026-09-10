@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { EstadoCasoBadge, PerfilBadge } from "@/components/estado-badges";
+import { Campo, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -209,9 +210,7 @@ function Soporte() {
               estado === e.valor ? "border-primary" : "border-border hover:bg-muted",
             )}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {e.etiqueta}
-            </p>
+            <Rotulo>{e.etiqueta}</Rotulo>
             <p className="mt-2 text-3xl font-extrabold tabular-nums">{conteos[e.valor]}</p>
           </button>
         ))}
@@ -221,9 +220,7 @@ function Soporte() {
             conteos.nombre > 0 ? "border-estado-discrepancia/40" : "border-border",
           )}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            De nombre, sin resolver
-          </p>
+          <Rotulo>De nombre, sin resolver</Rotulo>
           <p
             className={cn(
               "mt-2 text-3xl font-extrabold tabular-nums",
@@ -255,10 +252,7 @@ function Soporte() {
             aria-label="Buscar caso"
           />
         </div>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Estado
-          </span>
+        <Campo etiqueta="Estado">
           <select
             value={estado}
             onChange={(e) => setEstado(e.target.value as typeof estado)}
@@ -271,11 +265,8 @@ function Soporte() {
               </option>
             ))}
           </select>
-        </label>
-        <label className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Canal
-          </span>
+        </Campo>
+        <Campo etiqueta="Canal">
           <select
             value={canal}
             onChange={(e) => setCanal(e.target.value as typeof canal)}
@@ -288,7 +279,7 @@ function Soporte() {
               </option>
             ))}
           </select>
-        </label>
+        </Campo>
         <p className="ml-auto text-sm text-muted-foreground">
           {visibles.length} de {casos.length} casos
         </p>
@@ -340,30 +331,21 @@ function Soporte() {
                   */}
                   {editando?.id === c.id ? (
                     <div className="grid gap-3">
-                      <label className="grid gap-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Asunto
-                        </span>
+                      <Campo etiqueta="Asunto">
                         <Input
                           value={editando.asunto}
                           onChange={(e) => setEditando({ ...editando, asunto: e.target.value })}
                           className="h-11"
                         />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Detalle
-                        </span>
+                      </Campo>
+                      <Campo etiqueta="Detalle">
                         <Textarea
                           value={editando.detalle}
                           onChange={(e) => setEditando({ ...editando, detalle: e.target.value })}
                           rows={4}
                         />
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Canal
-                        </span>
+                      </Campo>
+                      <Campo etiqueta="Canal">
                         <select
                           value={editando.canal}
                           onChange={(e) =>
@@ -380,7 +362,7 @@ function Soporte() {
                             </option>
                           ))}
                         </select>
-                      </label>
+                      </Campo>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           className="h-11"
@@ -451,10 +433,7 @@ function Soporte() {
                       */}
                       {corrigiendo?.id === c.id ? (
                         <div className="grid gap-2">
-                          <label className="grid gap-1">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                              Nombre correcto
-                            </span>
+                          <Campo etiqueta="Nombre correcto">
                             <Input
                               autoFocus
                               value={corrigiendo.nombre}
@@ -463,7 +442,7 @@ function Soporte() {
                               }
                               className="h-11 uppercase"
                             />
-                          </label>
+                          </Campo>
                           <p className="text-xs text-muted-foreground">
                             Se guarda en mayúsculas y sustituye al que aparece en la constancia y en
                             el padrón. Sigue en revisión hasta que marques el caso como resuelto.
@@ -578,10 +557,7 @@ function Soporte() {
                   </Button>
                 </div>
               ) : (
-                <label className="grid gap-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    ¿De quién es el caso?
-                  </span>
+                <Campo etiqueta="¿De quién es el caso?">
                   <Input
                     autoFocus
                     value={nuevo.busqueda}
@@ -612,35 +588,26 @@ function Soporte() {
                       Sin coincidencias. Solo se puede abrir un caso a alguien ya pre-registrado.
                     </p>
                   ) : null}
-                </label>
+                </Campo>
               )}
 
-              <label className="grid gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Asunto
-                </span>
+              <Campo etiqueta="Asunto">
                 <Input
                   value={nuevo.asunto}
                   onChange={(e) => setNuevo({ ...nuevo, asunto: e.target.value })}
                   placeholder="No le llegó su código QR"
                   className="h-11"
                 />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Detalle
-                </span>
+              </Campo>
+              <Campo etiqueta="Detalle">
                 <Textarea
                   value={nuevo.detalle}
                   onChange={(e) => setNuevo({ ...nuevo, detalle: e.target.value })}
                   placeholder="Qué reporta y qué se le respondió."
                   rows={4}
                 />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  Canal
-                </span>
+              </Campo>
+              <Campo etiqueta="Canal">
                 <select
                   value={nuevo.canal}
                   onChange={(e) =>
@@ -654,7 +621,7 @@ function Soporte() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </Campo>
 
               <Button
                 className="h-11"

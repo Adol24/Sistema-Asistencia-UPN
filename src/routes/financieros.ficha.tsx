@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Search, SearchX, UserRound } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
 import { navFinancieros } from "@/components/nav-financieros";
-import { EstadoVacio } from "@/components/tipografia";
+import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import type { Participante } from "@/dominio/tipos";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
@@ -111,9 +111,7 @@ function FichaDe({ p }: { p: Participante }) {
             ) : null}
           </div>
           <div className="rounded-lg border border-primary/30 bg-secondary px-4 py-3 text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Total esperado
-            </p>
+            <Rotulo>Total esperado</Rotulo>
             <p className="text-2xl font-extrabold tabular-nums">{moneda(totalEsperado)}</p>
             <p className="text-xs text-muted-foreground">
               {taller ? "Evento + taller, en dos depósitos" : "Solo evento, un depósito"}

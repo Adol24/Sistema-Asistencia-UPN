@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
+import { Campo } from "@/components/tipografia";
 import { useImportador } from "@/lib/importador";
 import {
   AlertTriangle,
@@ -347,14 +348,19 @@ function ImportacionPadron() {
             </p>
 
             <div className="mt-3 flex flex-wrap gap-3">
-              <Campo etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
+              <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
                 {sedes.map((x) => (
                   <option key={x} value={x}>
                     {x}
                   </option>
                 ))}
-              </Campo>
-              <Campo etiqueta="Programa" valor={fPrograma} alCambiar={setFPrograma} todos="todos">
+              </FiltroSelect>
+              <FiltroSelect
+                etiqueta="Programa"
+                valor={fPrograma}
+                alCambiar={setFPrograma}
+                todos="todos"
+              >
                 {configuracion.catalogoAcademico.flatMap((n) =>
                   n.programas.map((x) => (
                     <option key={x} value={x}>
@@ -362,22 +368,22 @@ function ImportacionPadron() {
                     </option>
                   )),
                 )}
-              </Campo>
-              <Campo etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
+              </FiltroSelect>
+              <FiltroSelect etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
                 {grupos.map((x) => (
                   <option key={x} value={x}>
                     {x}
                   </option>
                 ))}
-              </Campo>
-              <Campo etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
+              </FiltroSelect>
+              <FiltroSelect etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
                 <option value="sin-dia">Sin día</option>
                 {([1, 2, 3] as const).map((d) => (
                   <option key={d} value={String(d)}>
                     Día {d}
                   </option>
                 ))}
-              </Campo>
+              </FiltroSelect>
             </div>
 
             <div className="mt-3">
@@ -732,7 +738,14 @@ function ImportacionPadron() {
  * Un select del filtro. Existe para no repetir cuatro veces la misma etiqueta,
  * el mismo alto de toque y la misma opción «todos».
  */
-function Campo({
+/**
+ * Un filtro de selección: el campo etiquetado más su opción de «todos».
+ *
+ * Se llamaba `Campo`, que es el nombre del componente compartido, y por eso
+ * chocaban. Este no es un campo cualquiera: es el desplegable de filtrar, con
+ * su opción de no filtrar incluida. El nombre ahora lo dice.
+ */
+function FiltroSelect({
   etiqueta,
   valor,
   alCambiar,
@@ -747,10 +760,7 @@ function Campo({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-1">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {etiqueta}
-      </span>
+    <Campo etiqueta={etiqueta}>
       <select
         value={valor}
         onChange={(e) => alCambiar(e.target.value)}
@@ -759,6 +769,6 @@ function Campo({
         <option value={todos}>{todos === "todas" ? "Todas" : "Todos"}</option>
         {children}
       </select>
-    </label>
+    </Campo>
   );
 }

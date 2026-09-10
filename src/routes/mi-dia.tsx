@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Clock, MapPin } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -158,9 +159,7 @@ function MiDia() {
     >
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="bg-primary px-5 py-5 text-primary-foreground">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-foreground/70">
-            Tu asistencia presencial es
-          </p>
+          <Rotulo className="text-primary-foreground/70">Tu asistencia presencial es</Rotulo>
           <p className="mt-2 text-balance text-2xl font-extrabold leading-tight">
             {dia.etiqueta} — {dia.fecha}
           </p>

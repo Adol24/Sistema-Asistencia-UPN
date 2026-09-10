@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Check, Copy, Download, Loader2, Printer, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
+import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
@@ -104,26 +105,20 @@ function Pago() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <article className="rounded-lg border border-border bg-card p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Depósito 1 — Evento
-          </p>
+          <Rotulo>Depósito 1 — Evento</Rotulo>
           <p className="mt-2 font-mono text-sm">Concepto: ENCUENTRO-{folio}</p>
           <p className="mt-1 text-2xl font-bold">{moneda(evento.cuotaEvento)}</p>
         </article>
         {taller ? (
           <article className="rounded-lg border border-border bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Depósito 2 — Taller
-            </p>
+            <Rotulo>Depósito 2 — Taller</Rotulo>
             <p className="mt-2 font-mono text-sm">Concepto: TALLER-{folio}</p>
             <p className="mt-1 text-2xl font-bold">{moneda(taller.costo)}</p>
             <p className="mt-1 text-xs text-muted-foreground">{taller.nombre}</p>
           </article>
         ) : (
           <article className="rounded-lg border border-dashed border-border bg-muted/40 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Depósito 2 — Taller
-            </p>
+            <Rotulo>Depósito 2 — Taller</Rotulo>
             <p className="mt-2 text-sm text-muted-foreground">
               No seleccionaste taller, solo debes hacer el depósito del evento.
             </p>

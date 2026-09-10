@@ -1,5 +1,6 @@
 import { Clock } from "lucide-react";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { Rotulo } from "@/components/tipografia";
 import { comoHora } from "@/lib/formato";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
@@ -22,9 +23,9 @@ export function RelojEventoControl({ className }: { className?: string }) {
         className,
       )}
     >
-      <span className="flex items-center gap-1 self-center text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <Rotulo como="span" className="flex items-center gap-1 self-center">
         <Clock className="size-3.5" aria-hidden /> Reloj simulado
-      </span>
+      </Rotulo>
       <div className="flex gap-1" role="group" aria-label="Día simulado">
         {([1, 2, 3] as Dia[]).map((d) => (
           <button

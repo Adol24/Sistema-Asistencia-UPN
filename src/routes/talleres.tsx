@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CalendarRange, Clock, Info, Loader2, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
-import { EstadoVacio } from "@/components/tipografia";
+import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { moneda } from "@/lib/formato";
@@ -182,9 +182,7 @@ function CatalogoTalleres() {
                   <div className="text-sm">
                     <p className="font-semibold">{moneda(t.costo)}</p>
                     {lleno ? (
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Cupo lleno
-                      </p>
+                      <Rotulo>Cupo lleno</Rotulo>
                     ) : (
                       <p
                         className={cn(
