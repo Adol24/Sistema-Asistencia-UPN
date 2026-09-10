@@ -213,10 +213,10 @@ function Ventanilla() {
             onClick={() => setFiltro(v)}
             aria-pressed={filtro === v}
             className={cn(
-              "rounded-full border px-3 py-1 text-sm",
+              "rounded-full border px-3 py-1 text-sm transition-colors",
               filtro === v
-                ? "border-transparent bg-primary text-primary-foreground"
-                : "border-border bg-card hover:bg-muted",
+                ? "border-transparent bg-primary text-primary-foreground hover:bg-primary/90"
+                : "border-border bg-card hover:bg-muted hover:text-foreground",
             )}
           >
             {ETIQUETA[v]}

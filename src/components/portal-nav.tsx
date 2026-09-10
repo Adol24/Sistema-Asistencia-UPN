@@ -30,9 +30,15 @@ export function PortalNav() {
         <Link
           key={i.to}
           to={i.to}
-          activeProps={{ className: "bg-primary text-primary-foreground" }}
-          inactiveProps={{ className: "text-muted-foreground hover:bg-muted" }}
-          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none sm:flex-row sm:gap-2 sm:text-sm"
+          // Aquí el hover ya estaba bien separado; se le añade al activo el
+          // suyo para que no parezca que dejó de responder al tocarlo.
+          activeProps={{
+            className: "bg-primary text-primary-foreground hover:bg-primary/90",
+          }}
+          inactiveProps={{
+            className: "text-muted-foreground hover:bg-muted hover:text-foreground",
+          }}
+          className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none transition-colors sm:flex-row sm:gap-2 sm:text-sm"
         >
           <i.icono className="size-4 shrink-0" aria-hidden />
           {i.label}
