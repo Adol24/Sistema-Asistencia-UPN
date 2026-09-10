@@ -653,6 +653,38 @@ export async function cambiarEstadoCasoRemoto(
   if (error) throw error;
 }
 
+/**
+ * Corrige el contenido de un caso: asunto, detalle y canal.
+ *
+ * Por clave, como el cambio de estado y por la misma razón. El estado no se
+ * toca aquí: lo mueve `cambiarEstadoCasoRemoto`, que además tiene que cuadrar
+ * `resuelto_en` con `chk_resuelto_con_fecha`. Mezclar las dos cosas obligaría a
+ * repetir esa regla en dos sitios.
+ */
+export async function guardarCasoRemoto(
+  clave: string,
+  cambios: { asunto: string; detalle: string; canal: string },
+): Promise<void> {
+  const sb = exigirBase();
+  const { data, error: eBusca } = await sb
+    .from("casos_soporte")
+    .select("id")
+    .eq("clave", clave)
+    .maybeSingle();
+  if (eBusca) throw eBusca;
+  if (!data) throw new Error(`El caso ${clave} ya no existe.`);
+
+  const { error } = await sb
+    .from("casos_soporte")
+    .update({
+      asunto: cambios.asunto.trim(),
+      detalle: cambios.detalle.trim(),
+      canal: cambios.canal,
+    })
+    .eq("id", (data as { id: string }).id);
+  if (error) throw error;
+}
+
 export async function desactivarUsuarioRemoto(id: string): Promise<void> {
   const sb = exigirBase();
   const { error } = await sb.from("usuarios_internos").update({ activo: false }).eq("id", id);

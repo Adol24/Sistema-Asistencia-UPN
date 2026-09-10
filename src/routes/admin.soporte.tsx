@@ -7,6 +7,7 @@ import {
   LifeBuoy,
   Mail,
   MessageCircle,
+  Pencil,
   Search,
   Smartphone,
   Store,
@@ -17,6 +18,7 @@ import { navAdmin } from "@/components/nav-admin";
 import { EstadoCasoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -65,8 +67,21 @@ const canalDe = (canal: CasoSoporte["canal"]) =>
   CANAL[canal] ?? { etiqueta: canal, Icono: HelpCircle };
 
 function Soporte() {
-  const { casos, cambiarEstadoCaso, registrarBitacora, usuarioActual, getParticipante } =
-    useEstadoEvento();
+  const {
+    casos,
+    cambiarEstadoCaso,
+    editarCaso,
+    registrarBitacora,
+    usuarioActual,
+    getParticipante,
+  } = useEstadoEvento();
+  /** El caso que se está editando y el borrador de sus campos, o null. */
+  const [editando, setEditando] = useState<{
+    id: string;
+    asunto: string;
+    detalle: string;
+    canal: CasoSoporte["canal"];
+  } | null>(null);
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState<"todos" | CasoSoporte["estado"]>("todos");
   const [canal, setCanal] = useState<"todos" | CasoSoporte["canal"]>("todos");
@@ -253,7 +268,107 @@ function Soporte() {
 
               {expandido ? (
                 <div className="border-t border-border p-4">
-                  <p className="text-sm">{c.detalle}</p>
+                  {/*
+                    El editor sustituye al detalle en el sitio, no en otra
+                    pantalla: quien corrige está leyendo justo lo que va a
+                    cambiar, y sacarlo a un diálogo le quitaría de la vista el
+                    resto del caso.
+                  */}
+                  {editando?.id === c.id ? (
+                    <div className="grid gap-3">
+                      <label className="grid gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Asunto
+                        </span>
+                        <Input
+                          value={editando.asunto}
+                          onChange={(e) => setEditando({ ...editando, asunto: e.target.value })}
+                          className="h-11"
+                        />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Detalle
+                        </span>
+                        <Textarea
+                          value={editando.detalle}
+                          onChange={(e) => setEditando({ ...editando, detalle: e.target.value })}
+                          rows={4}
+                        />
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Canal
+                        </span>
+                        <select
+                          value={editando.canal}
+                          onChange={(e) =>
+                            setEditando({
+                              ...editando,
+                              canal: e.target.value as CasoSoporte["canal"],
+                            })
+                          }
+                          className="h-11 rounded-md border border-input bg-card px-2 text-sm"
+                        >
+                          {Object.entries(CANAL).map(([v, x]) => (
+                            <option key={v} value={v}>
+                              {x.etiqueta}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          className="h-11"
+                          // Un caso sin asunto no se puede encontrar después, y
+                          // uno sin detalle no dice qué hay que resolver.
+                          disabled={!editando.asunto.trim() || !editando.detalle.trim()}
+                          onClick={() => {
+                            const cambios = {
+                              asunto: editando.asunto.trim(),
+                              detalle: editando.detalle.trim(),
+                              canal: editando.canal,
+                            };
+                            editarCaso(c.id, cambios);
+                            registrarBitacora(
+                              "Editó un caso de soporte",
+                              `${c.id} · ${c.folio} · ${cambios.asunto}`,
+                            );
+                            setEditando(null);
+                            toast.success(`${c.id} actualizado.`);
+                          }}
+                        >
+                          <Check className="size-4" /> Guardar cambios
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-11"
+                          onClick={() => setEditando(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-line text-sm">{c.detalle}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-9"
+                        onClick={() =>
+                          setEditando({
+                            id: c.id,
+                            asunto: c.asunto,
+                            detalle: c.detalle,
+                            canal: c.canal,
+                          })
+                        }
+                      >
+                        <Pencil className="size-4" /> Editar caso
+                      </Button>
+                    </>
+                  )}
                   {p ? (
                     <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <PerfilBadge perfil={p.perfil} />

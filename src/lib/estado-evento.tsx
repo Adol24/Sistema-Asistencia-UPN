@@ -277,6 +277,8 @@ interface Ctx {
   // --- Casos de soporte ---
   casos: CasoSoporte[];
   cambiarEstadoCaso: (id: string, estado: CasoSoporte["estado"], atiende?: string) => void;
+  /** Corrige el contenido de un caso. El estado va aparte, por `cambiarEstadoCaso`. */
+  editarCaso: (id: string, cambios: Pick<CasoSoporte, "asunto" | "detalle" | "canal">) => void;
   /**
    * Abre el caso de un nombre mal escrito con la corrección que dio el propio
    * alumno. Antes, marcar «mi nombre aparece incorrecto» solo dejaba una marca:
@@ -1272,6 +1274,30 @@ export function EstadoEventoProvider({
   }, []);
 
   /**
+   * Corrige lo que dice un caso.
+   *
+   * Quien atiende por teléfono anota lo que le cuentan y luego lo reescribe con
+   * lo que averiguó, o corrige el canal cuando el caso llegó por otra vía de la
+   * que se registró. Sin esto, el detalle se quedaba con la primera versión y
+   * había que resolverlo y abrir otro para poder cambiarlo.
+   */
+  const editarCaso = useCallback<Ctx["editarCaso"]>((id, cambios) => {
+    let previo: CasoSoporte | undefined;
+    setCasos((prev) => {
+      previo = prev.find((c) => c.id === id);
+      return prev.map((c) => (c.id === id ? { ...c, ...cambios } : c));
+    });
+    escribir(
+      "el caso",
+      (d) => d.guardarCasoRemoto(id, cambios),
+      () => {
+        if (previo) setCasos((prev) => prev.map((c) => (c.id === id ? previo! : c)));
+        avisarFallo(`No se pudo guardar el caso ${id}. Sigue como estaba.`);
+      },
+    );
+  }, []);
+
+  /**
    * Un caso de nombre sin resolver es lo que marca al participante en el
    * listado de elegibles. Al cerrarlo, la marca desaparece: es la cadena que
    * une el pre-registro con la entrega de constancias.
@@ -1555,6 +1581,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      editarCaso,
       casoDeNombreAbierto,
       participantes,
       getParticipante,
@@ -1617,6 +1644,7 @@ export function EstadoEventoProvider({
       casos,
       abrirCasoNombre,
       cambiarEstadoCaso,
+      editarCaso,
       casoDeNombreAbierto,
       participantes,
       getParticipante,
