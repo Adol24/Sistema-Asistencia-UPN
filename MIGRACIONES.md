@@ -11,6 +11,7 @@ confirmadas contra el proyecto real: `fn_padron_existe` responde 200,
 | # | Archivo | Qué hace |
 | --- | --- | --- |
 | 20 | `20260908180000_catalogo_academico_real.sql` | Sustituye el catálogo de ejemplo por la oferta real de la UPN |
+| 30 | `20260911120000_puerta_como_torniquete.sql` | Permite ir y volver por la puerta, y que el cierre no tape a quien se fue |
 
 Hasta que corra, la aplicación seguirá mostrando los programas de ejemplo: el
 catálogo se carga de la base, no del código.
@@ -25,6 +26,31 @@ También baja licenciatura de 10 a 8 semestres y cambia «Módulo» por
 «Cuatrimestre» en maestría. El disparador `fn_validar_avance` solo actúa al
 insertar o actualizar, así que no invalida filas existentes; la migración cuenta
 cuántas se pasarían del nuevo tope y lo avisa.
+
+### La puerta como torniquete (30)
+
+Es la única pendiente que **quita** una restricción, así que conviene leerla
+antes de correrla.
+
+`uq_asistencia_por_dia` permitía una entrada y una salida por persona y día. Con
+el receso de quince minutos y 700 personas, el segundo paso por la puerta lo
+rechazaba Postgres. La migración lo sustituye por `ix_asistencia_movimientos`,
+que no impone unicidad sino orden: lo que ahora se pregunta en cada escaneo no
+es «¿ya entró?» sino «¿cuál fue su último movimiento?».
+
+De ahí salen los otros tres cambios:
+
+- `fn_esta_dentro` centraliza esa pregunta. Estaba escrita a mano como «tiene
+  entrada y no tiene salida», que con idas y vueltas deja de ser cierta.
+- `fn_evaluar_escaneo` **cambia de firma**: recibe `p_modo` (`'puerta'` o
+  `'taller'`) en lugar de `p_tipo`, y devuelve el tipo que decidió. El cliente
+  dejó de ser quien sabe la dirección, porque su copia local puede estar
+  atrasada respecto de los otros puntos de captura. Al cambiar la firma hay que
+  volver a conceder el `execute`, y la migración lo hace.
+- `fn_cierre_automatico` solo cierra a quien sigue dentro. A quien salió a media
+  jornada y no volvió se le respeta su salida real.
+
+No toca la elegibilidad para constancia: registrar no es condicionar.
 
 ## Cómo aplicarlas
 
@@ -53,7 +79,8 @@ curl -s -X POST "$URL/rest/v1/rpc/fn_padron_existe" \
   -d '{"p_matricula":"0"}'
 
 # Debe responder 404 o permiso denegado: ya no es del público
+# (tras la migración 30 el parámetro es p_modo, no p_tipo)
 curl -s -X POST "$URL/rest/v1/rpc/fn_evaluar_escaneo" \
   -H "apikey: $KEY" -H "Content-Type: application/json" \
-  -d '{"p_entrada":"X","p_dia":1,"p_tipo":"entrada"}'
+  -d '{"p_entrada":"X","p_dia":1,"p_modo":"puerta"}'
 ```

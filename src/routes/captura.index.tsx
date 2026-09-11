@@ -87,6 +87,10 @@ function ConfiguracionSesion() {
         <div className="mt-2">
           <SelectorModo />
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          En PUERTA no eliges dirección: el sistema mira el último movimiento de esa persona y sabe
+          si está entrando o saliendo. Sirve igual para recibir por la mañana que para el receso.
+        </p>
       </section>
 
       <section className="mt-6">
@@ -153,11 +157,11 @@ function ConfiguracionSesion() {
           <TimerOff className="size-4 text-muted-foreground" aria-hidden /> Cierre del día
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Nadie escanea al salir. Con 700 personas por día y todas yéndose a la misma hora,
-          formarlas otra vez era una fila de casi una hora en el peor momento. El cierre marca la
-          salida de quien entró, para que el día quede cerrado en los reportes; no decide
-          constancias, eso depende solo de la entrada. El prototipo no tiene reloj de evento, así
-          que se dispara a mano para poder evaluarlo.
+          Al terminar la jornada nadie escanea: con 700 personas yéndose a la misma hora, formarlas
+          sería una fila de casi una hora en el peor momento. El cierre marca la salida de quien
+          siga DENTRO. A quien se fue a media jornada no lo toca, porque su salida ya está
+          registrada y ese dato no hay que taparlo. No decide constancias. El prototipo no tiene
+          reloj de evento, así que se dispara a mano para poder evaluarlo.
         </p>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -169,9 +173,10 @@ function ConfiguracionSesion() {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Cerrar el día {sesion.dia}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se registrará la salida de todo participante del día {sesion.dia} que tenga entrada
-                y siga sin cerrar. Queda marcada como cierre automático. No cambia quién es elegible
-                para constancia. No se puede deshacer desde esta pantalla.
+                Se registrará la salida de todo participante del día {sesion.dia} que siga dentro
+                del recinto. A quien ya había salido no se le toca. Queda marcada como cierre
+                automático. No cambia quién es elegible para constancia. No se puede deshacer desde
+                esta pantalla.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

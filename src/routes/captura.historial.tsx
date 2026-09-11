@@ -66,7 +66,13 @@ function Historial() {
                   {h.resultado.participante?.nombre ?? h.resultado.entradaCruda}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {h.hora} · {h.sesion.modo.toUpperCase()} · Día {h.sesion.dia} · {h.sesion.punto}
+                  {/*
+                    Se enseña lo que se REGISTRÓ, no el modo de la sesión: en la
+                    puerta el modo vale para entrar y para salir, así que decir
+                    «PUERTA» no distinguiría una cosa de la otra en el historial.
+                  */}
+                  {h.hora} · {(h.asistencia?.tipo ?? h.sesion.modo).toUpperCase()} · Día{" "}
+                  {h.sesion.dia} · {h.sesion.punto}
                 </p>
                 <p className="mt-1 text-xs font-medium">{h.resultado.titulo}</p>
                 {h.resultado.motivo ? (

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Clock, DoorOpen, Gauge, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Clock, DoorOpen, Gauge, ShieldAlert, Users } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
 import { EstadoVacio } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
@@ -69,22 +69,38 @@ function Monitoreo() {
         )}
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Indicador
           icono={<DoorOpen className="size-5" aria-hidden />}
-          etiqueta="Escaneado contra esperado"
+          etiqueta="Han llegado"
           valor={`${m.entradas} / ${m.esperados}`}
-          detalle={`${m.avance}% ya está dentro`}
+          detalle={`${m.avance}% de los que pagaron`}
+        />
+        {/*
+          «Han llegado» y «dentro ahora» dejaron de ser el mismo número desde que
+          la puerta registra idas y vueltas, y la diferencia entre los dos es
+          justo lo que nadie podía ver antes: cuánta gente se va a media jornada.
+        */}
+        <Indicador
+          icono={<Users className="size-5" aria-hidden />}
+          etiqueta="Dentro ahora"
+          valor={String(m.dentro)}
+          detalle={
+            m.seFueron === 0
+              ? "No se ha ido nadie"
+              : `${m.seFueron} ${m.seFueron === 1 ? "se fue" : "se fueron"} y no ${m.seFueron === 1 ? "ha" : "han"} vuelto`
+          }
+          tono={m.entradas > 0 && m.seFueron > m.entradas / 4 ? "alerta" : undefined}
         />
         <Indicador
           icono={<Gauge className="size-5" aria-hidden />}
           etiqueta="Ritmo"
           valor={`${m.ritmoPorMinuto}`}
-          detalle="entradas por minuto"
+          detalle="llegadas por minuto"
         />
         <Indicador
           icono={<Clock className="size-5" aria-hidden />}
-          etiqueta="Faltan por entrar"
+          etiqueta="Faltan por llegar"
           valor={String(Math.max(0, m.esperados - m.entradas))}
           detalle={
             m.minutosRestantes === null
@@ -106,7 +122,8 @@ function Monitoreo() {
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="text-sm font-bold">Avance de la puerta</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            {m.entradas} entradas y {m.salidas} salidas registradas
+            {m.entradas} personas han llegado · {m.dentro} están dentro · {m.salidas}{" "}
+            {m.salidas === 1 ? "salida registrada" : "salidas registradas"}
           </p>
           <Progress value={m.avance} className="h-4" />
           <p className="mt-2 text-sm">

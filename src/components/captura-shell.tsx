@@ -72,9 +72,15 @@ export function BarraConexion() {
 /** Control de modo, siempre visible: en la puerta el personal se redistribuye. */
 export function SelectorModo({ compacto = false }: { compacto?: boolean }) {
   const { sesion, setSesion } = useEstadoEvento();
-  // Sin SALIDA: no se captura, la genera el cierre automático del día.
+  /*
+   * Dos modos, no tres. No hay botón de SALIDA porque la dirección no se elige:
+   * en PUERTA el sistema mira el último movimiento de esa persona y decide si
+   * está entrando o saliendo. Un capturista no puede saber de qué lado del
+   * recinto está cada quien, y el modo equivocado invertía el registro de todos
+   * los que pasaran después de la equivocación.
+   */
   const modos: { valor: Modo; etiqueta: string }[] = [
-    { valor: "entrada", etiqueta: "ENTRADA" },
+    { valor: "puerta", etiqueta: "PUERTA" },
     { valor: "taller", etiqueta: "TALLER" },
   ];
   return (

@@ -136,7 +136,12 @@ function Dashboard() {
       const esperados = participantes.filter(
         (p) => p.dia === dia && estadoDe(p).evento === "pagado",
       ).length;
-      const entradas = asistencias.filter((a) => a.dia === dia && a.tipo === "entrada").length;
+      // Personas, no registros: desde que la puerta admite idas y vueltas, quien
+      // sale al receso y vuelve deja dos entradas, y contarlas hacía que el
+      // tablero enseñara más asistentes que los esperados.
+      const entradas = new Set(
+        asistencias.filter((a) => a.dia === dia && a.tipo === "entrada").map((a) => a.folio),
+      ).size;
       const salidas = asistencias.filter((a) => a.dia === dia && a.tipo === "salida").length;
       return { dia, etiqueta: `Día ${dia}`, esperados, entradas, salidas };
     });

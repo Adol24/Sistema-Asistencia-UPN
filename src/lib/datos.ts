@@ -52,6 +52,7 @@ import type {
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
 
@@ -1000,12 +1001,21 @@ export async function abrirCasoNombreRemoto(participanteId: string, nombreCorrec
   return data as string;
 }
 
-export async function evaluarEscaneoRemoto(entrada: string, dia: Dia, tipo: Asistencia["tipo"]) {
+/**
+ * Pregunta a la base qué hacer con este escaneo.
+ *
+ * Recibe el MODO del punto de captura, no el tipo. La dirección —entrada o
+ * salida— la decide la base y vuelve en `tipo`, porque esta consulta existe
+ * justo para cuando la escucha en vivo no está disponible: en ese momento la
+ * copia local de este teléfono puede estar atrasada respecto de los otros siete
+ * puntos, y sería ella quien se equivoque de dirección.
+ */
+export async function evaluarEscaneoRemoto(entrada: string, dia: Dia, modo: Modo) {
   const sb = exigirBase();
   const { data, error } = await sb.rpc("fn_evaluar_escaneo", {
     p_entrada: entrada,
     p_dia: dia,
-    p_tipo: tipo,
+    p_modo: modo,
   });
   if (error) throw error;
   return (data ?? [])[0] as
@@ -1014,6 +1024,7 @@ export async function evaluarEscaneoRemoto(entrada: string, dia: Dia, tipo: Asis
         titulo: string;
         detalle: string;
         autorizable: boolean;
+        tipo: Asistencia["tipo"];
       }
     | undefined;
 }

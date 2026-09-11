@@ -1,28 +1,46 @@
 /**
  * Reglas del escáner de asistencia, sin React.
  *
- * Decide el color del semáforo y si el escaneo se registra. Es pura a propósito:
- * recibe el instante (`ahora`) en lugar de leer el reloj, para que la ventana de
- * reingreso de 15 minutos se pueda comprobar sin esperar 15 minutos.
+ * Decide el color del semáforo, qué se registra y si hay que parar la fila. Es
+ * pura a propósito: recibe el instante (`ahora`) en lugar de leer el reloj, para
+ * que las ventanas de cortesía se puedan comprobar sin esperar a que pasen.
  *
- * **No existe la captura de salida.** El evento recibe 700 personas por día y
- * todas se van a la misma hora: formarlas en la puerta al terminar era una fila
- * de casi una hora en el peor momento del día. La salida la genera el cierre
- * automático, que no es una operación de nadie. Ver `Modo`.
+ * **La puerta es un torniquete, no un formulario.** El capturista no elige si
+ * está registrando una entrada o una salida: lo deduce el sistema del último
+ * movimiento de esa persona. Con ocho puntos de captura y gente entrando y
+ * saliendo durante la jornada, nadie puede saber de qué lado del recinto está
+ * cada quien, y equivocarse de modo invierte el registro de todos los que pasen
+ * después.
+ *
+ * La única salida que NO se escanea es la del final del día: esa la pone el
+ * cierre automático, porque las 700 personas se van a la misma hora y formarlas
+ * sería una fila de casi una hora en el peor momento.
  */
 
 import type { Asistencia, Dia, EstadoPago, Participante } from "@/dominio/tipos";
 import { sinAcreditar } from "@/lib/pagos-logica";
 
 /**
- * Lo que un capturista puede registrar. No incluye la salida a propósito: la
- * salida no se captura, la genera el cierre automático al terminar el día. Es
- * un estado que el sistema deduce, no un acto que alguien ejecuta en la puerta.
+ * Lo que atiende un capturista. `puerta` cubre entradas y salidas porque son el
+ * mismo acto —pasar por la puerta— y cuál de los dos es lo decide el sistema.
  */
-export type Modo = "entrada" | "taller";
+export type Modo = "puerta" | "taller";
 export type Color = "verde" | "amarillo" | "rojo";
 
-/** Minutos dentro de los cuales volver a escanear NO genera un registro nuevo. */
+/**
+ * Minutos dentro de los cuales un segundo escaneo de la misma persona en la
+ * puerta NO cuenta.
+ *
+ * Aquí cada escaneo invierte el estado, así que un doble escaneo por descuido
+ * —el capturista que pasa el lector dos veces, o dos filas que leen a la misma
+ * persona— no deja un duplicado inocuo: la marca como que se fue.
+ *
+ * Dos minutos es más de lo que tarda un doble escaneo y menos de lo que tarda la
+ * ida más corta al baño, que es el movimiento real más breve que existe.
+ */
+export const VENTANA_ANTIDOBLE_MIN = 2;
+
+/** Lo mismo para el pase de lista de taller, donde no hay idas y vueltas. */
 export const VENTANA_REINGRESO_MIN = 15;
 
 export interface SesionCaptura {
@@ -42,13 +60,18 @@ export interface ResultadoEscaneo {
   /** Si es false, no se agrega ninguna asistencia. */
   registra: boolean;
   /**
+   * Qué se registra. En la puerta lo decide el motor a partir de dónde estaba
+   * esa persona, así que viaja en el resultado en vez de leerse del modo de la
+   * sesión: el modo ya no dice la dirección.
+   */
+  tipo: Asistencia["tipo"];
+  /**
    * ¿Hay que parar la fila por esta persona?
    *
-   * No es lo mismo que el color, y confundirlos costaba caro. «YA REGISTRADO» es
-   * amarillo y su instrucción es literalmente «déjalo pasar»: es el que volvió
-   * del baño y lo escanearon por reflejo. Taparle la pantalla al capturista dos
-   * segundos y medio por eso detiene a los que vienen detrás para no comunicar
-   * nada.
+   * No es lo mismo que el color, y confundirlos costaba caro. «YA ESCANEADO» es
+   * amarillo y su instrucción es literalmente «déjalo pasar». Taparle la
+   * pantalla al capturista dos segundos y medio por eso detiene a los que vienen
+   * detrás para no comunicar nada.
    *
    * Detienen los casos en los que el capturista tiene algo que HACER: mandar a
    * la mesa de incidencias, o avisarle a esa persona que pase por Servicios
@@ -63,11 +86,6 @@ export interface ResultadoEscaneo {
   autorizable: boolean;
   entradaCruda: string;
 }
-
-const ETIQUETA_MODO: Record<Modo, string> = {
-  entrada: "ENTRADA",
-  taller: "TALLER",
-};
 
 const MOTIVO_SIN_PAGAR: Record<string, string> = {
   pre_registrado: "No ha entregado su comprobante de pago.",
@@ -88,6 +106,44 @@ export function buscarParaEscaneo(
   );
 }
 
+/**
+ * Cuándo ocurrió un movimiento, en milisegundos.
+ *
+ * Las asistencias capturadas en esta sesión traen `ts`; las que llegan de la
+ * base solo traen la hora en texto, así que se reconstruye sobre el día de
+ * `ahora`. Sin esto, todo lo que no se escaneó en este teléfono contaría como
+ * ocurrido en 1970 y la ventana antidoble no protegería de nada, que es
+ * justamente el caso de los otros siete puntos de captura.
+ */
+function instante(a: Asistencia, ahora: number): number {
+  if (typeof a.ts === "number") return a.ts;
+  const [h, m] = a.hora.split(":").map(Number);
+  const d = new Date(ahora);
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d.getTime();
+}
+
+/** Las entradas y salidas de una persona ese día, de la más vieja a la más nueva. */
+export function movimientosDe(asistencias: Asistencia[], folio: string, dia: Dia): Asistencia[] {
+  return asistencias
+    .filter(
+      (a) => a.folio === folio && a.dia === dia && (a.tipo === "entrada" || a.tipo === "salida"),
+    )
+    .sort((a, b) => a.hora.localeCompare(b.hora) || (a.ts ?? 0) - (b.ts ?? 0));
+}
+
+/**
+ * ¿Esta persona está dentro del recinto ahora mismo?
+ *
+ * Manda su último movimiento. Quien nunca pasó por la puerta está fuera, y quien
+ * salió a las 11 y no volvió también: eso es exactamente lo que el cierre del
+ * día no debe tapar, y lo que deja ver cuánta gente se fue a media jornada.
+ */
+export function estaDentro(asistencias: Asistencia[], folio: string, dia: Dia): boolean {
+  const movs = movimientosDe(asistencias, folio, dia);
+  return movs[movs.length - 1]?.tipo === "entrada";
+}
+
 export interface EntradaEvaluacion {
   entrada: string;
   sesion: SesionCaptura;
@@ -103,10 +159,17 @@ export interface EntradaEvaluacion {
 }
 
 /**
- * Evalúa un escaneo. El orden de las reglas importa:
- * primero lo que impide el paso (rojo), después la duplicación de registro
- * (amarillo que no registra) y al final la discrepancia de pago (amarillo que
- * sí registra, porque a esa persona se le deja entrar avisando).
+ * Evalúa un escaneo. El orden de las reglas importa.
+ *
+ * Primero se resuelve la puerta de quien ya pasó por ella hoy, y se resuelve en
+ * verde sin mirar nada más. Son dos decisiones, no un descuido: a nadie se le
+ * niega salir, y a quien ya fue admitido no se le vuelve a auditar el pago para
+ * dejarlo volver del baño. Los controles son de admisión, no de cada paso.
+ *
+ * Después, para quien llega por primera vez, va lo que impide el paso (rojo), la
+ * duplicación del pase de lista (amarillo que no registra) y al final la
+ * discrepancia de pago (amarillo que sí registra, porque a esa persona se le
+ * deja entrar avisando).
  */
 export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
   const { entrada, sesion, participantes, asistencias, estadoDe, ahora, autorizado } = e;
@@ -115,6 +178,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     autorizable: false,
     participante: undefined,
     detiene: true,
+    tipo: "entrada" as Asistencia["tipo"],
   };
 
   const p = buscarParaEscaneo(participantes, entrada);
@@ -129,6 +193,59 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     };
 
   const conPersona = { ...base, participante: p };
+
+  // --- Puerta: la dirección la decide el sistema, no el capturista ---
+  if (sesion.modo === "puerta") {
+    const movs = movimientosDe(asistencias, p.folio, sesion.dia);
+    const ultimo = movs[movs.length - 1];
+
+    if (ultimo) {
+      // Doble escaneo por descuido. Aquí no basta con no duplicar: registrarlo
+      // invertiría el estado y dejaría fuera a quien acaba de entrar.
+      const minutos = Math.floor((ahora - instante(ultimo, ahora)) / 60000);
+      if (minutos < VENTANA_ANTIDOBLE_MIN)
+        return {
+          ...conPersona,
+          tipo: ultimo.tipo,
+          color: "amarillo",
+          titulo: "YA ESCANEADO",
+          motivo: `Su ${ultimo.tipo} se registró hace ${
+            minutos < 1 ? "menos de un minuto" : `${minutos} min`
+          }.`,
+          accion: "Déjalo pasar.",
+          registra: false,
+          detiene: false,
+        };
+
+      // Estaba dentro, así que esto es una salida. No se le niega a nadie ni se
+      // le revisa nada: ya pasó los controles al entrar.
+      if (ultimo.tipo === "entrada") {
+        const primera = movs.find((m) => m.tipo === "entrada");
+        return {
+          ...conPersona,
+          tipo: "salida",
+          color: "verde",
+          titulo: "SALIDA REGISTRADA",
+          motivo: primera ? `Entró a las ${primera.hora}.` : "",
+          accion: "",
+          registra: true,
+          detiene: false,
+        };
+      }
+
+      // Estaba fuera habiendo salido antes: vuelve. Mismo criterio.
+      return {
+        ...conPersona,
+        tipo: "entrada",
+        color: "verde",
+        titulo: "REGRESÓ",
+        motivo: `Había salido a las ${ultimo.hora}.`,
+        accion: "",
+        registra: true,
+        detiene: false,
+      };
+    }
+  }
 
   // --- Día equivocado: no se registra salvo autorización de supervisor ---
   if (p.dia !== sesion.dia && !autorizado)
@@ -175,48 +292,42 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
         accion: "PASAR A MESA DE INCIDENCIAS",
         registra: false,
       };
-  }
 
-  const suyas = asistencias.filter(
-    (a) => a.folio === p.folio && a.dia === sesion.dia && a.tipo === sesion.modo,
-  );
-
-  // --- Reingreso dentro de la ventana: no duplica el registro ---
-  const conMarca = suyas.filter((a) => typeof a.ts === "number");
-  const ultima = conMarca.length
-    ? conMarca.reduce((a, b) => ((a.ts ?? 0) > (b.ts ?? 0) ? a : b))
-    : undefined;
-  if (ultima) {
-    const minutos = Math.floor((ahora - (ultima.ts ?? 0)) / 60000);
-    if (minutos < VENTANA_REINGRESO_MIN)
+    /*
+     * Pase de lista ya hecho: no se duplica.
+     *
+     * Solo aplica al taller. En la puerta un segundo paso es legítimo —es salir,
+     * o es volver— y de los accidentes ya se encargó la ventana antidoble.
+     */
+    const suyas = asistencias.filter(
+      (a) => a.folio === p.folio && a.dia === sesion.dia && a.tipo === "taller",
+    );
+    const ultima = suyas.length
+      ? suyas.reduce((a, b) => (instante(a, ahora) > instante(b, ahora) ? a : b))
+      : undefined;
+    if (ultima) {
+      const minutos = Math.floor((ahora - instante(ultima, ahora)) / 60000);
       return {
         ...conPersona,
+        tipo: "taller",
         color: "amarillo",
-        titulo: "REINGRESO",
-        motivo: `Ya registró ${ETIQUETA_MODO[sesion.modo].toLowerCase()} hace ${minutos} ${minutos === 1 ? "minuto" : "minutos"}, dentro de la ventana de ${VENTANA_REINGRESO_MIN}.`,
-        accion: "Déjalo pasar.",
+        titulo: minutos < VENTANA_REINGRESO_MIN ? "REINGRESO" : "YA REGISTRADO",
+        motivo: `Su taller del día ${sesion.dia} ya está registrado (${ultima.hora}).`,
+        accion: "Déjalo pasar. No se registra otra vez.",
         registra: false,
         detiene: false,
       };
+    }
   }
 
-  // --- Ya registrado hoy (fuera de la ventana) ---
-  if (suyas.length > 0)
-    return {
-      ...conPersona,
-      color: "amarillo",
-      titulo: "YA REGISTRADO",
-      motivo: `Su ${ETIQUETA_MODO[sesion.modo].toLowerCase()} del día ${sesion.dia} ya está registrada (${suyas[0]!.hora}).`,
-      accion: "Déjalo pasar. No se registra otra vez.",
-      registra: false,
-      detiene: false,
-    };
+  const tipo: Asistencia["tipo"] = sesion.modo === "taller" ? "taller" : "entrada";
 
   // --- Discrepancia de pago: pasa, pero avisando ---
   const estadoRelevante = sesion.modo === "taller" ? estado.taller : estado.evento;
   if (estadoRelevante === "discrepancia")
     return {
       ...conPersona,
+      tipo,
       color: "amarillo",
       titulo: "DISCREPANCIA DE PAGO",
       motivo:
@@ -230,8 +341,9 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
   // --- Verde ---
   return {
     ...conPersona,
+    tipo,
     color: "verde",
-    titulo: `${ETIQUETA_MODO[sesion.modo]} REGISTRADA`,
+    titulo: tipo === "taller" ? "TALLER REGISTRADA" : "ENTRADA REGISTRADA",
     motivo: autorizado && p.dia !== sesion.dia ? "Paso autorizado por supervisor." : "",
     accion: "",
     registra: true,
@@ -253,7 +365,9 @@ export function asistenciaDe(
     folio: p.folio,
     nombre: p.nombre,
     dia: sesion.dia,
-    tipo: sesion.modo,
+    // El tipo sale del resultado, no del modo de la sesión: en la puerta el modo
+    // ya no dice la dirección, la dice el motor.
+    tipo: r.tipo,
     hora,
     punto: sesion.punto,
     capturista: sesion.capturista,

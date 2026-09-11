@@ -34,6 +34,7 @@ import {
 } from "@/lib/pagos-logica";
 import {
   asistenciaDe,
+  estaDentro,
   evaluarEscaneo,
   type ResultadoEscaneo,
   type SesionCaptura,
@@ -753,7 +754,7 @@ export function EstadoEventoProvider({
   }, []);
   const [sesion, setSesionState] = useState<SesionCaptura>({
     dia: 1,
-    modo: "entrada",
+    modo: "puerta",
     punto: PUNTOS[0]!,
     capturista: "MARIO CANTU",
   });
@@ -1041,6 +1042,10 @@ export function EstadoEventoProvider({
               // base lo confirme en amarillo no lo convierte en un caso que
               // atender.
               detiene: remoto.color === "rojo" || resultado.detiene,
+              // La dirección la decide la base, que ve los ocho puntos. Este
+              // teléfono solo ve lo suyo, y es exactamente por eso que se le
+              // está preguntando.
+              tipo: remoto.tipo ?? resultado.tipo,
             };
         } catch {
           // La red falló en mitad del escaneo. Se sigue con lo local, que es
@@ -1090,7 +1095,7 @@ export function EstadoEventoProvider({
       // después, porque de ella dependen las constancias. Si alguien reclama que
       // sí entró, la bitácora es donde se comprueba.
       registrarBitacora(
-        asistencia ? `Registró ${sesion.modo}` : `Escaneo rechazado (${resultado.color})`,
+        asistencia ? `Registró ${asistencia.tipo}` : `Escaneo rechazado (${resultado.color})`,
         `${resultado.participante?.folio ?? resultado.entradaCruda} · ${resultado.titulo} · día ${sesion.dia} · ${sesion.punto}${
           asistencia?.autorizacion ? ` · excepción autorizada: ${asistencia.autorizacion.nota}` : ""
         }${!enLinea && asistencia ? " · pendiente de sincronizar" : ""}`,
@@ -1159,13 +1164,25 @@ export function EstadoEventoProvider({
 
   const ejecutarCierreAutomatico = useCallback<Ctx["ejecutarCierreAutomatico"]>(
     (dia) => {
+      /*
+       * Solo se cierra a quien sigue DENTRO.
+       *
+       * Antes se cerraba a todo el que tuviera entrada y no tuviera salida, y
+       * eso tapaba justo lo que interesa saber: quien salió a las 11 y no
+       * volvió ya tiene su salida registrada, así que si el cierre le pusiera
+       * otra al final del horario quedaría indistinguible de quien aguantó la
+       * jornada completa. Su último movimiento es una salida, y ahí se queda.
+       *
+       * El cierre existe para lo contrario: para los que sí están adentro
+       * cuando termina el evento y se van todos a la vez sin escanear, que son
+       * los que no podemos formar en la puerta.
+       */
       const delDia = [...asistenciasBase, ...capturadas].filter((a) => a.dia === dia);
-      const conEntrada = new Set(delDia.filter((a) => a.tipo === "entrada").map((a) => a.folio));
-      const conSalida = new Set(delDia.filter((a) => a.tipo === "salida").map((a) => a.folio));
-      const sinSalida = [...conEntrada].filter((f) => !conSalida.has(f));
-      if (sinSalida.length === 0) return 0;
+      const folios = [...new Set(delDia.map((a) => a.folio))];
+      const dentro = folios.filter((f) => estaDentro(delDia, f, dia));
+      if (dentro.length === 0) return 0;
 
-      const cierres: Asistencia[] = sinSalida.map((folio, k) => {
+      const cierres: Asistencia[] = dentro.map((folio, k) => {
         const p = participantes.find((x) => x.folio === folio);
         return {
           id: `AS-CIERRE-D${dia}-${folio}`,

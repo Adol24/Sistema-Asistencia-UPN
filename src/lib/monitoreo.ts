@@ -8,6 +8,7 @@
  */
 
 import type { Asistencia, Dia } from "@/dominio/tipos";
+import { estaDentro } from "@/lib/escaneo";
 
 /** Ventana del evento: fuera de este rango un escaneo es improbable. */
 export const HORA_INICIO = 8;
@@ -100,11 +101,28 @@ export const detectarAnomalias = (asistencias: Asistencia[]): Anomalia[] => [
 export interface MetricasDia {
   dia: Dia;
   esperados: number;
+  /**
+   * PERSONAS que han entrado, no registros de entrada.
+   *
+   * Desde que la puerta registra idas y vueltas, quien sale al baño y vuelve
+   * deja dos entradas. Contar registros hacía que el avance pasara del 100 % y
+   * que la proyección dijera que ya había llegado gente que no había llegado.
+   */
   entradas: number;
+  /** Registros de salida, incluidas las de media jornada. */
   salidas: number;
+  /** Cuántas personas están DENTRO del recinto ahora mismo. */
+  dentro: number;
+  /**
+   * Entraron y ahora están fuera: se fueron y todavía no han vuelto.
+   *
+   * Es el número que antes no existía, y el que contesta la pregunta que abrió
+   * todo esto: cuánta gente se va a media jornada.
+   */
+  seFueron: number;
   /** Porcentaje de los esperados que ya entró. */
   avance: number;
-  /** Entradas por minuto durante la ventana de registro observada. */
+  /** Llegadas por minuto durante la ventana de registro observada. */
   ritmoPorMinuto: number;
   /** Minutos que faltarían al ritmo actual para terminar de recibir a todos. */
   minutosRestantes: number | null;
@@ -123,15 +141,33 @@ export function metricasDelDia(
   const entradas = delDia.filter((a) => a.tipo === "entrada");
   const salidas = delDia.filter((a) => a.tipo === "salida");
 
-  const minutos = entradas.map((a) => minutosDe(a.hora));
+  /*
+   * De aquí en adelante se cuentan PERSONAS, no registros.
+   *
+   * La llegada de cada quien es su PRIMERA entrada del día; las siguientes son
+   * regresos del baño o del receso. El ritmo y la proyección miden llegadas, no
+   * pasos por la puerta: si no se separan, un receso multitudinario se ve como
+   * si estuviera llegando el doble de gente de la que falta.
+   */
+  const llegadas = new Map<string, number>();
+  for (const a of entradas) {
+    const m = minutosDe(a.hora);
+    const previa = llegadas.get(a.folio);
+    if (previa === undefined || m < previa) llegadas.set(a.folio, m);
+  }
+  const personas = [...new Set(delDia.map((a) => a.folio))];
+  const dentro = personas.filter((f) => estaDentro(delDia, f, dia));
+  const seFueron = [...llegadas.keys()].filter((f) => !dentro.includes(f));
+
+  const minutos = [...llegadas.values()];
   const desde = minutos.length ? Math.min(...minutos) : 0;
   // El ritmo se mide contra el reloj del evento, no contra el último escaneo:
   // si nadie ha pasado en diez minutos, el ritmo debe caer, no quedarse quieto.
   const hasta = ahoraMinutos ?? (minutos.length ? Math.max(...minutos) : 0);
   // Al menos un minuto, para no dividir entre cero.
   const transcurridos = Math.max(1, hasta - desde);
-  const ritmoPorMinuto = entradas.length / transcurridos;
-  const faltantes = Math.max(0, esperados - entradas.length);
+  const ritmoPorMinuto = llegadas.size / transcurridos;
+  const faltantes = Math.max(0, esperados - llegadas.size);
 
   const puntos = new Map<string, Asistencia[]>();
   for (const a of entradas) puntos.set(a.punto, [...(puntos.get(a.punto) ?? []), a]);
@@ -139,9 +175,11 @@ export function metricasDelDia(
   return {
     dia,
     esperados,
-    entradas: entradas.length,
+    entradas: llegadas.size,
     salidas: salidas.length,
-    avance: esperados === 0 ? 0 : Math.round((entradas.length / esperados) * 100),
+    dentro: dentro.length,
+    seFueron: seFueron.length,
+    avance: esperados === 0 ? 0 : Math.round((llegadas.size / esperados) * 100),
     ritmoPorMinuto: Math.round(ritmoPorMinuto * 10) / 10,
     minutosRestantes: ritmoPorMinuto > 0 ? Math.ceil(faltantes / ritmoPorMinuto) : null,
     porPunto: [...puntos.entries()]
