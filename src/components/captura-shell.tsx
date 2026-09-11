@@ -72,13 +72,13 @@ export function BarraConexion() {
 /** Control de modo, siempre visible: en la puerta el personal se redistribuye. */
 export function SelectorModo({ compacto = false }: { compacto?: boolean }) {
   const { sesion, setSesion } = useEstadoEvento();
+  // Sin SALIDA: no se captura, la genera el cierre automático del día.
   const modos: { valor: Modo; etiqueta: string }[] = [
     { valor: "entrada", etiqueta: "ENTRADA" },
-    { valor: "salida", etiqueta: "SALIDA" },
     { valor: "taller", etiqueta: "TALLER" },
   ];
   return (
-    <div className="grid grid-cols-3 gap-1" role="group" aria-label="Modo de captura">
+    <div className="grid grid-cols-2 gap-1" role="group" aria-label="Modo de captura">
       {modos.map((m) => (
         <button
           key={m.valor}

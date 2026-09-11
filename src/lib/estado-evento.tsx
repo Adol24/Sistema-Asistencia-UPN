@@ -981,18 +981,25 @@ export function EstadoEventoProvider({
       });
 
       /*
-       * Con conexión, la base tiene la última palabra.
+       * Con conexión pero SIN escucha en vivo, la base tiene la última palabra.
        *
        * El motor local acaba de decidir con lo que este teléfono conoce, y eso
        * basta para la mayoría de los casos —y es lo único que hay sin red—. Pero
        * si alguien pasó por otro punto de captura hace un momento, aquí no
        * consta: el duplicado saldría en verde.
        *
+       * Con `enVivo` esa consulta sobra, y sobra cara. Sobra porque la
+       * suscripción en tiempo real ya trajo el escaneo del otro punto: el motor
+       * local sabe lo mismo que la base. Y es cara porque es un viaje de red POR
+       * PERSONA, y por esta puerta pasan 700 en una hora, con el wifi del
+       * recinto saturado justo en ese momento. Medio segundo por cabeza no se
+       * pierde: se acumula en la fila.
+       *
        * Una excepción autorizada no se reevalúa: el supervisor ya decidió, y
        * dejar que la base la tumbe convertiría su autorización en un trámite sin
        * efecto.
        */
-      if (hayBaseDeDatos && enLinea && !opciones?.autorizado) {
+      if (hayBaseDeDatos && enLinea && !enVivo && !opciones?.autorizado) {
         try {
           const { evaluarEscaneoRemoto } = await import("@/lib/datos");
           const remoto = await evaluarEscaneoRemoto(entrada.trim(), sesion.dia, sesion.modo);
@@ -1084,6 +1091,7 @@ export function EstadoEventoProvider({
       estadoDe,
       contadorEscaneos,
       enLinea,
+      enVivo,
       registrarBitacora,
       participantes,
     ],

@@ -45,8 +45,22 @@ export const Route = createFileRoute("/captura/escaneo")({
   component: PantallaEscaneo,
 });
 
-/** El resultado se muestra 2 segundos y vuelve al escáner. */
-const MS_RESULTADO = 2000;
+/*
+ * Cuánto dura el resultado en pantalla. Son dos números porque son dos cosas
+ * distintas, y antes era uno solo de dos segundos para todas.
+ *
+ * El verde no se lee: se oye. Quien captura ya está encuadrando a la siguiente
+ * persona antes de que termine el destello, así que solo tiene que durar lo
+ * suficiente para confirmar que algo pasó. Por esta puerta entran 700 personas
+ * en una hora —una cada cinco segundos—, así que dos segundos de pantalla verde
+ * por cabeza no eran un detalle de interfaz: eran la fila.
+ *
+ * El amarillo y el rojo SÍ se leen, y además hay que hacer algo con esa persona.
+ * Esos se quedan más, y encima detienen la cámara: mientras se resuelve un caso,
+ * la fila no debe seguir avanzando.
+ */
+const MS_VERDE = 900;
+const MS_AVISO = 2500;
 
 function PantallaEscaneo() {
   const { participantes, sesion, escanear, historial, enLinea, pendientes, estadoDe, asistencias } =
@@ -77,22 +91,41 @@ function PantallaEscaneo() {
    * segundo. Sin conexión sigue siendo instantáneo, porque decide el motor
    * local.
    */
-  const disparar = async (valor: string, autorizado = false, notaAutorizacion?: string) => {
+  const disparar = async (
+    valor: string,
+    opciones?: { autorizado?: boolean; nota?: string; aMano?: boolean },
+  ) => {
     if (!valor.trim()) return;
     const r = await escanear(valor, {
-      autorizado,
-      ...(notaAutorizacion ? { nota: notaAutorizacion, autorizadoPor: sesion.capturista } : {}),
+      autorizado: opciones?.autorizado ?? false,
+      ...(opciones?.nota ? { nota: opciones.nota, autorizadoPor: sesion.capturista } : {}),
     });
     retroalimentar(r);
     setResultado(r);
     setRetenido(false);
     setEntrada("");
-    campo.current?.focus();
+    // El foco vuelve al campo SOLO si de ahí vino. Devolvérselo después de cada
+    // lectura de cámara levanta el teclado del teléfono encima del vídeo, que es
+    // justo lo que el capturista necesita ver.
+    if (opciones?.aMano) campo.current?.focus();
   };
+
+  /*
+   * Verde y aviso no son lo mismo para la fila.
+   *
+   * El verde es un destello encima del vídeo: la cámara sigue leyendo y la
+   * siguiente persona puede pasar de inmediato. El amarillo y el rojo tapan la
+   * pantalla y paran la cámara, porque hay que atender a esa persona antes de
+   * seguir. `bloqueante` es esa distinción, y de ella cuelga todo lo demás.
+   */
+  const bloqueante = resultado !== null && resultado.color !== "verde";
 
   useEffect(() => {
     if (!resultado || retenido) return;
-    const t = setTimeout(() => setResultado(null), MS_RESULTADO);
+    const t = setTimeout(
+      () => setResultado(null),
+      resultado.color === "verde" ? MS_VERDE : MS_AVISO,
+    );
     return () => clearTimeout(t);
   }, [resultado, retenido]);
 
@@ -120,24 +153,6 @@ function PantallaEscaneo() {
       .sort((a, b) => orden.indexOf(a.color) - orden.indexOf(b.color));
   }, [participantes, sesion, asistencias, estadoDe]);
 
-  if (resultado) {
-    return (
-      <Semaforo
-        r={resultado}
-        retenido={retenido}
-        onTocar={() => setRetenido(true)}
-        onCerrar={() => {
-          setResultado(null);
-          setRetenido(false);
-        }}
-        onAutorizar={() => {
-          setAutorizando(resultado.participante?.folio ?? resultado.entradaCruda);
-          setResultado(null);
-        }}
-      />
-    );
-  }
-
   return (
     <PantallaCaptura titulo={`Escaneo · Día ${sesion.dia} · ${sesion.punto}`}>
       <div className="rounded-lg border border-border bg-card p-2">
@@ -149,17 +164,26 @@ function PantallaEscaneo() {
         leyendo el mismo código del teléfono que aún está enfrente y volvería a
         disparar en cuanto pasara el antirrebote.
       */}
-      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={!resultado}>
-        <span className="absolute right-3 top-3 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
+      {/*
+        La cámara NO se desmonta al mostrar un resultado, y esa es la diferencia
+        entre una puerta que fluye y una que no. Antes esta pantalla devolvía el
+        semáforo en lugar del escáner, así que `CamaraQR` se destruía y se volvía
+        a crear con cada persona: abrir la cámara tarda cerca de un segundo, y se
+        pagaba 700 veces por jornada. Ahora el resultado va encima y el vídeo
+        sigue vivo debajo.
+      */}
+      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={!bloqueante}>
+        <span className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
           {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
         </span>
+        {resultado?.color === "verde" ? <DestelloVerde r={resultado} /> : null}
       </CamaraQR>
 
       <form
         className="mt-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void disparar(entrada);
+          void disparar(entrada, { aMano: true });
         }}
       >
         <Input
@@ -289,7 +313,7 @@ function PantallaEscaneo() {
                 const texto = nota.trim();
                 setAutorizando(null);
                 setNota("");
-                void disparar(folio, true, texto);
+                void disparar(folio, { autorizado: true, nota: texto });
               }}
             >
               Autorizar y registrar
@@ -297,7 +321,52 @@ function PantallaEscaneo() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/*
+        Solo el amarillo y el rojo tapan la pantalla. El verde ya se resolvió
+        arriba con un destello sobre el vídeo, sin detener a nadie.
+      */}
+      {resultado && resultado.color !== "verde" ? (
+        <Semaforo
+          r={resultado}
+          retenido={retenido}
+          onTocar={() => setRetenido(true)}
+          onCerrar={() => {
+            setResultado(null);
+            setRetenido(false);
+          }}
+          onAutorizar={() => {
+            setAutorizando(resultado.participante?.folio ?? resultado.entradaCruda);
+            setResultado(null);
+          }}
+        />
+      ) : null}
     </PantallaCaptura>
+  );
+}
+
+/**
+ * Confirmación de entrada registrada, encima de la imagen de la cámara.
+ *
+ * No ocupa la pantalla ni detiene el vídeo. Lo único que tiene que comunicar es
+ * «esta persona sí entró», y para eso bastan el color, el nombre y el sonido:
+ * quien captura no lee esto, lo confirma de reojo mientras mueve el teléfono.
+ * Reservar la pantalla completa para los casos que exigen una decisión es lo
+ * que deja pasar a los cientos que no exigen ninguna.
+ */
+function DestelloVerde({ r }: { r: ResultadoEscaneo }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-semaforo-verde/95 p-4 text-center text-semaforo-verde-fg"
+    >
+      <CheckCircle2 className="size-10" aria-hidden />
+      <p className="text-xl font-extrabold leading-tight">
+        {r.participante?.nombre ?? r.entradaCruda}
+      </p>
+      <p className="text-sm font-bold uppercase tracking-wider opacity-90">{r.titulo}</p>
+    </div>
   );
 }
 
@@ -312,7 +381,14 @@ const FONDO: Record<Color, string> = {
   rojo: "bg-semaforo-rojo text-semaforo-rojo-fg",
 };
 
-/** Resultado a pantalla completa, legible a un metro de distancia. */
+/**
+ * Resultado a pantalla completa, legible a un metro de distancia.
+ *
+ * Va como capa encima del escáner —`fixed`— y no en lugar de él: la cámara
+ * sigue montada debajo, apagada mientras esto esté visible, y vuelve a leer sin
+ * tener que reabrirse en cuanto se cierra. Solo lo ven el amarillo y el rojo,
+ * que son los casos donde detener la fila es exactamente lo que se quiere.
+ */
 function Semaforo({
   r,
   retenido,
@@ -331,11 +407,14 @@ function Semaforo({
       onClick={onTocar}
       role="status"
       aria-live="assertive"
-      className={cn("flex min-h-svh cursor-pointer flex-col justify-between p-6", FONDO[r.color])}
+      className={cn(
+        "fixed inset-0 z-50 flex cursor-pointer flex-col justify-between overflow-y-auto p-6",
+        FONDO[r.color],
+      )}
     >
       <div>
         <p className="text-sm font-bold uppercase tracking-[0.2em] opacity-80">
-          {retenido ? "Retenido — toca cerrar" : "Vuelve al escáner en 2 s"}
+          {retenido ? "Retenido — toca cerrar" : "Vuelve al escáner solo"}
         </p>
         <p className="mt-6 text-3xl font-extrabold leading-tight sm:text-5xl">
           {r.participante?.nombre ?? r.entradaCruda}

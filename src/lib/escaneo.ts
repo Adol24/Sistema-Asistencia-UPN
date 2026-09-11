@@ -4,12 +4,22 @@
  * Decide el color del semáforo y si el escaneo se registra. Es pura a propósito:
  * recibe el instante (`ahora`) en lugar de leer el reloj, para que la ventana de
  * reingreso de 15 minutos se pueda comprobar sin esperar 15 minutos.
+ *
+ * **No existe la captura de salida.** El evento recibe 700 personas por día y
+ * todas se van a la misma hora: formarlas en la puerta al terminar era una fila
+ * de casi una hora en el peor momento del día. La salida la genera el cierre
+ * automático, que no es una operación de nadie. Ver `Modo`.
  */
 
 import type { Asistencia, Dia, EstadoPago, Participante } from "@/dominio/tipos";
 import { sinAcreditar } from "@/lib/pagos-logica";
 
-export type Modo = "entrada" | "salida" | "taller";
+/**
+ * Lo que un capturista puede registrar. No incluye la salida a propósito: la
+ * salida no se captura, la genera el cierre automático al terminar el día. Es
+ * un estado que el sistema deduce, no un acto que alguien ejecuta en la puerta.
+ */
+export type Modo = "entrada" | "taller";
 export type Color = "verde" | "amarillo" | "rojo";
 
 /** Minutos dentro de los cuales volver a escanear NO genera un registro nuevo. */
@@ -39,7 +49,6 @@ export interface ResultadoEscaneo {
 
 const ETIQUETA_MODO: Record<Modo, string> = {
   entrada: "ENTRADA",
-  salida: "SALIDA",
   taller: "TALLER",
 };
 
@@ -178,22 +187,6 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
       accion: "Déjalo pasar. No se registra otra vez.",
       registra: false,
     };
-
-  // --- Salida sin entrada previa ---
-  if (sesion.modo === "salida") {
-    const entradas = asistencias.filter(
-      (a) => a.folio === p.folio && a.dia === sesion.dia && a.tipo === "entrada",
-    );
-    if (entradas.length === 0)
-      return {
-        ...conPersona,
-        color: "amarillo",
-        titulo: "SIN ENTRADA PREVIA",
-        motivo: "No tiene entrada registrada hoy; su salida quedará sin par.",
-        accion: "Regístralo y avisa a la mesa de incidencias.",
-        registra: true,
-      };
-  }
 
   // --- Discrepancia de pago: pasa, pero avisando ---
   const estadoRelevante = sesion.modo === "taller" ? estado.taller : estado.evento;

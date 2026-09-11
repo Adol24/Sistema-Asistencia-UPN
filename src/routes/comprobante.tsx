@@ -150,7 +150,7 @@ function Comprobante() {
             <span aria-hidden className="text-primary">
               2.
             </span>
-            Entrada y salida registradas el día {dia.etiqueta}.
+            Tu entrada registrada el día {dia.etiqueta}.
           </li>
           {participante?.perfil === "alumno" ? (
             <li className="flex gap-2">

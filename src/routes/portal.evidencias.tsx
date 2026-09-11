@@ -35,10 +35,12 @@ export const Route = createFileRoute("/portal/evidencias")({
 
 type Tarjeta =
   | {
+      // Solo la entrada. La salida no se escanea —la cierra el sistema al
+      // terminar el día—, así que enseñársela al participante solo podía
+      // confundir: o le mostraba una hora que nadie capturó, o le avisaba de un
+      // «sin registro de salida» que no significa nada malo.
       tipo: "presencial";
       entrada?: string | undefined;
-      salida?: string | undefined;
-      cierreAutomatico?: boolean | undefined;
     }
   | { tipo: "bloqueada"; texto: string }
   | { tipo: "disponible" }
@@ -94,13 +96,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
       // que produce la app de captura, incluidos los cierres automáticos.
       const delDia = asistenciasDe(p.folio, dia);
       const entrada = delDia.find((a) => a.tipo === "entrada");
-      const salida = delDia.find((a) => a.tipo === "salida");
-      return {
-        tipo: "presencial",
-        entrada: entrada?.hora,
-        salida: salida?.hora,
-        cierreAutomatico: salida?.cierreAutomatico,
-      };
+      return { tipo: "presencial", entrada: entrada?.hora };
     }
     const ev = mias.find((e) => e.dia === dia);
     if (ev)
@@ -151,21 +147,6 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
                         <span className="flex items-center gap-1 text-estado-pagado">
                           <CheckCircle2 className="size-4" /> Entrada {t.entrada}
                         </span>
-                        {t.salida && !t.cierreAutomatico ? (
-                          <span className="flex items-center gap-1 text-estado-pagado">
-                            <CheckCircle2 className="size-4" /> Salida {t.salida}
-                          </span>
-                        ) : null}
-                        {t.salida && t.cierreAutomatico ? (
-                          <span className="flex items-center gap-1 text-estado-discrepancia">
-                            <Clock className="size-4" /> Salida {t.salida} — cierre automático
-                          </span>
-                        ) : null}
-                        {!t.salida ? (
-                          <span className="flex items-center gap-1 text-estado-discrepancia">
-                            <Clock className="size-4" /> Sin registro de salida
-                          </span>
-                        ) : null}
                       </p>
                     ) : (
                       <p className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -174,9 +155,8 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {t.cierreAutomatico
-                        ? "Tu salida no se escaneó: el sistema la cerró automáticamente al terminar el horario. Este día asististe en persona, no necesitas subir evidencia."
-                        : "Este día asististe en persona, no necesitas subir evidencia."}
+                      Este día asististe en persona, no necesitas subir evidencia. Al salir no hay
+                      que registrar nada.
                     </p>
                   </div>
                 ) : null}

@@ -55,7 +55,7 @@ const PERMISOS: Record<RolInterno, string[]> = {
   ],
   capturista: [
     "Abrir sesión de captura y escanear asistencia",
-    "Cambiar de modo entrada, salida o taller",
+    "Cambiar de modo entrada o taller",
     "Pasar lista en talleres",
     "Deshacer el último escaneo de su sesión",
   ],

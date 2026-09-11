@@ -60,9 +60,13 @@ export function CamaraQR({
         (r) => {
           const valor = r.data.trim();
           const ahora = Date.now();
-          // Dos segundos: menos y un mismo código se repite; más y una persona
-          // que vuelve a pasar legítimamente tendría que esperar.
-          if (valor === ultimo.current.valor && ahora - ultimo.current.en < 2000) return;
+          // Cinco segundos sobre el MISMO código. Eran dos, y con la cámara ya
+          // sin detenerse entre personas eso alcanzaba para releer al que
+          // todavía no se ha apartado de la puerta: su segundo escaneo cae
+          // dentro de la ventana de reingreso, sale amarillo y detiene la fila
+          // para avisar de algo que no le importa a nadie. A un código distinto
+          // —la siguiente persona— responde al instante, que es lo que cuenta.
+          if (valor === ultimo.current.valor && ahora - ultimo.current.en < 5000) return;
           ultimo.current = { valor, en: ahora };
           alLeer.current(valor);
         },

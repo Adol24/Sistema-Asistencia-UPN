@@ -41,8 +41,8 @@ function MiConstanciaContenido({ p }: { p: Participante }) {
   const requisitos = [
     { texto: "Pago del evento registrado", ok: estado.evento === "pagado" },
     {
-      texto: "Registro de entrada y salida del día asignado",
-      ok: delDia.some((a) => a.tipo === "entrada") && delDia.some((a) => a.tipo === "salida"),
+      texto: "Registro de entrada del día asignado",
+      ok: delDia.some((a) => a.tipo === "entrada"),
     },
     {
       texto:

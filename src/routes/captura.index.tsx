@@ -76,8 +76,7 @@ function ConfiguracionSesion() {
           })}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          {dia.etiqueta} — {dia.fecha} · Entrada: {evento.registroEntrada} · Salida:{" "}
-          {evento.registroSalida.toLowerCase()}
+          {dia.etiqueta} — {dia.fecha} · Registro de entrada: {evento.registroEntrada}
         </p>
       </section>
 
@@ -154,9 +153,11 @@ function ConfiguracionSesion() {
           <TimerOff className="size-4 text-muted-foreground" aria-hidden /> Cierre del día
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Al terminar el horario, quien entró y no registró salida recibe una salida marcada como
-          cierre automático. El prototipo no tiene reloj de evento, así que se dispara a mano para
-          poder evaluarlo.
+          Nadie escanea al salir. Con 700 personas por día y todas yéndose a la misma hora,
+          formarlas otra vez era una fila de casi una hora en el peor momento. El cierre marca la
+          salida de quien entró, para que el día quede cerrado en los reportes; no decide
+          constancias, eso depende solo de la entrada. El prototipo no tiene reloj de evento, así
+          que se dispara a mano para poder evaluarlo.
         </p>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -168,9 +169,9 @@ function ConfiguracionSesion() {
             <AlertDialogHeader>
               <AlertDialogTitle>¿Cerrar el día {sesion.dia}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Se registrará salida automática a todo participante del día {sesion.dia} que tenga
-                entrada y no tenga salida. Quedará marcada como cierre automático, distinguible de
-                una salida escaneada. No se puede deshacer desde esta pantalla.
+                Se registrará la salida de todo participante del día {sesion.dia} que tenga entrada
+                y siga sin cerrar. Queda marcada como cierre automático. No cambia quién es elegible
+                para constancia. No se puede deshacer desde esta pantalla.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

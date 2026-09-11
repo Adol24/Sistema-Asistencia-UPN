@@ -150,9 +150,13 @@ function Configuracion() {
               valor={b.registroEntrada}
               onChange={(v) => set({ registroEntrada: v })}
             />
+            {/*
+              No dice «registro de salida» porque no se registra ninguna: es la
+              hora a la que termina el día, y solo se publica como horario.
+            */}
             <Campo
               id="salida"
-              etiqueta="Registro de salida"
+              etiqueta="Término del día (no se escanea salida)"
               valor={b.registroSalida}
               onChange={(v) => set({ registroSalida: v })}
             />

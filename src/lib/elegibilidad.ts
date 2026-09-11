@@ -53,17 +53,25 @@ export interface EntornoConstancias {
 }
 
 /**
- * ¿Registró entrada y salida ese día?
+ * ¿Registró su entrada ese día?
  *
- * El cierre automático cuenta como salida válida: no salir escaneando es lo
- * normal cuando el evento termina y la gente se va en bloque, y penalizarlo
- * dejaría sin constancia a quien sí asistió el día completo.
+ * Antes pedía entrada Y salida, y la segunda mitad era de adorno: el cierre
+ * automático le regalaba la salida a todo el que hubiera entrado, así que
+ * siempre se cumplía. Sostenerla de verdad exigía formar a 700 personas en la
+ * puerta al terminar el día, y la organización decidió no condicionar la
+ * constancia a eso.
+ *
+ * De ahí se sigue algo que manda sobre el resto del sistema: la entrada es la
+ * ÚNICA prueba que queda de que esa persona estuvo. Si la fila de la puerta se
+ * satura y alguien pasa sin escanear, desaparece del listado de elegibles sin
+ * que nadie se entere. Por eso el escáner de entrada no se detiene entre
+ * personas (ver `captura.escaneo.tsx`).
  *
  * Recibe las asistencias del día en vez de ir a buscarlas: quien la llama ya
  * las tiene, y pedirlas dos veces era recorrer la lista dos veces por persona.
  */
 export function asistioElDia(delDia: Asistencia[]): boolean {
-  return delDia.some((a) => a.tipo === "entrada") && delDia.some((a) => a.tipo === "salida");
+  return delDia.some((a) => a.tipo === "entrada");
 }
 
 /** Elegibilidad para la constancia del EVENTO, según el perfil. */
@@ -79,12 +87,9 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
   // El detalle tiene que alcanzar para responder sin abrir otra pantalla: es la
   // pregunta que va a llegar cientos de veces cuando se entreguen los documentos.
   const entrada = delDia.find((a) => a.tipo === "entrada");
-  const salida = delDia.find((a) => a.tipo === "salida");
-  const detalleAsistencia = !entrada
-    ? `No tiene entrada registrada el día ${p.dia}. Revisa la captura de asistencia de ese día.`
-    : !salida
-      ? `Tiene entrada (${entrada.hora}) pero no salida del día ${p.dia}. Ejecuta el cierre automático del día para completarla.`
-      : "";
+  const detalleAsistencia = entrada
+    ? ""
+    : `No tiene entrada registrada el día ${p.dia}. Revisa la captura de asistencia de ese día: si llegó y la puerta estaba saturada, pudo pasar sin que le escanearan.`;
 
   const requisitos: Requisito[] = [
     {
@@ -95,7 +100,7 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
       }. Debe resolverse en Servicios Financieros.`,
     },
     {
-      texto: `Entrada y salida registradas el día ${p.dia}`,
+      texto: `Entrada registrada el día ${p.dia}`,
       ok: asistio,
       comoSeResuelve: detalleAsistencia,
     },
