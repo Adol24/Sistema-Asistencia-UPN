@@ -99,10 +99,29 @@ for (const tabla of ["padron_alumnos", "participantes", "pagos", "bitacora"] as 
 console.log("\n=== FUNCIONES DEL PORTAL ===\n");
 
 {
-  // Una matrícula que no existe: la función debe responder, no fallar.
+  /*
+   * `fn_buscar_en_padron` tiene que estar CERRADA al anónimo.
+   *
+   * Este comprobante esperaba lo contrario, y llevaba desde entonces gritando
+   * una falla que era en realidad la corrección funcionando. La migración
+   * `20260908120000_padron_sin_enumeracion` la cerró porque devolvía datos del
+   * padrón a cualquiera que probara matrículas: anulaba por completo el arreglo
+   * de privacidad hecho en la interfaz. El pre-registro no la usa; usa
+   * `fn_padron_existe` y `fn_padron_confirmar`.
+   *
+   * Un comprobante que avisa de algo que está bien acaba enseñando a ignorarlo,
+   * y entonces deja de servir el día que avisa de algo que está mal.
+   */
   const { error } = await sb.rpc("fn_buscar_en_padron", { p_matricula: "00000000000" });
-  if (error) falla("fn_buscar_en_padron", error);
-  else ok("fn_buscar_en_padron responde y el anónimo puede llamarla");
+  if (error) ok(`fn_buscar_en_padron          cerrada al anónimo (${error.code ?? "sin código"})`);
+  else falla("fn_buscar_en_padron: el anónimo puede enumerar el padrón, y no debería");
+}
+
+{
+  // Esta sí es pública, y es la que el pre-registro necesita.
+  const { error } = await sb.rpc("fn_padron_existe", { p_matricula: "00000000000" });
+  if (error) falla("fn_padron_existe", error);
+  else ok("fn_padron_existe responde y el anónimo puede llamarla");
 }
 
 {
@@ -120,6 +139,80 @@ for (const fn of ["fn_repartir_dias_pendientes", "fn_dia_mas_vacio"] as const) {
   const { error } = await sb.rpc(fn);
   if (error) ok(`${fn.padEnd(28)} cerrada al anónimo (${error.code ?? "sin código"})`);
   else falla(`${fn}: el anónimo puede ejecutarla, y no debería`);
+}
+
+// ------------------------------------------------ la puerta y sus puntos ---
+//
+// Comprueba las dos migraciones que cambian cómo funciona la puerta. Ninguna se
+// puede dar por aplicada leyendo el archivo: lo que importa es qué contesta la
+// base.
+console.log("\n=== LA PUERTA COMO TORNIQUETE ===\n");
+
+{
+  /*
+   * La firma de `fn_evaluar_escaneo` cambió: recibe `p_modo` y ya no `p_tipo`.
+   *
+   * El anónimo no puede ejecutarla en ninguno de los dos casos, así que lo que
+   * se mira es CUÁL error devuelve. Si los parámetros encajan con una función
+   * que existe, PostgREST llega hasta el permiso y responde 42501. Si no encaja
+   * con ninguna, ni siquiera la encuentra y responde PGRST202. Esa diferencia
+   * es la que distingue «la migración corrió» de «la migración no corrió».
+   */
+  const nueva = await sb.rpc("fn_evaluar_escaneo", {
+    p_entrada: "X",
+    p_dia: 1,
+    p_modo: "puerta",
+  });
+  if (nueva.error?.code === "42501")
+    ok("fn_evaluar_escaneo acepta p_modo y está cerrada al anónimo");
+  else if (nueva.error?.code === "PGRST202")
+    falla("fn_evaluar_escaneo no conoce p_modo: falta la migración 20260911120000");
+  else if (nueva.error) falla("fn_evaluar_escaneo con p_modo", nueva.error);
+  else falla("fn_evaluar_escaneo: el anónimo puede ejecutarla, y no debería");
+
+  const vieja = await sb.rpc("fn_evaluar_escaneo", {
+    p_entrada: "X",
+    p_dia: 1,
+    p_tipo: "entrada",
+  });
+  if (vieja.error?.code === "PGRST202") ok("la firma vieja con p_tipo ya no existe");
+  else falla("la firma vieja con p_tipo sigue viva: la migración la dejó a medias");
+}
+
+{
+  const { error } = await sb.rpc("fn_esta_dentro", {
+    p_participante: "00000000-0000-0000-0000-000000000000",
+    p_dia: 1,
+  });
+  if (error?.code === "42501") ok("fn_esta_dentro existe y está cerrada al anónimo");
+  else if (error?.code === "PGRST202")
+    falla("fn_esta_dentro no existe: falta la migración 20260911120000");
+  else if (error) falla("fn_esta_dentro", error);
+  else falla("fn_esta_dentro: el anónimo puede ejecutarla, y no debería");
+}
+
+{
+  // Los puntos de captura por sede, y que los de SUTERM quedaran sembrados.
+  const { data, error } = await sb.from("dias_evento").select("dia, puntos").order("dia");
+  if (error) falla("dias_evento.puntos: falta la migración 20260911140000", error);
+  else {
+    const filas = (data ?? []) as { dia: number; puntos: string[] | null }[];
+    const conPuertaSuterm = filas.filter((d) =>
+      (d.puntos ?? []).some((p) => /suterm/i.test(p)),
+    ).length;
+    if (conPuertaSuterm >= 2)
+      ok(`dias_evento.puntos sembrado: ${conPuertaSuterm} días con la puerta de SUTERM`);
+    else
+      falla(
+        `dias_evento.puntos existe pero solo ${conPuertaSuterm} día(s) traen la puerta de SUTERM; se esperaban 2`,
+      );
+
+    const sinPuntos = filas.filter((d) => (d.puntos ?? []).length === 0).map((d) => d.dia);
+    if (sinPuntos.length)
+      console.log(
+        `       día ${sinPuntos.join(", ")} sin puntos: usará los genéricos hasta que se llenen`,
+      );
+  }
 }
 
 // --------------------------------------------------------------- vistas ---

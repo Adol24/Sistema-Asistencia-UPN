@@ -1,37 +1,53 @@
 # Migraciones
 
+## Cómo se sabe que una migración quedó
+
+```bash
+bun run verificar-conexion
+```
+
+Solo lee, así que se puede correr contra producción. Pregunta a la base en vez de
+leer estos archivos, que es la única forma de saberlo: una migración está
+aplicada cuando la base contesta lo que debe, no cuando el archivo existe.
+
+Ese comprobante ya cazó una: `20260911120000` dejó dos funciones abiertas al rol
+anónimo, y desde el archivo parecían cerradas.
+
 ## Aplicadas
 
-Las 16 originales (`20260907000100` … `20260907001600`) y las tres de seguridad,
-confirmadas contra el proyecto real: `fn_padron_existe` responde 200,
-`fn_evaluar_escaneo` y `fn_buscar_en_padron` responden 401 al público.
+Todas hasta `20260911140000`, confirmadas contra el proyecto real: `dias_evento`
+trae los puntos de SUTERM, `fn_evaluar_escaneo` ya solo acepta `p_modo`, y el
+catálogo académico responde con los 9 programas reales.
 
 ## Pendiente
 
 | # | Archivo | Qué hace |
 | --- | --- | --- |
-| 20 | `20260908180000_catalogo_academico_real.sql` | Sustituye el catálogo de ejemplo por la oferta real de la UPN |
-| 30 | `20260911120000_puerta_como_torniquete.sql` | Permite ir y volver por la puerta, y que el cierre no tape a quien se fue |
-| 31 | `20260911140000_puntos_de_captura_por_dia.sql` | Cada sede nombra sus propios puntos de captura |
+| 32 | `20260911160000_cerrar_funciones_de_la_puerta.sql` | **Urgente.** Cierra al anónimo dos funciones que quedaron abiertas |
 
-Hasta que corra, la aplicación seguirá mostrando los programas de ejemplo: el
-catálogo se carga de la base, no del código.
+### Cerrar las funciones de la puerta (32)
 
-La migración da de alta los nueve programas reales **antes** de retirar los de
-ejemplo, para que nunca haya un momento sin catálogo. Solo retira los que no
-tienen alumnos detrás —`padron_alumnos` y `participantes` apuntan a `programas`
-con `on delete restrict`, así que un borrado a ciegas fallaría a medias— y avisa
-por consola de los que queden, con cuántas filas dependen de cada uno.
+Córrela cuanto antes. La 30 creó `fn_esta_dentro` y volvió a crear
+`fn_evaluar_escaneo` con otra firma, y las cerró con `revoke ... from public`. En
+Supabase eso no alcanza: `anon` es un rol con nombre propio y con su propia
+concesión, así que quitarle el permiso a PUBLIC no le quita el suyo. Y como
+`fn_evaluar_escaneo` cambió de firma, para PostgreSQL es una función nueva, que
+nace con las concesiones por defecto en vez de heredar las de la vieja.
 
-También baja licenciatura de 10 a 8 semestres y cambia «Módulo» por
-«Cuatrimestre» en maestría. El disparador `fn_validar_avance` solo actúa al
-insertar o actualizar, así que no invalida filas existentes; la migración cuenta
-cuántas se pasarían del nuevo tope y lo avisa.
+Mientras no corra, cualquiera con la clave publicable puede preguntarle a la base
+si un folio existe, si está pagado y si esa persona está dentro del recinto.
+
+Es el mismo agujero que cerró `20260908160000`, reabierto por copiar mal el
+remedio. Por eso esta recorre el catálogo en lugar de escribir las firmas a mano:
+repetir los tipos exactos de los argumentos es donde se cuela el error, y una
+letra de más deja la función abierta sin que nadie lo note.
+
+## Qué hicieron las últimas (ya aplicadas)
 
 ### La puerta como torniquete (30)
 
-Es la única pendiente que **quita** una restricción, así que conviene leerla
-antes de correrla.
+Es la única que **quita** una restricción, así que conviene tenerla presente si
+algo de la puerta se comporta raro.
 
 `uq_asistencia_por_dia` permitía una entrada y una salida por persona y día. Con
 el receso de quince minutos y 700 personas, el segundo paso por la puerta lo
