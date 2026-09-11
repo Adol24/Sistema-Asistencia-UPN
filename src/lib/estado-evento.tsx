@@ -423,27 +423,21 @@ const EstadoEventoCtx = createContext<Ctx | null>(null);
  * El respaldo, para cuando un día todavía no tiene sus puntos configurados.
  *
  * Los de verdad viven en la base, por día, porque no es el mismo sitio: el salón
- * SUTERM recibe los días 1 y 2 y el 3 es en otra sede. Nombres genéricos como
- * estos no existen en ningún lado, y un reporte que dice «Puerta A» es un
- * reporte que nadie sabe traducir a un lugar real. Se llenan en
+ * SUTERM recibe los días 1 y 2 y el 3 es en otra sede. Se llenan en
  * /admin/configuracion.
  *
- * Son ocho porque ocho son las personas del equipo: dos capturistas en el mismo
- * punto quedan indistinguibles en la bitácora, así que cuando una fila se atasca
- * nadie sabe cuál es. La mesa de incidencias cuenta como punto de pleno derecho:
- * ahí se registra la entrada de quien salió en rojo y resultó estar bien, y sin
- * ella ese caso se resuelve mandándolo de vuelta a formarse.
+ * Un punto es un LUGAR, no una persona. Varios capturistas en la misma puerta
+ * comparten punto y se distinguen igual, porque cada asistencia guarda quién la
+ * capturó (`asistencias.capturista_id`). Por eso la lista es corta: SUTERM tiene
+ * una sola puerta a la calle, y llamarla de cuatro maneras distintas para que
+ * hubiera un nombre por capturista habría inventado cuatro lugares que no
+ * existen.
+ *
+ * La mesa de incidencias sí es un punto aparte, porque sí es otro lugar: ahí se
+ * registra la entrada de quien salió en rojo y resultó estar bien. Sin ella, ese
+ * caso se resuelve mandándolo de vuelta a formarse a la puerta.
  */
-const PUNTOS_POR_DEFECTO = [
-  "Acceso principal 1",
-  "Acceso principal 2",
-  "Acceso principal 3",
-  "Acceso principal 4",
-  "Salida a la calle",
-  "Mesa de incidencias",
-  "Registro Taller",
-  "Supervisión",
-];
+const PUNTOS_POR_DEFECTO = ["Acceso principal", "Mesa de incidencias", "Registro Taller"];
 export const PUNTOS_CAPTURA = PUNTOS_POR_DEFECTO;
 
 /**

@@ -66,9 +66,21 @@ En SUTERM los baños están en la planta baja, junto a las escaleras, **dentro**
 recinto: ir al baño no es salir y ahí no se registra nada. El punto de control es
 la puerta que da a la calle, porque cruzarla sí es irse.
 
-Se editan en `/admin/configuracion`, en «Lugares por día». Esa pantalla ahora sí
-guarda los días en la base: antes el cambio se veía, se recargaba y volvía lo de
-antes.
+La migración ya deja cargados los de SUTERM (días 1 y 2):
+
+```
+Puerta 1 SUTERM · Mesa de incidencias · Registro Taller
+```
+
+Un solo punto de puerta porque SUTERM tiene una sola salida a la calle. Varios
+capturistas comparten ese punto y se distinguen igual, porque cada asistencia
+guarda quién la capturó: inventar «Puerta 1», «Puerta 2» y «Puerta 3» para tener
+un nombre por persona habría creado tres lugares que no existen.
+
+**El día 3 se queda vacío**, porque es otra sede y aún no sabemos cómo se llaman
+sus accesos. Vacío no rompe nada: cae a la lista genérica. Cuando se sepa, se
+escribe en `/admin/configuracion`, en «Lugares por día» — esa pantalla ahora sí
+guarda los días en la base, que antes no lo hacía.
 
 ## Cómo aplicarlas
 

@@ -53,3 +53,20 @@ begin
   end if;
 end;
 $$;
+
+-- SUTERM, días 1 y 2 -------------------------------------------------------
+--
+-- Una sola puerta a la calle, así que un solo punto de puerta. Varios
+-- capturistas comparten ese punto y se distinguen igual, porque cada asistencia
+-- guarda quién la capturó: inventar «Puerta 1», «Puerta 2» y «Puerta 3» para
+-- que hubiera un nombre por persona habría creado tres lugares que no existen,
+-- y el reporte del día habría dicho que la gente entró por puertas imaginarias.
+--
+-- La mesa de incidencias sí va aparte, porque sí es otro lugar.
+--
+-- El día 3 se queda vacío a propósito: es otra sede y todavía no sabemos cómo se
+-- llaman sus accesos. Vacío significa «sin configurar» y la aplicación cae a su
+-- lista genérica, así que ese día sigue pudiéndose operar mientras tanto.
+update dias_evento
+   set puntos = array['Puerta 1 SUTERM', 'Mesa de incidencias', 'Registro Taller']
+ where dia in (1, 2);
