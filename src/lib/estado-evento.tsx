@@ -416,7 +416,29 @@ interface Ctx {
 
 const EstadoEventoCtx = createContext<Ctx | null>(null);
 
-const PUNTOS = ["Puerta A", "Puerta B", "Vestíbulo", "Registro Taller"];
+/*
+ * Un punto por cada persona del equipo, que son ocho.
+ *
+ * Eran cuatro, y esa lista era el techo real de la operación: dos capturistas
+ * en el mismo punto quedan indistinguibles en la bitácora y en el monitoreo, así
+ * que nadie sabe qué fila se atascó ni a quién preguntarle. Con 700 personas
+ * entrando en una hora eso importa mientras está pasando, no después.
+ *
+ * La mesa de incidencias es un punto de captura de pleno derecho, no un apaño:
+ * ahí es donde se registra la entrada de quien salió en rojo y resultó estar
+ * bien. Si no existe como punto, ese caso se resuelve volviéndolo a formar en la
+ * puerta, que es justo lo que hay que evitar.
+ */
+const PUNTOS = [
+  "Puerta A",
+  "Puerta B",
+  "Puerta C",
+  "Puerta D",
+  "Puerta E",
+  "Puerta F",
+  "Mesa de incidencias",
+  "Registro Taller",
+];
 export const PUNTOS_CAPTURA = PUNTOS;
 
 /**
