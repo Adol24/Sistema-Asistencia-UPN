@@ -111,21 +111,20 @@ function PantallaEscaneo() {
   };
 
   /*
-   * Verde y aviso no son lo mismo para la fila.
+   * Lo que parte la pantalla en dos no es el color, es si el capturista tiene
+   * algo que hacer con esa persona. Lo decide `escaneo.ts` con `detiene`, y de
+   * ahí cuelga todo lo de abajo: cuánto dura el resultado, si tapa la pantalla y
+   * si la cámara se detiene.
    *
-   * El verde es un destello encima del vídeo: la cámara sigue leyendo y la
-   * siguiente persona puede pasar de inmediato. El amarillo y el rojo tapan la
-   * pantalla y paran la cámara, porque hay que atender a esa persona antes de
-   * seguir. `bloqueante` es esa distinción, y de ella cuelga todo lo demás.
+   * El caso que obligó a separarlo es el del baño: quien vuelve y lo escanean
+   * por reflejo sale en amarillo «YA REGISTRADO», cuya instrucción es «déjalo
+   * pasar». Por color, eso paraba la fila. Por acción, no para nada.
    */
-  const bloqueante = resultado !== null && resultado.color !== "verde";
+  const bloqueante = resultado !== null && resultado.detiene;
 
   useEffect(() => {
     if (!resultado || retenido) return;
-    const t = setTimeout(
-      () => setResultado(null),
-      resultado.color === "verde" ? MS_VERDE : MS_AVISO,
-    );
+    const t = setTimeout(() => setResultado(null), resultado.detiene ? MS_AVISO : MS_VERDE);
     return () => clearTimeout(t);
   }, [resultado, retenido]);
 
@@ -176,7 +175,7 @@ function PantallaEscaneo() {
         <span className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
           {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
         </span>
-        {resultado?.color === "verde" ? <DestelloVerde r={resultado} /> : null}
+        {resultado && !resultado.detiene ? <Destello r={resultado} /> : null}
       </CamaraQR>
 
       <form
@@ -323,10 +322,10 @@ function PantallaEscaneo() {
       </AlertDialog>
 
       {/*
-        Solo el amarillo y el rojo tapan la pantalla. El verde ya se resolvió
-        arriba con un destello sobre el vídeo, sin detener a nadie.
+        Solo tapan la pantalla los casos que exigen hacer algo. Los demás ya se
+        resolvieron arriba con un destello sobre el vídeo, sin detener a nadie.
       */}
-      {resultado && resultado.color !== "verde" ? (
+      {resultado && resultado.detiene ? (
         <Semaforo
           r={resultado}
           retenido={retenido}
@@ -346,26 +345,35 @@ function PantallaEscaneo() {
 }
 
 /**
- * Confirmación de entrada registrada, encima de la imagen de la cámara.
+ * Resultado que no exige hacer nada, encima de la imagen de la cámara.
  *
- * No ocupa la pantalla ni detiene el vídeo. Lo único que tiene que comunicar es
- * «esta persona sí entró», y para eso bastan el color, el nombre y el sonido:
- * quien captura no lee esto, lo confirma de reojo mientras mueve el teléfono.
- * Reservar la pantalla completa para los casos que exigen una decisión es lo
- * que deja pasar a los cientos que no exigen ninguna.
+ * No ocupa la pantalla ni detiene el vídeo. Casi siempre es el verde —«esta
+ * persona entró»— y para eso bastan el color, el nombre y el sonido: quien
+ * captura no lee esto, lo confirma de reojo mientras mueve el teléfono.
+ *
+ * También cae aquí el amarillo de quien ya estaba registrado, que es el que
+ * vuelve del baño. Conserva su color, para que se vea que no es una entrada
+ * nueva, pero no roba la pantalla ni frena a los que vienen detrás.
+ *
+ * Reservar la pantalla completa para lo que exige una decisión es lo que deja
+ * pasar a los cientos que no exigen ninguna.
  */
-function DestelloVerde({ r }: { r: ResultadoEscaneo }) {
+function Destello({ r }: { r: ResultadoEscaneo }) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-semaforo-verde/95 p-4 text-center text-semaforo-verde-fg"
+      className={cn(
+        "absolute inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center",
+        FONDO[r.color],
+      )}
     >
-      <CheckCircle2 className="size-10" aria-hidden />
+      {r.color === "verde" ? <CheckCircle2 className="size-10" aria-hidden /> : null}
       <p className="text-xl font-extrabold leading-tight">
         {r.participante?.nombre ?? r.entradaCruda}
       </p>
       <p className="text-sm font-bold uppercase tracking-wider opacity-90">{r.titulo}</p>
+      {r.accion ? <p className="text-sm font-semibold">{r.accion}</p> : null}
     </div>
   );
 }

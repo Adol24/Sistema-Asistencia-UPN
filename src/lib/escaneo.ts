@@ -41,6 +41,23 @@ export interface ResultadoEscaneo {
   accion: string;
   /** Si es false, no se agrega ninguna asistencia. */
   registra: boolean;
+  /**
+   * ¿Hay que parar la fila por esta persona?
+   *
+   * No es lo mismo que el color, y confundirlos costaba caro. «YA REGISTRADO» es
+   * amarillo y su instrucción es literalmente «déjalo pasar»: es el que volvió
+   * del baño y lo escanearon por reflejo. Taparle la pantalla al capturista dos
+   * segundos y medio por eso detiene a los que vienen detrás para no comunicar
+   * nada.
+   *
+   * Detienen los casos en los que el capturista tiene algo que HACER: mandar a
+   * la mesa de incidencias, o avisarle a esa persona que pase por Servicios
+   * Financieros. El resto es un destello sobre el vídeo y la cámara sigue viva.
+   *
+   * El valor por defecto es `true`: ante un caso que nadie previó, parar es
+   * menos grave que dejar pasar a alguien en silencio.
+   */
+  detiene: boolean;
   participante?: Participante | undefined;
   /** Solo para día equivocado: un supervisor puede autorizar el paso. */
   autorizable: boolean;
@@ -93,7 +110,12 @@ export interface EntradaEvaluacion {
  */
 export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
   const { entrada, sesion, participantes, asistencias, estadoDe, ahora, autorizado } = e;
-  const base = { entradaCruda: entrada.trim(), autorizable: false, participante: undefined };
+  const base = {
+    entradaCruda: entrada.trim(),
+    autorizable: false,
+    participante: undefined,
+    detiene: true,
+  };
 
   const p = buscarParaEscaneo(participantes, entrada);
   if (!p)
@@ -172,8 +194,9 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
         color: "amarillo",
         titulo: "REINGRESO",
         motivo: `Ya registró ${ETIQUETA_MODO[sesion.modo].toLowerCase()} hace ${minutos} ${minutos === 1 ? "minuto" : "minutos"}, dentro de la ventana de ${VENTANA_REINGRESO_MIN}.`,
-        accion: "Déjalo pasar sin registrar de nuevo.",
+        accion: "Déjalo pasar.",
         registra: false,
+        detiene: false,
       };
   }
 
@@ -186,6 +209,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
       motivo: `Su ${ETIQUETA_MODO[sesion.modo].toLowerCase()} del día ${sesion.dia} ya está registrada (${suyas[0]!.hora}).`,
       accion: "Déjalo pasar. No se registra otra vez.",
       registra: false,
+      detiene: false,
     };
 
   // --- Discrepancia de pago: pasa, pero avisando ---
@@ -211,6 +235,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     motivo: autorizado && p.dia !== sesion.dia ? "Paso autorizado por supervisor." : "",
     accion: "",
     registra: true,
+    detiene: false,
   };
 }
 

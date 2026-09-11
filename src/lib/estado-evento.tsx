@@ -1036,6 +1036,11 @@ export function EstadoEventoProvider({
               // Solo se registra si la base lo aprueba; si dice rojo, no se
               // guarda nada aunque el motor local hubiera dicho que sí.
               registra: remoto.color !== "rojo" && resultado.registra,
+              // Un rojo remoto siempre para la fila. En lo demás manda lo que
+              // decidió el motor local: si allí era un «déjalo pasar», que la
+              // base lo confirme en amarillo no lo convierte en un caso que
+              // atender.
+              detiene: remoto.color === "rojo" || resultado.detiene,
             };
         } catch {
           // La red falló en mitad del escaneo. Se sigue con lo local, que es
