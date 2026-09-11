@@ -81,6 +81,22 @@ export interface ResultadoEscaneo {
    * menos grave que dejar pasar a alguien en silencio.
    */
   detiene: boolean;
+  /**
+   * ¿Hay que verificar la credencial antes de registrar esto?
+   *
+   * El QR no prueba quién lo trae: prueba qué folio es. Alguien puede llegar
+   * con el código de otro en el teléfono, y el sistema no tendría forma de
+   * saberlo. Por eso la admisión es en dos tiempos: se escanea, se enseñan el
+   * nombre y la matrícula, quien captura los compara con la credencial física
+   * y solo entonces confirma.
+   *
+   * Va marcado solo en la ADMISIÓN —la primera entrada del día—, no en las
+   * salidas ni en los regresos. Salir no necesita identificación de nadie, y a
+   * quien ya se le comprobó la credencial al entrar, volvérsela a pedir para
+   * dejarlo volver de la calle no añade nada y cuesta una parada por persona
+   * en el receso, que es cuando menos se puede pagar.
+   */
+  verificar: boolean;
   participante?: Participante | undefined;
   /** Solo para día equivocado: un supervisor puede autorizar el paso. */
   autorizable: boolean;
@@ -178,6 +194,7 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     autorizable: false,
     participante: undefined,
     detiene: true,
+    verificar: false,
     tipo: "entrada" as Asistencia["tipo"],
   };
 
@@ -336,13 +353,21 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
           : "El monto depositado no coincide con lo esperado.",
       accion: "Déjalo pasar y pídele acudir a Servicios Financieros.",
       registra: true,
+      // Es una admisión con aviso, y una admisión se verifica igual.
+      verificar: tipo === "entrada",
     };
 
   // --- Verde ---
+  //
+  // Aquí solo llega la ADMISIÓN: las salidas y los regresos se resolvieron
+  // arriba, en el bloque de la puerta. Por eso `tipo === "entrada"` alcanza para
+  // saber que esta es la primera vez que esta persona pasa hoy, y que toca
+  // comprobarle la credencial.
   return {
     ...conPersona,
     tipo,
     color: "verde",
+    verificar: tipo === "entrada",
     titulo: tipo === "taller" ? "TALLER REGISTRADA" : "ENTRADA REGISTRADA",
     motivo: autorizado && p.dia !== sesion.dia ? "Paso autorizado por supervisor." : "",
     accion: "",

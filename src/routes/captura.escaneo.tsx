@@ -63,10 +63,29 @@ const MS_VERDE = 900;
 const MS_AVISO = 2500;
 
 function PantallaEscaneo() {
-  const { participantes, sesion, escanear, historial, enLinea, pendientes, estadoDe, asistencias } =
-    useEstadoEvento();
+  const {
+    participantes,
+    sesion,
+    evaluar,
+    registrar,
+    descartarEscaneo,
+    historial,
+    enLinea,
+    pendientes,
+    estadoDe,
+    asistencias,
+  } = useEstadoEvento();
   const [entrada, setEntrada] = useState("");
   const [resultado, setResultado] = useState<ResultadoEscaneo | null>(null);
+  /*
+   * La admisión pasa por aquí antes de escribirse.
+   *
+   * El QR no prueba quién lo trae: prueba qué folio es. Mientras esto no sea
+   * null, en pantalla está el nombre y la matrícula de esa persona esperando a
+   * que quien captura los compare con la credencial que tiene en la mano. No
+   * hay ninguna asistencia escrita todavía.
+   */
+  const [porVerificar, setPorVerificar] = useState<ResultadoEscaneo | null>(null);
   const [mudo, setMudo] = useState(false);
 
   // El ajuste se lee después de montar y no al crear el estado: en el servidor
@@ -96,10 +115,26 @@ function PantallaEscaneo() {
     opciones?: { autorizado?: boolean; nota?: string; aMano?: boolean },
   ) => {
     if (!valor.trim()) return;
-    const r = await escanear(valor, {
+    const extra = {
       autorizado: opciones?.autorizado ?? false,
       ...(opciones?.nota ? { nota: opciones.nota, autorizadoPor: sesion.capturista } : {}),
-    });
+    };
+    const r = await evaluar(valor, extra);
+
+    /*
+     * La admisión no se escribe hasta que alguien mira la credencial.
+     *
+     * Tampoco suena: el aviso sonoro significa «resuelto», y aquí no hay nada
+     * resuelto todavía. Quien captura está mirando la pantalla de todos modos,
+     * porque su trabajo en este segundo es comparar un nombre.
+     */
+    if (r.verificar) {
+      setPorVerificar(r);
+      setEntrada("");
+      return;
+    }
+
+    registrar(r, extra);
     retroalimentar(r);
     setResultado(r);
     setRetenido(false);
@@ -121,6 +156,13 @@ function PantallaEscaneo() {
    * pasar». Por color, eso paraba la fila. Por acción, no para nada.
    */
   const bloqueante = resultado !== null && resultado.detiene;
+
+  /*
+   * La cámara se detiene mientras se verifica. Si siguiera leyendo, la persona
+   * de atrás entraría en pantalla mientras quien captura está comparando el
+   * nombre de la de adelante, y confirmaría a la equivocada.
+   */
+  const camaraActiva = !bloqueante && porVerificar === null;
 
   useEffect(() => {
     if (!resultado || retenido) return;
@@ -171,7 +213,7 @@ function PantallaEscaneo() {
         pagaba 700 veces por jornada. Ahora el resultado va encima y el vídeo
         sigue vivo debajo.
       */}
-      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={!bloqueante}>
+      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={camaraActiva}>
         <span className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
           {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
         </span>
@@ -201,6 +243,17 @@ function PantallaEscaneo() {
       <p className="mt-1 text-xs text-muted-foreground">
         El campo es el plan B para quien llega sin código.
         {!enLinea ? ` Sin conexión: ${pendientes} escaneos esperando sincronización.` : ""}
+      </p>
+
+      {/*
+        Va aquí y no en la pantalla de sesión porque es la instrucción que se
+        olvida a la persona doscientos, no la que se lee al empezar el día.
+      */}
+      <p className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">
+        <span className="font-semibold text-foreground">La entrada se registra en dos pasos.</span>{" "}
+        Pídele la credencial, escanea su código, compara la matrícula y el nombre con lo que trae en
+        la mano, y solo entonces confirma. El código dice qué folio es, no quién lo trae. Al salir y
+        al volver no se verifica nada: se escanea y pasa.
       </p>
 
       {/*
@@ -321,6 +374,23 @@ function PantallaEscaneo() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {porVerificar ? (
+        <Verificacion
+          r={porVerificar}
+          onConfirmar={() => {
+            registrar(porVerificar);
+            retroalimentar(porVerificar);
+            setResultado(porVerificar);
+            setRetenido(false);
+            setPorVerificar(null);
+          }}
+          onDescartar={() => {
+            descartarEscaneo(porVerificar, "Los datos no coinciden con la credencial");
+            setPorVerificar(null);
+          }}
+        />
+      ) : null}
+
       {/*
         Solo tapan la pantalla los casos que exigen hacer algo. Los demás ya se
         resolvieron arriba con un destello sobre el vídeo, sin detener a nadie.
@@ -341,6 +411,102 @@ function PantallaEscaneo() {
         />
       ) : null}
     </PantallaCaptura>
+  );
+}
+
+/**
+ * El segundo filtro de la admisión: comparar contra la credencial.
+ *
+ * El QR no prueba quién lo trae, solo qué folio es. Alguien puede llegar con el
+ * código de otro en el teléfono y el sistema no tendría cómo saberlo, así que la
+ * identidad la pone una persona mirando una credencial física. Esta pantalla es
+ * el momento en que eso ocurre, y por eso no hay nada escrito todavía.
+ *
+ * Está construida para leerse en dos segundos con ruido alrededor y la
+ * credencial en la otra mano:
+ *
+ * - La matrícula va primera y en monoespaciado, que es lo que de verdad se
+ *   compara. El nombre confirma, pero el que distingue a dos personas parecidas
+ *   es el número.
+ * - No hay color de semáforo. Verde significa «resuelto» en el resto de la
+ *   aplicación, y aquí no hay nada resuelto: hay una pregunta.
+ * - Confirmar y descartar no se parecen. Están separados y el de descartar no
+ *   imita al de confirmar, porque quien pulsa cientos de veces al día acaba
+ *   pulsando por reflejo, y el reflejo tiene que caer del lado seguro.
+ */
+function Verificacion({
+  r,
+  onConfirmar,
+  onDescartar,
+}: {
+  r: ResultadoEscaneo;
+  onConfirmar: () => void;
+  onDescartar: () => void;
+}) {
+  const p = r.participante;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Verifica los datos contra la credencial"
+      className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-background p-5"
+    >
+      <div>
+        <p className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          Compara con su credencial
+        </p>
+
+        <p className="mt-5 font-mono text-4xl font-extrabold leading-none sm:text-5xl">
+          {p?.matricula ?? p?.folio ?? r.entradaCruda}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{p?.matricula ? "Matrícula" : "Folio"}</p>
+
+        <p className="mt-6 text-2xl font-extrabold leading-tight sm:text-4xl">{p?.nombre ?? "—"}</p>
+
+        {p ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <PerfilBadge perfil={p.perfil} />
+            <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs">{p.folio}</span>
+            <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold">Día {p.dia}</span>
+          </div>
+        ) : null}
+
+        {/*
+          El aviso de la discrepancia de pago viaja hasta aquí. Es la única
+          admisión que llega con algo que decirle a la persona, y decírselo
+          mientras se la tiene enfrente es la diferencia entre que pase por
+          Servicios Financieros y que no se entere hasta octubre.
+        */}
+        {r.color !== "verde" && r.motivo ? (
+          <div className="mt-5 rounded-lg bg-semaforo-amarillo p-3 text-semaforo-amarillo-fg">
+            <p className="text-sm font-extrabold">{r.titulo}</p>
+            <p className="mt-1 text-sm font-medium">{r.motivo}</p>
+            {r.accion ? <p className="mt-1 text-sm font-bold">{r.accion}</p> : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-6 grid gap-3">
+        {/*
+          Sin `autoFocus`. Enfocar el botón de confirmar abre un camino para
+          confirmar con el teclado, y por esta pantalla pasa un campo donde se
+          teclean folios a mano: un Intro de más admitiría a quien todavía no se
+          ha mirado. Confirmar tiene que costar un dedo sobre el botón.
+        */}
+        <button
+          onClick={onConfirmar}
+          className="flex min-h-20 items-center justify-center gap-3 rounded-lg bg-semaforo-verde text-xl font-extrabold text-semaforo-verde-fg"
+        >
+          <CheckCircle2 className="size-7" aria-hidden /> REGISTRAR ENTRADA
+        </button>
+        <button
+          onClick={onDescartar}
+          className="min-h-14 rounded-lg border-2 border-semaforo-rojo bg-background text-sm font-bold text-semaforo-rojo"
+        >
+          No coincide — pasar a incidencias
+        </button>
+      </div>
+    </div>
   );
 }
 

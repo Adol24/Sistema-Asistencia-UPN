@@ -223,10 +223,27 @@ interface Ctx {
    *
    * Sin conexión decide el motor local, que es para lo que existe.
    */
-  escanear: (
-    entrada: string,
-    opciones?: { autorizado?: boolean; nota?: string; autorizadoPor?: string },
-  ) => Promise<ResultadoEscaneo>;
+  escanear: (entrada: string, opciones?: OpcionesEscaneo) => Promise<ResultadoEscaneo>;
+  /**
+   * Evalúa sin registrar nada.
+   *
+   * Existe porque la admisión es en dos tiempos: se escanea, se enseñan el
+   * nombre y la matrícula, quien captura los compara con la credencial física
+   * y solo entonces confirma. Entre esos dos momentos no puede haber ninguna
+   * asistencia escrita, porque la persona todavía puede resultar no ser quien
+   * el QR dice.
+   */
+  evaluar: (entrada: string, opciones?: OpcionesEscaneo) => Promise<ResultadoEscaneo>;
+  /** Registra un resultado ya evaluado, y confirmado si tocaba confirmarlo. */
+  registrar: (r: ResultadoEscaneo, opciones?: OpcionesEscaneo) => void;
+  /**
+   * Anota que quien captura descartó el escaneo al mirar la credencial.
+   *
+   * No registra asistencia, pero sí deja rastro: un QR que no corresponde a
+   * quien lo trae es justo lo que este paso existe para encontrar, y perderlo
+   * sería quedarse sin saber que ocurrió.
+   */
+  descartarEscaneo: (r: ResultadoEscaneo, motivo: string) => void;
   deshacerUltimo: () => EscaneoHistorial | undefined;
   /** Cierra el día: salida automática a quien entró y no salió. */
   ejecutarCierreAutomatico: (dia: Dia) => number;
@@ -415,6 +432,13 @@ interface Ctx {
   enLinea: boolean;
   alternarConexion: () => void;
   pendientes: number;
+}
+
+/** Lo que un escaneo puede traer además del código. */
+export interface OpcionesEscaneo {
+  autorizado?: boolean;
+  nota?: string;
+  autorizadoPor?: string;
 }
 
 const EstadoEventoCtx = createContext<Ctx | null>(null);
@@ -1001,7 +1025,18 @@ export function EstadoEventoProvider({
     [porFolioAsistencias],
   );
 
-  const escanear = useCallback<Ctx["escanear"]>(
+  /*
+   * Evaluar y registrar están separados a propósito.
+   *
+   * Antes eran un solo paso: escanear escribía. Eso deja de valer en cuanto la
+   * admisión exige comprobar la credencial, porque entre leer el código y
+   * saber que esa persona es quien el código dice pasan unos segundos en los
+   * que no puede haber nada escrito. `escanear` sigue existiendo como la
+   * composición de los dos, y es lo que usa el pase de lista de taller: ahí la
+   * verificación ya está hecha, porque marcar una casilla obliga a leer el
+   * nombre.
+   */
+  const evaluar = useCallback<Ctx["evaluar"]>(
     async (entrada, opciones) => {
       const ahora = Date.now();
       // Lo que ya está en cola también cuenta para no duplicar registros.
@@ -1067,6 +1102,14 @@ export function EstadoEventoProvider({
         }
       }
 
+      return resultado;
+    },
+    [asistencias, enCola, sesion, estadoDe, enLinea, enVivo, participantes],
+  );
+
+  const registrar = useCallback<Ctx["registrar"]>(
+    (resultado, opciones) => {
+      const ahora = Date.now();
       const n = contadorEscaneos + 1;
       setContadorEscaneos(n);
       const h = horaActual(new Date(ahora));
@@ -1129,17 +1172,46 @@ export function EstadoEventoProvider({
 
       return resultado;
     },
-    [
-      asistencias,
-      enCola,
-      sesion,
-      estadoDe,
-      contadorEscaneos,
-      enLinea,
-      enVivo,
-      registrarBitacora,
-      participantes,
-    ],
+    [sesion, contadorEscaneos, enLinea, registrarBitacora],
+  );
+
+  const descartarEscaneo = useCallback<Ctx["descartarEscaneo"]>(
+    (resultado, motivo) => {
+      const n = contadorEscaneos + 1;
+      setContadorEscaneos(n);
+      registrarBitacora(
+        "Escaneo descartado al verificar",
+        `${resultado.participante?.folio ?? resultado.entradaCruda} · ${motivo} · día ${sesion.dia} · ${sesion.punto}`,
+        sesion.capturista,
+      );
+      setHistorial((prev) => [
+        {
+          id: `H-${String(n).padStart(4, "0")}`,
+          resultado: {
+            ...resultado,
+            color: "rojo",
+            titulo: "DESCARTADO EN LA PUERTA",
+            motivo,
+            accion: "PASAR A MESA DE INCIDENCIAS",
+            registra: false,
+          },
+          sesion,
+          hora: horaActual(),
+          pendiente: false,
+        },
+        ...prev,
+      ]);
+    },
+    [contadorEscaneos, registrarBitacora, sesion],
+  );
+
+  const escanear = useCallback<Ctx["escanear"]>(
+    async (entrada, opciones) => {
+      const r = await evaluar(entrada, opciones);
+      registrar(r, opciones);
+      return r;
+    },
+    [evaluar, registrar],
   );
 
   /*
@@ -1864,6 +1936,9 @@ export function EstadoEventoProvider({
       setSesion,
       historial,
       escanear,
+      evaluar,
+      registrar,
+      descartarEscaneo,
       deshacerUltimo,
       ejecutarCierreAutomatico,
       quitarAsistencia,
@@ -1930,6 +2005,9 @@ export function EstadoEventoProvider({
       setSesion,
       historial,
       escanear,
+      evaluar,
+      registrar,
+      descartarEscaneo,
       deshacerUltimo,
       ejecutarCierreAutomatico,
       quitarAsistencia,
