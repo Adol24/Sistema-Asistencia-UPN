@@ -66,7 +66,7 @@ En SUTERM los baños están en la planta baja, junto a las escaleras, **dentro**
 recinto: ir al baño no es salir y ahí no se registra nada. El punto de control es
 la puerta que da a la calle, porque cruzarla sí es irse.
 
-Se editan en , en «Lugares por día». Esa pantalla ahora sí
+Se editan en `/admin/configuracion`, en «Lugares por día». Esa pantalla ahora sí
 guarda los días en la base: antes el cambio se veía, se recargaba y volvía lo de
 antes.
 
