@@ -51,7 +51,7 @@ import type {
   TallerBase,
   UsuarioInterno,
 } from "@/dominio/tipos";
-import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { ConfiguracionEvento, DiaEvento } from "@/lib/configuracion";
 import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
@@ -471,6 +471,25 @@ export async function guardarRevision(
     decision,
     motivo_rechazo: motivo ?? null,
   });
+  if (error) throw error;
+}
+
+/**
+ * Guarda un día del evento.
+ *
+ * Los días viven en `dias_evento`, no en `configuracion_evento`, así que no
+ * entran por `guardarConfiguracion`. Editarlos no salía de la pantalla: el
+ * cambio se veía, se recargaba y volvía lo de antes. Con la fecha y el lugar era
+ * un defecto discreto; con los puntos de captura es uno que se descubre el día
+ * del evento, con la sede montada y los nombres equivocados en los teléfonos.
+ */
+export async function guardarDia(d: DiaEvento): Promise<void> {
+  const sb = exigirBase();
+  const { error } = await sb
+    .from("dias_evento")
+    // `sede` en la base es `lugar` en la aplicación. Ver `FilaDia`.
+    .update({ etiqueta: d.etiqueta, fecha: d.fecha, sede: d.lugar, puntos: d.puntos })
+    .eq("dia", d.dia);
   if (error) throw error;
 }
 

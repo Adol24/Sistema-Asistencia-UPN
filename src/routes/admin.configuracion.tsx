@@ -185,6 +185,38 @@ function Configuracion() {
                   set({ dias: b.dias.map((x, k) => (k === i ? { ...x, lugar: v } : x)) })
                 }
               />
+              {/*
+                Los puntos se escriben con el nombre que tienen en esa sede. Van
+                por día porque no es el mismo sitio, y un reporte que dice
+                «Puerta A» es un reporte que nadie sabe traducir a un lugar real.
+              */}
+              <div className="sm:col-span-2">
+                <Campo
+                  id={`puntos-${d.dia}`}
+                  etiqueta="Puntos de captura, separados por comas"
+                  valor={d.puntos.join(", ")}
+                  onChange={(v) =>
+                    set({
+                      dias: b.dias.map((x, k) =>
+                        k === i
+                          ? {
+                              ...x,
+                              puntos: v
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            }
+                          : x,
+                      ),
+                    })
+                  }
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Uno por cada capturista, con el nombre de esa sede. Incluye la mesa de
+                  incidencias: ahí se registra la entrada de quien salió en rojo y resultó estar
+                  bien. En blanco, la aplicación usa nombres genéricos.
+                </p>
+              </div>
             </div>
           ))}
         </Seccion>

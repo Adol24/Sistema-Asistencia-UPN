@@ -5,6 +5,17 @@ export interface DiaEvento {
   etiqueta: string;
   fecha: string;
   lugar: string;
+  /**
+   * Los puntos de captura de esa sede, con el nombre que tienen de verdad.
+   *
+   * Van por día porque no es el mismo sitio: el salón SUTERM recibe los días 1
+   * y 2, y el 3 es en otra sede con otra disposición. Una lista única obligaba a
+   * describir dos lugares distintos con las mismas palabras genéricas.
+   *
+   * Vacío significa «sin configurar»: la aplicación cae a su lista por defecto
+   * en lugar de dejar al capturista sin ningún punto que elegir.
+   */
+  puntos: string[];
 }
 
 /**
@@ -80,9 +91,9 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   banco: { banco: "", cuenta: "", clabe: "", beneficiario: "" },
   ventanilla: { lugar: "", horario: "" },
   dias: [
-    { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "" },
-    { dia: 2, etiqueta: "DÍA 2", fecha: "", lugar: "" },
-    { dia: 3, etiqueta: "DÍA 3", fecha: "", lugar: "" },
+    { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "", puntos: [] },
+    { dia: 2, etiqueta: "DÍA 2", fecha: "", lugar: "", puntos: [] },
+    { dia: 3, etiqueta: "DÍA 3", fecha: "", lugar: "", puntos: [] },
   ],
   registroEntrada: "",
   registroSalida: "",

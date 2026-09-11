@@ -61,6 +61,8 @@ export interface FilaDia {
   dia: Dia;
   etiqueta: string;
   fecha: string;
+  /** Puede no venir si la migración de puntos por día aún no se aplicó. */
+  puntos?: string[] | null;
   /**
    * En la base la columna se llama `sede`; en la aplicación, `lugar`.
    *
@@ -300,7 +302,15 @@ export function aConfiguracion(
       beneficiario: f.banco_beneficiario,
     },
     ventanilla: { lugar: f.ventanilla_lugar, horario: f.ventanilla_horario },
-    dias: dias.map((d) => ({ dia: d.dia, etiqueta: d.etiqueta, fecha: d.fecha, lugar: d.sede })),
+    dias: dias.map((d) => ({
+      dia: d.dia,
+      etiqueta: d.etiqueta,
+      fecha: d.fecha,
+      lugar: d.sede,
+      // Se filtran los blancos aquí y no en la pantalla: un punto sin nombre
+      // sería un botón sin texto, y el capturista no podría saber cuál eligió.
+      puntos: (d.puntos ?? []).map((p) => p.trim()).filter(Boolean),
+    })),
     catalogoAcademico: catalogo,
     avisoPrivacidad: f.aviso_privacidad,
     terminos: f.terminos,

@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { PUNTOS_CAPTURA, useEstadoEvento } from "@/lib/estado-evento";
+import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
@@ -37,6 +37,7 @@ function ConfiguracionSesion() {
     ejecutarCierreAutomatico,
     configuracion: evento,
     infoDia,
+    puntosDelDia,
     usuarios,
   } = useEstadoEvento();
   // El personal sale de `usuarios_internos`, no de una lista fija en el código.
@@ -91,14 +92,24 @@ function ConfiguracionSesion() {
           En PUERTA no eliges dirección: el sistema mira el último movimiento de esa persona y sabe
           si está entrando o saliendo. Sirve igual para recibir por la mañana que para el receso.
         </p>
+        <p className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">
+            Solo se escanea al cruzar a la calle.
+          </span>{" "}
+          Los baños, las escaleras y los pasillos están dentro del recinto: ir al baño no es salir y
+          ahí no se registra nada. Lo que cuenta es la puerta por la que alguien se va.
+        </p>
       </section>
 
       <section className="mt-6">
         <h2 className="flex items-center gap-2 text-sm font-bold">
           <MapPin className="size-4 text-primary" aria-hidden /> Punto de captura
         </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Los de la sede del día {sesion.dia}. Se configuran en Configuración del evento.
+        </p>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          {PUNTOS_CAPTURA.map((punto) => (
+          {puntosDelDia(sesion.dia).map((punto) => (
             <button
               key={punto}
               onClick={() => setSesion({ punto })}

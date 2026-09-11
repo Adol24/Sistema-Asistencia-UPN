@@ -12,6 +12,7 @@ confirmadas contra el proyecto real: `fn_padron_existe` responde 200,
 | --- | --- | --- |
 | 20 | `20260908180000_catalogo_academico_real.sql` | Sustituye el catálogo de ejemplo por la oferta real de la UPN |
 | 30 | `20260911120000_puerta_como_torniquete.sql` | Permite ir y volver por la puerta, y que el cierre no tape a quien se fue |
+| 31 | `20260911140000_puntos_de_captura_por_dia.sql` | Cada sede nombra sus propios puntos de captura |
 
 Hasta que corra, la aplicación seguirá mostrando los programas de ejemplo: el
 catálogo se carga de la base, no del código.
@@ -51,6 +52,23 @@ De ahí salen los otros tres cambios:
   jornada y no volvió se le respeta su salida real.
 
 No toca la elegibilidad para constancia: registrar no es condicionar.
+
+### Puntos de captura por día (31)
+
+Añade `puntos text[]` a `dias_evento`. Vacío significa «sin configurar» y la
+aplicación cae a su lista genérica, así que nada se rompe mientras no se llene.
+
+Van por día porque no es el mismo sitio: el salón SUTERM recibe los días 1 y 2 y
+el 3 es en otra sede. Y hacen falta con el nombre real porque un reporte que dice
+«Puerta A» es un reporte que nadie sabe traducir a un lugar.
+
+En SUTERM los baños están en la planta baja, junto a las escaleras, **dentro** del
+recinto: ir al baño no es salir y ahí no se registra nada. El punto de control es
+la puerta que da a la calle, porque cruzarla sí es irse.
+
+Se editan en , en «Lugares por día». Esa pantalla ahora sí
+guarda los días en la base: antes el cambio se veía, se recargaba y volvía lo de
+antes.
 
 ## Cómo aplicarlas
 

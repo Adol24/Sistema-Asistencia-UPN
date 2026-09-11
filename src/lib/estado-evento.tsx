@@ -270,6 +270,8 @@ interface Ctx {
    * que lea el mock seguiría mostrando la sede vieja.
    */
   infoDia: (dia: Dia) => ConfiguracionEvento["dias"][number];
+  /** Los puntos de captura de ese día. Nunca vacío: cae al respaldo. */
+  puntosDelDia: (dia: Dia) => string[];
 
   // --- Catálogo de talleres ---
   /** Talleres con el cupo ocupado ya calculado; `cupoOcupado` nunca se edita a mano. */
@@ -418,29 +420,31 @@ interface Ctx {
 const EstadoEventoCtx = createContext<Ctx | null>(null);
 
 /*
- * Un punto por cada persona del equipo, que son ocho.
+ * El respaldo, para cuando un día todavía no tiene sus puntos configurados.
  *
- * Eran cuatro, y esa lista era el techo real de la operación: dos capturistas
- * en el mismo punto quedan indistinguibles en la bitácora y en el monitoreo, así
- * que nadie sabe qué fila se atascó ni a quién preguntarle. Con 700 personas
- * entrando en una hora eso importa mientras está pasando, no después.
+ * Los de verdad viven en la base, por día, porque no es el mismo sitio: el salón
+ * SUTERM recibe los días 1 y 2 y el 3 es en otra sede. Nombres genéricos como
+ * estos no existen en ningún lado, y un reporte que dice «Puerta A» es un
+ * reporte que nadie sabe traducir a un lugar real. Se llenan en
+ * /admin/configuracion.
  *
- * La mesa de incidencias es un punto de captura de pleno derecho, no un apaño:
- * ahí es donde se registra la entrada de quien salió en rojo y resultó estar
- * bien. Si no existe como punto, ese caso se resuelve volviéndolo a formar en la
- * puerta, que es justo lo que hay que evitar.
+ * Son ocho porque ocho son las personas del equipo: dos capturistas en el mismo
+ * punto quedan indistinguibles en la bitácora, así que cuando una fila se atasca
+ * nadie sabe cuál es. La mesa de incidencias cuenta como punto de pleno derecho:
+ * ahí se registra la entrada de quien salió en rojo y resultó estar bien, y sin
+ * ella ese caso se resuelve mandándolo de vuelta a formarse.
  */
-const PUNTOS = [
-  "Puerta A",
-  "Puerta B",
-  "Puerta C",
-  "Puerta D",
-  "Puerta E",
-  "Puerta F",
+const PUNTOS_POR_DEFECTO = [
+  "Acceso principal 1",
+  "Acceso principal 2",
+  "Acceso principal 3",
+  "Acceso principal 4",
+  "Salida a la calle",
   "Mesa de incidencias",
   "Registro Taller",
+  "Supervisión",
 ];
-export const PUNTOS_CAPTURA = PUNTOS;
+export const PUNTOS_CAPTURA = PUNTOS_POR_DEFECTO;
 
 /**
  * @param inicial Lo público, ya resuelto en el servidor.
@@ -516,6 +520,21 @@ export function EstadoEventoProvider({
   const infoDia = useCallback<Ctx["infoDia"]>(
     (dia) => configuracion.dias.find((d) => d.dia === dia) ?? configuracion.dias[0]!,
     [configuracion.dias],
+  );
+
+  /**
+   * Los puntos de captura de ese día, con el nombre real de esa sede.
+   *
+   * Si el día no los tiene configurados se cae al respaldo en vez de devolver
+   * una lista vacía: quedarse sin ningún punto que elegir dejaría al capturista
+   * sin poder abrir sesión, y eso es peor que un nombre genérico.
+   */
+  const puntosDelDia = useCallback<Ctx["puntosDelDia"]>(
+    (dia) => {
+      const suyos = infoDia(dia).puntos;
+      return suyos.length > 0 ? suyos : PUNTOS_POR_DEFECTO;
+    },
+    [infoDia],
   );
   const [talleresBase, setTalleresBase] = useState<TallerBase[]>(inicial?.talleresBase ?? []);
   const [usuarios, setUsuarios] = useState<UsuarioInterno[]>([]);
@@ -755,7 +774,7 @@ export function EstadoEventoProvider({
   const [sesion, setSesionState] = useState<SesionCaptura>({
     dia: 1,
     modo: "puerta",
-    punto: PUNTOS[0]!,
+    punto: PUNTOS_POR_DEFECTO[0]!,
     capturista: "MARIO CANTU",
   });
 
@@ -1244,6 +1263,19 @@ export function EstadoEventoProvider({
     if (Object.keys(columnas).length)
       escribir("la configuración", (d) =>
         d.guardarConfiguracion(columnas).then(() => d.olvidarPublico()),
+      );
+
+    // Los días tienen tabla propia y por eso no entran en `columnasDeConfiguracion`.
+    // Editarlos no salía de la pantalla: el cambio se veía, se recargaba y volvía lo
+    // de antes. Con la fecha y el lugar era un defecto discreto; con los puntos de
+    // captura es uno que se descubre el día del evento. Se guardan los tres, que es
+    // más barato que averiguar cuál cambió.
+    const dias = patch.dias;
+    if (dias)
+      escribir(
+        "los días del evento",
+        (d) => Promise.all(dias.map((x) => d.guardarDia(x))).then(() => d.olvidarPublico()),
+        () => avisarFallo("No se pudieron guardar los días del evento."),
       );
   }, []);
 
@@ -1809,8 +1841,20 @@ export function EstadoEventoProvider({
   }, []);
 
   const setSesion = useCallback<Ctx["setSesion"]>(
-    (s) => setSesionState((prev) => ({ ...prev, ...s })),
-    [],
+    (s) =>
+      setSesionState((prev) => {
+        const siguiente = { ...prev, ...s };
+        /*
+         * Cambiar de día cambia de sede, y los puntos de una no existen en la
+         * otra. Sin esto, la sesión se quedaba apuntando a un punto del día
+         * anterior y los escaneos salían firmados desde un lugar que ese día no
+         * existe, que es un error imposible de ver hasta leer el reporte.
+         */
+        const validos = puntosDelDia(siguiente.dia);
+        if (!validos.includes(siguiente.punto)) siguiente.punto = validos[0]!;
+        return siguiente;
+      }),
+    [puntosDelDia],
   );
 
   const value = useMemo<Ctx>(
@@ -1841,6 +1885,7 @@ export function EstadoEventoProvider({
       configuracion,
       actualizarConfiguracion,
       infoDia,
+      puntosDelDia,
       avisosDe,
       descartarAvisos,
       talleres,
@@ -1906,6 +1951,7 @@ export function EstadoEventoProvider({
       configuracion,
       actualizarConfiguracion,
       infoDia,
+      puntosDelDia,
       avisosDe,
       descartarAvisos,
       talleres,
