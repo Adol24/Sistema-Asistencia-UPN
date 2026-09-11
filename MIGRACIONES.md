@@ -15,32 +15,32 @@ anónimo, y desde el archivo parecían cerradas.
 
 ## Aplicadas
 
-Todas hasta `20260911140000`, confirmadas contra el proyecto real: `dias_evento`
-trae los puntos de SUTERM, `fn_evaluar_escaneo` ya solo acepta `p_modo`, y el
-catálogo académico responde con los 9 programas reales.
+**Todas**, confirmadas contra el proyecto real: el comprobante termina en «LA
+CONEXIÓN FUNCIONA», sin ningún problema.
 
-## Pendiente
+No queda ninguna pendiente. Lo único abierto no es una migración: el **día 3**
+sigue sin puntos de captura porque es otra sede y aún no se sabe cómo se llaman
+sus accesos. Mientras tanto usa los genéricos, que no rompe nada. Se llenan desde
+`/admin/configuracion`, sin tocar la base.
 
-| # | Archivo | Qué hace |
-| --- | --- | --- |
-| 32 | `20260911160000_cerrar_funciones_de_la_puerta.sql` | **Urgente.** Cierra al anónimo dos funciones que quedaron abiertas |
+### La trampa que hay que recordar al escribir la siguiente
 
-### Cerrar las funciones de la puerta (32)
+`20260911120000` creó dos funciones y las cerró con `revoke ... from public`. En
+Supabase eso **no alcanza**: `anon` es un rol con nombre propio y con su propia
+concesión, así que quitarle el permiso a PUBLIC no le quita el suyo. Y al cambiar
+la firma de `fn_evaluar_escaneo`, para PostgreSQL era una función nueva: nació
+con las concesiones por defecto en vez de heredar las de la vieja, que sí estaba
+cerrada. (`create or replace` sí las conserva; cambiar la firma, no.)
 
-Córrela cuanto antes. La 30 creó `fn_esta_dentro` y volvió a crear
-`fn_evaluar_escaneo` con otra firma, y las cerró con `revoke ... from public`. En
-Supabase eso no alcanza: `anon` es un rol con nombre propio y con su propia
-concesión, así que quitarle el permiso a PUBLIC no le quita el suyo. Y como
-`fn_evaluar_escaneo` cambió de firma, para PostgreSQL es una función nueva, que
-nace con las concesiones por defecto en vez de heredar las de la vieja.
+Quedó abierta al público hasta que lo cerró `20260911160000`. Al escribir una
+migración que cree o recree funciones internas:
 
-Mientras no corra, cualquiera con la clave publicable puede preguntarle a la base
-si un folio existe, si está pagado y si esa persona está dentro del recinto.
-
-Es el mismo agujero que cerró `20260908160000`, reabierto por copiar mal el
-remedio. Por eso esta recorre el catálogo en lugar de escribir las firmas a mano:
-repetir los tipos exactos de los argumentos es donde se cuela el error, y una
-letra de más deja la función abierta sin que nadie lo note.
+- Revocar siempre `from public, anon`, no solo de `public`.
+- Recorrer `pg_proc` por nombre en lugar de escribir las firmas a mano. Repetir
+  los tipos exactos de los argumentos es justo donde se cuela el error, y una
+  letra de más deja la función abierta sin que nadie lo note. El patrón está en
+  `20260908160000` y en `20260911160000`.
+- Correr `bun run verificar-conexion` después. Fue lo que lo encontró.
 
 ## Qué hicieron las últimas (ya aplicadas)
 
@@ -109,9 +109,13 @@ supabase db push
 
 O pegando cada archivo, en orden, en el editor SQL del panel.
 
-**Pruébalas primero en un proyecto de prueba.** No se han ejecutado contra
-ningún Postgres: en la máquina donde se escribieron no hay `psql`, ni el CLI de
-Supabase, ni Docker. Están revisadas leyéndolas, no probadas.
+**Pruébalas primero en un proyecto de prueba.** No se ejecutan contra ningún
+Postgres al escribirlas: en la máquina donde se escriben no hay `psql`, ni el CLI
+de Supabase, ni Docker. Salen revisadas leyéndolas, no probadas — y ya se vio lo
+que eso cuesta: la 30 parecía correcta en el archivo y dejó dos funciones
+abiertas al público.
+
+Después de correrlas, `bun run verificar-conexion`. Siempre.
 
 ## Cómo verificar que quedaron
 
