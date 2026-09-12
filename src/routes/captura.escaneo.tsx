@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { estaSilenciado, probar, retroalimentar, silenciar, type Aviso } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
@@ -75,6 +76,7 @@ function PantallaEscaneo() {
     estadoDe,
     asistencias,
   } = useEstadoEvento();
+  const { modoPrototipo } = useSesion();
   const [entrada, setEntrada] = useState("");
   const [resultado, setResultado] = useState<ResultadoEscaneo | null>(null);
   /*
@@ -309,31 +311,42 @@ function PantallaEscaneo() {
         )}
       </section>
 
-      <section className="mt-5 rounded-lg border border-dashed border-border bg-muted/40 p-3">
-        <Rotulo className="flex items-center gap-2">
-          <Zap className="size-3.5" aria-hidden /> Casos de prueba del prototipo
-        </Rotulo>
-        <div className="mt-2 grid gap-2">
-          {casos.map((c) => (
-            <button
-              key={`${c.color}-${c.titulo}`}
-              onClick={() => void disparar(c.p.folio)}
-              className="flex min-h-12 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-left text-xs hover:bg-muted"
-            >
-              <span className="min-w-0">
-                <span className="block font-semibold">{c.titulo}</span>
-                <span className="block truncate text-muted-foreground">
-                  {c.p.folio} · {c.p.nombre}
+      {/*
+        El panel de pruebas solo existe en modo prototipo.
+
+        Se pintaba siempre, y en la puerta del evento eso es un problema de tres
+        filos: enseña en pantalla el folio y el nombre de participantes reales,
+        un toque accidental REGISTRA la entrada de alguien que no está, y ocupa
+        la mitad de la pantalla que más importa del día. Existe para poder
+        disparar cada color durante la revisión, no para operar.
+      */}
+      {modoPrototipo ? (
+        <section className="mt-5 rounded-lg border border-dashed border-border bg-muted/40 p-3">
+          <Rotulo className="flex items-center gap-2">
+            <Zap className="size-3.5" aria-hidden /> Casos de prueba del prototipo
+          </Rotulo>
+          <div className="mt-2 grid gap-2">
+            {casos.map((c) => (
+              <button
+                key={`${c.color}-${c.titulo}`}
+                onClick={() => void disparar(c.p.folio)}
+                className="flex min-h-12 items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-left text-xs hover:bg-muted"
+              >
+                <span className="min-w-0">
+                  <span className="block font-semibold">{c.titulo}</span>
+                  <span className="block truncate text-muted-foreground">
+                    {c.p.folio} · {c.p.nombre}
+                  </span>
                 </span>
-              </span>
-              <PuntoSemaforo color={c.color} />
-            </button>
-          ))}
-          <p className="text-xs text-muted-foreground">
-            Escanea dos veces al mismo participante para ver la ventana de reingreso.
-          </p>
-        </div>
-      </section>
+                <PuntoSemaforo color={c.color} />
+              </button>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Escanea dos veces al mismo participante para ver la ventana de reingreso.
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       <AlertDialog open={!!autorizando} onOpenChange={(o) => !o && setAutorizando(null)}>
         <AlertDialogContent>
