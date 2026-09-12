@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, MapPin, ScanLine, TimerOff, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { useSesion } from "@/lib/sesion";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
@@ -40,9 +42,28 @@ function ConfiguracionSesion() {
     puntosDelDia,
     usuarios,
   } = useEstadoEvento();
+  const { persona, modoPrototipo } = useSesion();
   // El personal sale de `usuarios_internos`, no de una lista fija en el código.
   const capturistas = usuarios.filter((u) => u.rol === "capturista" && u.activo);
   const dia = infoDia(sesion.dia);
+
+  /*
+   * Quién captura no se elige: es quien inició sesión.
+   *
+   * Antes había aquí una lista de capturistas para escoger, y eso podía
+   * contradecir a la base. La asistencia se firma en `asistencias.capturista_id`
+   * con el usuario autenticado, así que alguien que entrara como Ana y pulsara
+   * «Mario» dejaba la bitácora local diciendo Mario y la tabla diciendo Ana,
+   * para el mismo escaneo. Y con tres personas dadas de alta con el mismo
+   * nombre, los tres botones se encendían a la vez: se comparaban por texto.
+   *
+   * En modo prototipo no hay sesión que valga, así que ahí sigue la lista.
+   */
+  const nombreCorto = (n: string) => n.split(" ").slice(0, 2).join(" ");
+  const soyYo = persona ? nombreCorto(persona.nombre) : null;
+  useEffect(() => {
+    if (soyYo && sesion.capturista !== soyYo) setSesion({ capturista: soyYo });
+  }, [soyYo, sesion.capturista, setSesion]);
 
   return (
     <PantallaCaptura titulo="Configuración de sesión">
@@ -131,29 +152,44 @@ function ConfiguracionSesion() {
         <h2 className="flex items-center gap-2 text-sm font-bold">
           <UserRound className="size-4 text-primary" aria-hidden /> Capturista
         </h2>
-        <div className="mt-2 grid gap-2">
-          {capturistas.map((u) => {
-            const nombre = u.nombre.split(" ").slice(0, 2).join(" ");
-            return (
-              <button
-                key={u.id}
-                onClick={() => setSesion({ capturista: nombre })}
-                aria-pressed={sesion.capturista === nombre}
-                className={cn(
-                  "flex min-h-14 items-center justify-between rounded-lg border px-4 text-sm font-semibold transition-colors",
-                  sesion.capturista === nombre
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:bg-muted",
-                )}
-              >
-                {nombre}
-                {!u.activo ? (
-                  <span className="text-xs font-normal opacity-70">inactivo</span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+        {persona ? (
+          <div className="mt-2 rounded-lg border border-border bg-card px-4 py-3">
+            <p className="text-sm font-bold">{persona.nombre}</p>
+            <p className="text-xs text-muted-foreground">{persona.correo}</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Cada escaneo queda firmado contigo. Si te relevan, el siguiente turno inicia sesión
+              con su cuenta.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-2 grid gap-2">
+            {capturistas.map((u) => {
+              const nombre = nombreCorto(u.nombre);
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => setSesion({ capturista: nombre })}
+                  aria-pressed={sesion.capturista === nombre}
+                  className={cn(
+                    "flex min-h-14 items-center justify-between rounded-lg border px-4 text-sm font-semibold transition-colors",
+                    sesion.capturista === nombre
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:bg-muted",
+                  )}
+                >
+                  <span className="min-w-0 truncate">{nombre}</span>
+                  {/* El correo distingue a dos personas con el mismo nombre. */}
+                  <span className="ml-2 shrink-0 text-xs font-normal opacity-70">{u.correo}</span>
+                </button>
+              );
+            })}
+            {modoPrototipo ? (
+              <p className="text-xs text-muted-foreground">
+                Modo prototipo: no hay sesión iniciada, así que aquí se elige a mano.
+              </p>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <Button
@@ -168,11 +204,8 @@ function ConfiguracionSesion() {
           <TimerOff className="size-4 text-muted-foreground" aria-hidden /> Cierre del día
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Al terminar la jornada nadie escanea: con 700 personas yéndose a la misma hora, formarlas
-          sería una fila de casi una hora en el peor momento. El cierre marca la salida de quien
-          siga DENTRO. A quien se fue a media jornada no lo toca, porque su salida ya está
-          registrada y ese dato no hay que taparlo. No decide constancias. El prototipo no tiene
-          reloj de evento, así que se dispara a mano para poder evaluarlo.
+          Marca la salida de quien siga dentro del recinto. A quien ya se fue no lo toca, y no
+          decide constancias. Se dispara a mano porque el prototipo no tiene reloj de evento.
         </p>
         <AlertDialog>
           <AlertDialogTrigger asChild>
