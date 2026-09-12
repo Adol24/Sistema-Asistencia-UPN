@@ -109,17 +109,6 @@ function ConfiguracionSesion() {
         <div className="mt-2">
           <SelectorModo />
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          En PUERTA no eliges dirección: el sistema mira el último movimiento de esa persona y sabe
-          si está entrando o saliendo. Sirve igual para recibir por la mañana que para el receso.
-        </p>
-        <p className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">
-            Solo se escanea al cruzar a la calle.
-          </span>{" "}
-          Los baños, las escaleras y los pasillos están dentro del recinto: ir al baño no es salir y
-          ahí no se registra nada. Lo que cuenta es la puerta por la que alguien se va.
-        </p>
       </section>
 
       <section className="mt-6">
