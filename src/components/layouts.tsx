@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
 import { Titulo, Texto } from "@/components/tipografia";
 import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
+import { ENLACE_NAV } from "@/lib/estilos";
 import type { Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -141,29 +142,10 @@ export function NavPanel({ items }: { items: { to: RutaConstruida; label: string
     <>
       {items.map((i) =>
         estadoDeRuta(i.to) === "listo" ? (
-          /*
-           * El color del hover vive en `inactiveProps`, no en la clase base.
-           *
-           * Estaba en la base, así que también se le aplicaba al enlace activo.
-           * Y en Tailwind las variantes `hover:` se generan DESPUÉS de las
-           * utilidades sin variante, de modo que `hover:bg-muted` ganaba a
-           * `bg-primary`: pasar el ratón por encima de la sección en la que ya
-           * estabas la volvía gris y su texto blanco quedaba casi ilegible
-           * sobre el gris claro.
-           *
-           * Separando los dos estados no compiten: el activo solo se aclara un
-           * poco, que es la única respuesta que tiene sentido para algo donde
-           * ya estás.
-           */
           <Link
             key={i.to}
             to={i.to}
-            activeProps={{
-              className: "bg-primary text-primary-foreground hover:bg-primary/90",
-            }}
-            inactiveProps={{
-              className: "text-muted-foreground hover:bg-muted hover:text-foreground",
-            }}
+            {...ENLACE_NAV}
             className="flex h-10 items-center rounded-md px-3 text-sm font-medium transition-colors"
           >
             {i.label}

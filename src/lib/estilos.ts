@@ -24,3 +24,24 @@ export const opcion = (activa: boolean) =>
   activa
     ? "border-primary bg-primary text-primary-foreground"
     : "border-border bg-card hover:bg-muted";
+
+/**
+ * El enlace de una barra de navegación, según sea o no la sección actual.
+ *
+ * **El color del hover va aquí y no en la clase base del enlace, y esa es toda
+ * la razón de que esto exista.** Estaba en la base, así que también se le
+ * aplicaba al enlace activo; y en Tailwind las variantes `hover:` se generan
+ * DESPUÉS de las utilidades sin variante, de modo que `hover:bg-muted` le
+ * ganaba a `bg-primary`: pasar el ratón por encima de la sección en la que ya
+ * estabas la volvía gris, y su texto blanco quedaba casi ilegible sobre el gris
+ * claro. Separados no compiten: el activo solo se aclara un poco, que es la
+ * única respuesta que tiene sentido para algo donde ya estás.
+ *
+ * Estaba escrito en las dos barras que hay —la del panel y la del portal—, y
+ * una tercera lo habría vuelto a equivocar. Se reparte con `{...ENLACE_NAV}`;
+ * la forma —el alto, la rejilla, el icono— la sigue poniendo cada barra.
+ */
+export const ENLACE_NAV = {
+  activeProps: { className: "bg-primary text-primary-foreground hover:bg-primary/90" },
+  inactiveProps: { className: "text-muted-foreground hover:bg-muted hover:text-foreground" },
+} as const;

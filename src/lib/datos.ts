@@ -421,13 +421,7 @@ export async function guardarPago(p: {
   nota?: string | undefined;
 }): Promise<void> {
   const sb = exigirBase();
-  const participanteId = await idDe(
-    sb,
-    "participantes",
-    "folio",
-    p.folio,
-    `No encontramos el folio ${p.folio}.`,
-  );
+  const participanteId = await idDelFolio(sb, p.folio);
 
   // `resultado` no se manda: lo decide un disparador comparando el monto contra
   // lo esperado. Enviarlo desde aquí permitiría marcar como pagada una
@@ -460,13 +454,7 @@ export async function guardarAsistencia(a: {
   autorizacionMotivo?: string | undefined;
 }): Promise<void> {
   const sb = exigirBase();
-  const participanteId = await idDe(
-    sb,
-    "participantes",
-    "folio",
-    a.folio,
-    `No encontramos el folio ${a.folio}.`,
-  );
+  const participanteId = await idDelFolio(sb, a.folio);
 
   /*
    * Cada escaneo se firma con quien lo hizo.
@@ -793,13 +781,7 @@ export async function abrirCasoRemoto(datos: {
   canal: string;
 }): Promise<{ clave: string; creadoEn: string }> {
   const sb = exigirBase();
-  const participanteId = await idDe(
-    sb,
-    "participantes",
-    "folio",
-    datos.folio,
-    `No encontramos el folio ${datos.folio}.`,
-  );
+  const participanteId = await idDelFolio(sb, datos.folio);
 
   const fila = await datosDe<{ clave: string; creado_en: string }>(
     sb
@@ -936,6 +918,16 @@ export async function confirmarEnPadronRemoto(
  *
  * Se traduce aquí, en la frontera, que es donde vive el resto de traducciones.
  */
+/**
+ * El uuid de un participante a partir de su folio.
+ *
+ * Es la traducción que más veces hace falta: el pago, la asistencia y el caso
+ * de soporte se abren todos contra un folio. Los tres escribían la misma
+ * llamada de seis líneas con el mismo mensaje de «no encontramos».
+ */
+const idDelFolio = (sb: SupabaseClient, folio: string) =>
+  idDe(sb, "participantes", "folio", folio, `No encontramos el folio ${folio}.`);
+
 async function uuidDelTaller(
   sb: SupabaseClient,
   clave: string | undefined,
