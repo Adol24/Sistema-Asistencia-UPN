@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
+import { avisarFallo, columnasDeConfiguracion, escribir } from "@/lib/escritura-remota";
+import { useRelojEvento, type RelojEvento } from "@/lib/reloj";
 import { useSesion } from "@/lib/sesion";
 import { rolHaciaBase } from "@/lib/roles";
 import type { Publico } from "@/lib/datos";
@@ -44,84 +46,6 @@ import { guardarCola, leerCola } from "@/lib/cola-pendientes";
 import { aplicarRevisiones } from "@/lib/revision";
 
 /**
- * Acceso a la capa de datos, cargada bajo demanda.
- *
- * `@/lib/datos` arrastra el SDK de Supabase. Importarlo de forma estática metía
- * ese peso en el paquete que descarga **cualquier** visitante, incluido el
- * alumno que solo abre su QR desde el teléfono y nunca escribe en la base. Con
- * el import dinámico, el SDK se descarga la primera vez que hace falta y solo
- * si hay base configurada.
- *
- * Además reúne en un sitio el patrón que estaba copiado cuatro veces —escribir
- * sin esperar y registrar el fallo en consola—, que es la forma correcta aquí:
- * la pantalla ya se actualizó de manera optimista y la escritura no debe
- * bloquear a quien está atendiendo una fila.
- */
-type ModuloDatos = typeof import("@/lib/datos");
-
-/**
- * Campo de la configuración -> columna de su tabla.
- *
- * Era una escalera de ocho `if (patch.x !== undefined)` idénticos salvo por el
- * nombre. Como dato en una tabla, añadir un campo es una línea y no hay ninguna
- * rama que leer: la correspondencia se ve de un vistazo y no puede
- * desincronizarse a mitad de la escalera.
- *
- * Solo están los campos planos. Los días y el catálogo académico viven en
- * tablas aparte y se editan por su cuenta.
- */
-const COLUMNA = {
-  nombre: "nombre",
-  subtitulo: "subtitulo",
-  fechas: "fechas",
-  cuotaEvento: "cuota_evento",
-  horasValidacion: "horas_validacion",
-  dominioInstitucional: "dominio_institucional",
-  correoSoporte: "correo_soporte",
-  whatsappSoporte: "whatsapp_soporte",
-} as const satisfies Partial<Record<keyof ConfiguracionEvento, string>>;
-
-/** Sin dominio configurado es cadena vacía en la app y NULL en la tabla. */
-const valorDeColumna = (campo: string, valor: unknown) =>
-  campo === "dominioInstitucional" ? valor || null : valor;
-
-function columnasDeConfiguracion(patch: Partial<ConfiguracionEvento>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(patch)
-      .filter(([campo, valor]) => valor !== undefined && campo in COLUMNA)
-      .map(([campo, valor]) => [
-        COLUMNA[campo as keyof typeof COLUMNA],
-        valorDeColumna(campo, valor),
-      ]),
-  );
-}
-
-/**
- * Avisa en pantalla de una escritura que la base rechazó.
- *
- * Se importa el aviso al vuelo en vez de arriba porque este módulo lo cargan
- * todas las pantallas, incluidas las del participante en el teléfono, y una
- * escritura fallida es la excepción: no vale la pena que el paquete de la
- * portada arrastre la librería de avisos por un caso que casi nunca ocurre.
- */
-function avisarFallo(mensaje: string): void {
-  void import("sonner").then(({ toast }) => toast.error(mensaje));
-}
-
-function escribir(
-  descripcion: string,
-  accion: (datos: ModuloDatos) => Promise<unknown>,
-  /** Se llama si la base rechazó la escritura, para poder deshacer lo pintado. */
-  alFallar?: (e: unknown) => void,
-): void {
-  if (!hayBaseDeDatos) return;
-  void import("@/lib/datos").then(accion).catch((e: unknown) => {
-    console.error(`No se pudo guardar ${descripcion}`, e);
-    alFallar?.(e);
-  });
-}
-
-/**
  * Estado del evento durante la sesión del prototipo: pagos registrados en
  * ventanilla y asistencias capturadas en la puerta.
  *
@@ -154,28 +78,6 @@ export interface EntradaBitacora {
   detalle: string;
   /** Las de la sesión se distinguen de las históricas. */
   deLaSesion?: boolean | undefined;
-}
-
-/**
- * Reloj simulado del evento.
- *
- * El prototipo no corre el día del evento, así que el dashboard y el monitoreo
- * necesitan poder situarse: sin esto el ritmo sale en 0.3 por minuto y la
- * pantalla no transmite lo que se verá con 700 personas entrando en una hora.
- */
-export interface RelojEvento {
-  dia: Dia;
-  /** Minutos desde medianoche. */
-  minutos: number;
-  /**
-   * Sigue la hora real, en vez de la que alguien dejó puesta con el deslizador.
-   *
-   * Encendido es lo normal, y es lo que hace falta el dia del evento: el ritmo
-   * de entrada se calcula contra esta hora, así que una hora congelada da un
-   * ritmo falso —y más falso cuanto más avanza la jornada—. Se apaga solo
-   * cuando alguien mueve el control a mano, para ensayar.
-   */
-  automatico: boolean;
 }
 
 /** Decisión de revisión tomada en esta sesión sobre una evidencia. */
@@ -522,6 +424,8 @@ export function EstadoEventoProvider({
     inicial?.configuracion ?? CONFIGURACION_VACIA,
   );
 
+  const { reloj, setReloj } = useRelojEvento(configuracion);
+
   const [avisos, setAvisos] = useState<Record<string, string[]>>({});
   const agregarAviso = useCallback((folio: string, texto: string) => {
     setAvisos((prev) => ({ ...prev, [folio]: [...(prev[folio] ?? []), texto] }));
@@ -741,20 +645,6 @@ export function EstadoEventoProvider({
     Record<string, Partial<Participante>>
   >({});
   const [bitacoraSesion, setBitacoraSesion] = useState<EntradaBitacora[]>([]);
-  // Arranca en la hora pico de acceso del día 1.
-  /*
-   * Arranca en un valor fijo y pasa a la hora real despues de montar.
-   *
-   * Leer `new Date()` durante el render daría una hora en el servidor y otra en
-   * el navegador, y React vería dos árboles distintos al hidratar. El valor
-   * inicial es el mismo en los dos lados y el efecto de abajo lo corrige.
-   */
-  const [reloj, setRelojState] = useState<RelojEvento>({
-    dia: 1,
-    minutos: 8 * 60 + 30,
-    automatico: true,
-  });
-
   /*
    * Si hay conexión de verdad, no si alguien pulsó un botón.
    *
@@ -1807,86 +1697,32 @@ export function EstadoEventoProvider({
     return { registros: filas.length, altas, actualizaciones, sinDia };
   }, []);
 
-  // --------------------------------------------------------------- reloj ---
-  /*
-   * Tocar el control apaga el seguimiento de la hora real.
-   *
-   * Es lo que se espera: quien mueve el deslizador quiere ver otro momento, y
-   * que el reloj se lo corrigiera un segundo después sería pelearse con la
-   * pantalla. Para volver, `setReloj({ automatico: true })`.
-   */
-  const setReloj = useCallback<Ctx["setReloj"]>(
-    (r) => setRelojState((prev) => ({ ...prev, automatico: false, ...r })),
-    [],
-  );
-
-  /*
-   * El día del evento que corresponde a hoy, o `null` si hoy no es ninguno.
-   *
-   * Se compara contra la fecha local, no contra UTC: a las 19:00 en México ya
-   * es el día siguiente en UTC, y el monitoreo saltaría al día 2 con la jornada
-   * del 1 todavía en marcha.
-   */
-  const diaDeHoy = useCallback((): Dia | null => {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, "0");
-    const hoy = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    return (configuracion.dias.find((x) => x.fecha.slice(0, 10) === hoy)?.dia as Dia) ?? null;
-  }, [configuracion.dias]);
-
-  /*
-   * Mientras siga la hora real, se pone al dia solo.
-   *
-   * Cada treinta segundos y no cada minuto porque el ritmo se mide en personas
-   * por minuto: con un minuto de resolución el número daría saltos visibles
-   * justo cuando alguien lo está mirando.
-   *
-   * Si hoy no es ninguno de los tres días, el día no se toca: se respeta el que
-   * hubiera, que es lo útil para preparar la jornada la víspera.
-   */
-  useEffect(() => {
-    if (!reloj.automatico) return;
-
-    const poner = () => {
-      const ahora = new Date();
-      const hoy = diaDeHoy();
-      setRelojState((prev) =>
-        prev.automatico
-          ? {
-              ...prev,
-              minutos: ahora.getHours() * 60 + ahora.getMinutes(),
-              ...(hoy ? { dia: hoy } : {}),
-            }
-          : prev,
-      );
-    };
-
-    poner();
-    const t = setInterval(poner, 30_000);
-    return () => clearInterval(t);
-  }, [reloj.automatico, diaDeHoy]);
-
   // --------------------------------------------------------------- red ---
+  /*
+   * Escribía tres estados DENTRO de los actualizadores de otros dos.
+   *
+   * Un actualizador tiene que ser puro: React lo vuelve a ejecutar cuando le
+   * conviene —en desarrollo lo hace siempre, a propósito—, y cada repetición
+   * volvía a meter la cola entera en las asistencias capturadas. Recuperar la
+   * red podía duplicar lo que se había registrado sin ella, que es justo lo que
+   * la cola existe para evitar.
+   *
+   * La cola se lee de su propio estado, no del actualizador, y las tres
+   * escrituras quedan una detrás de otra. React las agrupa en la misma pintura.
+   */
   const alternarConexion = useCallback(() => {
-    setEnLinea((antes) => {
-      const ahora = !antes;
-      // Al recuperar la red, lo pendiente se sincroniza.
-      if (ahora)
-        setEnCola((cola) => {
-          if (cola.length) {
-            setCapturadas((prev) => [...prev, ...cola]);
-            const ids = new Set(cola.map((a) => a.id));
-            setHistorial((prev) =>
-              prev.map((h) =>
-                h.asistencia && ids.has(h.asistencia.id) ? { ...h, pendiente: false } : h,
-              ),
-            );
-          }
-          return [];
-        });
-      return ahora;
-    });
-  }, []);
+    const volviendo = !enLinea;
+    setEnLinea(volviendo);
+    if (!volviendo || enCola.length === 0) return;
+
+    // Al recuperar la red, lo pendiente se sincroniza.
+    const ids = new Set(enCola.map((a) => a.id));
+    setCapturadas((prev) => [...prev, ...enCola]);
+    setHistorial((prev) =>
+      prev.map((h) => (h.asistencia && ids.has(h.asistencia.id) ? { ...h, pendiente: false } : h)),
+    );
+    setEnCola([]);
+  }, [enLinea, enCola]);
 
   const setSesion = useCallback<Ctx["setSesion"]>(
     (s) =>
