@@ -735,10 +735,6 @@ function ImportacionPadron() {
 }
 
 /**
- * Un select del filtro. Existe para no repetir cuatro veces la misma etiqueta,
- * el mismo alto de toque y la misma opción «todos».
- */
-/**
  * Un filtro de selección: el campo etiquetado más su opción de «todos».
  *
  * Se llamaba `Campo`, que es el nombre del componente compartido, y por eso

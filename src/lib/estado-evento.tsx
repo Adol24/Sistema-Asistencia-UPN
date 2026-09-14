@@ -579,6 +579,9 @@ export function EstadoEventoProvider({
   const { persona, cargando: cargandoSesion } = useSesion();
   const personaId = persona?.id ?? null;
 
+  /** Cuándo terminó la última carga, en milisegundos. Para poder decirlo. */
+  const [cargadoEn, setCargadoEn] = useState<number | null>(null);
+
   /**
    * Carga desde Supabase. Si no hay base configurada, o si la carga falla, se
    * queda con lo que ya hubiera: un prototipo que se cae en blanco porque falta
@@ -597,11 +600,7 @@ export function EstadoEventoProvider({
    * Volver a pedir al cambiar de persona también vacía la lista al salir, que
    * es lo correcto: los datos de la fila no deben sobrevivir al cierre de
    * sesión en la memoria del navegador.
-   */
-  /** Cuándo terminó la última carga, en milisegundos. Para poder decirlo. */
-  const [cargadoEn, setCargadoEn] = useState<number | null>(null);
-
-  /**
+   *
    * @param silencioso No enciende el indicador de carga.
    *
    * Lo usan las recargas que nadie pidió —la escucha en vivo y el regreso a la
@@ -1609,14 +1608,7 @@ export function EstadoEventoProvider({
     [casos],
   );
 
-  // -------------------------------------------------------------- padrón ---
   // --------------------------------------------------- reparto de días ---
-  /**
-   * Mover a alguien de día no es cambiar un número: arrastra su sede y puede
-   * dejarlo inscrito en un taller que ese día no se imparte. Toda esa cadena
-   * vive aquí, en una sola función, para que la use tanto el reparto masivo
-   * como el cambio de una persona.
-   */
   /**
    * Asigna un día a un conjunto de alumnos, con todo lo que eso arrastra.
    *

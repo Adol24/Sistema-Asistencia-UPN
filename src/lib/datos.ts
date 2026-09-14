@@ -121,10 +121,6 @@ const COLS_PADRON = `
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
 `;
 
-/**
- * Carga el estado inicial. Devuelve `null` si no hay base configurada, que es la
- * señal para que el contexto siga con los datos simulados.
- */
 /** Lo que cualquiera puede leer: el evento, sus días, el catálogo y los talleres. */
 export interface Publico {
   configuracion: ConfiguracionEvento;
@@ -348,6 +344,44 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
  * una cola de reintento como la que ya existe para los escaneos sin conexión.
  */
 
+/** Lo que responde PostgREST: los datos, o el motivo por el que no hay. */
+type Respuesta = { error: { message: string } | null };
+
+/**
+ * Ejecuta una escritura y lanza si la base la rechazó.
+ *
+ * `const { error } = await …; if (error) throw error;` estaba veintisiete veces
+ * en este archivo, una por escritura. Repetido tantas veces deja de leerse, y
+ * omitirlo no se nota desde la pantalla: la escritura falla en silencio y lo
+ * que se ve —que se actualizó en memoria antes de escribir— sigue enseñando lo
+ * que no se guardó. Ya pasó dos veces, con los días de un taller y con el
+ * estado de un caso. Con la comprobación en un solo sitio, saltársela deja de
+ * ser posible.
+ */
+async function exigir(consulta: PromiseLike<Respuesta>): Promise<void> {
+  const { error } = await consulta;
+  if (error) throw error;
+}
+
+/** Igual que `exigir`, para cuando además hace falta lo que devolvió. */
+async function datosDe<T>(consulta: PromiseLike<Respuesta & { data: unknown }>): Promise<T> {
+  const { data, error } = await consulta;
+  if (error) throw error;
+  return data as T;
+}
+
+/**
+ * Llama a una función de la base.
+ *
+ * Las del portal eran todas el mismo bloque de cuatro líneas con otro nombre
+ * dentro. Lo único que cambia de una a otra es la función, sus parámetros y la
+ * forma de la respuesta, y eso es justo lo que queda a la vista al escribirlas
+ * así.
+ */
+async function llamar<T>(funcion: string, parametros?: Record<string, unknown>): Promise<T> {
+  return datosDe<T>(exigirBase().rpc(funcion, parametros));
+}
+
 /**
  * Traduce un identificador de la aplicacion al uuid de la base.
  *
@@ -373,10 +407,11 @@ async function idDe(
   valor: string,
   noExiste: string,
 ): Promise<string> {
-  const { data, error } = await sb.from(tabla).select("id").eq(columna, valor).maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error(noExiste);
-  return (data as { id: string }).id;
+  const fila = await datosDe<{ id: string } | null>(
+    sb.from(tabla).select("id").eq(columna, valor).maybeSingle(),
+  );
+  if (!fila) throw new Error(noExiste);
+  return fila.id;
 }
 
 export async function guardarPago(p: {
@@ -400,23 +435,24 @@ export async function guardarPago(p: {
   // `resultado` no se manda: lo decide un disparador comparando el monto contra
   // lo esperado. Enviarlo desde aquí permitiría marcar como pagada una
   // discrepancia con solo elegir mal en un desplegable.
-  const { error } = await sb.from("pagos").insert({
-    participante_id: participanteId,
-    concepto: p.concepto,
-    monto: p.monto,
-    monto_esperado: p.montoEsperado,
-    // Nula en ventanilla: la columna dejó de ser obligatoria porque quien cobra
-    // verifica el voucher en mano. La restricción de unicidad sigue puesta y
-    // sigue protegiendo la carga masiva del banco, porque en PostgreSQL dos
-    // nulos no chocan entre sí.
-    referencia: p.referencia?.trim() || null,
-    // A ISO antes de escribir: la columna es `date` y PostgreSQL la lee con
-    // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
-    fecha_deposito: fechaAIso(p.fechaDeposito),
-    resultado: resultadoDe(p.monto, p.montoEsperado),
-    nota: p.nota ?? null,
-  });
-  if (error) throw error;
+  await exigir(
+    sb.from("pagos").insert({
+      participante_id: participanteId,
+      concepto: p.concepto,
+      monto: p.monto,
+      monto_esperado: p.montoEsperado,
+      // Nula en ventanilla: la columna dejó de ser obligatoria porque quien cobra
+      // verifica el voucher en mano. La restricción de unicidad sigue puesta y
+      // sigue protegiendo la carga masiva del banco, porque en PostgreSQL dos
+      // nulos no chocan entre sí.
+      referencia: p.referencia?.trim() || null,
+      // A ISO antes de escribir: la columna es `date` y PostgreSQL la lee con
+      // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
+      fecha_deposito: fechaAIso(p.fechaDeposito),
+      resultado: resultadoDe(p.monto, p.montoEsperado),
+      nota: p.nota ?? null,
+    }),
+  );
 }
 
 export async function guardarAsistencia(a: {
@@ -447,15 +483,16 @@ export async function guardarAsistencia(a: {
    */
   const { data: sesion } = await sb.auth.getUser();
 
-  const { error } = await sb.from("asistencias").insert({
-    participante_id: participanteId,
-    dia: a.dia,
-    tipo: a.tipo,
-    punto: a.punto,
-    capturista_id: sesion.user?.id ?? null,
-    autorizacion_motivo: a.autorizacionMotivo ?? null,
-  });
-  if (error) throw error;
+  await exigir(
+    sb.from("asistencias").insert({
+      participante_id: participanteId,
+      dia: a.dia,
+      tipo: a.tipo,
+      punto: a.punto,
+      capturista_id: sesion.user?.id ?? null,
+      autorizacion_motivo: a.autorizacionMotivo ?? null,
+    }),
+  );
 }
 
 export async function guardarRevision(
@@ -465,13 +502,14 @@ export async function guardarRevision(
 ): Promise<void> {
   const sb = exigirBase();
   const { data: sesion } = await sb.auth.getUser();
-  const { error } = await sb.from("revisiones").insert({
-    evidencia_id: evidenciaId,
-    revisor_id: sesion.user?.id,
-    decision,
-    motivo_rechazo: motivo ?? null,
-  });
-  if (error) throw error;
+  await exigir(
+    sb.from("revisiones").insert({
+      evidencia_id: evidenciaId,
+      revisor_id: sesion.user?.id,
+      decision,
+      motivo_rechazo: motivo ?? null,
+    }),
+  );
 }
 
 /**
@@ -485,18 +523,17 @@ export async function guardarRevision(
  */
 export async function guardarDia(d: DiaEvento): Promise<void> {
   const sb = exigirBase();
-  const { error } = await sb
-    .from("dias_evento")
-    // `sede` en la base es `lugar` en la aplicación. Ver `FilaDia`.
-    .update({ etiqueta: d.etiqueta, fecha: d.fecha, sede: d.lugar, puntos: d.puntos })
-    .eq("dia", d.dia);
-  if (error) throw error;
+  await exigir(
+    sb
+      .from("dias_evento")
+      // `sede` en la base es `lugar` en la aplicación. Ver `FilaDia`.
+      .update({ etiqueta: d.etiqueta, fecha: d.fecha, sede: d.lugar, puntos: d.puntos })
+      .eq("dia", d.dia),
+  );
 }
 
 export async function guardarConfiguracion(patch: Record<string, unknown>): Promise<void> {
-  const sb = exigirBase();
-  const { error } = await sb.from("configuracion_evento").update(patch).eq("id", 1);
-  if (error) throw error;
+  await exigir(exigirBase().from("configuracion_evento").update(patch).eq("id", 1));
 }
 
 /**
@@ -522,7 +559,6 @@ export async function anotarEnBitacora(
   });
 }
 
-/** Da de alta o actualiza un taller. */
 /**
  * Guarda un taller identificándolo por su CLAVE, no por su uuid.
  *
@@ -555,39 +591,36 @@ export async function guardarTallerRemoto(t: {
   activo: boolean;
 }): Promise<void> {
   const sb = exigirBase();
-  const { data, error } = await sb
-    .from("talleres")
-    .upsert(
-      {
-        clave: t.clave,
-        nombre: t.nombre,
-        descripcion: t.descripcion,
-        ponente: t.ponente,
-        costo: t.costo,
-        cupo_total: t.cupoTotal,
-        horario: t.horario,
-        lugar: t.lugar,
-        activo: t.activo,
-      },
-      { onConflict: "clave" },
-    )
-    .select("id")
-    .single();
-  if (error) throw error;
+  const creado = await datosDe<{ id: string }>(
+    sb
+      .from("talleres")
+      .upsert(
+        {
+          clave: t.clave,
+          nombre: t.nombre,
+          descripcion: t.descripcion,
+          ponente: t.ponente,
+          costo: t.costo,
+          cupo_total: t.cupoTotal,
+          horario: t.horario,
+          lugar: t.lugar,
+          activo: t.activo,
+        },
+        { onConflict: "clave" },
+      )
+      .select("id")
+      .single(),
+  );
 
   // Los días viven en su propia tabla: se reemplazan enteros en vez de
   // calcular la diferencia, que para tres filas no compensa.
-  const id = (data as { id: string }).id;
-  const { error: eBorrado } = await sb.from("taller_dias").delete().eq("taller_id", id);
-  if (eBorrado) throw eBorrado;
-  if (t.dias.length) {
-    const { error: eDias } = await sb
-      .from("taller_dias")
-      .insert(t.dias.map((dia) => ({ taller_id: id, dia })));
-    // Se lanza en vez de callarse: un taller sin sus días no se imparte ningún
-    // día, y nadie podría inscribirse. Antes este error se perdía.
-    if (eDias) throw eDias;
-  }
+  const id = creado.id;
+  await exigir(sb.from("taller_dias").delete().eq("taller_id", id));
+  // El alta de los días se lanza en vez de callarse: un taller sin sus días no
+  // se imparte ningún día, y nadie podría inscribirse. Antes este error se
+  // perdía.
+  if (t.dias.length)
+    await exigir(sb.from("taller_dias").insert(t.dias.map((dia) => ({ taller_id: id, dia }))));
 }
 
 /** También por clave, y por la misma razón que `guardarTallerRemoto`. */
@@ -595,9 +628,11 @@ export async function eliminarTallerRemoto(clave: string): Promise<void> {
   const sb = exigirBase();
   // Ya no está: no hay nada que retirar y tampoco es un fallo, así que este
   // es el único sitio donde la ausencia no se convierte en error.
-  const { data: fila } = await sb.from("talleres").select("id").eq("clave", clave).maybeSingle();
+  const fila = await datosDe<{ id: string } | null>(
+    sb.from("talleres").select("id").eq("clave", clave).maybeSingle(),
+  );
   if (!fila) return;
-  const id = (fila as { id: string }).id;
+  const id = fila.id;
 
   const { count } = await sb
     .from("participantes")
@@ -606,14 +641,11 @@ export async function eliminarTallerRemoto(clave: string): Promise<void> {
   // Con inscritos no se borra, se desactiva: desactivar no es cancelar, y
   // borrarlo dejaría sus inscripciones apuntando a algo que ya no existe.
   if (count && count > 0) {
-    const { error } = await sb.from("talleres").update({ activo: false }).eq("id", id);
-    if (error) throw error;
+    await exigir(sb.from("talleres").update({ activo: false }).eq("id", id));
     return;
   }
-  const { error: eDias } = await sb.from("taller_dias").delete().eq("taller_id", id);
-  if (eDias) throw eDias;
-  const { error } = await sb.from("talleres").delete().eq("id", id);
-  if (error) throw error;
+  await exigir(sb.from("taller_dias").delete().eq("taller_id", id));
+  await exigir(sb.from("talleres").delete().eq("id", id));
 }
 
 /**
@@ -630,12 +662,12 @@ export async function guardarUsuarioRemoto(u: {
   rol: string;
   activo: boolean;
 }): Promise<void> {
-  const sb = exigirBase();
-  const { error } = await sb
-    .from("usuarios_internos")
-    .update({ nombre: u.nombre, correo: u.correo, rol: u.rol, activo: u.activo })
-    .eq("id", u.id);
-  if (error) throw error;
+  await exigir(
+    exigirBase()
+      .from("usuarios_internos")
+      .update({ nombre: u.nombre, correo: u.correo, rol: u.rol, activo: u.activo })
+      .eq("id", u.id),
+  );
 }
 
 /**
@@ -651,15 +683,11 @@ export async function guardarUsuarioRemoto(u: {
  * bitácora, no en `revisiones`. Anotarlo ahí necesitaría una columna nueva.
  */
 export async function deshacerRevisionRemota(evidenciaId: string): Promise<void> {
-  const sb = exigirBase();
-  const { error } = await sb
-    .from("evidencias")
-    .update({ estado: "pendiente" })
-    .eq("id", evidenciaId);
-  if (error) throw error;
+  await exigir(
+    exigirBase().from("evidencias").update({ estado: "pendiente" }).eq("id", evidenciaId),
+  );
 }
 
-/** Dar de baja desactiva; nunca borra, o la bitácora pierde a su autor. */
 /**
  * Cambia el estado de un caso de soporte.
  *
@@ -688,15 +716,16 @@ export async function cambiarEstadoCasoRemoto(
   // `auth.users`, así que la propia sesión ya lo dice sin poder equivocarse.
   const { data: sesion } = await sb.auth.getUser();
 
-  const { error } = await sb
-    .from("casos_soporte")
-    .update({
-      estado,
-      resuelto_en: estado === "resuelto" ? new Date().toISOString() : null,
-      ...(sesion.user?.id ? { atiende_id: sesion.user.id } : {}),
-    })
-    .eq("id", id);
-  if (error) throw error;
+  await exigir(
+    sb
+      .from("casos_soporte")
+      .update({
+        estado,
+        resuelto_en: estado === "resuelto" ? new Date().toISOString() : null,
+        ...(sesion.user?.id ? { atiende_id: sesion.user.id } : {}),
+      })
+      .eq("id", id),
+  );
 }
 
 /**
@@ -727,27 +756,19 @@ export async function corregirNombreRemoto(folio: string, nombre: string): Promi
     throw new Error("Escribe el nombre completo, con apellidos.");
   }
 
-  const { data, error: eBusca } = await sb
-    .from("participantes")
-    .select("id, matricula")
-    .eq("folio", folio)
-    .maybeSingle();
-  if (eBusca) throw eBusca;
-  if (!data) throw new Error(`No encontramos el folio ${folio}.`);
-  const fila = data as { id: string; matricula: string | null };
+  const fila = await datosDe<{ id: string; matricula: string | null } | null>(
+    sb.from("participantes").select("id, matricula").eq("folio", folio).maybeSingle(),
+  );
+  if (!fila) throw new Error(`No encontramos el folio ${folio}.`);
 
-  const { error } = await sb.from("participantes").update({ nombre: limpio }).eq("id", fila.id);
-  if (error) throw error;
+  await exigir(sb.from("participantes").update({ nombre: limpio }).eq("id", fila.id));
 
   // El padrón solo tiene fila si es alumno; el docente y el externo no están en
   // ninguno, y ahí no hay nada más que corregir.
-  if (fila.matricula) {
-    const { error: ePadron } = await sb
-      .from("padron_alumnos")
-      .update({ nombre: limpio })
-      .eq("matricula", fila.matricula);
-    if (ePadron) throw ePadron;
-  }
+  if (fila.matricula)
+    await exigir(
+      sb.from("padron_alumnos").update({ nombre: limpio }).eq("matricula", fila.matricula),
+    );
 }
 
 /**
@@ -783,19 +804,18 @@ export async function abrirCasoRemoto(datos: {
     `No encontramos el folio ${datos.folio}.`,
   );
 
-  const { data, error } = await sb
-    .from("casos_soporte")
-    .insert({
-      participante_id: participanteId,
-      asunto: datos.asunto.trim(),
-      detalle: datos.detalle.trim(),
-      canal: datos.canal,
-    })
-    .select("clave, creado_en")
-    .single();
-  if (error) throw error;
-
-  const fila = data as { clave: string; creado_en: string };
+  const fila = await datosDe<{ clave: string; creado_en: string }>(
+    sb
+      .from("casos_soporte")
+      .insert({
+        participante_id: participanteId,
+        asunto: datos.asunto.trim(),
+        detalle: datos.detalle.trim(),
+        canal: datos.canal,
+      })
+      .select("clave, creado_en")
+      .single(),
+  );
   return { clave: fila.clave, creadoEn: aFechaHora(fila.creado_en) };
 }
 
@@ -814,21 +834,20 @@ export async function guardarCasoRemoto(
   const sb = exigirBase();
   const id = await idDe(sb, "casos_soporte", "clave", clave, `El caso ${clave} ya no existe.`);
 
-  const { error } = await sb
-    .from("casos_soporte")
-    .update({
-      asunto: cambios.asunto.trim(),
-      detalle: cambios.detalle.trim(),
-      canal: cambios.canal,
-    })
-    .eq("id", id);
-  if (error) throw error;
+  await exigir(
+    sb
+      .from("casos_soporte")
+      .update({
+        asunto: cambios.asunto.trim(),
+        detalle: cambios.detalle.trim(),
+        canal: cambios.canal,
+      })
+      .eq("id", id),
+  );
 }
 
 export async function desactivarUsuarioRemoto(id: string): Promise<void> {
-  const sb = exigirBase();
-  const { error } = await sb.from("usuarios_internos").update({ activo: false }).eq("id", id);
-  if (error) throw error;
+  await exigir(exigirBase().from("usuarios_internos").update({ activo: false }).eq("id", id));
 }
 
 /**
@@ -840,15 +859,16 @@ export async function desactivarUsuarioRemoto(id: string): Promise<void> {
 export async function anularAsistenciaRemota(id: string, motivo: string): Promise<void> {
   const sb = exigirBase();
   const { data: sesion } = await sb.auth.getUser();
-  const { error } = await sb
-    .from("asistencias")
-    .update({
-      anulada_en: new Date().toISOString(),
-      anulada_por: sesion.user?.id ?? null,
-      anulacion_motivo: motivo,
-    })
-    .eq("id", id);
-  if (error) throw error;
+  await exigir(
+    sb
+      .from("asistencias")
+      .update({
+        anulada_en: new Date().toISOString(),
+        anulada_por: sesion.user?.id ?? null,
+        anulacion_motivo: motivo,
+      })
+      .eq("id", id),
+  );
 }
 
 // =================================================== funciones del portal ===
@@ -864,10 +884,9 @@ export async function anularAsistenciaRemota(id: string, motivo: string): Promis
  * comprobación.
  */
 export async function existeEnPadronRemoto(matricula: string) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_padron_existe", { p_matricula: matricula });
-  if (error) throw error;
-  return data as { existe: boolean; ya_registrado: boolean };
+  return llamar<{ existe: boolean; ya_registrado: boolean }>("fn_padron_existe", {
+    p_matricula: matricula,
+  });
 }
 
 /**
@@ -881,14 +900,7 @@ export async function confirmarEnPadronRemoto(
   nombres: string,
   programa: string,
 ) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_padron_confirmar", {
-    p_matricula: matricula,
-    p_nombres: nombres,
-    p_programa: programa,
-  });
-  if (error) throw error;
-  return data as {
+  return llamar<{
     matricula: string;
     nombre: string;
     nivel: string;
@@ -904,17 +916,13 @@ export async function confirmarEnPadronRemoto(
      */
     dia: number | null;
     ya_registrado: boolean;
-  } | null;
+  } | null>("fn_padron_confirmar", {
+    p_matricula: matricula,
+    p_nombres: nombres,
+    p_programa: programa,
+  });
 }
 
-/**
- * Alta de un docente o un visitante externo.
- *
- * Va aparte de `preregistrarAlumno` porque son altas distintas, no variantes de
- * la misma: aquella parte de una matrícula del padrón y hereda de ahí el día y
- * lo académico; esta no tiene padrón del que heredar, así que recibe el nombre
- * y la institución que la persona declara, y **el día que ella eligió**.
- */
 /**
  * El uuid del taller a partir de su clave, o `null` si no eligió ninguno.
  *
@@ -939,6 +947,14 @@ async function uuidDelTaller(
   return idDe(sb, "talleres", "clave", clave, `El taller ${clave} ya no está disponible.`);
 }
 
+/**
+ * Alta de un docente o un visitante externo.
+ *
+ * Va aparte de `preregistrarAlumno` porque son altas distintas, no variantes de
+ * la misma: aquella parte de una matrícula del padrón y hereda de ahí el día y
+ * lo académico; esta no tiene padrón del que heredar, así que recibe el nombre
+ * y la institución que la persona declara, y **el día que ella eligió**.
+ */
 export async function preregistrarExterno(datos: {
   perfil: "docente" | "externo";
   nombre: string;
@@ -949,7 +965,10 @@ export async function preregistrarExterno(datos: {
   tallerId?: string | undefined;
 }) {
   const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_preregistrar_externo", {
+  // El error sube tal cual, como en el alta de alumno: el mensaje viene de un
+  // `raise exception` de la función y es específico —«ese taller no se imparte
+  // el día 2»—, que ayuda más que uno genérico.
+  return llamar<{ id: string; folio: string; dia: Dia }>("fn_preregistrar_externo", {
     p_perfil: datos.perfil,
     p_nombre: datos.nombre,
     p_correo: datos.correo,
@@ -958,11 +977,6 @@ export async function preregistrarExterno(datos: {
     p_dia: datos.dia,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
-  // Se lanza el error tal cual, como en el alta de alumno: el mensaje viene de
-  // un `raise exception` de la función y es específico —«ese taller no se
-  // imparte el día 2»—, que ayuda más que uno genérico.
-  if (error) throw error;
-  return data as { id: string; folio: string; dia: Dia };
 }
 
 export async function preregistrarAlumno(datos: {
@@ -972,14 +986,12 @@ export async function preregistrarAlumno(datos: {
   tallerId?: string | undefined;
 }) {
   const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_preregistrar_alumno", {
+  return llamar<{ id: string; folio: string; dia: Dia }>("fn_preregistrar_alumno", {
     p_matricula: datos.matricula,
     p_correo: datos.correo,
     p_celular: datos.celular,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
-  if (error) throw error;
-  return data as { id: string; folio: string; dia: Dia };
 }
 
 /**
@@ -991,33 +1003,25 @@ export async function preregistrarAlumno(datos: {
  * entregar a quien todavía no ha demostrado ser su dueño.
  */
 export async function autenticarPortal(folio: string, credencial: string) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_autenticar_portal", {
+  const id = await llamar<string | null>("fn_autenticar_portal", {
     p_folio: folio,
     p_credencial: credencial,
   });
-  if (error) throw error;
-  return (data as string | null) ?? null;
+  return id ?? null;
 }
 
 export async function estadoDelPortal(folio: string, credencial: string) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_portal_estado", {
+  return llamar<Record<string, unknown>>("fn_portal_estado", {
     p_folio: folio,
     p_credencial: credencial,
   });
-  if (error) throw error;
-  return data as Record<string, unknown>;
 }
 
 export async function abrirCasoNombreRemoto(participanteId: string, nombreCorrecto: string) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_abrir_caso_nombre", {
+  return llamar<string>("fn_abrir_caso_nombre", {
     p_participante: participanteId,
     p_nombre_correcto: nombreCorrecto,
   });
-  if (error) throw error;
-  return data as string;
 }
 
 /**
@@ -1030,29 +1034,16 @@ export async function abrirCasoNombreRemoto(participanteId: string, nombreCorrec
  * puntos, y sería ella quien se equivoque de dirección.
  */
 export async function evaluarEscaneoRemoto(entrada: string, dia: Dia, modo: Modo) {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_evaluar_escaneo", {
-    p_entrada: entrada,
-    p_dia: dia,
-    p_modo: modo,
-  });
-  if (error) throw error;
-  return (data ?? [])[0] as
-    | {
-        color: "verde" | "amarillo" | "rojo";
-        titulo: string;
-        detalle: string;
-        autorizable: boolean;
-        tipo: Asistencia["tipo"];
-      }
-    | undefined;
-}
-
-export async function repartirDiasRemoto(): Promise<number> {
-  const sb = exigirBase();
-  const { data, error } = await sb.rpc("fn_repartir_dias_pendientes");
-  if (error) throw error;
-  return (data as number) ?? 0;
+  const filas = await llamar<
+    {
+      color: "verde" | "amarillo" | "rojo";
+      titulo: string;
+      detalle: string;
+      autorizable: boolean;
+      tipo: Asistencia["tipo"];
+    }[]
+  >("fn_evaluar_escaneo", { p_entrada: entrada, p_dia: dia, p_modo: modo });
+  return (filas ?? [])[0];
 }
 
 /** Lo que ocurrió al guardar el padrón. Se enseña tal cual en la pantalla. */
@@ -1179,18 +1170,6 @@ export async function guardarPadronRemoto(
 }
 
 /**
- * Guarda el día que la organización asignó a un conjunto de alumnos.
- *
- * Esto faltaba por completo: repartir los días movía el estado de React y nada
- * más, así que recargar la página deshacía el trabajo de repartir dos mil
- * alumnos y nadie se enteraba hasta que un capturista veía a alguien sin día en
- * la puerta.
- *
- * Va por lotes por la misma razón que la importación: una sola petición con dos
- * mil matrículas en un `in (...)` es una URL de decenas de miles de caracteres,
- * y hay intermediarios que la cortan.
- */
-/**
  * Mueve de día a un conjunto de alumnos.
  *
  * **Escribía solo el padrón, y ese era el fallo.** El día vive en dos sitios:
@@ -1216,17 +1195,15 @@ export async function asignarDiaRemoto(
   dia: number | null,
   porLote = 200,
 ): Promise<{ matricula: string; taller: string }[]> {
-  const sb = exigirBase();
   const liberados: { matricula: string; taller: string }[] = [];
   // Se sigue troceando: un arreglo de miles de matrículas en un solo parámetro
   // hace una petición enorme, y el tamaño de lote ya estaba elegido.
   for (let i = 0; i < matriculas.length; i += porLote) {
-    const { data, error } = await sb.rpc("fn_asignar_dia_a_varios", {
-      p_matriculas: matriculas.slice(i, i + porLote),
-      p_dia: dia,
-    });
-    if (error) throw new Error(error.message);
-    for (const f of (data ?? []) as { matricula: string; taller_liberado: string }[])
+    const movidos = await llamar<{ matricula: string; taller_liberado: string }[]>(
+      "fn_asignar_dia_a_varios",
+      { p_matriculas: matriculas.slice(i, i + porLote), p_dia: dia },
+    );
+    for (const f of movidos ?? [])
       liberados.push({ matricula: f.matricula, taller: f.taller_liberado });
   }
   return liberados;
