@@ -9,6 +9,7 @@ import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { meta } from "@/lib/seo";
+import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
 
@@ -76,9 +77,7 @@ function ConfiguracionSesion() {
                 aria-pressed={sesion.dia === d}
                 className={cn(
                   "min-h-20 rounded-lg border px-2 text-center transition-colors",
-                  sesion.dia === d
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:bg-muted",
+                  opcion(sesion.dia === d),
                 )}
               >
                 <span className="block text-xl font-extrabold">{d}</span>
@@ -116,9 +115,7 @@ function ConfiguracionSesion() {
               aria-pressed={sesion.punto === punto}
               className={cn(
                 "min-h-14 rounded-lg border px-3 text-sm font-semibold transition-colors",
-                sesion.punto === punto
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-muted",
+                opcion(sesion.punto === punto),
               )}
             >
               {punto}
@@ -151,9 +148,7 @@ function ConfiguracionSesion() {
                   aria-pressed={sesion.capturista === nombre}
                   className={cn(
                     "flex min-h-14 items-center justify-between rounded-lg border px-4 text-sm font-semibold transition-colors",
-                    sesion.capturista === nombre
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card hover:bg-muted",
+                    opcion(sesion.capturista === nombre),
                   )}
                 >
                   <span className="min-w-0 truncate">{nombre}</span>

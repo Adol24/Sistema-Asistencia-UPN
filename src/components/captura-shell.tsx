@@ -3,6 +3,7 @@ import { CloudOff, History, QrCode, RefreshCw, Settings2, Users, Wifi } from "lu
 import type { ReactNode } from "react";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import type { Modo } from "@/lib/escaneo";
+import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
 import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
 
@@ -93,9 +94,7 @@ export function SelectorModo({ compacto = false }: { compacto?: boolean }) {
           className={cn(
             "rounded-md border font-bold tracking-wide transition-colors",
             compacto ? "min-h-11 text-xs" : "min-h-14 text-sm",
-            sesion.modo === m.valor
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card hover:bg-muted",
+            opcion(sesion.modo === m.valor),
           )}
         >
           {m.etiqueta}

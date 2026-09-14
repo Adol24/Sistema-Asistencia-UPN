@@ -11,7 +11,7 @@
  * que eso se marca en ámbar aunque el dato sea válido.
  */
 
-import { partirLinea } from "@/lib/carga-masiva";
+import { leerTabla } from "@/lib/csv";
 import type { AlumnoPadron, Participante } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
 
@@ -111,10 +111,7 @@ export interface EntradaAnalisisPadron {
 }
 
 export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
-  const lineas = e.texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lineas.length < 2)
-    throw new Error("El archivo no tiene filas de datos debajo del encabezado.");
-  const encabezado = partirLinea(lineas[0]!).map((h) => h.toLowerCase());
+  const { encabezado, filas } = leerTabla(e.texto);
   const faltantes = COLUMNAS_PADRON.filter((c) => !columnaDe(encabezado, c));
   if (faltantes.length)
     throw new Error(`Al archivo le faltan estas columnas: ${faltantes.join(", ")}.`);
@@ -125,12 +122,8 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
   );
   const vistas = new Map<string, number>();
 
-  return lineas.slice(1).map((linea, k) => {
-    const celdas = partirLinea(linea);
-    const crudo: Record<string, string> = {};
-    encabezado.forEach((h, i) => (crudo[h] = celdas[i] ?? ""));
-    const n = k + 1;
-    const base = { n, crudo };
+  return filas.map((base) => {
+    const { n, crudo } = base;
     const error = (motivo: string): FilaPadron => ({ ...base, semaforo: "error", motivo });
 
     const matricula = (crudo["matricula"] ?? "").trim();

@@ -1,6 +1,7 @@
 import { Ban, FileSpreadsheet, Upload } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { GrupoFiltro } from "@/components/grupo-filtro";
 import { cn } from "@/lib/utils";
 import type { Importador, FilaConSemaforo } from "@/lib/importador";
 
@@ -89,23 +90,10 @@ export function FiltroSemaforo<F extends FilaConSemaforo>({
   ] as const;
 
   return (
-    <div className="flex flex-wrap gap-1">
-      {opciones.map(([valor, etiqueta]) => (
-        <button
-          key={valor}
-          type="button"
-          onClick={() => setFiltro(valor as "todas" | F["semaforo"])}
-          aria-pressed={filtro === valor}
-          className={cn(
-            "flex h-10 items-center rounded-md border px-3 text-sm font-medium",
-            filtro === valor
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card hover:bg-muted",
-          )}
-        >
-          {etiqueta}
-        </button>
-      ))}
-    </div>
+    <GrupoFiltro
+      valor={filtro as string}
+      alElegir={(v) => setFiltro(v as "todas" | F["semaforo"])}
+      opciones={opciones}
+    />
   );
 }

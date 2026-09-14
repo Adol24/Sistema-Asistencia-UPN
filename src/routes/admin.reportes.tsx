@@ -17,7 +17,7 @@ import {
   useEntornoConstancias,
 } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
+import { GrupoFiltro } from "@/components/grupo-filtro";
 
 export const Route = createFileRoute("/admin/reportes")({
   head: () =>
@@ -320,27 +320,24 @@ function Reportes() {
         </Button>
       }
     >
-      <div className="flex flex-wrap gap-1">
-        {reportes.map((x) => (
-          <button
-            key={x.id}
-            onClick={() => {
-              setActivo(x.id);
-              setPagina(1);
-            }}
-            aria-pressed={activo === x.id}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-md border px-3 text-sm font-medium",
-              activo === x.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card hover:bg-muted",
-            )}
-          >
-            {x.titulo}
-            <span className="text-xs opacity-70">{x.filas.length}</span>
-          </button>
-        ))}
-      </div>
+      <GrupoFiltro
+        valor={activo}
+        alElegir={(id) => {
+          setActivo(id);
+          setPagina(1);
+        }}
+        claseBoton="h-11 gap-2"
+        opciones={reportes.map(
+          (x) =>
+            [
+              x.id,
+              <>
+                {x.titulo}
+                <span className="text-xs opacity-70">{x.filas.length}</span>
+              </>,
+            ] as const,
+        )}
+      />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Input

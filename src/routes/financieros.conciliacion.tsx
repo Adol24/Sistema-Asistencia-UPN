@@ -16,7 +16,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { porVencer as vencible } from "@/lib/pagos-logica";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
+import { GrupoFiltro } from "@/components/grupo-filtro";
 
 export const Route = createFileRoute("/financieros/conciliacion")({
   head: () =>
@@ -193,29 +193,16 @@ function Conciliacion() {
           marcador="Filtrar por folio, nombre o matrícula"
           etiqueta="Filtrar la tabla de conciliación"
         />
-        <div className="flex flex-wrap gap-1">
-          {(
-            [
-              ["todos", "Todos"],
-              ["pagado", "Pagados"],
-              ["discrepancia", "Con discrepancia"],
-              ["por_vencer", "Por vencer"],
-            ] as const
-          ).map(([v, etiqueta]) => (
-            <button
-              key={v}
-              onClick={() => setFiltro(v)}
-              className={cn(
-                "flex h-10 items-center rounded-md border px-3 text-sm font-medium",
-                filtro === v
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-muted",
-              )}
-            >
-              {etiqueta}
-            </button>
-          ))}
-        </div>
+        <GrupoFiltro
+          valor={filtro}
+          alElegir={setFiltro}
+          opciones={[
+            ["todos", "Todos"],
+            ["pagado", "Pagados"],
+            ["discrepancia", "Con discrepancia"],
+            ["por_vencer", "Por vencer"],
+          ]}
+        />
       </div>
 
       {/*

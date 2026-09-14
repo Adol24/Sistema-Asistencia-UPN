@@ -15,6 +15,7 @@ import {
   type PagoRegistrado,
 } from "@/lib/pagos-logica";
 import type { Participante, Taller } from "@/dominio/tipos";
+import { leerTabla } from "@/lib/csv";
 
 export const COLUMNAS = [
   "folio",
@@ -34,27 +35,6 @@ export interface FilaAnalizada {
   nombre?: string | undefined;
   /** Presente solo si la fila es aplicable (listo o advertencia). */
   pago?: Omit<PagoRegistrado, "id" | "registradoEn"> | undefined;
-}
-
-/** Parte una línea de CSV respetando comillas dobles. */
-export function partirLinea(linea: string): string[] {
-  const out: string[] = [];
-  let actual = "";
-  let enComillas = false;
-  for (let i = 0; i < linea.length; i++) {
-    const c = linea[i]!;
-    if (c === '"') {
-      if (enComillas && linea[i + 1] === '"') {
-        actual += '"';
-        i++;
-      } else enComillas = !enComillas;
-    } else if (c === "," && !enComillas) {
-      out.push(actual);
-      actual = "";
-    } else actual += c;
-  }
-  out.push(actual);
-  return out.map((s) => s.trim());
 }
 
 const moneda = (n: number) => `$${n.toFixed(2)}`;
@@ -78,10 +58,7 @@ export function analizarArchivo(
   buscarParticipante: (folio: string) => Participante | undefined,
   buscarTaller: (id?: string) => Taller | undefined,
 ): FilaAnalizada[] {
-  const lineas = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lineas.length < 2)
-    throw new Error("El archivo no tiene filas de datos debajo del encabezado.");
-  const encabezado = partirLinea(lineas[0]!).map((h) => h.toLowerCase());
+  const { encabezado, filas } = leerTabla(texto);
   const faltantes = COLUMNAS.filter((c) => !encabezado.includes(c));
   if (faltantes.length)
     throw new Error(`Al archivo le faltan estas columnas: ${faltantes.join(", ")}.`);
@@ -104,12 +81,8 @@ export function analizarArchivo(
     if (r) yaRegistradas.set(r, g.folio);
   }
 
-  return lineas.slice(1).map((linea, k) => {
-    const celdas = partirLinea(linea);
-    const crudo: Record<string, string> = {};
-    encabezado.forEach((h, i) => (crudo[h] = celdas[i] ?? ""));
-    const n = k + 1;
-    const base = { n, crudo };
+  return filas.map((base) => {
+    const { n, crudo } = base;
     const error = (motivo: string, nombre?: string): FilaAnalizada => ({
       ...base,
       semaforo: "error",

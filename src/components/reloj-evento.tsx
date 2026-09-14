@@ -3,6 +3,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { comoHora } from "@/lib/formato";
+import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
 import type { Dia } from "@/dominio/tipos";
 
@@ -53,9 +54,7 @@ export function RelojEventoControl({ className }: { className?: string }) {
             aria-pressed={reloj.dia === d}
             className={cn(
               "flex h-9 w-12 items-center justify-center rounded-md border text-xs font-bold",
-              reloj.dia === d
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card hover:bg-muted",
+              opcion(reloj.dia === d),
             )}
           >
             D{d}

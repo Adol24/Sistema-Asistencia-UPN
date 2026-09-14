@@ -10,6 +10,7 @@ import { CAMPO_MAYUSCULAS, LARGO, faltanDigitos, soloDigitos } from "@/lib/campo
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
+import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/registro")({
@@ -177,9 +178,7 @@ function RegistroExterno() {
               onClick={() => setPerfil(p)}
               className={cn(
                 "min-h-12 rounded-md border text-sm font-semibold capitalize",
-                perfil === p
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-muted",
+                opcion(perfil === p),
               )}
             >
               {p}
