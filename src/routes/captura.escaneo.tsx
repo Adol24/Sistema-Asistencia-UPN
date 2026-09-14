@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Keyboard, ScanLine, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
+import { CheckCircle2, Keyboard, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
 import { CamaraQR } from "@/components/camara-qr";
@@ -8,16 +8,7 @@ import { PerfilBadge, PuntoSemaforo } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
@@ -337,44 +328,40 @@ function PantallaEscaneo() {
         </section>
       ) : null}
 
-      <AlertDialog open={!!autorizando} onOpenChange={(o) => !o && setAutorizando(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Autorización de supervisor</AlertDialogTitle>
-            <AlertDialogDescription>
-              Vas a registrar el paso de {autorizando} en un día que no es el suyo. Queda anotado
-              con tu nota en el historial de la sesión.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            rows={3}
-            placeholder="Motivo de la excepción, por ejemplo: cambió de día por permiso laboral, autoriza SOFIA RAMIREZ."
-            aria-label="Nota de autorización"
-          />
-          <p className="text-xs text-muted-foreground">
-            {nota.trim().length < 10
-              ? `Escribe al menos 10 caracteres (llevas ${nota.trim().length}).`
-              : "Nota lista."}
-          </p>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setNota("")}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={nota.trim().length < 10}
-              onClick={() => {
-                const folio = autorizando!;
-                const texto = nota.trim();
-                setAutorizando(null);
-                setNota("");
-                void disparar(folio, { autorizado: true, nota: texto });
-              }}
-            >
-              Autorizar y registrar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={!!autorizando}
+        alCerrar={() => setAutorizando(null)}
+        titulo="Autorización de supervisor"
+        descripcion={
+          <>
+            Vas a registrar el paso de {autorizando} en un día que no es el suyo. Queda anotado con
+            tu nota en el historial de la sesión.
+          </>
+        }
+        confirmar="Autorizar y registrar"
+        deshabilitado={nota.trim().length < 10}
+        alCancelar={() => setNota("")}
+        alConfirmar={() => {
+          const folio = autorizando!;
+          const texto = nota.trim();
+          setAutorizando(null);
+          setNota("");
+          void disparar(folio, { autorizado: true, nota: texto });
+        }}
+      >
+        <Textarea
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          rows={3}
+          placeholder="Motivo de la excepción, por ejemplo: cambió de día por permiso laboral, autoriza SOFIA RAMIREZ."
+          aria-label="Nota de autorización"
+        />
+        <p className="text-xs text-muted-foreground">
+          {nota.trim().length < 10
+            ? `Escribe al menos 10 caracteres (llevas ${nota.trim().length}).`
+            : "Nota lista."}
+        </p>
+      </DialogoConfirmar>
 
       {porVerificar ? (
         <Verificacion

@@ -3,22 +3,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Pencil, Plus, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { ETIQUETA_ROL } from "@/lib/roles";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -102,77 +94,63 @@ function AdminUsuarios() {
       }
     >
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
-          <table className="w-full min-w-[42rem] text-sm">
-            <thead className="border-b border-border bg-muted/50 text-left">
-              <tr>
-                {["Usuario", "Correo", "Rol", "Estado", "Último acceso", ""].map((h) => (
-                  <th key={h} className="px-3 py-2 font-semibold">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center">
-                    <p className="text-sm font-semibold">No hay usuarios internos</p>
-                    <p className="text-sm text-muted-foreground">
-                      Crea el primero con «Nuevo usuario».
-                    </p>
-                  </td>
-                </tr>
-              ) : null}
-              {usuarios.map((u) => (
-                <tr key={u.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2 font-medium">{u.nombre}</td>
-                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{u.correo}</td>
-                  <td className="px-3 py-2">
-                    <button
-                      onClick={() => setRolMostrado(u.rol)}
-                      className="rounded-md border border-border px-2 py-0.5 text-xs font-semibold hover:bg-muted"
-                      title="Ver qué puede hacer este rol"
-                    >
-                      {ETIQUETA_ROL[u.rol]}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={cn(
-                        "rounded-md px-2 py-0.5 text-xs font-bold",
-                        u.activo
-                          ? "bg-estado-pagado-bg text-estado-pagado"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {u.activo ? "Activo" : "Inactivo"}
+        <Tabla
+          anchoMinimo="42rem"
+          columnas={["Usuario", "Correo", "Rol", "Estado", "Último acceso", ""]}
+          vacio={
+            usuarios.length === 0 ? (
+              <>
+                <p className="text-sm font-semibold">No hay usuarios internos</p>
+                <p className="text-sm text-muted-foreground">
+                  Crea el primero con «Nuevo usuario».
+                </p>
+              </>
+            ) : null
+          }
+        >
+          {usuarios.map((u) => (
+            <Fila key={u.id}>
+              <td className="px-3 py-2 font-medium">{u.nombre}</td>
+              <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{u.correo}</td>
+              <td className="px-3 py-2">
+                <button
+                  onClick={() => setRolMostrado(u.rol)}
+                  className="rounded-md border border-border px-2 py-0.5 text-xs font-semibold hover:bg-muted"
+                  title="Ver qué puede hacer este rol"
+                >
+                  {ETIQUETA_ROL[u.rol]}
+                </button>
+              </td>
+              <td className="px-3 py-2">
+                <span
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-xs font-bold",
+                    u.activo
+                      ? "bg-estado-pagado-bg text-estado-pagado"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {u.activo ? "Activo" : "Inactivo"}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">{u.ultimoAcceso}</td>
+              <td className="px-3 py-2">
+                <div className="flex justify-end gap-1">
+                  <Button variant="outline" className="h-9" onClick={() => setEditando(u)}>
+                    <Pencil className="size-4" />
+                    <span className="sr-only">Editar {u.nombre}</span>
+                  </Button>
+                  <Button variant="outline" className="h-9" onClick={() => setBorrando(u)}>
+                    {u.activo ? <UserMinus className="size-4" /> : <UserCheck className="size-4" />}
+                    <span className="sr-only">
+                      {u.activo ? "Dar de baja" : "Reactivar"} {u.nombre}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">{u.ultimoAcceso}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="outline" className="h-9" onClick={() => setEditando(u)}>
-                        <Pencil className="size-4" />
-                        <span className="sr-only">Editar {u.nombre}</span>
-                      </Button>
-                      <Button variant="outline" className="h-9" onClick={() => setBorrando(u)}>
-                        {u.activo ? (
-                          <UserMinus className="size-4" />
-                        ) : (
-                          <UserCheck className="size-4" />
-                        )}
-                        <span className="sr-only">
-                          {u.activo ? "Dar de baja" : "Reactivar"} {u.nombre}
-                        </span>
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </Button>
+                </div>
+              </td>
+            </Fila>
+          ))}
+        </Tabla>
 
         <aside className="rounded-lg border border-border bg-card p-4">
           <h2 className="flex items-center gap-2 text-sm font-bold">
@@ -227,44 +205,38 @@ function AdminUsuarios() {
         />
       ) : null}
 
-      <AlertDialog open={!!borrando} onOpenChange={(o) => !o && setBorrando(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {borrando?.activo ? "¿Dar de baja a" : "¿Reactivar a"} {borrando?.nombre}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {borrando?.activo
-                ? `Perderá el acceso al panel de ${borrando ? ETIQUETA_ROL[borrando.rol] : ""}, pero el registro se conserva: sus entradas de bitácora siguen teniendo autor. Se desactiva, no se borra.`
-                : "Volverá a tener acceso con el mismo rol y su histórico intacto."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const u = borrando!;
-                // Desactivar, nunca borrar: un usuario eliminado deja huérfanas
-                // sus entradas de bitácora, que es lo contrario de para lo que
-                // sirve una bitácora.
-                guardarUsuario({ ...u, activo: !u.activo });
-                registrarBitacora(
-                  u.activo ? "Dio de baja a un usuario interno" : "Reactivó a un usuario interno",
-                  `${u.nombre} · ${ETIQUETA_ROL[u.rol]} · el histórico se conserva`,
-                );
-                toast.success(
-                  u.activo
-                    ? `${u.nombre} quedó inactivo. Su histórico se conserva.`
-                    : `${u.nombre} reactivado.`,
-                );
-                setBorrando(null);
-              }}
-            >
-              {borrando?.activo ? "Sí, desactivar" : "Sí, reactivar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={!!borrando}
+        alCerrar={() => setBorrando(null)}
+        titulo={
+          <>
+            {borrando?.activo ? "¿Dar de baja a" : "¿Reactivar a"} {borrando?.nombre}?
+          </>
+        }
+        descripcion={
+          borrando?.activo
+            ? `Perderá el acceso al panel de ${borrando ? ETIQUETA_ROL[borrando.rol] : ""}, pero el registro se conserva: sus entradas de bitácora siguen teniendo autor. Se desactiva, no se borra.`
+            : "Volverá a tener acceso con el mismo rol y su histórico intacto."
+        }
+        confirmar={borrando?.activo ? "Sí, desactivar" : "Sí, reactivar"}
+        alConfirmar={() => {
+          const u = borrando!;
+          // Desactivar, nunca borrar: un usuario eliminado deja huérfanas sus
+          // entradas de bitácora, que es lo contrario de para lo que sirve una
+          // bitácora.
+          guardarUsuario({ ...u, activo: !u.activo });
+          registrarBitacora(
+            u.activo ? "Dio de baja a un usuario interno" : "Reactivó a un usuario interno",
+            `${u.nombre} · ${ETIQUETA_ROL[u.rol]} · el histórico se conserva`,
+          );
+          toast.success(
+            u.activo
+              ? `${u.nombre} quedó inactivo. Su histórico se conserva.`
+              : `${u.nombre} reactivado.`,
+          );
+          setBorrando(null);
+        }}
+      />
     </PantallaPanel>
   );
 }

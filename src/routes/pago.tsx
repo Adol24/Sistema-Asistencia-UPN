@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Check, Copy, KeyRound, Printer, QrCode } from "lucide-react";
-import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase } from "@/components/pase";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
-import { moneda, simularLatencia } from "@/lib/formato";
+import { moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";

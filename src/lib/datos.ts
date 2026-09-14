@@ -216,9 +216,6 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
   const publico = await cargarPublico();
   if (!publico) return null;
   const { configuracion, idPorClave, talleresBase } = publico;
-  // `idPorClave` va de clave a id; aquí hace falta al revés, para nombrar los
-  // talleres que vienen referenciados por id en participantes y asistencias.
-  const claveporId = new Map(Object.entries(idPorClave).map(([clave, id]) => [id, clave]));
   const lugarPorDia = (d: Dia) =>
     configuracion.dias.find((x) => x.dia === d)?.lugar ?? configuracion.dias[0]!.lugar;
 

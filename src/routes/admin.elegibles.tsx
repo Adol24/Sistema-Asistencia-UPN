@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Check, Download, Search, X } from "lucide-react";
+import { AlertTriangle, Check, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Buscador } from "@/components/buscador";
 import { Campo, Rotulo } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { folioDeEjemplo } from "@/lib/busqueda";
 import {
@@ -226,19 +226,13 @@ function Elegibles() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre, folio o matrícula"
-            className="h-11 pl-9"
-            aria-label="Buscar participante"
-          />
-        </div>
+        <Buscador
+          className="w-full max-w-sm"
+          valor={q}
+          alCambiar={setQ}
+          marcador="Buscar por nombre, folio o matrícula"
+          etiqueta="Buscar participante"
+        />
         <Selector
           etiqueta="Perfil"
           valor={perfil}

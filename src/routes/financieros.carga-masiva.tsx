@@ -2,43 +2,19 @@ import { useCallback, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { useImportador } from "@/lib/importador";
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Download,
-  FileSpreadsheet,
-  Loader2,
-  Upload,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { SemaforoFilaBadge } from "@/components/estado-badges";
 import { navFinancieros } from "@/components/nav-financieros";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { simularLatencia } from "@/lib/formato";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import {
-  analizarArchivo,
-  COLUMNAS,
-  resumirFilas,
-  type FilaAnalizada,
-  type Semaforo,
-} from "@/lib/carga-masiva";
+import { analizarArchivo, COLUMNAS, type FilaAnalizada } from "@/lib/carga-masiva";
 import { meta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/financieros/carga-masiva")({
   head: () =>
@@ -227,74 +203,56 @@ function CargaMasiva() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[56rem] text-sm">
-              <thead className="border-b border-border bg-muted/50 text-left">
-                <tr>
-                  {[
-                    "#",
-                    "Estado",
-                    "Folio",
-                    "Participante",
-                    "Concepto",
-                    "Monto",
-                    "Referencia",
-                    "Resultado",
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2 font-semibold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visibles.map((f) => (
-                  <tr key={f.n} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
-                    <td className="px-3 py-2">
-                      <SemaforoFilaBadge estado={f.semaforo} />
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{f.crudo["folio"]}</td>
-                    <td className="px-3 py-2">{f.nombre ?? "—"}</td>
-                    <td className="px-3 py-2">{f.crudo["concepto"]}</td>
-                    <td className="px-3 py-2">{f.crudo["monto"]}</td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {f.crudo["referencia_bancaria"]}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>
-                  </tr>
-                ))}
-                {visibles.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-10 text-center text-muted-foreground">
-                      Ninguna fila con ese resultado.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <Tabla
+            anchoMinimo="56rem"
+            columnas={[
+              "#",
+              "Estado",
+              "Folio",
+              "Participante",
+              "Concepto",
+              "Monto",
+              "Referencia",
+              "Resultado",
+            ]}
+            vacio={
+              visibles.length === 0 ? (
+                <span className="text-muted-foreground">Ninguna fila con ese resultado.</span>
+              ) : null
+            }
+          >
+            {visibles.map((f) => (
+              <Fila key={f.n}>
+                <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
+                <td className="px-3 py-2">
+                  <SemaforoFilaBadge estado={f.semaforo} />
+                </td>
+                <td className="px-3 py-2 font-mono text-xs">{f.crudo["folio"]}</td>
+                <td className="px-3 py-2">{f.nombre ?? "—"}</td>
+                <td className="px-3 py-2">{f.crudo["concepto"]}</td>
+                <td className="px-3 py-2">{f.crudo["monto"]}</td>
+                <td className="px-3 py-2 font-mono text-xs">{f.crudo["referencia_bancaria"]}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>
+              </Fila>
+            ))}
+          </Tabla>
         </>
       ) : null}
 
-      <AlertDialog open={confirmando} onOpenChange={imp.setConfirmando}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Aplicar {resumen.aplicables} pagos?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se registrarán {resumen.listo} pagos como pagado y {resumen.advertencia} como
-              discrepancia. Las {resumen.error} filas con error se omiten. Esta acción cambia el
-              estado de los participantes y no se puede deshacer desde esta pantalla.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void aplicar()}>
-              Sí, aplicar {resumen.aplicables} pagos
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={confirmando}
+        alCerrar={() => imp.setConfirmando(false)}
+        titulo={`¿Aplicar ${resumen.aplicables} pagos?`}
+        descripcion={
+          <>
+            Se registrarán {resumen.listo} pagos como pagado y {resumen.advertencia} como
+            discrepancia. Las {resumen.error} filas con error se omiten. Esta acción cambia el
+            estado de los participantes y no se puede deshacer desde esta pantalla.
+          </>
+        }
+        confirmar={`Sí, aplicar ${resumen.aplicables} pagos`}
+        alConfirmar={() => void aplicar()}
+      />
     </PantallaPanel>
   );
 }

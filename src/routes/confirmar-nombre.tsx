@@ -9,32 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
-import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { nombreConstancia } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
 import type { Dia } from "@/dominio/tipos";
 
 /** Intentos antes de cerrar la pantalla y mandar a soporte. */
 const INTENTOS = 3;
-
-/**
- * ¿Los nombres de pila escritos corresponden al inicio del nombre del padrón?
- *
- * Se compara token por token desde el principio, no con `startsWith` sobre la
- * cadena: así «JUAN» acierta contra «JUAN CARLOS PEREZ MUÑOZ» y «JUA» no. El
- * padrón guarda el nombre completo en una sola columna —sin separar nombres de
- * apellidos—, así que comparar por prefijo de palabras es lo más que se puede
- * afirmar sin inventar una división que el dato no trae.
- */
-function coincidenNombres(escrito: string, completo: string): boolean {
-  const partes = nombreConstancia(escrito).split(" ").filter(Boolean);
-  if (partes.length === 0) return false;
-  const reales = nombreConstancia(completo).split(" ").filter(Boolean);
-  // Escribir el nombre entero, apellidos incluidos, también vale.
-  if (partes.length > reales.length) return false;
-  return partes.every((parte, i) => parte === reales[i]);
-}
 
 export const Route = createFileRoute("/confirmar-nombre")({
   head: () =>

@@ -564,8 +564,6 @@ export function EstadoEventoProvider({
   const [participantesBase, setParticipantesBase] = useState<Participante[]>([]);
   const [asistenciasBase, setAsistenciasBase] = useState<Asistencia[]>([]);
   const [evidenciasBase, setEvidenciasBase] = useState<Evidencia[]>([]);
-  /** De la clave corta del taller a su uuid, para poder escribir en la base. */
-  const [idPorClave, setIdPorClave] = useState<Record<string, string>>(inicial?.idPorClave ?? {});
   // Las sedes donde estudian los alumnos. Se usan para validar el padrón al
   // importar, antes de aplicarlo y no después.
   const [sedes, setSedes] = useState<string[]>(inicial?.sedes ?? []);
@@ -623,7 +621,6 @@ export function EstadoEventoProvider({
         if (!datos) return;
         setConfiguracion(datos.configuracion);
         setTalleresBase(datos.talleresBase);
-        setIdPorClave(datos.idPorClave);
         setSedes(datos.sedes);
         setParticipantesBase(datos.participantes);
         setPagosBase(datos.pagos);
@@ -744,7 +741,6 @@ export function EstadoEventoProvider({
     Record<string, Partial<Participante>>
   >({});
   const [bitacoraSesion, setBitacoraSesion] = useState<EntradaBitacora[]>([]);
-  const [contadorBitacora, setContadorBitacora] = useState(0);
   // Arranca en la hora pico de acceso del día 1.
   /*
    * Arranca en un valor fijo y pasa a la hora real despues de montar.
@@ -935,21 +931,17 @@ export function EstadoEventoProvider({
 
   const registrarBitacora = useCallback<Ctx["registrarBitacora"]>(
     (accion, detalle, usuario) => {
-      setContadorBitacora((n) => {
-        const siguiente = n + 1;
-        setBitacoraSesion((prev) => [
-          {
-            id: `BS-${String(siguiente).padStart(4, "0")}`,
-            fecha: fechaHora(),
-            usuario: usuario ?? usuarioActual,
-            accion,
-            detalle,
-            deLaSesion: true,
-          },
-          ...prev,
-        ]);
-        return siguiente;
-      });
+      setBitacoraSesion((prev) => [
+        {
+          id: `BS-${String(prev.length + 1).padStart(4, "0")}`,
+          fecha: fechaHora(),
+          usuario: usuario ?? usuarioActual,
+          accion,
+          detalle,
+          deLaSesion: true,
+        },
+        ...prev,
+      ]);
       /*
        * La bitácora existe para poder responder «quién hizo esto». Vivía solo en
        * memoria, así que la respuesta se perdía al recargar y el registro no
@@ -963,8 +955,6 @@ export function EstadoEventoProvider({
     },
     [usuarioActual],
   );
-
-  const bitacora = useMemo<EntradaBitacora[]>(() => [...bitacoraSesion], [bitacoraSesion]);
 
   // ---------------------------------------------------------- asistencias ---
   // Las de los mocks, más las capturadas y sincronizadas. Las que están en cola
@@ -1976,7 +1966,7 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
-      bitacora,
+      bitacora: bitacoraSesion,
       registrarBitacora,
       usuarioActual,
       reloj,
@@ -2045,7 +2035,7 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
-      bitacora,
+      bitacoraSesion,
       registrarBitacora,
       usuarioActual,
       reloj,

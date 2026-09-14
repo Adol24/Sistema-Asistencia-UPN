@@ -10,16 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { moneda } from "@/lib/formato";
 import { meta } from "@/lib/seo";
@@ -175,33 +166,27 @@ function AdminTalleres() {
         />
       ) : null}
 
-      <AlertDialog open={!!borrando} onOpenChange={(o) => !o && setBorrando(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar el taller {borrando}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {borrando && inscritos(borrando) > 0
-                ? `Hay ${inscritos(borrando)} participantes inscritos. Quedarán sin taller y su pago de taller no tendrá a qué corresponder.`
-                : "No hay participantes del prototipo inscritos en este taller."}{" "}
-              La acción no se puede deshacer desde esta pantalla.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const id = borrando!;
-                eliminarTaller(id);
-                registrarBitacora("Eliminó taller", id);
-                toast.success(`Taller ${id} eliminado.`);
-                setBorrando(null);
-              }}
-            >
-              Sí, eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={!!borrando}
+        alCerrar={() => setBorrando(null)}
+        titulo={`¿Eliminar el taller ${borrando}?`}
+        descripcion={
+          <>
+            {borrando && inscritos(borrando) > 0
+              ? `Hay ${inscritos(borrando)} participantes inscritos. Quedarán sin taller y su pago de taller no tendrá a qué corresponder.`
+              : "No hay participantes del prototipo inscritos en este taller."}{" "}
+            La acción no se puede deshacer desde esta pantalla.
+          </>
+        }
+        confirmar="Sí, eliminar"
+        alConfirmar={() => {
+          const id = borrando!;
+          eliminarTaller(id);
+          registrarBitacora("Eliminó taller", id);
+          toast.success(`Taller ${id} eliminado.`);
+          setBorrando(null);
+        }}
+      />
     </PantallaPanel>
   );
 }

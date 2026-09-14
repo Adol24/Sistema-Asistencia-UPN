@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
-import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -25,7 +23,7 @@ export const Route = createFileRoute("/alumno")({
 function IdentificacionAlumno() {
   const navigate = useNavigate();
   const { setBorrador } = usePrototipo();
-  const { configuracion: evento, diaDe } = useEstadoEvento();
+  const { configuracion: evento } = useEstadoEvento();
   const [matricula, setMatricula] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);

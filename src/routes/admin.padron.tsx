@@ -3,44 +3,21 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { Campo } from "@/components/tipografia";
 import { useImportador } from "@/lib/importador";
-import {
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Download,
-  FileSpreadsheet,
-  CalendarDays,
-  Loader2,
-  Upload,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { SemaforoFilaBadge } from "@/components/estado-badges";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { descargarCsv } from "@/lib/exportar";
-import {
-  analizarPadron,
-  COLUMNAS_PADRON,
-  resumirPadron,
-  type FilaPadron,
-  type SemaforoPadron,
-} from "@/lib/padron-importacion";
+import { analizarPadron, COLUMNAS_PADRON, type FilaPadron } from "@/lib/padron-importacion";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -463,64 +440,52 @@ function ImportacionPadron() {
           */}
           {seleccion.length > 0 ? (
             <div className="mt-4">
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full min-w-[40rem] text-left text-sm">
-                  <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold">Alumno</th>
-                      <th className="px-3 py-2 font-semibold">Grupo · sede</th>
-                      <th className="px-3 py-2 font-semibold">Día</th>
-                      <th className="px-3 py-2 font-semibold">Cambiar a</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {seleccion.slice(0, TOPE_LISTA).map((a) => (
-                      <tr key={a.matricula} className="border-t border-border align-middle">
-                        <td className="px-3 py-2">
-                          <span className="font-semibold">{a.nombre}</span>
-                          <span className="block font-mono text-xs text-muted-foreground">
-                            {a.matricula}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {a.grupo ?? "sin grupo"} · {a.plantel}
-                        </td>
-                        <td className="px-3 py-2">
-                          {a.dia ? (
-                            <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
-                              Día {a.dia} · {infoDia(a.dia).lugar}
-                            </span>
-                          ) : (
-                            <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
-                              Sin día
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="flex gap-1">
-                            {([1, 2, 3] as const).map((d) => (
-                              <button
-                                key={d}
-                                type="button"
-                                // El día que ya tiene no se ofrece: pulsarlo no
-                                // haría nada y ocupa el sitio de los que sí.
-                                disabled={a.dia === d}
-                                onClick={() => {
-                                  reasignarDia(a.matricula, d);
-                                  toast.success(`${a.nombre} queda en el día ${d}.`);
-                                }}
-                                className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
-                              >
-                                {d}
-                              </button>
-                            ))}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Tabla anchoMinimo="40rem" columnas={["Alumno", "Grupo · sede", "Día", "Cambiar a"]}>
+                {seleccion.slice(0, TOPE_LISTA).map((a) => (
+                  <Fila key={a.matricula} className="align-middle">
+                    <td className="px-3 py-2">
+                      <span className="font-semibold">{a.nombre}</span>
+                      <span className="block font-mono text-xs text-muted-foreground">
+                        {a.matricula}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {a.grupo ?? "sin grupo"} · {a.plantel}
+                    </td>
+                    <td className="px-3 py-2">
+                      {a.dia ? (
+                        <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
+                          Día {a.dia} · {infoDia(a.dia).lugar}
+                        </span>
+                      ) : (
+                        <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
+                          Sin día
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="flex gap-1">
+                        {([1, 2, 3] as const).map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            // El día que ya tiene no se ofrece: pulsarlo no
+                            // haría nada y ocupa el sitio de los que sí.
+                            disabled={a.dia === d}
+                            onClick={() => {
+                              reasignarDia(a.matricula, d);
+                              toast.success(`${a.nombre} queda en el día ${d}.`);
+                            }}
+                            className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </span>
+                    </td>
+                  </Fila>
+                ))}
+              </Tabla>
               {/*
                 El tope se anuncia en vez de recortar en silencio: una lista
                 truncada sin aviso se lee como «no hay más», y aquí eso
@@ -651,85 +616,67 @@ function ImportacionPadron() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[68rem] text-sm">
-              <thead className="border-b border-border bg-muted/50 text-left">
-                <tr>
-                  {[
-                    "#",
-                    "Estado",
-                    "Matrícula",
-                    "Nombre completo",
-                    "Programa",
-                    "Avance",
-                    "Grupo",
-                    "Sede",
-                    "Día",
-                    "Resultado",
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2 font-semibold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visibles.map((f) => (
-                  <tr key={f.n} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
-                    <td className="px-3 py-2">
-                      <SemaforoFilaBadge estado={f.semaforo} />
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{f.crudo["matricula"]}</td>
-                    <td className="px-3 py-2">{f.crudo["nombre"]}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {f.crudo["programa"]}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.crudo["avance"]}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {f.crudo["grupo"] || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {f.crudo["sede"] ?? f.crudo["plantel"]}
-                    </td>
-                    <td className="px-3 py-2">{f.alumno?.dia ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>
-                  </tr>
-                ))}
-                {visibles.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-3 py-10 text-center text-muted-foreground">
-                      Ninguna fila con ese resultado.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          <Tabla
+            anchoMinimo="68rem"
+            columnas={[
+              "#",
+              "Estado",
+              "Matrícula",
+              "Nombre completo",
+              "Programa",
+              "Avance",
+              "Grupo",
+              "Sede",
+              "Día",
+              "Resultado",
+            ]}
+            vacio={
+              visibles.length === 0 ? (
+                <span className="text-muted-foreground">Ninguna fila con ese resultado.</span>
+              ) : null
+            }
+          >
+            {visibles.map((f) => (
+              <Fila key={f.n}>
+                <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
+                <td className="px-3 py-2">
+                  <SemaforoFilaBadge estado={f.semaforo} />
+                </td>
+                <td className="px-3 py-2 font-mono text-xs">{f.crudo["matricula"]}</td>
+                <td className="px-3 py-2">{f.crudo["nombre"]}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.crudo["programa"]}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.crudo["avance"]}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {f.crudo["grupo"] || "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {f.crudo["sede"] ?? f.crudo["plantel"]}
+                </td>
+                <td className="px-3 py-2">{f.alumno?.dia ?? "—"}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>
+              </Fila>
+            ))}
+          </Tabla>
         </>
       ) : null}
 
-      <AlertDialog open={confirmando} onOpenChange={imp.setConfirmando}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Aplicar {resumen.aplicables} registros al padrón?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se darán de alta o se actualizarán {resumen.aplicables} alumnos. Las {resumen.error}{" "}
-              filas con error se omiten.
-              {altasNuevas.length > 0
-                ? ` ${altasNuevas.length} altas quedarán esperando a que se les asigne día.`
-                : ""}{" "}
-              La acción no se puede deshacer desde esta pantalla.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void aplicar()}>
-              Sí, aplicar {resumen.aplicables}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={confirmando}
+        alCerrar={() => imp.setConfirmando(false)}
+        titulo={`¿Aplicar ${resumen.aplicables} registros al padrón?`}
+        descripcion={
+          <>
+            Se darán de alta o se actualizarán {resumen.aplicables} alumnos. Las {resumen.error}{" "}
+            filas con error se omiten.
+            {altasNuevas.length > 0
+              ? ` ${altasNuevas.length} altas quedarán esperando a que se les asigne día.`
+              : ""}{" "}
+            La acción no se puede deshacer desde esta pantalla.
+          </>
+        }
+        confirmar={`Sí, aplicar ${resumen.aplicables}`}
+        alConfirmar={() => void aplicar()}
+      />
     </PantallaPanel>
   );
 }

@@ -33,7 +33,18 @@ export default tseslint.config(
         },
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
+      // Estaba apagada, y en el silencio se acumularon treinta y siete
+      // importaciones que ya no usaba nadie: iconos de una versión anterior de
+      // la pantalla, ayudantes de cuando los datos eran simulados. Eso no se ve
+      // leyendo el archivo —el bloque de importaciones se salta— y la única
+      // forma de que no vuelva a pasar es que falle el `lint`.
+      //
+      // `_` delante perdona a propósito: un parámetro que el contrato obliga a
+      // recibir y el cuerpo no necesita se nombra `_algo` y se queda.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
+      ],
     },
   },
   {

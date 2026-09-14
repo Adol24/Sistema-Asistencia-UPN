@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Search, SearchX, UserRound } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import type { Participante } from "@/dominio/tipos";
@@ -177,39 +178,29 @@ function FichaDe({ p }: { p: Participante }) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[38rem] text-left text-sm">
-              <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  {["Concepto", "Monto", "Fecha", "Origen", "Referencia", "Resultado"].map((h) => (
-                    <th key={h} className="px-3 py-2 font-semibold">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {suyos.map((g) => (
-                  <tr key={g.id} className="border-t border-border">
-                    <td className="px-3 py-2 capitalize">{g.concepto}</td>
-                    <td className="px-3 py-2 font-semibold tabular-nums">{moneda(g.monto)}</td>
-                    <td className="px-3 py-2">{g.fechaDeposito}</td>
-                    <td className="px-3 py-2">
-                      {g.origen === "ventanilla" ? "Ventanilla" : "Carga masiva"}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                      {/* Los de ventanilla no la traen: quien cobró verificó el
+          <Tabla
+            anchoMinimo="38rem"
+            columnas={["Concepto", "Monto", "Fecha", "Origen", "Referencia", "Resultado"]}
+          >
+            {suyos.map((g) => (
+              <Fila key={g.id}>
+                <td className="px-3 py-2 capitalize">{g.concepto}</td>
+                <td className="px-3 py-2 font-semibold tabular-nums">{moneda(g.monto)}</td>
+                <td className="px-3 py-2">{g.fechaDeposito}</td>
+                <td className="px-3 py-2">
+                  {g.origen === "ventanilla" ? "Ventanilla" : "Carga masiva"}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {/* Los de ventanilla no la traen: quien cobró verificó el
                           comprobante en mano. Se dice, en vez de dejar el hueco. */}
-                      {g.referencia ?? "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <EstadoPagoBadge estado={g.resultado} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  {g.referencia ?? "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <EstadoPagoBadge estado={g.resultado} />
+                </td>
+              </Fila>
+            ))}
+          </Tabla>
         )}
         {/*
           La nota solo existe cuando el monto no cuadró, y es lo que explica la

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Ban, Check, CheckCircle2, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { CamaraQR } from "@/components/camara-qr";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { navFinancieros } from "@/components/nav-financieros";
@@ -296,57 +297,46 @@ function Ventanilla() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[46rem] text-left text-sm">
-                <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-semibold">Participante</th>
-                    <th className="px-3 py-2 font-semibold">Evento</th>
-                    <th className="px-3 py-2 font-semibold">Taller</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibles.map((p) => {
-                    const estado = estadoDe(p);
-                    return (
-                      <tr key={p.folio} className="border-t border-border align-middle">
-                        <td className="px-3 py-2">
-                          <button
-                            type="button"
-                            onClick={() => abrirFicha(p)}
-                            className="text-left hover:underline"
-                          >
-                            <span className="font-semibold">{p.nombre}</span>
-                            <span className="block font-mono text-xs text-muted-foreground">
-                              {p.folio}
-                              {p.matricula ? ` · ${p.matricula}` : ""}
-                            </span>
-                          </button>
-                        </td>
-                        <td className="px-3 py-2">
-                          <Celda
-                            estado={estado.evento}
-                            monto={p.montoEsperadoEvento}
-                            onConfirmar={() => confirmar(p, "evento", p.montoEsperadoEvento)}
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          {p.tallerId && estado.taller ? (
-                            <Celda
-                              estado={estado.taller}
-                              monto={p.montoEsperadoTaller ?? 0}
-                              onConfirmar={() => confirmar(p, "taller", p.montoEsperadoTaller ?? 0)}
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Sin taller</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <Tabla anchoMinimo="46rem" columnas={["Participante", "Evento", "Taller"]}>
+              {visibles.map((p) => {
+                const estado = estadoDe(p);
+                return (
+                  <Fila key={p.folio} className="align-middle">
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => abrirFicha(p)}
+                        className="text-left hover:underline"
+                      >
+                        <span className="font-semibold">{p.nombre}</span>
+                        <span className="block font-mono text-xs text-muted-foreground">
+                          {p.folio}
+                          {p.matricula ? ` · ${p.matricula}` : ""}
+                        </span>
+                      </button>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Celda
+                        estado={estado.evento}
+                        monto={p.montoEsperadoEvento}
+                        onConfirmar={() => confirmar(p, "evento", p.montoEsperadoEvento)}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      {p.tallerId && estado.taller ? (
+                        <Celda
+                          estado={estado.taller}
+                          monto={p.montoEsperadoTaller ?? 0}
+                          onConfirmar={() => confirmar(p, "taller", p.montoEsperadoTaller ?? 0)}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Sin taller</span>
+                      )}
+                    </td>
+                  </Fila>
+                );
+              })}
+            </Tabla>
             {/*
               El tope se dice, no se aplica en silencio. Una lista recortada sin
               avisar se lee como «ya no hay más», y en ventanilla eso es dar por

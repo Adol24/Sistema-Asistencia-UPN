@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { PuntoSemaforo } from "@/components/estado-badges";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/captura/historial")({
   head: () =>

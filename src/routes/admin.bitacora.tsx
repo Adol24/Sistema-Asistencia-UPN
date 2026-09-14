@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, History, Search } from "lucide-react";
+import { Download, History } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
+import { Buscador } from "@/components/buscador";
 import { Campo } from "@/components/tipografia";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
@@ -93,19 +95,13 @@ function Bitacora() {
       </p>
 
       <div className="flex flex-wrap items-end gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar en acción o detalle"
-            className="h-11 pl-9"
-            aria-label="Buscar en la bitácora"
-          />
-        </div>
+        <Buscador
+          className="w-full max-w-xs"
+          valor={q}
+          alCambiar={setQ}
+          marcador="Buscar en acción o detalle"
+          etiqueta="Buscar en la bitácora"
+        />
         <Campo etiqueta="Usuario">
           <select
             value={usuario}
@@ -167,58 +163,43 @@ function Bitacora() {
         ) : null}
       </div>
 
-      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
-        <table className="w-full min-w-[52rem] text-sm">
-          <thead className="border-b border-border bg-muted/50 text-left">
-            <tr>
-              {["Fecha", "Usuario", "Acción", "Detalle", "Origen"].map((h) => (
-                <th key={h} className="px-3 py-2 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibles.map((b) => (
-              <tr
-                key={b.id}
+      <Tabla
+        className="mt-3"
+        anchoMinimo="52rem"
+        columnas={["Fecha", "Usuario", "Acción", "Detalle", "Origen"]}
+        vacio={
+          visibles.length === 0 ? (
+            <>
+              <History className="mx-auto size-8 text-muted-foreground" aria-hidden />
+              <p className="mt-3 text-sm font-semibold">Sin registros con estos filtros</p>
+              <p className="text-sm text-muted-foreground">
+                Prueba con un rango de fechas más amplio o limpia los filtros.
+              </p>
+            </>
+          ) : null
+        }
+      >
+        {visibles.map((b) => (
+          <Fila key={b.id} className={cn(b.deLaSesion && "bg-secondary/40")}>
+            <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{b.fecha}</td>
+            <td className="px-3 py-2">{b.usuario}</td>
+            <td className="px-3 py-2 font-medium">{b.accion}</td>
+            <td className="px-3 py-2 text-muted-foreground">{b.detalle}</td>
+            <td className="px-3 py-2">
+              <span
                 className={cn(
-                  "border-b border-border last:border-0",
-                  b.deLaSesion && "bg-secondary/40",
+                  "rounded-md px-2 py-0.5 text-xs font-semibold",
+                  b.deLaSesion
+                    ? "bg-estado-comprobante-bg text-estado-comprobante"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
-                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{b.fecha}</td>
-                <td className="px-3 py-2">{b.usuario}</td>
-                <td className="px-3 py-2 font-medium">{b.accion}</td>
-                <td className="px-3 py-2 text-muted-foreground">{b.detalle}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={cn(
-                      "rounded-md px-2 py-0.5 text-xs font-semibold",
-                      b.deLaSesion
-                        ? "bg-estado-comprobante-bg text-estado-comprobante"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {b.deLaSesion ? "Sesión" : "Histórico"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {visibles.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-12 text-center">
-                  <History className="mx-auto size-8 text-muted-foreground" aria-hidden />
-                  <p className="mt-3 text-sm font-semibold">Sin registros con estos filtros</p>
-                  <p className="text-sm text-muted-foreground">
-                    Prueba con un rango de fechas más amplio o limpia los filtros.
-                  </p>
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+                {b.deLaSesion ? "Sesión" : "Histórico"}
+              </span>
+            </td>
+          </Fila>
+        ))}
+      </Tabla>
     </PantallaPanel>
   );
 }

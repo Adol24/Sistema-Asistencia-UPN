@@ -4,17 +4,7 @@ import { CalendarDays, MapPin, ScanLine, TimerOff, UserRound } from "lucide-reac
 import { toast } from "sonner";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
@@ -196,39 +186,30 @@ function ConfiguracionSesion() {
           Marca la salida de quien siga dentro del recinto. A quien ya se fue no lo toca, y no
           decide constancias. Se dispara a mano porque el prototipo no tiene reloj de evento.
         </p>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
+        <DialogoConfirmar
+          disparador={
             <Button variant="outline" className="mt-3 h-12 w-full">
               Ejecutar cierre automático del día {sesion.dia}
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Cerrar el día {sesion.dia}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Se registrará la salida de todo participante del día {sesion.dia} que siga dentro
-                del recinto. A quien ya había salido no se le toca. Queda marcada como cierre
-                automático. No cambia quién es elegible para constancia. No se puede deshacer desde
-                esta pantalla.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  const n = ejecutarCierreAutomatico(sesion.dia);
-                  toast.success(
-                    n === 0
-                      ? `No quedaba nadie sin salida en el día ${sesion.dia}.`
-                      : `Se cerraron ${n} asistencias del día ${sesion.dia}.`,
-                  );
-                }}
-              >
-                Sí, cerrar el día
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          }
+          titulo={`¿Cerrar el día ${sesion.dia}?`}
+          descripcion={
+            <>
+              Se registrará la salida de todo participante del día {sesion.dia} que siga dentro del
+              recinto. A quien ya había salido no se le toca. Queda marcada como cierre automático.
+              No cambia quién es elegible para constancia. No se puede deshacer desde esta pantalla.
+            </>
+          }
+          confirmar="Sí, cerrar el día"
+          alConfirmar={() => {
+            const n = ejecutarCierreAutomatico(sesion.dia);
+            toast.success(
+              n === 0
+                ? `No quedaba nadie sin salida en el día ${sesion.dia}.`
+                : `Se cerraron ${n} asistencias del día ${sesion.dia}.`,
+            );
+          }}
+        />
       </section>
     </PantallaCaptura>
   );

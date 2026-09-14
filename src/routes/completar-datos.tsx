@@ -24,7 +24,7 @@ type Errores = Partial<Record<"correo" | "celular", string>>;
 
 function DatosDeContacto() {
   const navigate = useNavigate();
-  const { borrador, participante, setBorrador } = usePrototipo();
+  const { setBorrador } = usePrototipo();
   const { configuracion: evento } = useEstadoEvento();
 
   const [correo, setCorreo] = useState("");

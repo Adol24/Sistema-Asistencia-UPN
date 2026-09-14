@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Search, Users } from "lucide-react";
+import { Check, Users } from "lucide-react";
+import { Buscador } from "@/components/buscador";
 import { PantallaCaptura } from "@/components/captura-shell";
 import { Campo } from "@/components/tipografia";
 import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { retroalimentar } from "@/lib/retro";
@@ -122,19 +122,14 @@ function ModoTaller() {
             </span>
           </div>
 
-          <div className="relative mt-3">
-            <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre, folio o matrícula"
-              className="h-12 pl-9"
-              aria-label="Buscar en la lista"
-            />
-          </div>
+          <Buscador
+            className="mt-3"
+            alto="h-12"
+            valor={q}
+            alCambiar={setQ}
+            marcador="Buscar por nombre, folio o matrícula"
+            etiqueta="Buscar en la lista"
+          />
 
           <ul className="mt-3 grid gap-2">
             {visibles.map((p) => {

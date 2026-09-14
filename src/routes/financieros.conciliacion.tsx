@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Copy, Download, Search, TimerOff, Wallet } from "lucide-react";
+import { AlertTriangle, Copy, Download, TimerOff, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { Buscador } from "@/components/buscador";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { Indicador } from "@/components/indicador";
 import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 import { moneda } from "@/lib/formato";
 import { folioDeEjemplo } from "@/lib/busqueda";
@@ -185,19 +186,13 @@ function Conciliacion() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Filtrar por folio, nombre o matrícula"
-            className="h-11 pl-9"
-            aria-label="Filtrar la tabla de conciliación"
-          />
-        </div>
+        <Buscador
+          className="w-full max-w-sm"
+          valor={q}
+          alCambiar={setQ}
+          marcador="Filtrar por folio, nombre o matrícula"
+          etiqueta="Filtrar la tabla de conciliación"
+        />
         <div className="flex flex-wrap gap-1">
           {(
             [
@@ -223,86 +218,77 @@ function Conciliacion() {
         </div>
       </div>
 
-      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
-        <table className="w-full min-w-[52rem] text-sm">
-          <thead className="border-b border-border bg-muted/50 text-left">
-            <tr>
-              {[
-                "Folio",
-                "Participante",
-                "Perfil",
-                "Día",
-                "Evento",
-                "Taller",
-                "Pagos",
-                "Cobrado",
-              ].map((h) => (
-                <th key={h} className="px-3 py-2 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/*
-              La fila abre la ficha de esa persona. Antes la tabla era un
-              callejón sin salida: se veía aquí a quién le faltaba pagar y había
-              que volver a la lista y teclear su nombre otra vez.
-            */}
-            {filas.map((f) => (
-              <tr
-                key={f.p.folio}
-                onClick={() => {
-                  setFolio(f.p.folio);
-                  void navigate({ to: "/financieros/ficha" });
-                }}
-                tabIndex={0}
-                role="button"
-                aria-label={`Abrir la ficha de ${f.p.nombre}`}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter" && e.key !== " ") return;
-                  e.preventDefault();
-                  setFolio(f.p.folio);
-                  void navigate({ to: "/financieros/ficha" });
-                }}
-                className="cursor-pointer border-b border-border last:border-0 hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-              >
-                <td className="px-3 py-2 font-mono text-xs">{f.p.folio}</td>
-                <td className="px-3 py-2">{f.p.nombre}</td>
-                <td className="px-3 py-2">
-                  <PerfilBadge perfil={f.p.perfil} />
-                </td>
-                <td className="px-3 py-2">{f.p.dia}</td>
-                <td className="px-3 py-2">
-                  <EstadoPagoBadge estado={f.estado.evento} />
-                </td>
-                <td className="px-3 py-2">
-                  {f.estado.taller ? (
-                    <EstadoPagoBadge estado={f.estado.taller} />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Sin taller</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
-                <td className="px-3 py-2 font-semibold">{moneda(f.pagado)}</td>
-              </tr>
-            ))}
-            {filas.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-3 py-12 text-center">
-                  <p className="text-sm font-semibold">Sin resultados para ese filtro</p>
-                  <p className="text-sm text-muted-foreground">
-                    {ejemplo
-                      ? `Prueba con el folio completo, por ejemplo ${ejemplo}, o quita `
-                      : "Quita "}
-                    el filtro de estado.
-                  </p>
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      {/*
+        La fila abre la ficha de esa persona. Antes la tabla era un callejón sin
+        salida: se veía aquí a quién le faltaba pagar y había que volver a la
+        lista y teclear su nombre otra vez.
+      */}
+      <Tabla
+        className="mt-3"
+        anchoMinimo="52rem"
+        columnas={[
+          "Folio",
+          "Participante",
+          "Perfil",
+          "Día",
+          "Evento",
+          "Taller",
+          "Pagos",
+          "Cobrado",
+        ]}
+        vacio={
+          filas.length === 0 ? (
+            <>
+              <p className="text-sm font-semibold">Sin resultados para ese filtro</p>
+              <p className="text-sm text-muted-foreground">
+                {ejemplo
+                  ? `Prueba con el folio completo, por ejemplo ${ejemplo}, o quita `
+                  : "Quita "}
+                el filtro de estado.
+              </p>
+            </>
+          ) : null
+        }
+      >
+        {filas.map((f) => (
+          <Fila
+            key={f.p.folio}
+            onClick={() => {
+              setFolio(f.p.folio);
+              void navigate({ to: "/financieros/ficha" });
+            }}
+            tabIndex={0}
+            role="button"
+            aria-label={`Abrir la ficha de ${f.p.nombre}`}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              setFolio(f.p.folio);
+              void navigate({ to: "/financieros/ficha" });
+            }}
+            className="cursor-pointer hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+          >
+            <td className="px-3 py-2 font-mono text-xs">{f.p.folio}</td>
+            <td className="px-3 py-2">{f.p.nombre}</td>
+            <td className="px-3 py-2">
+              <PerfilBadge perfil={f.p.perfil} />
+            </td>
+            <td className="px-3 py-2">{f.p.dia}</td>
+            <td className="px-3 py-2">
+              <EstadoPagoBadge estado={f.estado.evento} />
+            </td>
+            <td className="px-3 py-2">
+              {f.estado.taller ? (
+                <EstadoPagoBadge estado={f.estado.taller} />
+              ) : (
+                <span className="text-xs text-muted-foreground">Sin taller</span>
+              )}
+            </td>
+            <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
+            <td className="px-3 py-2 font-semibold">{moneda(f.pagado)}</td>
+          </Fila>
+        ))}
+      </Tabla>
     </PantallaPanel>
   );
 }

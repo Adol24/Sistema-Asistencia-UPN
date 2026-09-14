@@ -1,15 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,12 +58,9 @@ function Dashboard() {
     talleres,
     configuracion,
     reloj,
-    usuarios,
-    padron,
     anularAsistencia,
   } = useEstadoEvento();
   const entorno = useEntornoConstancias();
-  const infoDelDia = configuracion.dias.find((d) => d.dia === reloj.dia);
   const [anulando, setAnulando] = useState<Asistencia | null>(null);
   const [motivo, setMotivo] = useState("");
 
@@ -454,46 +442,42 @@ function Dashboard() {
           </ul>
         </Tarjeta>
       </div>
-      <AlertDialog open={!!anulando} onOpenChange={(o) => !o && setAnulando(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Anular la {anulando?.tipo} de {anulando?.nombre}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Del día {anulando?.dia} a las {anulando?.hora}. El registro deja de contar para su
-              asistencia y para los elegibles, pero queda en la bitácora con tu nombre y el motivo.
-              Escribe por qué: sin eso, dentro de un mes nadie sabrá si fue un error o una
-              corrección.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div>
-            <Label htmlFor="motivo-anulacion">Motivo</Label>
-            <Textarea
-              id="motivo-anulacion"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Cambió de día por corrección del padrón; esta entrada era del día anterior."
-              rows={3}
-              className="mt-1"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={motivo.trim().length < 10}
-              onClick={() => {
-                if (!anulando) return;
-                anularAsistencia(anulando.id, motivo.trim());
-                toast.success(`Anulada la ${anulando.tipo} de ${anulando.nombre}.`);
-                setAnulando(null);
-              }}
-            >
-              Anular
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DialogoConfirmar
+        abierto={!!anulando}
+        alCerrar={() => setAnulando(null)}
+        titulo={
+          <>
+            Anular la {anulando?.tipo} de {anulando?.nombre}
+          </>
+        }
+        descripcion={
+          <>
+            Del día {anulando?.dia} a las {anulando?.hora}. El registro deja de contar para su
+            asistencia y para los elegibles, pero queda en la bitácora con tu nombre y el motivo.
+            Escribe por qué: sin eso, dentro de un mes nadie sabrá si fue un error o una corrección.
+          </>
+        }
+        confirmar="Anular"
+        deshabilitado={motivo.trim().length < 10}
+        alConfirmar={() => {
+          if (!anulando) return;
+          anularAsistencia(anulando.id, motivo.trim());
+          toast.success(`Anulada la ${anulando.tipo} de ${anulando.nombre}.`);
+          setAnulando(null);
+        }}
+      >
+        <div>
+          <Label htmlFor="motivo-anulacion">Motivo</Label>
+          <Textarea
+            id="motivo-anulacion"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Cambió de día por corrección del padrón; esta entrada era del día anterior."
+            rows={3}
+            className="mt-1"
+          />
+        </div>
+      </DialogoConfirmar>
     </PantallaPanel>
   );
 }

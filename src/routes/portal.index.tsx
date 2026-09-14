@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { simularLatencia } from "@/lib/formato";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
 import { usePortal } from "@/lib/portal";
-import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { meta } from "@/lib/seo";
 
 export const Route = createFileRoute("/portal/")({

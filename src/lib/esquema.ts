@@ -22,7 +22,6 @@ import type {
   Evidencia,
   Participante,
   Perfil,
-  RolInterno,
   TallerBase,
   UsuarioInterno,
 } from "@/dominio/tipos";

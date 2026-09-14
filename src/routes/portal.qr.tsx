@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Camera, Maximize2 } from "lucide-react";
-import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
 import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
 import { AccionesDelPase } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
-import { Button } from "@/components/ui/button";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";

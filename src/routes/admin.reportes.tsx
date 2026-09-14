@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Download, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
+import { Fila, Tabla } from "@/components/tabla";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,6 @@ import {
 } from "@/lib/elegibilidad";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/reportes")({
   head: () =>
@@ -45,11 +45,8 @@ function Reportes() {
     padron,
     pagos,
     asistencias,
-    asistenciasDe,
     evidencias,
     talleres,
-    getTaller,
-    estadoDe,
     casos,
     registrarBitacora,
     configuracion,
@@ -365,41 +362,33 @@ function Reportes() {
 
       <p className="mt-3 text-sm text-muted-foreground">{r.nota}</p>
 
-      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
-        <table className="w-full min-w-[56rem] text-sm">
-          <thead className="border-b border-border bg-muted/50 text-left">
-            <tr>
-              {r.encabezados.map((h) => (
-                <th key={h} className="whitespace-nowrap px-3 py-2 font-mono text-xs font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibles.map((fila, i) => (
-              <tr key={desde + i} className="border-b border-border last:border-0">
-                {fila.map((celda, k) => (
-                  <td key={k} className="px-3 py-2">
-                    {String(celda)}
-                  </td>
-                ))}
-              </tr>
+      <Tabla
+        className="mt-3"
+        anchoMinimo="56rem"
+        columnas={r.encabezados}
+        claseColumnas="whitespace-nowrap font-mono text-xs"
+        vacio={
+          r.filas.length === 0 ? (
+            <>
+              <Table2 className="mx-auto size-8 text-muted-foreground" aria-hidden />
+              <p className="mt-3 text-sm font-semibold">Este reporte no tiene registros</p>
+              <p className="text-sm text-muted-foreground">
+                Aparecerán en cuanto se generen datos en la sesión.
+              </p>
+            </>
+          ) : null
+        }
+      >
+        {visibles.map((fila, i) => (
+          <Fila key={desde + i}>
+            {fila.map((celda, k) => (
+              <td key={k} className="px-3 py-2">
+                {String(celda)}
+              </td>
             ))}
-            {r.filas.length === 0 ? (
-              <tr>
-                <td colSpan={r.encabezados.length} className="px-3 py-12 text-center">
-                  <Table2 className="mx-auto size-8 text-muted-foreground" aria-hidden />
-                  <p className="mt-3 text-sm font-semibold">Este reporte no tiene registros</p>
-                  <p className="text-sm text-muted-foreground">
-                    Aparecerán en cuanto se generen datos en la sesión.
-                  </p>
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+          </Fila>
+        ))}
+      </Tabla>
       {r.filas.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">

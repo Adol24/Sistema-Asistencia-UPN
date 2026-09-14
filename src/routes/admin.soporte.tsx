@@ -10,12 +10,12 @@ import {
   MessageCircle,
   Pencil,
   Plus,
-  Search,
   Smartphone,
   Store,
   UserPen,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Buscador } from "@/components/buscador";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { EstadoCasoBadge, PerfilBadge } from "@/components/estado-badges";
@@ -239,19 +239,13 @@ function Soporte() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
-        <div className="relative w-full max-w-sm">
-          <Search
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por folio, nombre, asunto o número de caso"
-            className="h-11 pl-9"
-            aria-label="Buscar caso"
-          />
-        </div>
+        <Buscador
+          className="w-full max-w-sm"
+          valor={q}
+          alCambiar={setQ}
+          marcador="Buscar por folio, nombre, asunto o número de caso"
+          etiqueta="Buscar caso"
+        />
         <Campo etiqueta="Estado">
           <select
             value={estado}
