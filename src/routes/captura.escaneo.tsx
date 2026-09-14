@@ -248,17 +248,6 @@ function PantallaEscaneo() {
       </p>
 
       {/*
-        Va aquí y no en la pantalla de sesión porque es la instrucción que se
-        olvida a la persona doscientos, no la que se lee al empezar el día.
-      */}
-      <p className="mt-3 rounded-md bg-muted p-2 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">La entrada se registra en dos pasos.</span>{" "}
-        Pídele la credencial, escanea su código, compara la matrícula y el nombre con lo que trae en
-        la mano, y solo entonces confirma. El código dice qué folio es, no quién lo trae. Al salir y
-        al volver no se verifica nada: se escanea y pasa.
-      </p>
-
-      {/*
         La prueba de sonido va aquí, en la pantalla donde se usa.
         El volumen de la puerta se ajusta ANTES de que llegue la fila, no
         descubriendo a media jornada que el teléfono estaba en silencio.
