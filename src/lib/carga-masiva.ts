@@ -161,10 +161,3 @@ export function analizarArchivo(
     return { ...base, semaforo: "listo", motivo: "Listo para aplicar.", nombre: p.nombre, pago };
   });
 }
-
-export function resumirFilas(filas: FilaAnalizada[]) {
-  const listo = filas.filter((f) => f.semaforo === "listo").length;
-  const advertencia = filas.filter((f) => f.semaforo === "advertencia").length;
-  const error = filas.filter((f) => f.semaforo === "error").length;
-  return { listo, advertencia, error, aplicables: listo + advertencia };
-}

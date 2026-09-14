@@ -17,9 +17,6 @@ import { useMemo } from "react";
 import type { Asistencia, CasoSoporte, EstadoPago, Evidencia, Participante } from "@/dominio/tipos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 
-/** Los dos listados que el sistema entrega por separado. */
-export type TipoListado = "evento" | "taller";
-
 export interface Requisito {
   texto: string;
   ok: boolean;

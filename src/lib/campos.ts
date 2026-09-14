@@ -22,18 +22,6 @@ export const LARGO = {
 } as const;
 
 /**
- * Un importe en pesos: dígitos y **un** punto decimal, con dos decimales como
- * máximo. No se recorta a una longitud fija porque los montos no la tienen; lo
- * que se impide es escribir algo que no sea un número.
- */
-export const soloImporte = (valor: string): string => {
-  const limpio = valor.replace(/[^\d.]/g, "");
-  const [entera, ...resto] = limpio.split(".");
-  if (resto.length === 0) return entera ?? "";
-  return `${entera}.${resto.join("").slice(0, 2)}`;
-};
-
-/**
  * «Te faltan 3 dígitos: el celular son 10.» Decir cuántos faltan es más útil
  * que repetir el formato, que el propio campo ya garantiza.
  */

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { mensajeDeError } from "@/lib/supabase";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +101,9 @@ function CatalogoTalleres() {
     } catch (e) {
       // El mensaje de la base es específico —matrícula fuera del padrón, taller
       // sin cupo, correo con dominio equivocado— y ayuda más que uno genérico.
-      toast.error((e as Error)?.message || "No pudimos guardar tu pre-registro.");
+      // `mensajeDeError` traduce además los códigos que no son un texto: la
+      // violación de unicidad o el permiso que falta salían tal cual.
+      toast.error(mensajeDeError(e));
     } finally {
       setRegistrando(false);
     }

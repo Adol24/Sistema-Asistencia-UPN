@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { mensajeDeError } from "@/lib/supabase";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { CasoSoporte } from "@/dominio/tipos";
@@ -646,9 +647,7 @@ function Soporte() {
                       setNuevo(null);
                       setAbierto(caso.id);
                     })
-                    .catch((e: unknown) =>
-                      toast.error((e as Error)?.message || "No pudimos abrir el caso."),
-                    )
+                    .catch((e: unknown) => toast.error(mensajeDeError(e)))
                     .finally(() => setGuardando(false));
                 }}
               >

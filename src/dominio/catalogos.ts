@@ -51,11 +51,3 @@ export const avanceTexto = (
   const n = buscarNivel(catalogo, nivel);
   return n && avance ? `${n.etiquetaAvance} ${avance}` : "";
 };
-
-/** Las opciones de avance de un nivel: [1, 2, … total]. */
-export const avancesDe = (n: NivelAcademico): number[] =>
-  Array.from({ length: n.totalAvance }, (_, i) => i + 1);
-
-/** Todos los programas del catálogo, sin importar el nivel. */
-export const todosLosProgramas = (catalogo: NivelAcademico[]): string[] =>
-  catalogo.flatMap((n) => n.programas);

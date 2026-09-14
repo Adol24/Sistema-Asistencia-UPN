@@ -364,7 +364,6 @@ const EstadoEventoCtx = createContext<Ctx | null>(null);
  * caso se resuelve mandándolo de vuelta a formarse a la puerta.
  */
 const PUNTOS_POR_DEFECTO = ["Acceso principal", "Mesa de incidencias", "Registro Taller"];
-export const PUNTOS_CAPTURA = PUNTOS_POR_DEFECTO;
 
 /**
  * @param inicial Lo público, ya resuelto en el servidor.

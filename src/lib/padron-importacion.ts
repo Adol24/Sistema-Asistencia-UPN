@@ -227,10 +227,3 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     };
   });
 }
-
-export function resumirPadron(filas: FilaPadron[]) {
-  const listo = filas.filter((f) => f.semaforo === "listo").length;
-  const advertencia = filas.filter((f) => f.semaforo === "advertencia").length;
-  const error = filas.filter((f) => f.semaforo === "error").length;
-  return { listo, advertencia, error, aplicables: listo + advertencia };
-}
