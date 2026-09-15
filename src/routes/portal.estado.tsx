@@ -195,7 +195,20 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               <span className="text-sm text-muted-foreground">Sin taller seleccionado</span>
             )}
           </div>
-          {taller ? <p className="mt-2 text-xs text-muted-foreground">{taller.nombre}</p> : null}
+          {/*
+           * Con la hora y el lugar, porque el recuadro de abajo —«Tu asistencia
+           * presencial»— dice dónde son las ponencias y el taller es por la
+           * tarde en otro edificio. Sin esto, el portal manda a media tarde al
+           * sitio equivocado a quien confió en el único lugar que le enseñó.
+           */}
+          {taller ? (
+            <div className="mt-2 text-xs text-muted-foreground">
+              <p>{taller.nombre}</p>
+              <p className="mt-0.5">
+                {taller.horario} · {taller.lugar}
+              </p>
+            </div>
+          ) : null}
         </div>
         <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2">
           <p className="text-xs text-muted-foreground">Tu asistencia presencial</p>

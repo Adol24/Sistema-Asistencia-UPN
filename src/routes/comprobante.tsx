@@ -81,7 +81,20 @@ function Comprobante() {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Taller</dt>
-            <dd className="font-medium">{taller ? taller.nombre : "Sin taller"}</dd>
+            <dd className="font-medium">
+              {taller ? taller.nombre : "Sin taller"}
+              {/*
+               * La hora y el lugar del taller van aquí y no se dan por sabidos.
+               * El renglón de arriba dice dónde son las ponencias, que es otro
+               * edificio: quien lleva taller se mueve por la tarde, y este papel
+               * es lo único que trae consigo ese día.
+               */}
+              {taller ? (
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  {taller.horario} · {taller.lugar}
+                </span>
+              ) : null}
+            </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Total por pagar (en dos depósitos)</dt>
