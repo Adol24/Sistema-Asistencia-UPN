@@ -15,10 +15,10 @@ anónimo, y desde el archivo parecían cerradas.
 
 ## Aplicadas
 
-Confirmadas contra el proyecto real hasta la 31: el comprobante termina en «LA
+Confirmadas contra el proyecto real hasta la 33: el comprobante termina en «LA
 CONEXIÓN FUNCIONA», sin ningún problema.
 
-**Pendientes de aplicar: la 32 y la 33**, las dos del programa oficial.
+**Pendientes de aplicar: la 34 y la 35**, las dos del programa oficial.
 
 - `20260915120000_fechas_reales_del_programa` corrige las fechas. Hasta que se
   corra, la base sigue diciendo que el día 1 es el 14 de octubre y la puerta
@@ -27,7 +27,7 @@ CONEXIÓN FUNCIONA», sin ningún problema.
   corrige las sedes y pone la cuota en 500. Hasta que se corra, el catálogo de
   talleres está **vacío**: nadie puede elegir uno.
 
-Córrelas en ese orden. La 33 da por buenas las fechas de la 32.
+Córrelas en ese orden. La 35 da por buenas las fechas de la 34.
 
 Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
 captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
@@ -54,7 +54,19 @@ migración que cree o recree funciones internas:
 
 ## Qué hicieron las últimas
 
-### Las fechas reales del programa (32) — sin aplicar todavía
+El número entre paréntesis es **la posición del archivo en la carpeta**, que se
+comprueba así:
+
+```bash
+ls supabase/migrations/*.sql | nl
+```
+
+Se dice porque ya se había desfasado una vez: este documento llamaba «30» a la
+del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
+heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
+y hay que verificarlo.
+
+### Las fechas reales del programa (34) — sin aplicar todavía
 
 La siembra inicial puso el evento en el 14, 15 y 16 de octubre. El programa
 oficial que entregó la universidad lo sitúa un día después: **jueves 15, viernes
@@ -73,7 +85,7 @@ antes de depositar. No toca las sedes —el programa también las contradice, pe
 eso necesita una decisión de diseño, ver abajo— ni la fecha límite, que sigue
 siendo anterior al evento y se cambia desde `/admin/configuracion`.
 
-### Talleres, sedes y cuota del programa oficial (33) — sin aplicar todavía
+### Talleres, sedes y cuota del programa oficial (35) — sin aplicar todavía
 
 **Las sedes.** Quedan Salón SUTERM el día 1 y Centro de convenciones Teziutlán
 los días 2 y 3. «Teatro Victoria», que la siembra ponía el día 3, no aparece en
@@ -84,7 +96,7 @@ mañana y lo que imprime el comprobante. Los talleres son por la tarde en otro
 edificio —Instalaciones UPN U-212— y ese dato no cabía aquí: viaja en la columna
 `lugar` de cada taller, que ya existía.
 
-**Los puntos del día 2 se vacían.** La migración 31 les cargó los de SUTERM
+**Los puntos del día 2 se vacían.** La migración 32 les cargó los de SUTERM
 cuando se creía que ese día era ahí. Ahora es en el Centro de convenciones, así
 que los tres nombraban lugares inexistentes. Vacío cae a la lista genérica y el
 capturista sigue trabajando; un punto con nombre falso habría dejado reportes que
@@ -118,7 +130,7 @@ separado — como ningún taller declara ese día, la llave foránea compuesta c
 como los dos conceptos se cobran y concilian por separado, la diferencia va en el
 costo del taller: 500 + 100 = 600.
 
-### La puerta como torniquete (30)
+### La puerta como torniquete (31)
 
 Es la única que **quita** una restricción, así que conviene tenerla presente si
 algo de la puerta se comporta raro.
@@ -143,7 +155,7 @@ De ahí salen los otros tres cambios:
 
 No toca la elegibilidad para constancia: registrar no es condicionar.
 
-### Puntos de captura por día (31)
+### Puntos de captura por día (32)
 
 Añade `puntos text[]` a `dias_evento`. Vacío significa «sin configurar» y la
 aplicación cae a su lista genérica, así que nada se rompe mientras no se llene.
@@ -186,7 +198,7 @@ O pegando cada archivo, en orden, en el editor SQL del panel.
 **Pruébalas primero en un proyecto de prueba.** No se ejecutan contra ningún
 Postgres al escribirlas: en la máquina donde se escriben no hay `psql`, ni el CLI
 de Supabase, ni Docker. Salen revisadas leyéndolas, no probadas — y ya se vio lo
-que eso cuesta: la 30 parecía correcta en el archivo y dejó dos funciones
+que eso cuesta: la 31 parecía correcta en el archivo y dejó dos funciones
 abiertas al público.
 
 Después de correrlas, `bun run verificar-conexion`. Siempre.
