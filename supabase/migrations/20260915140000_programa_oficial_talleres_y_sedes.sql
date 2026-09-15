@@ -67,11 +67,17 @@ update configuracion_evento set cuota_evento = 500.00 where id = 1;
 -- Todos en las Instalaciones de la UPN U-212, Teziutlán, por la tarde, y todos
 -- a 100 pesos.
 --
--- Sobre los días: en el programa, la tabla del día 2 repite tres talleres sin
--- volver a numerarlos. No son talleres nuevos, son los mismos del día 1 que se
--- imparten otra vez —T03, T05 y T06—, y por eso aquí aparecen con los dos días.
--- Que un taller pueda darse en varios días ya estaba previsto: para eso existe
--- `taller_dias`.
+-- Sobre los días: cuatro talleres se imparten las dos tardes —T03, T04, T05 y
+-- T06—. No son talleres nuevos cada día, son el mismo repetido, y por eso
+-- aparecen con los dos días. Que un taller pueda darse en varios días ya estaba
+-- previsto: para eso existe `taller_dias`.
+--
+-- El programa los marca de dos maneras distintas, y conviene saberlo por si hay
+-- que releerlo. A T03, T05 y T06 los repite en la tabla del día 2 SIN volver a
+-- numerarlos, que es la pista de que son los mismos. A T04 sí le pone número
+-- propio el día 2 (el 11), pero es el mismo taller: mismo tallerista, mismo
+-- título, mismo lugar y mismo horario que el 4 del día 1. La nota del día 1
+-- —«trabajará con grupos distintos»— dice justamente eso.
 --
 -- Sobre el cupo: 30 en todos menos T04, que el propio programa fija en 70 porque
 -- su tallerista trabaja con grupos distintos.

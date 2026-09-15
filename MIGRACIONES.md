@@ -95,9 +95,20 @@ después.
 de 30 salvo `T04`, que el programa fija en 70 porque su tallerista trabaja con
 grupos distintos.
 
-Tres de ellos —`T03`, `T05` y `T06`— se imparten **los dos días**. En el programa
-aparecen otra vez en la tabla del día 2 pero sin volver a numerarlos, que es la
-pista de que son los mismos. Para eso existía `taller_dias`.
+Cuatro de ellos —`T03`, `T04`, `T05` y `T06`— se imparten **los dos días**. Para
+eso existía `taller_dias`.
+
+El programa los marca de dos maneras, por si hay que releerlo: a `T03`, `T05` y
+`T06` los repite en la tabla del día 2 sin volver a numerarlos, que es la pista
+de que son los mismos; a `T04` sí le pone número propio (el 11), pero es el mismo
+taller —mismo tallerista, título, lugar y horario que el 4 del día 1— y la nota
+del día 1, «trabajará con grupos distintos», dice justamente eso.
+
+**Ojo con el cupo cuando se repite un taller.** `cupo_total` es uno por taller,
+no uno por día: los 70 de `T04` se reparten entre las dos tardes, no son 70 cada
+una. Si la intención era 70 por día, el número tiene que ser 140 —o el cupo tiene
+que pasar a `taller_dias`, que es un cambio de esquema—. Lo mismo con los 30 de
+`T03`, `T05` y `T06`.
 
 **El día 3 no tiene talleres**: es el de la clausura. No hace falta prohibirlo por
 separado — como ningún taller declara ese día, la llave foránea compuesta contra
