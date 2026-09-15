@@ -212,6 +212,7 @@ declare
   v_talleres integer;
   v_cupo integer;
   v_sin_descripcion integer;
+  v_desfasados integer;
   r record;
 begin
   select count(*), coalesce(sum(cupo_total), 0) into v_talleres, v_cupo
@@ -237,5 +238,37 @@ begin
   end if;
 
   raise notice 'PENDIENTE: los días 2 y 3 no tienen puntos de captura. Se llenan en /admin/configuracion.';
+
+  -- -------------------------------------------------------------------------
+  -- Quien ya se pre-registró conserva el monto que se le dijo.
+  --
+  -- El pre-registro COPIA la cuota al participante en vez de leerla cada vez, y
+  -- eso es a propósito: a quien ya se le dijo «deposita esto» no se le cambia la
+  -- cifra por la espalda. Pero significa que bajar la cuota aquí no alcanza a
+  -- los que entraron antes, y el disparador de `pagos` compara contra ese monto
+  -- congelado: si depositan 500 contra un esperado de 650, les marca
+  -- discrepancia.
+  --
+  -- No se tocan desde aquí. Si son pre-registros de prueba, se borran; si son
+  -- personas de verdad, alguien tiene que decidir qué se les cobra. Ninguna de
+  -- las dos cosas la puede decidir una migración.
+  -- -------------------------------------------------------------------------
+  select count(*) into v_desfasados
+    from participantes p
+   where p.monto_esperado_evento <> 500.00;
+
+  if v_desfasados > 0 then
+    raise warning 'ATENCIÓN: % participantes se pre-registraron con otra cuota y la conservan.', v_desfasados;
+    for r in
+      select p.monto_esperado_evento as monto, count(*) as cuantos
+        from participantes p
+       where p.monto_esperado_evento <> 500.00
+       group by p.monto_esperado_evento
+       order by p.monto_esperado_evento
+    loop
+      raise warning '  esperan % · % personas', r.monto, r.cuantos;
+    end loop;
+    raise warning 'Si depositan 500, el disparador de pagos les marcará discrepancia. Revísalos antes de abrir el pre-registro.';
+  end if;
 end;
 $$;
