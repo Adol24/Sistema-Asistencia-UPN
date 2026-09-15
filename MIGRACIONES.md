@@ -18,15 +18,20 @@ anónimo, y desde el archivo parecían cerradas.
 Confirmadas contra el proyecto real hasta la 31: el comprobante termina en «LA
 CONEXIÓN FUNCIONA», sin ningún problema.
 
-**Pendiente de aplicar: la 32** (`20260915120000_fechas_reales_del_programa`),
-que corrige las fechas del evento. Hasta que se corra, la base sigue diciendo que
-el día 1 es el 14 de octubre y la puerta rechazaría el jueves 15 a todo el que lo
-tenga asignado.
+**Pendientes de aplicar: la 32 y la 33**, las dos del programa oficial.
 
-Lo otro abierto no es una migración: el **día 3** sigue sin puntos de captura
-porque es otra sede y aún no se sabe cómo se llaman sus accesos. Mientras tanto
-usa los genéricos, que no rompe nada. Se llenan desde `/admin/configuracion`, sin
-tocar la base.
+- `20260915120000_fechas_reales_del_programa` corrige las fechas. Hasta que se
+  corra, la base sigue diciendo que el día 1 es el 14 de octubre y la puerta
+  rechazaría el jueves 15 a todo el que lo tenga asignado.
+- `20260915140000_programa_oficial_talleres_y_sedes` carga los once talleres,
+  corrige las sedes y pone la cuota en 500. Hasta que se corra, el catálogo de
+  talleres está **vacío**: nadie puede elegir uno.
+
+Córrelas en ese orden. La 33 da por buenas las fechas de la 32.
+
+Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
+captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
+panel —`/admin/configuracion` y `/admin/talleres`— sin tocar la base.
 
 ### La trampa que hay que recordar al escribir la siguiente
 
@@ -68,19 +73,39 @@ antes de depositar. No toca las sedes —el programa también las contradice, pe
 eso necesita una decisión de diseño, ver abajo— ni la fecha límite, que sigue
 siendo anterior al evento y se cambia desde `/admin/configuracion`.
 
-### Lo que el programa oficial dejó abierto
+### Talleres, sedes y cuota del programa oficial (33) — sin aplicar todavía
 
-Dos cosas que **no** son migraciones todavía porque hace falta decidirlas:
+**Las sedes.** Quedan Salón SUTERM el día 1 y Centro de convenciones Teziutlán
+los días 2 y 3. «Teatro Victoria», que la siembra ponía el día 3, no aparece en
+el programa por ninguna parte: era invento.
 
-- **Las sedes se contradicen y además son dos por día.** La base dice SUTERM,
-  SUTERM y Teatro Victoria. El programa dice SUTERM el día 1, Centro de
-  convenciones Teziutlán los días 2 y 3, y los talleres de los días 1 y 2 en las
-  instalaciones de la UPN U-212. «Teatro Victoria» no aparece en el programa. El
-  problema de fondo es que `dias_evento.sede` es un solo campo y cada día tiene
-  un lugar de mañana (ponencias) y otro de tarde (talleres).
-- **El día 3 no tiene talleres.** Solo registro, tres ponencias y clausura. Quien
-  quede asignado al sábado no puede tomar taller, así que la cuota con taller no
-  le aplica.
+Esa columna guarda la sede de las **ponencias**, que es a donde se llega por la
+mañana y lo que imprime el comprobante. Los talleres son por la tarde en otro
+edificio —Instalaciones UPN U-212— y ese dato no cabía aquí: viaja en la columna
+`lugar` de cada taller, que ya existía.
+
+**Los puntos del día 2 se vacían.** La migración 31 les cargó los de SUTERM
+cuando se creía que ese día era ahí. Ahora es en el Centro de convenciones, así
+que los tres nombraban lugares inexistentes. Vacío cae a la lista genérica y el
+capturista sigue trabajando; un punto con nombre falso habría dejado reportes que
+dicen «Puerta 1 SUTERM» de un día que no fue en SUTERM, y eso ya no se desmiente
+después.
+
+**Los once talleres.** Todos en la UPN U-212, por la tarde, a 100 pesos, con cupo
+de 30 salvo `T04`, que el programa fija en 70 porque su tallerista trabaja con
+grupos distintos.
+
+Tres de ellos —`T03`, `T05` y `T06`— se imparten **los dos días**. En el programa
+aparecen otra vez en la tabla del día 2 pero sin volver a numerarlos, que es la
+pista de que son los mismos. Para eso existía `taller_dias`.
+
+**El día 3 no tiene talleres**: es el de la clausura. No hace falta prohibirlo por
+separado — como ningún taller declara ese día, la llave foránea compuesta contra
+`taller_dias` ya no admite la combinación.
+
+**La cuota baja de 650 a 500.** Son 500 las conferencias y 600 con talleres, y
+como los dos conceptos se cobran y concilian por separado, la diferencia va en el
+costo del taller: 500 + 100 = 600.
 
 ### La puerta como torniquete (30)
 
