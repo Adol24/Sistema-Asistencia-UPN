@@ -158,9 +158,17 @@ function CatalogoTalleres() {
                   !lleno && !elegido && "border-border",
                 )}
               >
+                {/*
+                 * Igual que en /admin/talleres: el título crece y la insignia
+                 * no. Los nombres reales llegan a 155 caracteres y sin `flex-1`
+                 * + `min-w-0` el título empujaba la insignia al renglón de
+                 * abajo, separándola de lo que califica.
+                 */}
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <h2 className="text-base font-semibold leading-snug">{t.nombre}</h2>
-                  <span className="rounded-md border border-border px-2 py-1 text-[11px] font-bold tracking-wide">
+                  <h2 className="min-w-0 flex-1 text-base font-semibold leading-snug">
+                    {t.nombre}
+                  </h2>
+                  <span className="shrink-0 whitespace-nowrap rounded-md border border-border px-2 py-1 text-[11px] font-bold tracking-wide">
                     {t.dias.length === 1 ? "1 DÍA" : "2 DÍAS"}
                   </span>
                 </div>

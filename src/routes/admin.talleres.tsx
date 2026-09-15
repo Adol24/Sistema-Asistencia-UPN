@@ -82,8 +82,18 @@ function AdminTalleres() {
           const delPrototipo = inscritos(t.id);
           return (
             <li key={t.id} className="rounded-lg border border-border bg-card p-4">
+              {/*
+               * El texto crece y los controles no.
+               *
+               * `flex-1` sobre el texto y `shrink-0` sobre los botones, porque
+               * los nombres reales llegan a 155 caracteres —«Diseño de proyectos
+               * comunitarios de investigación etnomatemática para…»— y sin esto
+               * el título empujaba al contador y a los botones al renglón de
+               * abajo. `min-w-0` es lo que deja que el título parta en varias
+               * líneas en vez de estirar la fila.
+               */}
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs text-muted-foreground">{t.id}</span>
                     <span className="text-base font-semibold">{t.nombre}</span>
@@ -98,10 +108,10 @@ function AdminTalleres() {
                     {moneda(t.costo)}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3">
                   <span
                     className={cn(
-                      "flex items-center gap-1 text-sm font-bold",
+                      "flex items-center gap-1 whitespace-nowrap text-sm font-bold",
                       libres <= 0 && "text-estado-cancelado",
                       libres > 0 && libres < 5 && "text-estado-discrepancia",
                     )}
