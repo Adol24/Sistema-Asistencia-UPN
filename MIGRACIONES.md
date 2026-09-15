@@ -15,13 +15,18 @@ anónimo, y desde el archivo parecían cerradas.
 
 ## Aplicadas
 
-**Todas**, confirmadas contra el proyecto real: el comprobante termina en «LA
+Confirmadas contra el proyecto real hasta la 31: el comprobante termina en «LA
 CONEXIÓN FUNCIONA», sin ningún problema.
 
-No queda ninguna pendiente. Lo único abierto no es una migración: el **día 3**
-sigue sin puntos de captura porque es otra sede y aún no se sabe cómo se llaman
-sus accesos. Mientras tanto usa los genéricos, que no rompe nada. Se llenan desde
-`/admin/configuracion`, sin tocar la base.
+**Pendiente de aplicar: la 32** (`20260915120000_fechas_reales_del_programa`),
+que corrige las fechas del evento. Hasta que se corra, la base sigue diciendo que
+el día 1 es el 14 de octubre y la puerta rechazaría el jueves 15 a todo el que lo
+tenga asignado.
+
+Lo otro abierto no es una migración: el **día 3** sigue sin puntos de captura
+porque es otra sede y aún no se sabe cómo se llaman sus accesos. Mientras tanto
+usa los genéricos, que no rompe nada. Se llenan desde `/admin/configuracion`, sin
+tocar la base.
 
 ### La trampa que hay que recordar al escribir la siguiente
 
@@ -42,7 +47,40 @@ migración que cree o recree funciones internas:
   `20260908160000` y en `20260911160000`.
 - Correr `bun run verificar-conexion` después. Fue lo que lo encontró.
 
-## Qué hicieron las últimas (ya aplicadas)
+## Qué hicieron las últimas
+
+### Las fechas reales del programa (32) — sin aplicar todavía
+
+La siembra inicial puso el evento en el 14, 15 y 16 de octubre. El programa
+oficial que entregó la universidad lo sitúa un día después: **jueves 15, viernes
+16 y sábado 17**.
+
+Manda el documento porque cuadra consigo mismo y la siembra no: en 2026 el 15 de
+octubre cae en jueves, el 16 en viernes y el 17 en sábado, tal como los nombra.
+El 14 habría sido miércoles, y ningún día del programa se llama así.
+
+No es cosmético. `dias_evento.fecha` es contra lo que la puerta compara para
+decidir si alguien viene el día que le toca: con un día de desfase, el jueves 15
+el escáner habría marcado en rojo a todo el que tuviera asignado el día 1.
+
+La migración también corrige el texto de `fechas`, que es lo que el alumno lee
+antes de depositar. No toca las sedes —el programa también las contradice, pero
+eso necesita una decisión de diseño, ver abajo— ni la fecha límite, que sigue
+siendo anterior al evento y se cambia desde `/admin/configuracion`.
+
+### Lo que el programa oficial dejó abierto
+
+Dos cosas que **no** son migraciones todavía porque hace falta decidirlas:
+
+- **Las sedes se contradicen y además son dos por día.** La base dice SUTERM,
+  SUTERM y Teatro Victoria. El programa dice SUTERM el día 1, Centro de
+  convenciones Teziutlán los días 2 y 3, y los talleres de los días 1 y 2 en las
+  instalaciones de la UPN U-212. «Teatro Victoria» no aparece en el programa. El
+  problema de fondo es que `dias_evento.sede` es un solo campo y cada día tiene
+  un lugar de mañana (ponencias) y otro de tarde (talleres).
+- **El día 3 no tiene talleres.** Solo registro, tres ponencias y clausura. Quien
+  quede asignado al sábado no puede tomar taller, así que la cuota con taller no
+  le aplica.
 
 ### La puerta como torniquete (30)
 
