@@ -622,6 +622,18 @@ export function EstadoEventoProvider({
    * verificación ya está hecha, porque marcar una casilla obliga a leer el
    * nombre.
    */
+  /**
+   * Los días en que se imparte un taller.
+   *
+   * Sale de `talleresBase` y no de `talleres` porque solo hacen falta los días,
+   * que no dependen del cupo ocupado; `talleres` se calcula bastante más abajo y
+   * traerlo hasta aquí obligaría a mover todo lo que hay en medio.
+   */
+  const diasDelTaller = useCallback(
+    (id: string): Dia[] => talleresBase.find((t) => t.id === id)?.dias ?? [],
+    [talleresBase],
+  );
+
   const evaluar = useCallback<Ctx["evaluar"]>(
     async (entrada, opciones) => {
       const ahora = Date.now();
@@ -634,6 +646,7 @@ export function EstadoEventoProvider({
         asistencias: conocidas,
         estadoDe,
         ahora,
+        diasDelTaller,
         ...(opciones?.autorizado !== undefined ? { autorizado: opciones.autorizado } : {}),
       });
 
@@ -690,7 +703,7 @@ export function EstadoEventoProvider({
 
       return resultado;
     },
-    [asistencias, enCola, sesion, estadoDe, enLinea, enVivo, participantes],
+    [asistencias, enCola, sesion, estadoDe, enLinea, enVivo, participantes, diasDelTaller],
   );
 
   const registrar = useCallback<Ctx["registrar"]>(

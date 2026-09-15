@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { CheckCircle2, Keyboard, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
@@ -66,7 +66,12 @@ function PantallaEscaneo() {
     pendientes,
     estadoDe,
     asistencias,
+    getTaller,
   } = useEstadoEvento();
+
+  // El panel de pruebas evalúa con el mismo motor que la cámara, así que
+  // necesita lo mismo que él: los días del taller de cada quien.
+  const diasDelTaller = useCallback((id: string) => getTaller(id)?.dias ?? [], [getTaller]);
   const { modoPrototipo } = useSesion();
   const [entrada, setEntrada] = useState("");
   const [resultado, setResultado] = useState<ResultadoEscaneo | null>(null);
@@ -177,6 +182,7 @@ function PantallaEscaneo() {
         asistencias,
         estadoDe,
         ahora: Date.now(),
+        diasDelTaller,
       });
       const clave = `${r.color}:${r.titulo}`;
       if (!encontrado.has(clave)) encontrado.set(clave, { p, titulo: r.titulo });
@@ -185,7 +191,7 @@ function PantallaEscaneo() {
     return [...encontrado.entries()]
       .map(([clave, v]) => ({ color: clave.split(":")[0] as Color, ...v }))
       .sort((a, b) => orden.indexOf(a.color) - orden.indexOf(b.color));
-  }, [participantes, sesion, asistencias, estadoDe]);
+  }, [participantes, sesion, asistencias, estadoDe, diasDelTaller]);
 
   return (
     <PantallaCaptura titulo={`Escaneo · Día ${sesion.dia} · ${sesion.punto}`}>

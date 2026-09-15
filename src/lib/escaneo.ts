@@ -172,6 +172,14 @@ export interface EntradaEvaluacion {
   ahora: number;
   /** Un supervisor autorizó el paso pese al día equivocado. */
   autorizado?: boolean;
+  /**
+   * Los días en que se imparte un taller.
+   *
+   * Hace falta porque en el taller el día no se comprueba contra el asignado al
+   * participante: un taller de dos tardes lo cursa el mismo grupo los dos días,
+   * así que a esa persona le toca volver aunque su día sea el otro.
+   */
+  diasDelTaller: (tallerId: string) => Dia[];
 }
 
 /**
@@ -188,7 +196,16 @@ export interface EntradaEvaluacion {
  * deja entrar avisando).
  */
 export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
-  const { entrada, sesion, participantes, asistencias, estadoDe, ahora, autorizado } = e;
+  const {
+    entrada,
+    sesion,
+    participantes,
+    asistencias,
+    estadoDe,
+    ahora,
+    autorizado,
+    diasDelTaller,
+  } = e;
   const base = {
     entradaCruda: entrada.trim(),
     autorizable: false,
@@ -264,8 +281,18 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     }
   }
 
-  // --- Día equivocado: no se registra salvo autorización de supervisor ---
-  if (p.dia !== sesion.dia && !autorizado)
+  /*
+   * --- ¿Le toca hoy? Depende de qué se esté preguntando ---
+   *
+   * En la PUERTA la pregunta es «¿te toca hoy?» y la responde el día asignado:
+   * a las conferencias se va una sola vez.
+   *
+   * En el TALLER la pregunta es «¿tu taller es hoy?» y la responden los días del
+   * taller, más abajo. El día asignado no tiene nada que decir ahí: un taller de
+   * dos tardes lo cursa el mismo grupo los dos días, y quien vuelve el segundo a
+   * las 15:00 se está presentando justo donde debe.
+   */
+  if (sesion.modo === "puerta" && p.dia !== sesion.dia && !autorizado)
     return {
       ...conPersona,
       color: "rojo",
@@ -300,6 +327,27 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
         accion: "PASAR A MESA DE INCIDENCIAS",
         registra: false,
       };
+    /*
+     * Antes esto lo tapaba la regla del día asignado: a quien tenía un taller
+     * del día 1 y llegaba el día 2 lo rechazaba por el día, no por el taller. Se
+     * dice la razón verdadera, que además es la accionable: la persona necesita
+     * saber qué día es el suyo, no que hoy no le toca.
+     */
+    if (!diasDelTaller(p.tallerId).includes(sesion.dia) && !autorizado) {
+      const dias = diasDelTaller(p.tallerId);
+      return {
+        ...conPersona,
+        tipo: "taller",
+        color: "rojo",
+        titulo: "SU TALLER NO ES HOY",
+        motivo: dias.length
+          ? `Su taller se imparte el DÍA ${dias.join(" y ")}, hoy se registra el DÍA ${sesion.dia}.`
+          : "Su taller no tiene días configurados.",
+        accion: "PASAR A MESA DE INCIDENCIAS",
+        registra: false,
+        autorizable: true,
+      };
+    }
     if (estado.taller && sinAcreditar(estado.taller))
       return {
         ...conPersona,

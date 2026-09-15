@@ -15,19 +15,22 @@ anónimo, y desde el archivo parecían cerradas.
 
 ## Aplicadas
 
-Confirmadas contra el proyecto real hasta la 33: el comprobante termina en «LA
-CONEXIÓN FUNCIONA», sin ningún problema.
+Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
+incluidas: el comprobante termina en «LA CONEXIÓN FUNCIONA», sin ningún problema.
 
-**Pendientes de aplicar: la 34 y la 35**, las dos del programa oficial.
+**Pendientes de aplicar: la 36 y la 37**, las dos de la estructura real de los
+talleres, que salió al revisar los cupos con quien organiza.
 
-- `20260915120000_fechas_reales_del_programa` corrige las fechas. Hasta que se
-  corra, la base sigue diciendo que el día 1 es el 14 de octubre y la puerta
-  rechazaría el jueves 15 a todo el que lo tenga asignado.
-- `20260915140000_programa_oficial_talleres_y_sedes` carga los once talleres,
-  corrige las sedes y pone la cuota en 500. Hasta que se corra, el catálogo de
-  talleres está **vacío**: nadie puede elegir uno.
+- `20260915160000_decolonialidad_son_dos_grupos` parte T04 en dos talleres de 35,
+  uno por día. Hasta que se corra, nada impide que las 70 inscripciones caigan el
+  mismo día y desborden el salón.
+- `20260915180000_el_taller_pregunta_por_sus_dias` separa la comprobación del día
+  por modo. Hasta que se corra, las 90 personas de los talleres de dos tardes
+  reciben pantalla roja el segundo día.
 
-Córrelas en ese orden. La 35 da por buenas las fechas de la 34.
+Córrelas en ese orden. La 37 **no cambia la firma** de `fn_evaluar_escaneo`, así
+que `create or replace` conserva las concesiones; aun así las vuelve a cerrar
+recorriendo `pg_proc`, que es lo que manda la trampa de más abajo.
 
 Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
 captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
@@ -66,7 +69,44 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### Las fechas reales del programa (34) — sin aplicar todavía
+### Los talleres tienen dos estructuras distintas (36 y 37) — sin aplicar
+
+Al revisar los cupos salió que «taller de dos días» significaba dos cosas
+distintas, y el modelo solo sabía expresar una.
+
+**T04 eran dos grupos, no uno de setenta.** 35 personas el jueves y 35 distintas
+el viernes. La nota del programa lo decía —«trabajará con grupos distintos»— y el
+propio programa los numera aparte, el 4 y el 11; fui yo quien los unió al ver el
+mismo nombre y tallerista. Con un solo taller de 70 y dos días, nada impedía que
+las 70 inscripciones cayeran el mismo día: el cupo se cuenta por taller, no por
+día. Partirlo en dos de 35 lo arregla **sin tocar el esquema**.
+
+**T03, T05 y T06 sí son un solo grupo de 30 que asiste las dos tardes.** Y eso
+rompía el escaneo, porque el pase de lista de taller compartía la comprobación
+del día con la puerta (`v_p.dia <> p_dia`). Para esas 90 personas era pantalla
+roja el segundo día por presentarse justo donde debían.
+
+La comprobación se separa por modo, porque son dos preguntas distintas:
+
+| Modo     | La pregunta        | La responde                      |
+| -------- | ------------------ | -------------------------------- |
+| `puerta` | ¿te toca hoy?      | el día asignado del participante |
+| `taller` | ¿tu taller es hoy? | `taller_dias`                    |
+
+A las conferencias se va una sola vez, la del día asignado; el otro día se vuelve
+a las 15:00 solo al taller, que además es en otro edificio y ni siquiera cruza la
+puerta de las conferencias.
+
+De paso el modo taller gana dos comprobaciones que le faltaban y que la del día
+venía tapando por accidente: que la persona esté inscrita en algún taller, y que
+ese taller se imparta hoy. Antes, a alguien con taller del día 1 que llegara el
+día 2 lo rechazaba la regla del día asignado; ahora lo rechaza la razón
+verdadera, y el mensaje se la dice: «su taller se imparte el día 1».
+
+El mismo cambio va en `src/lib/escaneo.ts`, que es el motor local con el que se
+decide cuando no hay red. Las dos reglas tienen que decir lo mismo.
+
+### Las fechas reales del programa (34)
 
 La siembra inicial puso el evento en el 14, 15 y 16 de octubre. El programa
 oficial que entregó la universidad lo sitúa un día después: **jueves 15, viernes
@@ -85,7 +125,7 @@ antes de depositar. No toca las sedes —el programa también las contradice, pe
 eso necesita una decisión de diseño, ver abajo— ni la fecha límite, que sigue
 siendo anterior al evento y se cambia desde `/admin/configuracion`.
 
-### Talleres, sedes y cuota del programa oficial (35) — sin aplicar todavía
+### Talleres, sedes y cuota del programa oficial (35)
 
 **Las sedes.** Quedan Salón SUTERM el día 1 y Centro de convenciones Teziutlán
 los días 2 y 3. «Teatro Victoria», que la siembra ponía el día 3, no aparece en
@@ -116,11 +156,8 @@ de que son los mismos; a `T04` sí le pone número propio (el 11), pero es el mi
 taller —mismo tallerista, título, lugar y horario que el 4 del día 1— y la nota
 del día 1, «trabajará con grupos distintos», dice justamente eso.
 
-**Ojo con el cupo cuando se repite un taller.** `cupo_total` es uno por taller,
-no uno por día: los 70 de `T04` se reparten entre las dos tardes, no son 70 cada
-una. Si la intención era 70 por día, el número tiene que ser 140 —o el cupo tiene
-que pasar a `taller_dias`, que es un cambio de esquema—. Lo mismo con los 30 de
-`T03`, `T05` y `T06`.
+**Lo de `T04` quedó mal aquí y lo corrige la 36.** No eran 70 en un taller de dos
+días: eran dos grupos de 35, uno por día. Ver más arriba.
 
 **El día 3 no tiene talleres**: es el de la clausura. No hace falta prohibirlo por
 separado — como ningún taller declara ese día, la llave foránea compuesta contra
