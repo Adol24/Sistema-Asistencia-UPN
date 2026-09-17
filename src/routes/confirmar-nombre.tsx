@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Info, Loader2, MessageCircle, ShieldCheck } from "lucide-react";
+import { Info, Loader2, MessageCircle } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -158,13 +158,7 @@ function ConfirmarNombre() {
         volverA="/alumno"
       >
         <div className="rounded-lg border border-border bg-card p-5">
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-            Son datos que sabes de memoria. Así nadie puede consultar el padrón escribiendo
-            matrículas que no le pertenecen.
-          </p>
-
-          <div className="mt-5 grid gap-4">
+          <div className="grid gap-4">
             <div>
               <Label htmlFor="nombres">Tus nombres, sin apellidos</Label>
               <Input
