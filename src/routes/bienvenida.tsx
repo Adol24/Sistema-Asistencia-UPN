@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronRight, Clock, GraduationCap, UserPlus } from "lucide-react";
+import { CalendarDays, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PASOS_DEL_FLUJO } from "@/lib/flujo-publico";
 import { Rotulo, Ayuda } from "@/components/tipografia";
@@ -56,27 +56,16 @@ function Bienvenida() {
             {evento.subtitulo}
           </p>
           {/*
-           * El horario acompaña a las fechas y no vivía en ninguna pantalla
-           * pública. En la portada es de las primeras preguntas —¿a qué hora
-           * tengo que estar?— y de paso le da a esta columna el peso que le
-           * faltaba frente a los dos botones de al lado.
+           * Solo las fechas. El horario también estuvo aquí y se quitó: el campo
+           * guarda los dos tramos del día y en un renglón quedaba como «8:00 a
+           * 9:00 hrs a 13:00 a 14:00 hrs», que no se entiende; y aun bien
+           * escrito, la hora exacta no está cerrada. Prometer una hora en la
+           * portada es lo que hace que alguien llegue cuando no debe.
            */}
-          <dl className="mt-5 grid gap-2 text-sm text-muted-foreground">
-            {evento.fechas ? (
-              <div className="flex items-center justify-center gap-2 md:justify-start">
-                <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
-                <dt className="sr-only">Fechas</dt>
-                <dd>{evento.fechas}</dd>
-              </div>
-            ) : null}
-            {evento.horario ? (
-              <div className="flex items-center justify-center gap-2 md:justify-start">
-                <Clock className="size-4 shrink-0 text-primary" aria-hidden />
-                <dt className="sr-only">Horario</dt>
-                <dd>{evento.horario}</dd>
-              </div>
-            ) : null}
-          </dl>
+          <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
+            {evento.fechas}
+          </p>
         </header>
 
         <div>

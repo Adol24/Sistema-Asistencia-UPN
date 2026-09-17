@@ -12,6 +12,8 @@
 export const PASOS_DEL_FLUJO: { titulo: string; rutas: string[] }[] = [
   { titulo: "Identifícate", rutas: ["/alumno", "/registro", "/confirmar-nombre"] },
   { titulo: "Tus datos de contacto", rutas: ["/completar-datos"] },
-  { titulo: "Tu día y tu taller", rutas: ["/mi-dia", "/talleres"] },
+  // «Tu día» a secas: el taller es opcional, y nombrarlo en el paso lo anuncia
+  // como si fuera parte del trámite para todos.
+  { titulo: "Tu día", rutas: ["/mi-dia", "/talleres"] },
   { titulo: "Tu pago", rutas: ["/pago", "/comprobante"] },
 ];
