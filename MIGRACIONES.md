@@ -18,34 +18,47 @@ anónimo, y desde el archivo parecían cerradas.
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
 incluidas.
 
-**La 38 también, el 2026-09-17.** El comprobante la mira por cuatro sitios y los
-cuatro contestan: las dos altas exigen `p_acepto_aviso`, las dos firmas viejas
-—las que dejarían registrarse sin aceptar nada— ya no existen, y el texto del
-aviso está cargado.
+**La 36, la 37 y la 38 también, el 2026-09-17.** Están todas. El comprobante
+termina con una sola falla, y es la conocida de los puntos de captura.
 
-**Pendientes: la 36 y la 37.** Se saltaron, y se nota desde fuera: `T12` no
-existe en la base, y lo crea la 36.
+De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
+`p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
+aceptar nada— ya no existen. La 38 **sí cambiaba la firma** de las dos altas, y
+por eso empezaba tirándolas por nombre antes de recrearlas: es exactamente el
+caso que describe la trampa de más abajo.
 
-- `20260915160000_decolonialidad_son_dos_grupos` parte T04 en dos talleres de 35,
-  uno por día. Hasta que se corra, nada impide que las 70 inscripciones caigan el
-  mismo día y desborden el salón.
-- `20260915180000_el_taller_pregunta_por_sus_dias` separa la comprobación del día
-  por modo. Hasta que se corra, las 90 personas de los talleres de dos tardes
-  reciben pantalla roja el segundo día.
+De la 36 se comprueba `T12`: existe, con cupo 35 y solo el día 2. Se pregunta por
+T12 y no por T04 porque `talleres_lectura` esconde al anónimo los inactivos —y
+T01 a T04 lo están—, así que preguntar por T04 no distingue «no existe» de «no me
+lo dejan ver».
 
-La 37 **no cambia la firma** de `fn_evaluar_escaneo`, así que `create or replace`
-conserva las concesiones; aun así las vuelve a cerrar recorriendo `pg_proc`, que
-es lo que manda la trampa de más abajo. La 38 **sí cambiaba la firma** de las dos
-altas, y por eso empezaba tirándolas por nombre antes de recrearlas: es
-exactamente el caso que describe esa trampa, y el comprobante confirma que no
-quedó ninguna sobrecarga viva.
+### La 37 no se puede comprobar desde el comprobante
+
+Y conviene saberlo antes de confiar en un «LA CONEXIÓN FUNCIONA». Solo cambia el
+CUERPO de `fn_evaluar_escaneo` —la misma firma—, y esa función está cerrada al
+anónimo: llamarla devuelve 42501 igual antes que después. Su otra huella es el
+`comment on function`, que vive en `pg_catalog` y PostgREST no expone.
+
+Para saberlo hace falta una sesión con permisos:
+
+```sql
+select obj_description('fn_evaluar_escaneo(text,smallint,text)'::regprocedure);
+```
+
+y ver si menciona los días del taller. O la prueba de verdad: escanear a alguien
+de T05 o T06 el segundo día de su taller y comprobar que pasa en vez de salir en
+rojo. El comprobante sí avisa de lo que esa migración necesita leer —que T05 y
+T06 conserven sus dos días—, pero eso es una precondición, no una prueba.
 
 Al mirar los talleres para saber si la 36 había corrido salió otra cosa, que no
 es una migración: **T01, T02, T03 y T04 están inactivos** en el proyecto real. La
 política `talleres_lectura` los oculta al anónimo (`using (activo or
-es_interno_activo())`), así que el pre-registro solo ofrece siete. Si eso no es
-deliberado, se activan desde `/admin/talleres`; y si lo es, conviene saber que la
-36 va a partir un T04 que hoy nadie ve.
+es_interno_activo())`), así que el pre-registro ofrece ocho talleres de los doce.
+Si no es deliberado, se activan desde `/admin/talleres`.
+
+Eso incluye a T04, o sea que **el grupo del día 1 del taller de decolonialidad no
+se puede elegir y el del día 2 sí** —T12 nació activo—. Los 35 lugares del
+jueves están ahí pero nadie los ve.
 
 Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
 captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
@@ -113,7 +126,7 @@ sea que la regla vive en la base y no solo en la pantalla.
 Al volver atrás para cambiar de taller se conserva la **primera** aceptación
 (`coalesce(acepto_aviso_en, now())`): retroceder no vuelve a otorgar nada.
 
-### Los talleres tienen dos estructuras distintas (36 y 37) — sin aplicar
+### Los talleres tienen dos estructuras distintas (36 y 37) — aplicadas
 
 Al revisar los cupos salió que «taller de dos días» significaba dos cosas
 distintas, y el modelo solo sabía expresar una.

@@ -215,6 +215,69 @@ console.log("\n=== LA PUERTA COMO TORNIQUETE ===\n");
   }
 }
 
+// ------------------------------------- la estructura de los talleres ---
+console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
+
+{
+  /*
+   * La 36 parte T04 en dos grupos de 35, uno por día, y el del día 2 pasa a ser
+   * T12. Se comprueba por T12 y no por T04 porque `talleres_lectura` esconde al
+   * anónimo los talleres inactivos, y T01 a T04 lo están: preguntar por T04
+   * desde aquí no distingue «no existe» de «no me lo dejan ver».
+   *
+   * T12 nace activo, así que este sí se ve, y con él el cupo y el día. Es la
+   * huella que deja esa migración y no hay otra forma de dar por aplicada.
+   */
+  const { data, error } = await sb
+    .from("talleres")
+    .select("clave, cupo_total, taller_dias ( dia )")
+    .eq("clave", "T12");
+
+  if (error) falla("talleres: no se pudo comprobar T12", error);
+  else {
+    const t = ((data ?? []) as { cupo_total: number; taller_dias: { dia: number }[] }[])[0];
+    if (!t) falla("T12 no existe: falta la migración 20260915160000 (la 36)");
+    else {
+      const dias = t.taller_dias.map((d) => d.dia).sort();
+      if (t.cupo_total === 35 && dias.length === 1 && dias[0] === 2)
+        ok("T12 existe con cupo 35 y solo el día 2: la 36 está aplicada");
+      else
+        falla(
+          `T12 existe pero con cupo ${t.cupo_total} y día(s) ${dias.join("+")}; se esperaba cupo 35 y solo el día 2`,
+        );
+    }
+  }
+
+  /*
+   * La 37 NO se puede comprobar desde aquí, y decirlo es mejor que fingir que sí.
+   *
+   * Solo cambia el cuerpo de `fn_evaluar_escaneo` —la misma firma—, y esa función
+   * está cerrada al anónimo: llamarla devuelve 42501 tanto antes como después.
+   * Su otra huella es el `comment on function`, que vive en `pg_catalog` y
+   * PostgREST no expone. Un comprobante que dijera «OK» aquí estaría adivinando.
+   *
+   * Para saberlo hace falta una sesión con permisos:
+   *
+   *   select obj_description('fn_evaluar_escaneo(text,smallint,text)'::regprocedure);
+   *
+   * y ver si menciona los días del taller. O la prueba de verdad: escanear a
+   * alguien de T05 o T06 el segundo día de su taller y comprobar que pasa.
+   */
+  const { data: dobles } = await sb
+    .from("talleres")
+    .select("clave, taller_dias ( dia )")
+    .in("clave", ["T05", "T06"]);
+  const conDosDias = ((dobles ?? []) as { taller_dias: { dia: number }[] }[]).filter(
+    (t) => t.taller_dias.length === 2,
+  ).length;
+  if (conDosDias === 2)
+    console.log(
+      "       T05 y T06 siguen con sus dos días (es lo que la 37 tiene que saber leer,\n" +
+        "       no la prueba de que corrió: eso no se ve desde el rol anónimo)",
+    );
+  else falla(`T05 y T06 deberían tener dos días cada uno; con dos días hay ${conDosDias}`);
+}
+
 // ---------------------------------------------- aviso de privacidad ---
 console.log("\n=== AVISO DE PRIVACIDAD ===\n");
 
