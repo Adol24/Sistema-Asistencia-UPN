@@ -16,9 +16,15 @@ anónimo, y desde el archivo parecían cerradas.
 ## Aplicadas
 
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
-incluidas: el comprobante termina en «LA CONEXIÓN FUNCIONA», sin ningún problema.
+incluidas.
 
-**Pendientes de aplicar: la 36, la 37 y la 38.**
+**La 38 también, el 2026-09-17.** El comprobante la mira por cuatro sitios y los
+cuatro contestan: las dos altas exigen `p_acepto_aviso`, las dos firmas viejas
+—las que dejarían registrarse sin aceptar nada— ya no existen, y el texto del
+aviso está cargado.
+
+**Pendientes: la 36 y la 37.** Se saltaron, y se nota desde fuera: `T12` no
+existe en la base, y lo crea la 36.
 
 - `20260915160000_decolonialidad_son_dos_grupos` parte T04 en dos talleres de 35,
   uno por día. Hasta que se corra, nada impide que las 70 inscripciones caigan el
@@ -26,16 +32,20 @@ incluidas: el comprobante termina en «LA CONEXIÓN FUNCIONA», sin ningún prob
 - `20260915180000_el_taller_pregunta_por_sus_dias` separa la comprobación del día
   por modo. Hasta que se corra, las 90 personas de los talleres de dos tardes
   reciben pantalla roja el segundo día.
-- `20260917120000_aviso_de_privacidad` es la que **no puede quedarse atrás con el
-  código desplegado**, y por un motivo distinto a las otras dos: las pantallas ya
-  mandan `p_acepto_aviso` y la base todavía no lo recibe, así que **todo
-  pre-registro falla** hasta que se corra. Las otras dos degradan; esta detiene.
 
-Córrelas en ese orden. La 37 **no cambia la firma** de `fn_evaluar_escaneo`, así
-que `create or replace` conserva las concesiones; aun así las vuelve a cerrar
-recorriendo `pg_proc`, que es lo que manda la trampa de más abajo. La 38 **sí
-cambia la firma** de las dos altas, y por eso empieza tirándolas por nombre antes
-de recrearlas: es exactamente el caso que describe esa trampa.
+La 37 **no cambia la firma** de `fn_evaluar_escaneo`, así que `create or replace`
+conserva las concesiones; aun así las vuelve a cerrar recorriendo `pg_proc`, que
+es lo que manda la trampa de más abajo. La 38 **sí cambiaba la firma** de las dos
+altas, y por eso empezaba tirándolas por nombre antes de recrearlas: es
+exactamente el caso que describe esa trampa, y el comprobante confirma que no
+quedó ninguna sobrecarga viva.
+
+Al mirar los talleres para saber si la 36 había corrido salió otra cosa, que no
+es una migración: **T01, T02, T03 y T04 están inactivos** en el proyecto real. La
+política `talleres_lectura` los oculta al anónimo (`using (activo or
+es_interno_activo())`), así que el pre-registro solo ofrece siete. Si eso no es
+deliberado, se activan desde `/admin/talleres`; y si lo es, conviene saber que la
+36 va a partir un T04 que hoy nadie ve.
 
 Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
 captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
@@ -74,7 +84,7 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### El aviso de privacidad no se le enseñaba a nadie (38) — sin aplicar
+### El aviso de privacidad no se le enseñaba a nadie (38) — aplicada
 
 `configuracion_evento.aviso_privacidad` existe desde la migración 2, es `not
 null`, y se edita desde `/admin/configuracion`. Dice lo que tiene que decir: que

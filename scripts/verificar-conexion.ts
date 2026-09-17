@@ -215,6 +215,94 @@ console.log("\n=== LA PUERTA COMO TORNIQUETE ===\n");
   }
 }
 
+// ---------------------------------------------- aviso de privacidad ---
+console.log("\n=== AVISO DE PRIVACIDAD ===\n");
+
+{
+  /*
+   * Las dos altas ganaron `p_acepto_aviso`, y aquí se comprueba lo mismo que en
+   * `fn_evaluar_escaneo`: que la firma nueva existe y que la vieja no.
+   *
+   * La diferencia es que estas SÍ se le conceden al anónimo —son las que usa
+   * quien se pre-registra—, así que el error no puede ser 42501: la llamada
+   * entra en la función. Por eso se manda `p_acepto_aviso: false`, que es la
+   * primera comprobación de las dos y aborta ANTES de tocar nada. No se escribe
+   * ninguna fila, y el mensaje que devuelve prueba que la regla está en la base.
+   *
+   * La matrícula es imposible a propósito: si por lo que sea se pasara la
+   * primera comprobación, la segunda la detendría igual.
+   */
+  const IMPOSIBLE = "00000000000";
+
+  const nueva = await sb.rpc("fn_preregistrar_alumno", {
+    p_matricula: IMPOSIBLE,
+    p_correo: "nadie@example.com",
+    p_celular: "0000000000",
+    p_acepto_aviso: false,
+  });
+  if (/aviso de privacidad/i.test(nueva.error?.message ?? ""))
+    ok("fn_preregistrar_alumno exige el aviso y lo rechaza sin él");
+  else if (nueva.error?.code === "PGRST202")
+    falla("fn_preregistrar_alumno no conoce p_acepto_aviso: falta la migración 20260917120000");
+  else if (nueva.error) falla("fn_preregistrar_alumno con p_acepto_aviso", nueva.error);
+  else falla("fn_preregistrar_alumno dejó pasar un alta SIN aceptar el aviso");
+
+  const vieja = await sb.rpc("fn_preregistrar_alumno", {
+    p_matricula: IMPOSIBLE,
+    p_correo: "nadie@example.com",
+    p_celular: "0000000000",
+  });
+  if (vieja.error?.code === "PGRST202") ok("la firma vieja del alta de alumno ya no existe");
+  else
+    falla(
+      "la firma vieja del alta de alumno sigue viva: se puede registrar sin aceptar el aviso",
+      vieja.error,
+    );
+
+  const externo = await sb.rpc("fn_preregistrar_externo", {
+    p_perfil: "docente",
+    p_nombre: "NADIE",
+    p_correo: "nadie@example.com",
+    p_celular: "0000000000",
+    p_institucion: "NINGUNA",
+    p_dia: 1,
+    p_acepto_aviso: false,
+  });
+  if (/aviso de privacidad/i.test(externo.error?.message ?? ""))
+    ok("fn_preregistrar_externo exige el aviso y lo rechaza sin él");
+  else if (externo.error?.code === "PGRST202")
+    falla("fn_preregistrar_externo no conoce p_acepto_aviso: falta la migración 20260917120000");
+  else if (externo.error) falla("fn_preregistrar_externo con p_acepto_aviso", externo.error);
+  else falla("fn_preregistrar_externo dejó pasar un alta SIN aceptar el aviso");
+
+  const externoViejo = await sb.rpc("fn_preregistrar_externo", {
+    p_perfil: "docente",
+    p_nombre: "NADIE",
+    p_correo: "nadie@example.com",
+    p_celular: "0000000000",
+    p_institucion: "NINGUNA",
+    p_dia: 1,
+  });
+  if (externoViejo.error?.code === "PGRST202")
+    ok("la firma vieja del alta de docente y externo ya no existe");
+  else
+    falla(
+      "la firma vieja del alta de docente y externo sigue viva: se puede registrar sin aceptar",
+      externoViejo.error,
+    );
+
+  // El texto que se le enseña a la persona. Vacío no es un fallo de migración,
+  // pero sí una casilla que se marca sin nada que leer detrás.
+  const { data } = await sb
+    .from("configuracion_evento")
+    .select("aviso_privacidad")
+    .eq("id", 1)
+    .maybeSingle();
+  const texto = ((data as { aviso_privacidad?: string } | null)?.aviso_privacidad ?? "").trim();
+  if (texto.length > 40) ok(`el texto del aviso está cargado (${texto.length} caracteres)`);
+  else falla("el aviso de privacidad está vacío o es demasiado corto para ser uno");
+}
+
 // --------------------------------------------------------------- vistas ---
 console.log("\n=== VISTAS ===\n");
 
