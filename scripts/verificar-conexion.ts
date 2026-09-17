@@ -278,6 +278,48 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
   else falla(`T05 y T06 deberían tener dos días cada uno; con dos días hay ${conDosDias}`);
 }
 
+// ------------------------------------- un solo pre-registro por persona ---
+console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
+
+{
+  /*
+   * La 39 pone un índice único parcial que impide dos filas del mismo docente o
+   * externo, y hace que las altas devuelvan el folio existente en vez de
+   * reventar cuando dos peticiones corren a la vez.
+   *
+   * Comprobarlo desde el rol anónimo tiene un problema: `participantes` está
+   * cerrada, y `pg_indexes` no se expone. La única huella que se ve desde fuera
+   * es de comportamiento, y forzarla exigiría crear un participante de verdad,
+   * que este comprobante no hace ni debe hacer —es de solo lectura—.
+   *
+   * Así que se mira de la única manera honesta que queda: se llama al alta con
+   * un día que no existe. Esa comprobación está DESPUÉS de la del aviso y
+   * ANTES de cualquier escritura, así que el mensaje confirma que se llegó a
+   * ella y que la función responde; lo que el índice hace o no hace queda
+   * fuera del alcance de la clave anónima, y se dice.
+   */
+  const { error } = await sb.rpc("fn_preregistrar_externo", {
+    p_perfil: "docente",
+    p_nombre: "NADIE",
+    p_correo: "nadie@example.com",
+    p_celular: "0000000000",
+    p_institucion: "NINGUNA",
+    p_dia: 99,
+    p_acepto_aviso: true,
+  });
+  if (/no forma parte del evento/i.test(error?.message ?? ""))
+    ok("el alta de docente y externo valida antes de escribir");
+  else if (error) falla("fn_preregistrar_externo no llegó a validar el día", error);
+  else falla("fn_preregistrar_externo aceptó un día que no existe");
+
+  console.log(
+    "       el índice `uq_participante_sin_matricula` (la 39) no se ve desde el rol\n" +
+      "       anónimo: `participantes` está cerrada y `pg_indexes` no se expone. Para\n" +
+      "       comprobarlo, con una sesión con permisos:\n" +
+      "         select indexdef from pg_indexes where indexname = 'uq_participante_sin_matricula';",
+  );
+}
+
 // ---------------------------------------------- aviso de privacidad ---
 console.log("\n=== AVISO DE PRIVACIDAD ===\n");
 

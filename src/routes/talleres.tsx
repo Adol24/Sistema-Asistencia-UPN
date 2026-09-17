@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CalendarRange, Clock, Info, Loader2, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
@@ -47,6 +47,21 @@ function CatalogoTalleres() {
   );
   const [seleccion, setSeleccion] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
+  /*
+   * El cerrojo del doble clic, y hace falta uno aparte del estado.
+   *
+   * `disabled={registrando}` no llega a tiempo: entre la pulsación y el
+   * redibujado que apaga los botones hay una ventana, y ahí caben dos clics de
+   * quien ve que no pasa nada y vuelve a pulsar. Dos llamadas al alta a la vez
+   * es justo la carrera que duplicaba el pre-registro del docente y del
+   * externo, donde la base no tenía ningún índice que la detuviera.
+   *
+   * Un `ref` se actualiza en el acto, en la misma pulsación, así que la segunda
+   * se encuentra el cerrojo echado. La base también lo cierra por su lado
+   * —`20260917140000`— porque dos pestañas no comparten este ref; esto evita
+   * que la carrera se produzca, y aquello que importe si se produce.
+   */
+  const enviando = useRef(false);
 
   /*
    * Aquí se cierra el pre-registro: es el último paso donde se conocen los
@@ -58,6 +73,8 @@ function CatalogoTalleres() {
    * contexto, o sea el de otra persona.
    */
   const cerrarPreregistro = async (tallerId: string | undefined) => {
+    if (enviando.current) return;
+    enviando.current = true;
     setRegistrando(true);
     try {
       if (hayBaseDeDatos) {
@@ -107,6 +124,10 @@ function CatalogoTalleres() {
       // violación de unicidad o el permiso que falta salían tal cual.
       toast.error(mensajeDeError(e));
     } finally {
+      // Se suelta el cerrojo para que un fallo se pueda reintentar. En el camino
+      // bueno ya se navegó a /pago y este componente se fue, así que solo
+      // importa cuando el alta devolvió error.
+      enviando.current = false;
       setRegistrando(false);
     }
   };

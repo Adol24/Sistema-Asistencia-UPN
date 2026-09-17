@@ -18,8 +18,14 @@ anónimo, y desde el archivo parecían cerradas.
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
 incluidas.
 
-**La 36, la 37 y la 38 también, el 2026-09-17.** Están todas. El comprobante
-termina con una sola falla, y es la conocida de los puntos de captura.
+**La 36, la 37 y la 38 también, el 2026-09-17.** El comprobante termina con una
+sola falla, y es la conocida de los puntos de captura.
+
+**Pendiente: la 39** —`20260917140000_un_solo_preregistro_por_persona`—, que
+cierra la carrera que dejaba dos folios de la misma persona. Ver abajo. Esta
+**se detiene sola** si ya hay duplicados en la base y los enumera en los avisos;
+hay que resolverlos a mano antes, porque elegir qué folio sobrevive no es una
+decisión que pueda tomar un `delete` a ciegas.
 
 De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
 `p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
@@ -96,6 +102,44 @@ Se dice porque ya se había desfasado una vez: este documento llamaba «30» a l
 del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
+
+### El docente y el externo se podían pre-registrar dos veces (39) — sin aplicar
+
+En `participantes` solo hay dos cosas únicas: el `folio`, que genera una
+secuencia, y la `matricula`. Y la matrícula es **nula** para el docente y el
+externo. O sea que para dos de los tres perfiles no había ninguna restricción
+que impidiera dos filas de la misma persona.
+
+La 30 ya había atacado esto y arregló el caso secuencial: antes de insertar, las
+altas buscan si esa persona ya se pre-registró y devuelven SU folio. Lo que
+quedó abierto fue la **carrera**: buscar-y-después-insertar sin nada que
+serialice las dos cosas. Dos peticiones a la vez —dos pestañas, o el doble clic
+de quien ve que no pasa nada— hacen la búsqueda las dos antes de que cualquiera
+inserte, las dos concluyen «esta persona no está», y las dos insertan.
+
+Al alumno lo detiene el índice único de su matrícula, aunque de mala manera:
+revienta con una violación de unicidad al final de todo el recorrido, sin folio.
+Al docente y al externo **no los detiene nada**, y salen dos folios con su cuota
+esperada cada uno, contando doble en cupos y reportes. No se ve un error: se ven
+dos inscripciones legítimas.
+
+Dos partes:
+
+1. Un índice único parcial `(perfil, correo) where matricula is null`. Es el par
+   con el que la propia función reconoce a la misma persona, así que la regla
+   que ya estaba en el código pasa a estar también en el esquema, que es donde
+   una carrera no la puede saltar.
+2. Las dos altas atrapan `unique_violation`, releen la fila que ganó la carrera
+   y devuelven SU folio. Dejan de ser «reentrantes si nadie corre a la vez».
+
+**Las firmas no cambian**, así que `create or replace` conserva las concesiones;
+se vuelven a cerrar igual recorriendo `pg_proc`.
+
+El cerrojo del navegador va aparte, en `src/routes/talleres.tsx`: un `ref` que se
+echa en la misma pulsación, porque `disabled={registrando}` no llega a tiempo
+—entre el clic y el redibujado hay ventana—. Los dos hacen falta: el ref evita
+que la carrera se produzca desde una pestaña, y el índice importa cuando se
+produce desde dos.
 
 ### El aviso de privacidad no se le enseñaba a nadie (38) — aplicada
 
