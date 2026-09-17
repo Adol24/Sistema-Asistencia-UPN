@@ -259,7 +259,7 @@ function Pago() {
       </section>
 
       <Button
-        className="mt-6 h-12 w-full text-base print:hidden"
+        className="mt-6 h-12 md:h-11 w-full text-base print:hidden"
         onClick={() => navigate({ to: "/comprobante" })}
       >
         Ver mi comprobante de pre-registro

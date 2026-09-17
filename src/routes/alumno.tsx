@@ -118,7 +118,7 @@ function IdentificacionAlumno() {
           )}
         </div>
 
-        <Button type="submit" className="mt-6 h-12 w-full text-base" disabled={cargando}>
+        <Button type="submit" className="mt-6 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Buscando tu matrícula…

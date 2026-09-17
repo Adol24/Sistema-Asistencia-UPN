@@ -173,7 +173,7 @@ function ConfirmarNombre() {
                 autoFocus
                 autoComplete="off"
                 disabled={bloqueado}
-                className="mt-1.5 h-12 text-base uppercase"
+                className="mt-1.5 h-12 md:h-11 text-base uppercase"
                 aria-invalid={!!errorIdentidad}
               />
             </div>
@@ -188,7 +188,7 @@ function ConfirmarNombre() {
                   setErrorIdentidad("");
                 }}
                 disabled={bloqueado}
-                className="mt-1.5 h-12 w-full rounded-md border border-input bg-background px-3 text-base disabled:opacity-50"
+                className="mt-1.5 h-12 md:h-11 w-full rounded-md border border-input bg-background px-3 text-base disabled:opacity-50"
                 aria-invalid={!!errorIdentidad}
               >
                 <option value="">Elige tu programa</option>
@@ -216,7 +216,7 @@ function ConfirmarNombre() {
             </a>
           ) : (
             <Button
-              className="mt-5 h-12 w-full text-base"
+              className="mt-5 h-12 md:h-11 w-full text-base"
               disabled={comprobando}
               onClick={() => void verificar()}
             >
@@ -260,14 +260,14 @@ function ConfirmarNombre() {
 
       <fieldset className="mt-6 grid gap-2">
         <legend className="sr-only">Confirmación del nombre</legend>
-        <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4">
+        <label className="flex min-h-14 md:min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4">
           <Checkbox
             checked={opcion === "correcto"}
             onCheckedChange={(v) => setOpcion(v ? "correcto" : null)}
           />
           <span className="text-sm font-medium">Confirmo que mi nombre es correcto</span>
         </label>
-        <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4">
+        <label className="flex min-h-14 md:min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4">
           <Checkbox
             checked={opcion === "incorrecto"}
             onCheckedChange={(v) => setOpcion(v ? "incorrecto" : null)}
@@ -287,7 +287,7 @@ function ConfirmarNombre() {
               setErrorCorreccion("");
             }}
             placeholder={nombre}
-            className="mt-1.5 h-12 text-base uppercase"
+            className="mt-1.5 h-12 md:h-11 text-base uppercase"
             {...CAMPO_MAYUSCULAS}
             aria-invalid={!!errorCorreccion}
           />
@@ -311,7 +311,7 @@ function ConfirmarNombre() {
       ) : null}
 
       <Button
-        className="mt-6 h-12 w-full text-base"
+        className="mt-6 h-12 md:h-11 w-full text-base"
         disabled={!opcion}
         onClick={() => {
           if (opcion === "incorrecto") {

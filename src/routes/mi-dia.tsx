@@ -103,7 +103,7 @@ function MiDia() {
         </p>
 
         <Button
-          className="mt-6 h-12 w-full text-base"
+          className="mt-6 h-12 md:h-11 w-full text-base"
           disabled={!elegido}
           onClick={() => navigate({ to: "/talleres" })}
         >
@@ -140,7 +140,7 @@ function MiDia() {
         </div>
 
         <Button
-          className="mt-6 h-12 w-full text-base"
+          className="mt-6 h-12 md:h-11 w-full text-base"
           onClick={() => navigate({ to: "/talleres" })}
         >
           Continuar a talleres
@@ -190,7 +190,10 @@ function MiDia() {
         </dl>
       </div>
 
-      <Button className="mt-6 h-12 w-full text-base" onClick={() => navigate({ to: "/talleres" })}>
+      <Button
+        className="mt-6 h-12 md:h-11 w-full text-base"
+        onClick={() => navigate({ to: "/talleres" })}
+      >
         Continuar a talleres
       </Button>
     </PantallaPublica>

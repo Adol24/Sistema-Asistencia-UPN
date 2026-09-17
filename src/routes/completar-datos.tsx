@@ -109,7 +109,7 @@ function DatosDeContacto() {
           <div className="mt-8 grid gap-2 sm:grid-cols-2">
             <Button
               variant="outline"
-              className="h-12 text-base"
+              className="h-12 md:h-11 text-base"
               onClick={() => {
                 setPorConfirmar(null);
                 refCorreo.current?.focus();
@@ -117,7 +117,11 @@ function DatosDeContacto() {
             >
               Corregirlo
             </Button>
-            <Button className="h-12 text-base" disabled={cargando} onClick={() => void confirmar()}>
+            <Button
+              className="h-12 md:h-11 text-base"
+              disabled={cargando}
+              onClick={() => void confirmar()}
+            >
               {cargando ? (
                 <>
                   <Loader2 className="size-5 animate-spin" /> Guardando…
@@ -163,7 +167,7 @@ function DatosDeContacto() {
                 setErrores((x) => ({ ...x, correo: undefined }));
               }}
               placeholder={dominio ? `nombre.apellido@${dominio}` : "nombre.apellido@correo.com"}
-              className="mt-1 h-12 text-base"
+              className="mt-1 h-12 md:h-11 text-base"
               aria-invalid={!!errores.correo}
               aria-describedby="ayuda-correo"
             />
@@ -195,7 +199,7 @@ function DatosDeContacto() {
                 setErrores((x) => ({ ...x, celular: undefined }));
               }}
               placeholder="8112345678"
-              className="mt-1 h-12 text-base"
+              className="mt-1 h-12 md:h-11 text-base"
               aria-invalid={!!errores.celular}
               aria-describedby="ayuda-celular"
             />
@@ -215,7 +219,7 @@ function DatosDeContacto() {
           </div>
         </div>
 
-        <Button type="submit" className="mt-5 h-12 w-full text-base" disabled={cargando}>
+        <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Guardando tus datos…

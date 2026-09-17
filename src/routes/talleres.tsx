@@ -226,14 +226,14 @@ function CatalogoTalleres() {
       <div className="sticky bottom-0 mt-6 grid gap-2 border-t border-border bg-background/95 py-4 backdrop-blur sm:grid-cols-2">
         <Button
           variant="outline"
-          className="h-12 text-base"
+          className="h-12 md:h-11 text-base"
           disabled={registrando}
           onClick={() => void cerrarPreregistro(undefined)}
         >
           Continuar sin taller
         </Button>
         <Button
-          className="h-12 text-base"
+          className="h-12 md:h-11 text-base"
           disabled={!seleccion || registrando}
           onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
         >

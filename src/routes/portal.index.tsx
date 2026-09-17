@@ -93,7 +93,7 @@ function AccesoPortal() {
               onChange={(e) => setFolioInput(e.target.value)}
               {...CAMPO_MAYUSCULAS}
               placeholder={participante?.folio}
-              className="mt-1 h-12 text-base uppercase"
+              className="mt-1 h-12 md:h-11 text-base uppercase"
             />
           </div>
           <div>
@@ -103,7 +103,7 @@ function AccesoPortal() {
               value={verificacion}
               onChange={(e) => setVerificacion(e.target.value)}
               placeholder={participante?.matricula ?? participante?.correo}
-              className="mt-1 h-12 text-base"
+              className="mt-1 h-12 md:h-11 text-base"
             />
           </div>
         </div>
@@ -114,7 +114,7 @@ function AccesoPortal() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-        <Button type="submit" className="mt-5 h-12 w-full text-base" disabled={cargando}>
+        <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Consultando…

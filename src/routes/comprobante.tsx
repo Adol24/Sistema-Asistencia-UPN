@@ -109,7 +109,7 @@ function Comprobante() {
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <Button
-          className="h-12 text-base"
+          className="h-12 md:h-11 text-base"
           onClick={() => toast.success("Descargamos tu comprobante en PDF.")}
         >
           <Download className="size-4" /> Descargar comprobante

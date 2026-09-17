@@ -133,12 +133,16 @@ function RegistroExterno() {
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button
               variant="outline"
-              className="h-12 text-base"
+              className="h-12 md:h-11 text-base"
               onClick={() => setPorConfirmar(null)}
             >
               Corregirlos
             </Button>
-            <Button className="h-12 text-base" disabled={cargando} onClick={() => void confirmar()}>
+            <Button
+              className="h-12 md:h-11 text-base"
+              disabled={cargando}
+              onClick={() => void confirmar()}
+            >
               {cargando ? (
                 <>
                   <Loader2 className="size-5 animate-spin" /> Guardando…
@@ -204,7 +208,11 @@ function RegistroExterno() {
                 value={c[k]}
                 onChange={set(k)}
                 placeholder={ph}
-                className={k === "correo" ? "mt-1 h-12 text-base" : "mt-1 h-12 text-base uppercase"}
+                className={
+                  k === "correo"
+                    ? "mt-1 h-12 md:h-11 text-base"
+                    : "mt-1 h-12 md:h-11 text-base uppercase"
+                }
                 {...(k === "correo" || k === "celular" ? {} : CAMPO_MAYUSCULAS)}
                 aria-invalid={!!errores[k]}
                 {...(k === "celular"
@@ -222,7 +230,7 @@ function RegistroExterno() {
           ))}
         </div>
 
-        <Button type="submit" className="mt-5 h-12 w-full text-base" disabled={cargando}>
+        <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Enviando código de verificación…
