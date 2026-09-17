@@ -312,6 +312,49 @@ console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
   else if (error) falla("fn_preregistrar_externo no llegó a validar el día", error);
   else falla("fn_preregistrar_externo aceptó un día que no existe");
 
+  /*
+   * La 40 le cierra el formulario de externo a un alumno, con dos reglas. La
+   * primera —«ese correo ya está registrado como alumno»— no se puede probar
+   * desde aquí sin conocer el correo de un alumno real, y no se va a adivinar.
+   *
+   * La segunda sí, y además es la que de verdad cierra el hueco: rechaza los
+   * correos del dominio de alumnos, que es lo único que caza a quien todavía no
+   * se ha pre-registrado. Depende de un campo del panel, así que puede estar
+   * apagada sin que nadie lo note. Eso es exactamente lo que un comprobante
+   * tiene que decir en voz alta.
+   */
+  const { data: cfg } = await sb
+    .from("configuracion_evento")
+    .select("dominio_institucional")
+    .eq("id", 1)
+    .maybeSingle();
+  const dominio = (
+    (cfg as { dominio_institucional?: string | null } | null)?.dominio_institucional ?? ""
+  ).trim();
+
+  if (!dominio) {
+    falla(
+      "`dominio_institucional` está vacío: un alumno que no se haya pre-registrado todavía " +
+        "puede entrar por /registro como externo y nada lo detecta",
+    );
+    console.log("       se llena en /admin/configuracion; sin él la regla de la 40 está dormida");
+  } else {
+    const { error: eDominio } = await sb.rpc("fn_preregistrar_externo", {
+      p_perfil: "docente",
+      p_nombre: "NADIE",
+      p_correo: `nadie@${dominio.toLowerCase()}`,
+      p_celular: "0000000000",
+      p_institucion: "NINGUNA",
+      p_dia: 1,
+      p_acepto_aviso: true,
+    });
+    if (/cuenta de alumno/i.test(eDominio?.message ?? ""))
+      ok(`un correo @${dominio} no puede registrarse como externo`);
+    else if (eDominio)
+      falla("el correo del dominio de alumnos no se rechazó por ser de alumno", eDominio);
+    else falla("¡se creó un externo con un correo del dominio de alumnos!");
+  }
+
   console.log(
     "       el índice `uq_participante_sin_matricula` (la 39) no se ve desde el rol\n" +
       "       anónimo: `participantes` está cerrada y `pg_indexes` no se expone. Para\n" +

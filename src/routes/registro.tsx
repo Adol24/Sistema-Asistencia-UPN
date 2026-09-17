@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CAMPO_MAYUSCULAS, LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
+import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ interface Campos {
 function RegistroExterno() {
   const navigate = useNavigate();
   const { borrador, setBorrador, reset } = usePrototipo();
+  const { configuracion: evento } = useEstadoEvento();
   const [perfil, setPerfil] = useState<"docente" | "externo">("docente");
   const [c, setC] = useState<Campos>({
     nombres: "",
@@ -46,6 +48,7 @@ function RegistroExterno() {
   });
   const [errores, setErrores] = useState<Partial<Record<keyof Campos, string>>>({});
   const [cargando, setCargando] = useState(false);
+  const dominioAlumnos = evento.dominioInstitucional.trim().toLowerCase();
   const [aceptoAviso, setAceptoAviso] = useState(false);
   const [errorAviso, setErrorAviso] = useState("");
   // Revisar antes de continuar. Sustituye a la verificación por código: atrapa el
@@ -74,8 +77,24 @@ function RegistroExterno() {
      * emitir.
      */
     if (!c.materno.trim()) e.materno = "Escribe tu apellido materno.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.correo.trim()))
+    const correoLimpio = c.correo.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoLimpio))
       e.correo = "Ese correo no tiene un formato válido.";
+    /*
+     * Un alumno no se inscribe por aquí, y se le dice ANTES de que llene el
+     * formulario entero.
+     *
+     * La regla de verdad vive en `fn_preregistrar_externo` —que además mira si
+     * ese correo ya está registrado como alumno, cosa que desde el navegador no
+     * se puede ver porque `participantes` está cerrada—. Esto solo adelanta el
+     * caso reconocible: si el dominio de alumnos está configurado y el correo es
+     * de ahí, se para aquí en vez de al final del recorrido.
+     *
+     * Con `dominioInstitucional` vacío esta comprobación no hace nada, igual que
+     * su gemela en la base.
+     */
+    else if (dominioAlumnos && correoLimpio.endsWith(`@${dominioAlumnos}`))
+      e.correo = "correo-de-alumno";
     if (!c.celular) e.celular = "Escribe tu celular.";
     else {
       const falta = faltanDigitos(c.celular, LARGO.celular, "el celular");
@@ -96,7 +115,7 @@ function RegistroExterno() {
     setPorConfirmar({
       // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
       nombre: [c.nombres, c.paterno, c.materno].map((x) => x.trim().toUpperCase()).join(" "),
-      correo: c.correo.trim().toLowerCase(),
+      correo: correoLimpio,
     });
   };
 
@@ -236,7 +255,21 @@ function RegistroExterno() {
                   ? { inputMode: "numeric" as const, autoComplete: "tel", maxLength: LARGO.celular }
                   : {})}
               />
-              {errores[k] ? (
+              {/*
+               * El caso del correo de alumno no se puede decir con una cadena:
+               * necesita el enlace a su propio camino. Rechazar a alguien sin
+               * enseñarle por dónde sí es lo que convierte un error en un
+               * mensaje a soporte.
+               */}
+              {errores[k] === "correo-de-alumno" ? (
+                <p className="mt-1 text-xs font-medium text-destructive">
+                  Ese correo es una cuenta de alumno. Entra por{" "}
+                  <Link to="/alumno" className="underline underline-offset-2">
+                    «Soy alumno de la universidad»
+                  </Link>{" "}
+                  con tu matrícula.
+                </p>
+              ) : errores[k] ? (
                 <p className="mt-1 text-xs font-medium text-destructive">{errores[k]}</p>
               ) : k === "celular" && c.celular.length > 0 && c.celular.length < LARGO.celular ? (
                 <p className="mt-1 text-xs text-muted-foreground">

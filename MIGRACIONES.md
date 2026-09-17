@@ -37,6 +37,10 @@ select indexdef from pg_indexes where indexname = 'uq_participante_sin_matricula
 No había duplicados previos: si los hubiera, la migración se habría detenido
 enumerándolos en vez de aplicarse.
 
+**Pendiente: la 40** —`20260917160000_un_alumno_no_es_externo`—, que le cierra el
+formulario de externo a un alumno. Ver abajo, e **importante**: trae dos reglas y
+una de las dos está dormida hasta que se llene un campo del panel.
+
 De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
 `p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
 aceptar nada— ya no existen. La 38 **sí cambiaba la firma** de las dos altas, y
@@ -86,11 +90,10 @@ la vez.
 Lo que ninguna migración impide todavía son dos caminos, y los dos son
 decisiones pendientes, no descuidos:
 
-1. **El mismo alumno regresando por `/registro`** como docente o externo. Ahí la
-   matrícula viaja nula, así que ni su índice único ni el parcial de la 39 lo
-   ven: sale un segundo folio con su segunda cuota. Se cerraría comprobando si
-   ese correo ya pertenece a un alumno, pero eso decide que un alumno **no
-   puede** inscribirse como externo, y esa regla no la ha pedido nadie.
+1. **El mismo alumno regresando por `/registro`** como docente o externo. Lo
+   cierra la 40, con la salvedad de su segunda regla dormida: hasta que
+   `dominio_institucional` se llene, el alumno que nunca se pre-registró sigue
+   pudiendo entrar por ahí.
 2. **La misma persona con dos correos distintos**, sin matrícula. No hay
    identidad con la que deduplicar: dos correos son dos personas. Atarlo a
    nombre + institución tendría falsos positivos —dos homónimos de la misma
@@ -132,6 +135,39 @@ Se dice porque ya se había desfasado una vez: este documento llamaba «30» a l
 del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
+
+### Un alumno no se inscribe como externo (40) — sin aplicar
+
+La 39 cerró el pre-registro doble por los dos lados que tenía. Quedaba un tercer
+camino que ningún índice ve: el mismo alumno volviendo por `/registro` como
+docente o externo. Ahí su matrícula viaja NULA, así que no choca con su propia
+fila ni con el índice parcial, porque ese compara `(perfil, correo)` y el perfil
+es otro.
+
+Dos comprobaciones en `fn_preregistrar_externo`, antes de cualquier escritura:
+
+1. **Ese correo ya está registrado como alumno** → se rechaza. Exacta, sin
+   falsos positivos: esa fila la creó esa persona.
+2. **Ese correo es del dominio de alumnos** → se rechaza. Es la que caza al
+   alumno que **todavía no se ha pre-registrado**, y la primera no puede verlo:
+   el padrón guarda matrícula y nombre, no correo, así que sin fila en
+   `participantes` no hay nada con lo que comparar.
+
+**La segunda está dormida.** `configuracion_evento.dominio_institucional` está en
+NULL en el proyecto real, y con ella apagada el hueco sigue abierto para quien
+entra directo por `/registro`. Llenarlo en `/admin/configuracion` es lo único que
+lo cierra del todo; el comprobante ahora lo reporta como FALLA en vez de callarlo.
+
+También se adelanta en el navegador (`src/routes/registro.tsx`): si el dominio
+está configurado y el correo es de ahí, se para en el campo con un enlace a
+`/alumno`, en vez de al final del recorrido. Rechazar a alguien sin enseñarle por
+dónde sí es lo que convierte un error en un mensaje a soporte.
+
+**Lo que NO se hace:** comparar el nombre contra el padrón. Cazaría más casos y
+se descarta por el precio del error: dos homónimos de la misma universidad
+existen, y a un externo real rechazado por llamarse igual que un alumno no le
+queda salida —no tiene matrícula con la que entrar por el otro lado—. Antes un
+duplicado detectable que alguien legítimo fuera del evento.
 
 ### El docente y el externo se podían pre-registrar dos veces (39) — aplicada
 
