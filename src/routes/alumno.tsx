@@ -55,7 +55,7 @@ function IdentificacionAlumno() {
       existe = (await existeEnPadronRemoto(matricula)).existe;
     } catch {
       setCargando(false);
-      return setError("No pudimos consultar el padrón. Inténtalo de nuevo en un momento.");
+      return setError("No pudimos comprobar tu matrícula. Inténtalo de nuevo en un momento.");
     }
     setCargando(false);
 
@@ -75,7 +75,7 @@ function IdentificacionAlumno() {
     <PantallaPublica
       volverA="/bienvenida"
       titulo="Escribe tu matrícula"
-      descripcion="Con eso te encontramos en el padrón de alumnos. En la siguiente pantalla verás tu nombre para confirmar que eres tú."
+      descripcion="Con eso te buscamos en los registros de Servicios Escolares. En la siguiente pantalla verás tu nombre para confirmar que eres tú."
     >
       <form
         onSubmit={(ev) => {
@@ -110,7 +110,7 @@ function IdentificacionAlumno() {
           ) : (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               {matricula.length === 0
-                ? `Son ${LARGO.matricula} dígitos. Ejemplo del padrón simulado: 20262122031`
+                ? `Son ${LARGO.matricula} dígitos. Ejemplo de la lista simulada: 20262122031`
                 : matricula.length < LARGO.matricula
                   ? `${matricula.length} de ${LARGO.matricula} dígitos`
                   : `Listo, son ${LARGO.matricula} dígitos`}
@@ -121,7 +121,7 @@ function IdentificacionAlumno() {
         <Button type="submit" className="mt-6 h-12 w-full text-base" disabled={cargando}>
           {cargando ? (
             <>
-              <Loader2 className="size-5 animate-spin" /> Buscando en el padrón…
+              <Loader2 className="size-5 animate-spin" /> Buscando tu matrícula…
             </>
           ) : (
             <>
@@ -134,7 +134,7 @@ function IdentificacionAlumno() {
       {noEncontrada ? (
         <Alert variant="destructive" className="mt-5">
           <AlertCircle className="size-4" />
-          <AlertTitle>No encontramos esa matrícula en el padrón</AlertTitle>
+          <AlertTitle>No encontramos esa matrícula</AlertTitle>
           <AlertDescription className="grid gap-3">
             <span>Revisa que esté bien escrita. Si estás seguro, escríbenos.</span>
             <a
