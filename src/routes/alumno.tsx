@@ -22,7 +22,7 @@ export const Route = createFileRoute("/alumno")({
 
 function IdentificacionAlumno() {
   const navigate = useNavigate();
-  const { setBorrador } = usePrototipo();
+  const { borrador, setBorrador, reset } = usePrototipo();
   const { configuracion: evento } = useEstadoEvento();
   const [matricula, setMatricula] = useState("");
   const [error, setError] = useState("");
@@ -61,6 +61,17 @@ function IdentificacionAlumno() {
 
     if (!existe) return setNoEncontrada(true);
 
+    /*
+     * Una matrícula distinta a la del borrador es OTRA PERSONA, y hay que
+     * vaciar lo anterior antes de empezar.
+     *
+     * Hace falta desde que el borrador sobrevive a la recarga: en el equipo
+     * prestado de una sala, quien se registra después heredaba el folio, el
+     * nombre y el día de quien lo hizo antes, porque `setBorrador` mezcla sobre
+     * lo que había. Cuando vivía en memoria, recargar lo limpiaba por accidente
+     * y el problema no se veía.
+     */
+    if (borrador.matricula && borrador.matricula !== matricula) reset();
     setBorrador({ perfil: "alumno", matricula });
     // La identidad se comprueba en la pantalla siguiente. Solo si se supera, el
     // servidor devuelve a quién corresponde esta matrícula.

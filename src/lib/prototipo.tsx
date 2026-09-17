@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { guardarJSON, leerJSON } from "@/lib/almacen-sesion";
 import type { Participante } from "@/dominio/tipos";
 
 interface Borrador {
@@ -53,6 +54,26 @@ interface Ctx {
 
 const PrototipoCtx = createContext<Ctx | null>(null);
 
+const CLAVE = "preregistro.borrador";
+
+/**
+ * El borrador, recuperado de la pestaña.
+ *
+ * Vivía solo en memoria, y eso rompía la pantalla que más importa del flujo:
+ * recargar `/pago` —o volver a ella desde el historial— borraba el folio, que
+ * es justo lo que esa pantalla llama «la llave del portal» y advierte de no
+ * perder. Se enseñaba el rótulo «Tu folio» con nada debajo.
+ *
+ * Solo se comprueba que sea un objeto. Validar los quince campos uno a uno
+ * sería pelearse con un dato que escribimos nosotros mismos, y lo que importa
+ * —que el folio y la matrícula sean de quien dice— lo vuelve a comprobar la
+ * base en cada llamada, no este `JSON.parse`.
+ */
+const leerBorrador = (): Borrador => {
+  const v = leerJSON<Borrador>(CLAVE);
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+};
+
 export function PrototipoProvider({ children }: { children: ReactNode }) {
   // La lista viene del contexto, no del mock: si la importación del padrón movió
   // a alguien de día, el participante de prueba lo refleja sin recargar.
@@ -60,13 +81,44 @@ export function PrototipoProvider({ children }: { children: ReactNode }) {
   const [folio, setFolio] = useState<string | null>(null);
   const [borrador, setBorradorState] = useState<Borrador>({});
 
+  /*
+   * Se recupera en un efecto y no como estado inicial, aunque `portal.tsx` lo
+   * haga de la otra forma.
+   *
+   * El estado inicial se calcula también en el servidor, donde no hay
+   * `sessionStorage`: sale vacío. Si el cliente arrancara con el borrador ya
+   * dentro, su primer dibujo no coincidiría con el HTML que acaba de recibir y
+   * React tiraría la página para rehacerla. Recuperarlo después cuesta un
+   * fotograma con el folio en blanco y no cuesta ningún parpadeo.
+   *
+   * Se puede hacer así porque ninguna pantalla del flujo redirige cuando el
+   * borrador está vacío: todas esperan un clic. Si alguna llegara a hacerlo,
+   * esto tendría que esperar a la recuperación antes de decidir.
+   */
+  useEffect(() => {
+    const guardado = leerBorrador();
+    if (Object.keys(guardado).length > 0) setBorradorState(guardado);
+  }, []);
+
+  /*
+   * Solo escribe cuando hay algo. Vaciar el almacén es cosa de `reset`, no de
+   * cualquier estado vacío: el primer dibujo también está vacío, y borrar
+   * desde aquí se llevaría por delante lo que el efecto de arriba iba a leer.
+   */
+  useEffect(() => {
+    if (Object.keys(borrador).length > 0) guardarJSON(CLAVE, borrador);
+  }, [borrador]);
+
   const value = useMemo<Ctx>(
     () => ({
       participante: participantes.find((p) => p.folio === folio) ?? null,
       setFolio,
       borrador,
       setBorrador: (b) => setBorradorState((prev) => ({ ...prev, ...b })),
-      reset: () => setBorradorState({}),
+      reset: () => {
+        guardarJSON(CLAVE, null);
+        setBorradorState({});
+      },
     }),
     [folio, borrador, participantes],
   );

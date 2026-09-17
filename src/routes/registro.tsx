@@ -33,7 +33,7 @@ interface Campos {
 
 function RegistroExterno() {
   const navigate = useNavigate();
-  const { setBorrador } = usePrototipo();
+  const { borrador, setBorrador, reset } = usePrototipo();
   const [perfil, setPerfil] = useState<"docente" | "externo">("docente");
   const [c, setC] = useState<Campos>({
     nombres: "",
@@ -102,6 +102,12 @@ function RegistroExterno() {
      * perfil, los dos campos llegaban vacíos y la base rechazaba el registro
      * por falta de institución.
      */
+    /*
+     * Mismo caso que en `/alumno`, comparando por correo porque el docente y el
+     * externo no tienen matrícula: si el borrador guardado es de otra persona,
+     * se vacía antes de mezclar. Ver el comentario de allá.
+     */
+    if (borrador.correo && borrador.correo !== porConfirmar!.correo) reset();
     setBorrador({
       perfil,
       ...porConfirmar!,

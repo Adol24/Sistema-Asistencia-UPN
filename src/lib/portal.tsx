@@ -5,6 +5,7 @@ import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { aParticipanteDeVista, type FilaVistaParticipante } from "@/lib/esquema";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
+import { guardarJSON, leerJSON } from "@/lib/almacen-sesion";
 import type { Participante } from "@/dominio/tipos";
 
 /** Lo que el portal necesita de una persona, en una sola llamada. */
@@ -40,39 +41,21 @@ const CLAVE = "portal.sesion";
  * queremos: un folio guardado en un teléfono prestado es una puerta abierta que
  * nadie recuerda haber dejado.
  *
- * Todo va protegido porque en navegación privada, o con las cookies bloqueadas,
- * el acceso lanza. Si no se puede guardar, el portal funciona igual que antes:
- * la recarga vuelve a pedir el folio, que es molesto pero no roto.
+ * El `try`/`catch` y la elección de `sessionStorage` viven ahora en
+ * `almacen-sesion`, porque el pre-registro necesita exactamente lo mismo.
+ *
+ * Aquí sí se comprueban los dos campos: lo que se lee son credenciales, y una
+ * con la forma equivocada haría fallar la llamada más adelante, lejos de donde
+ * se originó.
  */
-const almacen = () => {
-  try {
-    return typeof window === "undefined" ? null : window.sessionStorage;
-  } catch {
-    return null;
-  }
-};
-
 const leerSesion = (): { folio: string; credencial: string } | null => {
-  try {
-    const crudo = almacen()?.getItem(CLAVE);
-    if (!crudo) return null;
-    const v = JSON.parse(crudo) as { folio?: unknown; credencial?: unknown };
-    return typeof v.folio === "string" && typeof v.credencial === "string"
-      ? { folio: v.folio, credencial: v.credencial }
-      : null;
-  } catch {
-    return null;
-  }
+  const v = leerJSON<{ folio?: unknown; credencial?: unknown }>(CLAVE);
+  return v && typeof v.folio === "string" && typeof v.credencial === "string"
+    ? { folio: v.folio, credencial: v.credencial }
+    : null;
 };
 
-const guardarSesion = (s: { folio: string; credencial: string } | null) => {
-  try {
-    if (s) almacen()?.setItem(CLAVE, JSON.stringify(s));
-    else almacen()?.removeItem(CLAVE);
-  } catch {
-    /* Sin almacenamiento, la sesión vive solo en memoria. */
-  }
-};
+const guardarSesion = (s: { folio: string; credencial: string } | null) => guardarJSON(CLAVE, s);
 
 /**
  * La sesión del participante en su portal.
