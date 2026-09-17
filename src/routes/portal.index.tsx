@@ -125,10 +125,6 @@ function AccesoPortal() {
             </>
           )}
         </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          En el prototipo puedes entrar con el folio {participante?.folio} y{" "}
-          {participante?.matricula ?? participante?.correo}.
-        </p>
       </form>
     </PantallaPublica>
   );
