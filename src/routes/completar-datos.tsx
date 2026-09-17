@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,8 @@ function DatosDeContacto() {
    * al revés, que es peor: nadie puede registrarse y aquí no se ve por qué.
    */
   const dominio = evento.dominioInstitucional.trim();
+  const [aceptoAviso, setAceptoAviso] = useState(false);
+  const [errorAviso, setErrorAviso] = useState("");
 
   const continuar = async () => {
     const e: Errores = {};
@@ -86,6 +89,17 @@ function DatosDeContacto() {
     if (e.correo) return refCorreo.current?.focus();
     if (e.celular) return refCelular.current?.focus();
 
+    /*
+     * El aviso va al final de la comprobación y no al principio: si el correo
+     * está mal Y falta la casilla, lo primero que hay que arreglar es el correo,
+     * que es donde ya estaba escribiendo. El aviso está debajo, a la vista.
+     */
+    if (!aceptoAviso) {
+      setErrorAviso("Para continuar hay que aceptar el aviso de privacidad.");
+      return;
+    }
+    setErrorAviso("");
+
     setPorConfirmar(correoLimpio);
   };
 
@@ -93,7 +107,7 @@ function DatosDeContacto() {
     setCargando(true);
     await simularLatencia();
     setCargando(false);
-    setBorrador({ correo: porConfirmar!, celular });
+    setBorrador({ correo: porConfirmar!, celular, aceptoAviso: true });
     navigate({ to: "/mi-dia" });
   };
 
@@ -217,6 +231,16 @@ function DatosDeContacto() {
             </p>
           </div>
         </div>
+
+        <AvisoDePrivacidad
+          className="mt-5"
+          aceptado={aceptoAviso}
+          onAceptar={(v) => {
+            setAceptoAviso(v);
+            if (v) setErrorAviso("");
+          }}
+          error={errorAviso || undefined}
+        />
 
         <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (

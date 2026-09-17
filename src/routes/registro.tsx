@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,8 @@ function RegistroExterno() {
   });
   const [errores, setErrores] = useState<Partial<Record<keyof Campos, string>>>({});
   const [cargando, setCargando] = useState(false);
+  const [aceptoAviso, setAceptoAviso] = useState(false);
+  const [errorAviso, setErrorAviso] = useState("");
   // Revisar antes de continuar. Sustituye a la verificación por código: atrapa el
   // error de dedo, que es lo común, sin depender de que un correo llegue.
   const [porConfirmar, setPorConfirmar] = useState<{ nombre: string; correo: string } | null>(null);
@@ -82,6 +85,14 @@ function RegistroExterno() {
     setErrores(e);
     if (Object.keys(e).length) return;
 
+    // Después de los campos: si algo de arriba falla, eso es lo que hay que
+    // arreglar primero. El aviso está justo encima del botón, a la vista.
+    if (!aceptoAviso) {
+      setErrorAviso("Para continuar hay que aceptar el aviso de privacidad.");
+      return;
+    }
+    setErrorAviso("");
+
     setPorConfirmar({
       // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
       nombre: [c.nombres, c.paterno, c.materno].map((x) => x.trim().toUpperCase()).join(" "),
@@ -113,6 +124,7 @@ function RegistroExterno() {
       ...porConfirmar!,
       celular: c.celular.trim(),
       institucion: c.institucion.trim(),
+      aceptoAviso: true,
     });
     navigate({ to: "/mi-dia" });
   };
@@ -234,6 +246,16 @@ function RegistroExterno() {
             </div>
           ))}
         </div>
+
+        <AvisoDePrivacidad
+          className="mt-5"
+          aceptado={aceptoAviso}
+          onAceptar={(v) => {
+            setAceptoAviso(v);
+            if (v) setErrorAviso("");
+          }}
+          error={errorAviso || undefined}
+        />
 
         <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
           {cargando ? (

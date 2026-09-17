@@ -29,6 +29,12 @@ interface Borrador {
    * cuando hay a quién colgárselo.
    */
   nombreCorrecto?: string | undefined;
+  /**
+   * Si aceptó el aviso de privacidad. Se marca en la pantalla donde teclea sus
+   * datos y viaja hasta el alta, que es dónde se sella la fecha: entre las dos
+   * hay dos pantallas más —el día y el taller— y el dato tiene que cruzarlas.
+   */
+  aceptoAviso?: boolean | undefined;
   /** El folio que devuelve la base al crear el pre-registro. Antes no existía:
    *  las pantallas de pago y comprobante enseñaban el del participante de
    *  contexto, o sea el de otra persona. */

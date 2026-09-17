@@ -82,12 +82,14 @@ function CatalogoTalleres() {
               celular: borrador.celular ?? "",
               institucion: borrador.institucion ?? "",
               dia: borrador.dia ?? 1,
+              aceptoAviso: borrador.aceptoAviso === true,
               tallerId,
             })
           : await d.preregistrarAlumno({
               matricula: borrador.matricula ?? "",
               correo: borrador.correo ?? "",
               celular: borrador.celular ?? "",
+              aceptoAviso: borrador.aceptoAviso === true,
               tallerId,
             });
         setBorrador({ tallerId, folio: alta.folio, dia: alta.dia });

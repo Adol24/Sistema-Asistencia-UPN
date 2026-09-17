@@ -18,8 +18,7 @@ anónimo, y desde el archivo parecían cerradas.
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
 incluidas: el comprobante termina en «LA CONEXIÓN FUNCIONA», sin ningún problema.
 
-**Pendientes de aplicar: la 36 y la 37**, las dos de la estructura real de los
-talleres, que salió al revisar los cupos con quien organiza.
+**Pendientes de aplicar: la 36, la 37 y la 38.**
 
 - `20260915160000_decolonialidad_son_dos_grupos` parte T04 en dos talleres de 35,
   uno por día. Hasta que se corra, nada impide que las 70 inscripciones caigan el
@@ -27,10 +26,16 @@ talleres, que salió al revisar los cupos con quien organiza.
 - `20260915180000_el_taller_pregunta_por_sus_dias` separa la comprobación del día
   por modo. Hasta que se corra, las 90 personas de los talleres de dos tardes
   reciben pantalla roja el segundo día.
+- `20260917120000_aviso_de_privacidad` es la que **no puede quedarse atrás con el
+  código desplegado**, y por un motivo distinto a las otras dos: las pantallas ya
+  mandan `p_acepto_aviso` y la base todavía no lo recibe, así que **todo
+  pre-registro falla** hasta que se corra. Las otras dos degradan; esta detiene.
 
 Córrelas en ese orden. La 37 **no cambia la firma** de `fn_evaluar_escaneo`, así
 que `create or replace` conserva las concesiones; aun así las vuelve a cerrar
-recorriendo `pg_proc`, que es lo que manda la trampa de más abajo.
+recorriendo `pg_proc`, que es lo que manda la trampa de más abajo. La 38 **sí
+cambia la firma** de las dos altas, y por eso empieza tirándolas por nombre antes
+de recrearlas: es exactamente el caso que describe esa trampa.
 
 Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
 captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
@@ -68,6 +73,35 @@ Se dice porque ya se había desfasado una vez: este documento llamaba «30» a l
 del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
+
+### El aviso de privacidad no se le enseñaba a nadie (38) — sin aplicar
+
+`configuracion_evento.aviso_privacidad` existe desde la migración 2, es `not
+null`, y se edita desde `/admin/configuracion`. Dice lo que tiene que decir: que
+los datos se usan solo para el registro, la asistencia y la constancia, que no se
+comparten con terceros, y a quién escribir para corregirlos o darse de baja.
+
+Y no salía en ninguna pantalla pública. Se pedían correo y celular con el texto
+que lo explicaba guardado en la misma base.
+
+Ahora se acepta al capturar los datos —`/completar-datos` para el alumno,
+`/registro` para docente y externo—, que es **antes** de recogerlos. Y queda
+constancia: `participantes.acepto_aviso_en`. Una casilla que solo bloquea un
+botón se borra al recargar y no deja nada que enseñar si alguien pregunta.
+
+La columna queda **NULA** para quien se pre-registró antes. Ponerle `now()` a
+esas filas las marcaría como si hubieran aceptado algo que nunca vieron, que es
+justo el dato que no quieres tener el día que te lo reclamen. En el reporte
+nuevo —«Aceptación del aviso de privacidad»— esas filas dicen «no consta», que no
+es lo mismo que una celda vacía.
+
+Las dos altas ganan `p_acepto_aviso boolean`, **sin valor por defecto**: con
+`default false` una llamada vieja seguiría compilando y crearía el registro sin
+consentimiento, en silencio. La función rechaza el alta si no llega en `true`, o
+sea que la regla vive en la base y no solo en la pantalla.
+
+Al volver atrás para cambiar de taller se conserva la **primera** aceptación
+(`coalesce(acepto_aviso_en, now())`): retroceder no vuelve a otorgar nada.
 
 ### Los talleres tienen dos estructuras distintas (36 y 37) — sin aplicar
 

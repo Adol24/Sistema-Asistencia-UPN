@@ -39,6 +39,15 @@ export interface Participante {
   tallerId?: string | undefined;
   estadoPagoTaller?: EstadoPago | undefined;
   nombreEnRevision: boolean;
+  /**
+   * Cuándo aceptó el aviso de privacidad, ya formateado.
+   *
+   * Indefinido en quien se pre-registró antes de que el aviso se enseñara. Es un
+   * dato que NO tenemos, y por eso no se rellena con la fecha de alta ni con un
+   * «sí»: la única respuesta honesta a «¿cuándo aceptó?» para esas filas es que
+   * no consta.
+   */
+  aceptoAvisoEn?: string | undefined;
   montoEsperadoEvento: number;
   montoEsperadoTaller?: number | undefined;
   referenciaEvento?: string | undefined;

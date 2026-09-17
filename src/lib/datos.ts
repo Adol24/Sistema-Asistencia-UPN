@@ -951,6 +951,7 @@ export async function preregistrarExterno(datos: {
   celular: string;
   institucion: string;
   dia: number;
+  aceptoAviso: boolean;
   tallerId?: string | undefined;
 }) {
   const sb = exigirBase();
@@ -964,6 +965,7 @@ export async function preregistrarExterno(datos: {
     p_celular: datos.celular,
     p_institucion: datos.institucion,
     p_dia: datos.dia,
+    p_acepto_aviso: datos.aceptoAviso,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
 }
@@ -972,6 +974,12 @@ export async function preregistrarAlumno(datos: {
   matricula: string;
   correo: string;
   celular: string;
+  /**
+   * Obligatorio, sin valor por defecto, igual que en la base. `fn_preregistrar_
+   * alumno` rechaza el alta si no llega en `true`: la casilla de la pantalla
+   * gobierna un botón, y esto gobierna la fila.
+   */
+  aceptoAviso: boolean;
   tallerId?: string | undefined;
 }) {
   const sb = exigirBase();
@@ -979,6 +987,7 @@ export async function preregistrarAlumno(datos: {
     p_matricula: datos.matricula,
     p_correo: datos.correo,
     p_celular: datos.celular,
+    p_acepto_aviso: datos.aceptoAviso,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
   });
 }

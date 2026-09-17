@@ -29,7 +29,14 @@ export const Route = createFileRoute("/admin/reportes")({
 });
 
 type IdReporte =
-  "padron" | "academicos" | "pagos" | "asistencia" | "talleres" | "evidencias" | "elegibles";
+  | "padron"
+  | "academicos"
+  | "pagos"
+  | "asistencia"
+  | "talleres"
+  | "evidencias"
+  | "elegibles"
+  | "aviso";
 
 interface Reporte {
   id: IdReporte;
@@ -220,6 +227,35 @@ function Reportes() {
           e.estado,
           e.motivoRechazo ?? "",
           e.revisor ?? "",
+        ]),
+      },
+      {
+        /*
+         * La constancia de que cada quien aceptó el aviso de privacidad.
+         *
+         * Va en su propio reporte y no como una columna de «Datos académicos»
+         * porque aquel filtra por alumno, y el aviso lo aceptan los tres
+         * perfiles. Y porque esto es lo que se entrega si alguna vez lo piden:
+         * una lista de quién aceptó y cuándo, no una columna perdida entre el
+         * semestre y el grupo.
+         *
+         * «No consta» no es un hueco: es quien se pre-registró antes de que el
+         * aviso se enseñara. Decirlo así, en vez de dejar la celda vacía, es la
+         * diferencia entre un dato que falta y un dato que no existe.
+         */
+        id: "aviso",
+        titulo: "Aceptación del aviso de privacidad",
+        nota: `${participantes.filter((p) => p.aceptoAvisoEn).length} de ${
+          participantes.length
+        } con fecha de aceptación registrada`,
+        encabezados: ["folio", "nombre", "perfil", "correo", "acepto_el_aviso", "fecha_y_hora"],
+        filas: participantes.map((p) => [
+          p.folio,
+          p.nombre,
+          p.perfil,
+          p.correo,
+          p.aceptoAvisoEn ? "sí" : "no consta",
+          p.aceptoAvisoEn ?? "",
         ]),
       },
       {

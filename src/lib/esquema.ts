@@ -135,6 +135,7 @@ export interface FilaParticipante {
   monto_esperado_evento: number;
   monto_esperado_taller: number | null;
   creado_en: string;
+  acepto_aviso_en?: string | null;
   programas: ProgramaConNivel | null;
   planteles: { nombre: string } | null;
 }
@@ -174,6 +175,7 @@ export interface FilaVistaParticipante {
   estado_pago_evento: EstadoPago;
   estado_pago_taller: EstadoPago | null;
   creado_en: string;
+  acepto_aviso_en: string | null;
 }
 
 export interface FilaPago {
@@ -439,6 +441,9 @@ export function aParticipante(
     montoEsperadoTaller:
       f.monto_esperado_taller === null ? undefined : Number(f.monto_esperado_taller),
     creadoEn: aFechaHora(f.creado_en),
+    // Sin `?? ""`: vacío y «no consta» no son lo mismo, y la pantalla tiene que
+    // poder distinguirlos para decirlo.
+    aceptoAvisoEn: f.acepto_aviso_en ? aFechaHora(f.acepto_aviso_en) : undefined,
   };
 }
 
