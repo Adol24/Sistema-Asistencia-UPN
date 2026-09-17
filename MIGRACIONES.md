@@ -21,11 +21,21 @@ incluidas.
 **La 36, la 37 y la 38 también, el 2026-09-17.** El comprobante termina con una
 sola falla, y es la conocida de los puntos de captura.
 
-**Pendiente: la 39** —`20260917140000_un_solo_preregistro_por_persona`—, que
-cierra la carrera que dejaba dos folios de la misma persona. Ver abajo. Esta
-**se detiene sola** si ya hay duplicados en la base y los enumera en los avisos;
-hay que resolverlos a mano antes, porque elegir qué folio sobrevive no es una
-decisión que pueda tomar un `delete` a ciegas.
+**La 39 también**, el mismo día. Recreaba las dos altas, o sea el caso en que la
+trampa de más abajo muerde; no mordió, porque la firma no cambiaba y
+`create or replace` conservó las concesiones. Comprobado: las dos siguen
+respondiendo al rol anónimo y llegan a sus validaciones internas.
+
+Su índice `uq_participante_sin_matricula` **no se ve desde la clave anónima**
+—`participantes` está cerrada y `pg_indexes` no se expone—. Para mirarlo con
+permisos:
+
+```sql
+select indexdef from pg_indexes where indexname = 'uq_participante_sin_matricula';
+```
+
+No había duplicados previos: si los hubiera, la migración se habría detenido
+enumerándolos en vez de aplicarse.
 
 De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
 `p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
@@ -66,9 +76,29 @@ Eso incluye a T04, o sea que **el grupo del día 1 del taller de decolonialidad 
 se puede elegir y el del día 2 sí** —T12 nació activo—. Los 35 lugares del
 jueves están ahí pero nadie los ve.
 
-Lo que queda abierto no son migraciones: los **días 2 y 3** no tienen puntos de
-captura, y a los talleres les falta descripción. Ambas cosas se llenan desde el
-panel —`/admin/configuracion` y `/admin/talleres`— sin tocar la base.
+### Lo que sigue abierto del pre-registro doble
+
+El alumno **sí** está protegido, y por el esquema y no por la aplicación:
+`matricula text unique` desde la migración 6. Dos veces con la misma matrícula
+devuelven el mismo folio, y desde la 39 también si las dos peticiones corren a
+la vez.
+
+Lo que ninguna migración impide todavía son dos caminos, y los dos son
+decisiones pendientes, no descuidos:
+
+1. **El mismo alumno regresando por `/registro`** como docente o externo. Ahí la
+   matrícula viaja nula, así que ni su índice único ni el parcial de la 39 lo
+   ven: sale un segundo folio con su segunda cuota. Se cerraría comprobando si
+   ese correo ya pertenece a un alumno, pero eso decide que un alumno **no
+   puede** inscribirse como externo, y esa regla no la ha pedido nadie.
+2. **La misma persona con dos correos distintos**, sin matrícula. No hay
+   identidad con la que deduplicar: dos correos son dos personas. Atarlo a
+   nombre + institución tendría falsos positivos —dos homónimos de la misma
+   universidad existen— y rechazaría a alguien real.
+
+Y lo que no son migraciones: los **días 2 y 3** no tienen puntos de captura, y a
+los talleres les falta descripción. Ambas cosas se llenan desde el panel
+—`/admin/configuracion` y `/admin/talleres`— sin tocar la base.
 
 ### La trampa que hay que recordar al escribir la siguiente
 
@@ -103,7 +133,7 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### El docente y el externo se podían pre-registrar dos veces (39) — sin aplicar
+### El docente y el externo se podían pre-registrar dos veces (39) — aplicada
 
 En `participantes` solo hay dos cosas únicas: el `folio`, que genera una
 secuencia, y la `matricula`. Y la matrícula es **nula** para el docente y el
