@@ -126,7 +126,7 @@ export function PantallaPublica({
   descripcion?: string;
   volverA?: string;
   children: ReactNode;
-  ancho?: "md" | "lg";
+  ancho?: "md" | "lg" | "xl";
 }) {
   return (
     /*
@@ -167,13 +167,20 @@ export function PantallaPublica({
        * 576, igual que en el teléfono. Lo que cambia es lo de alrededor.
        *
        * `lg` son las pantallas que sí tienen contenido en paralelo —la rejilla
-       * de talleres, el pago, el comprobante, el portal—, y esas sí ganan: a
-       * partir de 1024 suben a 896 para que quepa una columna más sin apretar.
+       * de talleres, el portal—, y esas sí ganan: a partir de 1024 suben a 896
+       * para que quepa una columna más sin apretar.
+       *
+       * `xl` es para las dos que llevan barra lateral —el pago y el
+       * comprobante—. Con 896 y una columna de 22rem al lado, al texto le
+       * quedaban 520 píxeles y las instrucciones volvían a leerse apretadas;
+       * con 1024 le quedan 648, que es la medida de un párrafo cómodo.
        */}
       <main
         className={cn(
           "mx-auto w-full px-4 py-8 alto:my-auto sm:py-12 md:px-8 md:py-10",
-          ancho === "md" ? "max-w-xl" : "max-w-3xl lg:max-w-4xl",
+          ancho === "md" && "max-w-xl",
+          ancho === "lg" && "max-w-3xl lg:max-w-4xl",
+          ancho === "xl" && "max-w-3xl lg:max-w-5xl",
         )}
       >
         {volverA ? <EnlaceVolver a={volverA} /> : null}

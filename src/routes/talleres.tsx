@@ -139,7 +139,14 @@ function CatalogoTalleres() {
         </EstadoVacio>
       ) : null}
 
-      <ul className="grid gap-3">
+      {/*
+       * Dos columnas desde `lg:`, no tres. A 896 píxeles tres columnas dejan
+       * tarjetas de 290, y ahí el nombre real de un taller —llegan a 155
+       * caracteres— se parte en seis renglones y el pie de precio y botón se
+       * amontona. Dos columnas dan 440, que es donde la ficha sigue leyendose de
+       * un vistazo.
+       */}
+      <ul className="grid gap-3 lg:grid-cols-2">
         {talleres.map((t) => {
           const libres = t.cupoTotal - t.cupoOcupado;
           const lleno = libres <= 0;
@@ -152,6 +159,11 @@ function CatalogoTalleres() {
               <article
                 className={cn(
                   "rounded-lg border bg-card p-4 transition-all",
+                  // En rejilla, dos tarjetas contiguas con descripciones de
+                  // distinto largo quedaban de alturas distintas y el borde
+                  // inferior se veía escalonado. Estirarlas y empujar el pie
+                  // con `mt-auto` alinea precio y botón en toda la fila.
+                  "lg:flex lg:h-full lg:flex-col",
                   lleno && "border-border bg-muted opacity-70",
                   elegido && "border-primary ring-2 ring-primary/25",
                   atenuado && !lleno && "opacity-50",
@@ -189,7 +201,7 @@ function CatalogoTalleres() {
                   </div>
                 </dl>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 lg:mt-auto lg:pt-4">
                   <div className="text-sm">
                     <p className="font-semibold">{moneda(t.costo)}</p>
                     {lleno ? (

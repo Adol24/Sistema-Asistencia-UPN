@@ -180,6 +180,12 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         ) : null}
       </section>
 
+      {/*
+       * En `sm:` dos de estos cuadros ocupan el renglón entero, y a 896 píxeles
+       * eso deja dos franjas con cuatro palabras y medio metro de card vacía.
+       * Desde `lg:` los cuatro valen lo mismo y forman una rejilla de dos por
+       * dos: la misma información sin los huecos.
+       */}
       <section className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Pago del evento</p>
@@ -211,14 +217,14 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             </div>
           ) : null}
         </div>
-        <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2">
+        <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
           <p className="text-xs text-muted-foreground">Tu asistencia presencial</p>
           <p className="mt-1 text-sm font-semibold">
             {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
           </p>
         </div>
         {p.programa ? (
-          <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2">
+          <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
             <p className="text-xs text-muted-foreground">
               Tus datos escolares, según Servicios Escolares
             </p>
