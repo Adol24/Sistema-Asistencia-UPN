@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronRight, Clock, GraduationCap, UserPlus } from "lucide-react";
-import { PantallaPublica, PASOS_DEL_FLUJO } from "@/components/layouts";
+import { PantallaPublica } from "@/components/layouts";
+import { PASOS_DEL_FLUJO } from "@/lib/flujo-publico";
 import { Rotulo, Ayuda } from "@/components/tipografia";
 import { useEstadoEvento } from "@/lib/estado-evento";
 

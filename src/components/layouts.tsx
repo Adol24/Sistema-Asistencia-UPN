@@ -5,6 +5,7 @@ import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
 import { Titulo, Texto, Rotulo } from "@/components/tipografia";
 import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
 import { ENLACE_NAV } from "@/lib/estilos";
+import { PASOS_DEL_FLUJO } from "@/lib/flujo-publico";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import type { Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -99,20 +100,6 @@ function PiePublico({ contenedor }: { contenedor: string }) {
     </footer>
   );
 }
-
-/**
- * Los cuatro pasos del pre-registro, y qué rutas caen en cada uno.
- *
- * Se agrupan de a varios a propósito: las ocho pantallas del flujo son ocho
- * casillas, y una barra de ocho casillas no informa, abruma. Cuatro se cuentan
- * de un vistazo, que es lo único que se le pide a esto.
- */
-export const PASOS_DEL_FLUJO: { titulo: string; rutas: string[] }[] = [
-  { titulo: "Identifícate", rutas: ["/alumno", "/registro", "/confirmar-nombre"] },
-  { titulo: "Tus datos de contacto", rutas: ["/completar-datos"] },
-  { titulo: "Tu día y tu taller", rutas: ["/mi-dia", "/talleres"] },
-  { titulo: "Tu pago", rutas: ["/pago", "/comprobante"] },
-];
 
 /**
  * La columna de contexto que acompaña a la pantalla en escritorio.
