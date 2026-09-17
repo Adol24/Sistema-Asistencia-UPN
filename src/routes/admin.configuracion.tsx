@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { simularLatencia } from "@/lib/formato";
+import { fechaAIso, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 
@@ -59,6 +59,10 @@ function Configuracion() {
     // borrar una línea mientras se edita no debe hacer saltar el cursor.
     const limpio: ConfiguracionEvento = {
       ...b,
+      // Los días sin tocar conservan lo que hubiera en la base. Si venía en el
+      // formato de lectura, se normaliza aquí: la columna es de tipo `date` y
+      // el reloj del evento la compara contra hoy en AAAA-MM-DD.
+      dias: b.dias.map((d) => ({ ...d, fecha: fechaAIso(d.fecha) })),
       catalogoAcademico: b.catalogoAcademico.map((n) => ({
         ...n,
         programas: n.programas.map((x) => x.trim()).filter(Boolean),
@@ -169,10 +173,20 @@ function Configuracion() {
               key={d.dia}
               className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
             >
+              {/*
+                La fecha se elige en el calendario del dispositivo y no se
+                escribe a mano. La columna es de tipo `date` y el reloj del
+                evento la compara contra el día de hoy, así que tiene que ser
+                AAAA-MM-DD exacto: un «15/10/2026» tecleado se guardaba como el
+                9 de octubre o reventaba, y el error no se ve hasta que la
+                puerta no reconoce el día. `fechaAIso` rescata lo que ya
+                estuviera guardado en el formato de lectura.
+              */}
               <Campo
                 id={`fecha-${d.dia}`}
-                etiqueta={`${d.etiqueta} — fecha (AAAA-MM-DD)`}
-                valor={d.fecha}
+                etiqueta={`${d.etiqueta} — fecha`}
+                tipo="date"
+                valor={fechaAIso(d.fecha)}
                 onChange={(v) =>
                   set({ dias: b.dias.map((x, k) => (k === i ? { ...x, fecha: v } : x)) })
                 }
@@ -475,17 +489,21 @@ function Campo({
   etiqueta,
   valor,
   onChange,
+  tipo,
 }: {
   id: string;
   etiqueta: string;
   valor: string;
   onChange: (v: string) => void;
+  /** `date` abre el calendario del dispositivo y escribe siempre AAAA-MM-DD. */
+  tipo?: "text" | "date";
 }) {
   return (
     <div>
       <Label htmlFor={id}>{etiqueta}</Label>
       <Input
         id={id}
+        type={tipo ?? "text"}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 h-11"
