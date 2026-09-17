@@ -46,7 +46,7 @@ function MiDia() {
 
   if (eligeSuDia) {
     return (
-      <PantallaPublica titulo="Elige tu día" volverA="/registro">
+      <PantallaPublica titulo="Elige tu día">
         <ul className="grid gap-3">
           {evento.dias.map((d) => {
             const activo = elegido === d.dia;
@@ -112,7 +112,6 @@ function MiDia() {
       <PantallaPublica
         titulo="Tu día y lugar"
         descripcion="Servicios Escolares todavía no reparte tu día."
-        volverA="/confirmar-nombre"
       >
         <div className="rounded-lg border border-border bg-card p-5">
           <p className="text-sm">
@@ -141,7 +140,6 @@ function MiDia() {
     <PantallaPublica
       titulo="Tu día y lugar"
       descripcion="Tu asistencia presencial ya está asignada. No es posible cambiar de día."
-      volverA="/confirmar-nombre"
     >
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="bg-primary px-5 py-5 text-primary-foreground">

@@ -73,7 +73,6 @@ function IdentificacionAlumno() {
 
   return (
     <PantallaPublica
-      volverA="/bienvenida"
       titulo="Escribe tu matrícula"
       descripcion="Con eso te buscamos en los registros de Servicios Escolares. En la siguiente pantalla verás tu nombre para confirmar que eres tú."
     >

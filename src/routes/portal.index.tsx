@@ -72,7 +72,6 @@ function AccesoPortal() {
 
   return (
     <PantallaPublica
-      volverA="/bienvenida"
       titulo="Entra con tu folio"
       descripcion="No necesitas contraseña. Usa tu folio y tu matrícula (o el correo con el que te registraste)."
     >

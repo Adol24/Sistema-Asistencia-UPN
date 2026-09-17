@@ -59,7 +59,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const actual = indiceDe(estado.evento);
 
   return (
-    <PantallaPublica volverA="/portal" ancho="lg">
+    <PantallaPublica ancho="lg">
       <PortalNav />
 
       {avisos.length > 0 ? (

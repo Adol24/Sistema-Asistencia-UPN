@@ -155,7 +155,6 @@ function ConfirmarNombre() {
       <PantallaPublica
         titulo="Confirma que eres tú"
         descripcion="Antes de mostrarte tu nombre necesitamos comprobar que la matrícula es tuya."
-        volverA="/alumno"
       >
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="grid gap-4">
@@ -240,7 +239,6 @@ function ConfirmarNombre() {
     <PantallaPublica
       titulo="Confirma tu nombre"
       descripcion="Revísalo con calma: corregirlo después toma más tiempo."
-      volverA="/alumno"
     >
       {/*
        * El nombre es el único contenido de esta tarjeta. Antes lo acompañaban

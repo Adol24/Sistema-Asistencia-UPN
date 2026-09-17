@@ -38,7 +38,7 @@ function Comprobante() {
   const total = evento.cuotaEvento + (taller?.costo ?? 0);
 
   return (
-    <PantallaPublica titulo="Comprobante de pre-registro" volverA="/pago" ancho="xl">
+    <PantallaPublica titulo="Comprobante de pre-registro" ancho="xl">
       <div className="rounded-lg border border-estado-pagado/30 bg-estado-pagado-bg p-4 text-estado-pagado">
         <p className="flex items-center gap-2 text-sm font-semibold">
           <CheckCircle2 className="size-5" aria-hidden /> Tu pre-registro quedó guardado

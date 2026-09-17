@@ -64,7 +64,7 @@ function Pago() {
   const [copiadoFolio, setCopiadoFolio] = useState(false);
 
   return (
-    <PantallaPublica titulo="Instrucciones de pago" volverA="/talleres" ancho="xl">
+    <PantallaPublica titulo="Instrucciones de pago" ancho="xl">
       {/*
         Un solo botón, y hace lo que dice.
         Eran dos —«Descargar PDF» e «Imprimir»— y ninguno hacía nada: los dos

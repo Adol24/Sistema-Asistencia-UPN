@@ -76,7 +76,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
 
   if (p.perfil !== "alumno") {
     return (
-      <PantallaPublica titulo="Mis evidencias" volverA="/portal" ancho="lg">
+      <PantallaPublica titulo="Mis evidencias" ancho="lg">
         <PortalNav />
         <EstadoVacio
           icono={<ImageIcon className="size-8" aria-hidden />}
@@ -117,7 +117,6 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
     <PantallaPublica
       titulo="Mis evidencias"
       descripcion="Sube una foto por cada día en el que participaste en línea. Tienes máximo 3 intentos por día."
-      volverA="/portal"
       ancho="lg"
     >
       <PortalNav />

@@ -56,7 +56,7 @@ function MiConstanciaContenido({ p }: { p: Participante }) {
   const elegible = requisitos.every((r) => r.ok);
 
   return (
-    <PantallaPublica volverA="/portal" ancho="lg">
+    <PantallaPublica ancho="lg">
       <PortalNav />
       <section className="rounded-lg border border-border bg-card p-6 text-center">
         <Award

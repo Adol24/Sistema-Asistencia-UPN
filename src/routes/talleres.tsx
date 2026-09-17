@@ -111,8 +111,7 @@ function CatalogoTalleres() {
 
   return (
     <PantallaPublica
-      volverA="/mi-dia"
-      ancho="lg"
+      ancho="xl"
       titulo="Elige un taller (opcional)"
       descripcion={
         dia

@@ -57,7 +57,7 @@ function MiQrContenido({ p }: { p: Participante }) {
   usePantallaEncendida(pagado);
 
   return (
-    <PantallaPublica titulo="Mi código QR" volverA="/portal" ancho="lg">
+    <PantallaPublica titulo="Mi código QR" ancho="lg">
       <PortalNav />
       {pagado ? (
         <section className="rounded-lg border border-border bg-card p-6 text-center">

@@ -1,40 +1,13 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Lock, MessageCircle } from "lucide-react";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { CalendarDays, Check, Lock, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
-import { Titulo, Texto } from "@/components/tipografia";
+import { Titulo, Texto, Rotulo } from "@/components/tipografia";
 import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
 import { ENLACE_NAV } from "@/lib/estilos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import type { Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
-
-/**
- * Enlace de regreso al paso anterior.
- *
- * No se dibuja en teléfonos. Ahí el sistema ya tiene su propio gesto o botón de
- * retroceso, y repetirlo en pantalla gasta la altura que más escasea sin añadir
- * nada. En escritorio se conserva: el botón del navegador está más lejos del
- * ojo y de la mano, y aquí sobra el espacio.
- *
- * De `md:` en adelante cambia de forma, y esa es la mitad del arreglo de
- * escritorio. Con la página sin encabezado, este enlace era lo único que había
- * arriba de la columna: una pastilla gris flotando sobre el vacío, que se leía
- * como un botón de aplicación de teléfono. Bajo una barra de verdad ya no
- * necesita fondo propio ni área táctil de 44 píxeles —eso es para el pulgar—,
- * así que se queda en lo que es: la miga que dice de dónde vienes.
- */
-function EnlaceVolver({ a }: { a: string }) {
-  return (
-    <Link
-      to={a}
-      className="-ml-3 mb-2 hidden min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted sm:inline-flex md:mb-5 md:ml-0 md:min-h-0 md:px-0 md:hover:bg-transparent md:hover:text-foreground print:hidden"
-    >
-      <ArrowLeft className="size-4" aria-hidden />
-      Volver
-    </Link>
-  );
-}
 
 /*
  * El marco de escritorio del flujo público: la barra de arriba y el pie.
@@ -52,12 +25,19 @@ function EnlaceVolver({ a }: { a: string }) {
  * Dibujarlo solo de `md:` en adelante deja el teléfono exactamente como estaba
  * —ni un píxel de diferencia— y le da a la computadora lo que sí espera.
  */
-function BarraPublica() {
+function BarraPublica({ contenedor }: { contenedor: string }) {
   const { configuracion: evento } = useEstadoEvento();
 
   return (
     <header className="hidden border-b border-border bg-card md:block print:hidden">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-8 py-3">
+      {/*
+       * La barra ocupa todo el ancho, pero lo de dentro se alinea con el
+       * contenido de la página, no con la ventana. Con un contenedor propio y
+       * más ancho, la marca quedaba a la izquierda de donde empieza el texto y
+       * el enlace a la derecha de donde acaba: dos bordes que no coinciden con
+       * nada, que es lo que hace que una página se vea armada a ojo.
+       */}
+      <div className={cn("mx-auto flex w-full items-center gap-4 px-8 py-3", contenedor)}>
         <Link to="/bienvenida" className="flex min-w-0 items-center gap-2.5">
           <img
             src="/icons/icono-192.png"
@@ -86,7 +66,7 @@ function BarraPublica() {
   );
 }
 
-function PiePublico() {
+function PiePublico({ contenedor }: { contenedor: string }) {
   const { configuracion: evento } = useEstadoEvento();
   const wa = evento.whatsappSoporte
     ? `https://wa.me/${evento.whatsappSoporte}?text=${encodeURIComponent(
@@ -96,7 +76,12 @@ function PiePublico() {
 
   return (
     <footer className="hidden border-t border-border md:block print:hidden">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-8 py-5 text-xs text-muted-foreground">
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-wrap items-center gap-x-6 gap-y-2 px-8 py-5 text-xs text-muted-foreground",
+          contenedor,
+        )}
+      >
         {evento.nombre ? <span className="truncate">{evento.nombre}</span> : null}
         {evento.horarioSoporte ? <span>Soporte: {evento.horarioSoporte}</span> : null}
         {wa ? (
@@ -104,7 +89,7 @@ function PiePublico() {
             href={wa}
             target="_blank"
             rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1.5 font-medium text-foreground hover:underline"
+            className="ml-auto inline-flex items-center gap-1.5 font-medium text-foreground hover:underline lg:hidden"
           >
             <MessageCircle className="size-3.5 shrink-0" aria-hidden />
             Escribir a soporte
@@ -115,19 +100,146 @@ function PiePublico() {
   );
 }
 
+/**
+ * Los cuatro pasos del pre-registro, y qué rutas caen en cada uno.
+ *
+ * Se agrupan de a varios a propósito: las ocho pantallas del flujo son ocho
+ * casillas, y una barra de ocho casillas no informa, abruma. Cuatro se cuentan
+ * de un vistazo, que es lo único que se le pide a esto.
+ */
+const PASOS_DEL_FLUJO: { titulo: string; rutas: string[] }[] = [
+  { titulo: "Identifícate", rutas: ["/alumno", "/registro", "/confirmar-nombre"] },
+  { titulo: "Tus datos de contacto", rutas: ["/completar-datos"] },
+  { titulo: "Tu día y tu taller", rutas: ["/mi-dia", "/talleres"] },
+  { titulo: "Tu pago", rutas: ["/pago", "/comprobante"] },
+];
+
+/**
+ * La columna de contexto que acompaña a la pantalla en escritorio.
+ *
+ * Esto es lo que faltaba, y no era ancho. Una pantalla de 1366 píxeles con un
+ * formulario de 512 centrado no se arregla estirando el formulario —un campo
+ * de texto ancho se llena peor— sino dándole con qué convivir. Sin nada al
+ * lado, el ojo lee la página entera como un teléfono ampliado, por muy bien
+ * dimensionada que esté la tarjeta.
+ *
+ * Y lo que se pone al lado no es relleno: es lo que la persona pregunta cuando
+ * se detiene a media captura —en qué evento me estoy metiendo, cuántos pasos
+ * faltan, a quién le escribo si algo falla—. En el teléfono esas tres cosas
+ * no caben y se resuelven avanzando; en una pantalla ancha caben, y esconderlas
+ * es desperdiciar la única ventaja que tiene.
+ *
+ * `hidden lg:block`: por debajo de 1024 no existe. El teléfono no cambia.
+ */
+function RielPublico() {
+  const ruta = useRouterState({ select: (e) => e.location.pathname });
+  const { configuracion: evento } = useEstadoEvento();
+  const enPortal = ruta.startsWith("/portal");
+  const actual = PASOS_DEL_FLUJO.findIndex((p) => p.rutas.includes(ruta));
+  const wa = evento.whatsappSoporte
+    ? `https://wa.me/${evento.whatsappSoporte}?text=${encodeURIComponent(
+        "Hola, necesito ayuda con mi pre-registro.",
+      )}`
+    : null;
+
+  return (
+    <aside className="hidden lg:block lg:sticky lg:top-14 lg:self-start print:hidden">
+      <Rotulo className="text-primary">{enPortal ? "Tu portal" : "Pre-registro"}</Rotulo>
+      {evento.nombre ? (
+        <p className="mt-2 text-balance text-lg font-bold leading-snug tracking-tight">
+          {evento.nombre}
+        </p>
+      ) : null}
+      {evento.fechas ? (
+        <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+          {evento.fechas}
+        </p>
+      ) : null}
+
+      {/*
+       * Los pasos solo aparecen dentro del flujo. En el portal —que se visita
+       * después, y en desorden— una barra de progreso mentiría: ahí ya no se
+       * avanza en línea recta.
+       */}
+      {actual >= 0 ? (
+        <ol className="mt-8 grid gap-3" aria-label="Pasos del pre-registro">
+          {PASOS_DEL_FLUJO.map((paso, i) => {
+            const hecho = i < actual;
+            const esActual = i === actual;
+            return (
+              <li key={paso.titulo} className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                    hecho && "bg-estado-pagado text-white",
+                    esActual && "bg-primary text-primary-foreground",
+                    !hecho && !esActual && "border border-border text-muted-foreground",
+                  )}
+                >
+                  {hecho ? <Check className="size-3.5" /> : i + 1}
+                </span>
+                <span
+                  className={cn(
+                    "text-sm",
+                    esActual ? "font-semibold text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {paso.titulo}
+                </span>
+                {esActual ? <span className="sr-only">(paso actual)</span> : null}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+
+      {wa ? (
+        <div className="mt-8 border-t border-border pt-5">
+          <p className="text-sm font-semibold">¿Algo no cuadra?</p>
+          {evento.horarioSoporte ? (
+            <p className="mt-1 text-xs text-muted-foreground">{evento.horarioSoporte}</p>
+          ) : null}
+          <a
+            href={wa}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+          >
+            <MessageCircle className="size-4 shrink-0" aria-hidden />
+            Escribir a soporte
+          </a>
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
 export function PantallaPublica({
   titulo,
   descripcion,
-  volverA,
   children,
   ancho = "md",
+  riel = true,
 }: {
   titulo?: string;
   descripcion?: string;
-  volverA?: string;
   children: ReactNode;
   ancho?: "md" | "lg" | "xl";
+  /** La portada trae su propia composición y no lleva riel. */
+  riel?: boolean;
 }) {
+  /*
+   * El contenedor lo comparten la barra, el contenido y el pie, para que los
+   * tres empiecen y acaben en la misma vertical.
+   */
+  const contenedor = cn(
+    ancho === "md" && (riel ? "max-w-xl lg:max-w-4xl" : "max-w-xl"),
+    ancho === "lg" && (riel ? "max-w-3xl lg:max-w-[68rem]" : "max-w-3xl lg:max-w-4xl"),
+    ancho === "xl" && (riel ? "max-w-3xl lg:max-w-[78rem]" : "max-w-3xl lg:max-w-5xl"),
+  );
+
   return (
     /*
      * Dos decisiones sobre la altura, y la segunda arregla un fallo que se veía
@@ -157,42 +269,42 @@ export function PantallaPublica({
      * nada que desplazar y su botón se queda debajo del teclado.
      */
     <div className="flex min-h-svh flex-col bg-background pb-seguro [padding-bottom:calc(env(safe-area-inset-bottom)+var(--teclado,0px))]">
-      <BarraPublica />
+      <BarraPublica contenedor={contenedor} />
       {/*
-       * El ancho crece por papel, no por tamaño de pantalla.
+       * El ancho del CONTENIDO no cambia; lo que crece es la composición.
        *
        * `md` son los formularios, y ahí lo ancho es PEOR: un campo de texto de
        * mil píxeles rompe la relación entre la etiqueta y su control, y estira la
-       * línea de lectura más allá de donde el ojo sigue el renglón. Se queda en
-       * 576, igual que en el teléfono. Lo que cambia es lo de alrededor.
+       * línea de lectura más allá de donde el ojo sigue el renglón. El
+       * formulario se queda en 576, igual que en el teléfono. Lo que se añade a
+       * partir de 1024 es el riel de al lado, y los topes de abajo son la suma:
+       * 16rem de riel + 3.5rem de hueco + el contenido de siempre.
        *
-       * `lg` son las pantallas que sí tienen contenido en paralelo —la rejilla
-       * de talleres, el portal—, y esas sí ganan: a partir de 1024 suben a 896
-       * para que quepa una columna más sin apretar.
-       *
-       * `xl` es para las dos que llevan barra lateral —el pago y el
-       * comprobante—. Con 896 y una columna de 22rem al lado, al texto le
-       * quedaban 520 píxeles y las instrucciones volvían a leerse apretadas;
-       * con 1024 le quedan 648, que es la medida de un párrafo cómodo.
+       * `max-lg:alto:my-auto` y no `alto:my-auto` a secas: el centrado vertical
+       * es correcto en un teléfono, donde el formulario es toda la pantalla,
+       * y es lo que hacía flotar la tarjeta en medio de la nada en una
+       * computadora. De 1024 en adelante el contenido se ancla arriba y es
+       * `lg:grow` —no el margen— lo que manda el pie hasta abajo.
        */}
-      <main
+      <div
         className={cn(
-          "mx-auto w-full px-4 py-8 alto:my-auto sm:py-12 md:px-8 md:py-10",
-          ancho === "md" && "max-w-xl",
-          ancho === "lg" && "max-w-3xl lg:max-w-4xl",
-          ancho === "xl" && "max-w-3xl lg:max-w-5xl",
+          "mx-auto w-full px-4 py-8 max-lg:alto:my-auto sm:py-12 md:px-8 md:py-10 lg:grow lg:py-14",
+          contenedor,
+          riel && "lg:grid lg:grid-cols-[16rem_1fr] lg:items-start lg:gap-14",
         )}
       >
-        {volverA ? <EnlaceVolver a={volverA} /> : null}
-        {titulo ? (
-          <header className="mb-6">
-            <Titulo>{titulo}</Titulo>
-            {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
-          </header>
-        ) : null}
-        {children}
-      </main>
-      <PiePublico />
+        {riel ? <RielPublico /> : null}
+        <main className="min-w-0">
+          {titulo ? (
+            <header className="mb-6">
+              <Titulo className="lg:text-3xl">{titulo}</Titulo>
+              {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
+            </header>
+          ) : null}
+          {children}
+        </main>
+      </div>
+      <PiePublico contenedor={contenedor} />
     </div>
   );
 }

@@ -18,8 +18,13 @@ export const Route = createFileRoute("/bienvenida")({
 function Bienvenida() {
   const { configuracion: evento } = useEstadoEvento();
 
+  /*
+   * La portada no lleva riel: el riel existe para decir en qué evento estás y
+   * cuánto falta, y esta pantalla es exactamente eso a tamaño completo. Ponerle
+   * uno al lado sería decir dos veces el nombre del encuentro.
+   */
   return (
-    <PantallaPublica ancho="lg">
+    <PantallaPublica ancho="lg" riel={false}>
       {/*
        * En el teléfono esto es una columna: el evento arriba, las dos opciones
        * debajo. De `md:` en adelante se parte en dos, y el motivo es que son dos

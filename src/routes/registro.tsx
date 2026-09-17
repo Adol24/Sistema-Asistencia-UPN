@@ -116,7 +116,6 @@ function RegistroExterno() {
       <PantallaPublica
         titulo="Confirma tus datos"
         descripcion="Así quedará tu registro. No podrás editarlo después."
-        volverA="/bienvenida"
       >
         <section className="rounded-lg border-2 border-primary/25 bg-card px-5 py-8">
           <p className="text-balance text-center text-2xl font-extrabold leading-snug tracking-tight">
@@ -158,7 +157,7 @@ function RegistroExterno() {
   }
 
   return (
-    <PantallaPublica titulo="Registro de docente o externo" volverA="/bienvenida">
+    <PantallaPublica titulo="Registro de docente o externo">
       <Alert className="mb-4">
         <AlertTriangle className="size-4" />
         <AlertTitle>Escribe tu nombre en MAYÚSCULAS y sin acentos</AlertTitle>

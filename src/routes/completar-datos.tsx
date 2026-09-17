@@ -100,7 +100,6 @@ function DatosDeContacto() {
   if (porConfirmar) {
     return (
       <PantallaPublica
-        volverA="/confirmar-nombre"
         titulo="¿Es correcto tu correo?"
         descripcion="Es por donde soporte te contacta si algo hace falta. Revísalo bien: una letra de más y no te llega nada."
       >
@@ -139,7 +138,7 @@ function DatosDeContacto() {
   }
 
   return (
-    <PantallaPublica titulo="Tus datos de contacto" volverA="/confirmar-nombre">
+    <PantallaPublica titulo="Tus datos de contacto">
       <form
         className="rounded-lg border border-border bg-card p-5"
         noValidate
