@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Check, Copy, KeyRound, Printer, QrCode } from "lucide-react";
+import { AlertTriangle, Check, Copy, KeyRound, QrCode } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
@@ -66,19 +66,17 @@ function Pago() {
   return (
     <PantallaPublica titulo="Instrucciones de pago" ancho="xl">
       {/*
-        Un solo botón, y hace lo que dice.
-        Eran dos —«Descargar PDF» e «Imprimir»— y ninguno hacía nada: los dos
-        enseñaban un aviso de éxito sin generar ni un archivo. La página ya
-        tiene su hoja de impresión —las clases `print:hidden` están puestas—,
-        así que abrir el diálogo del navegador imprime de verdad, y desde él se
-        elige «Guardar como PDF», que es como se descarga un PDF en realidad.
-      */}
-      <div className="flex flex-wrap gap-2 print:hidden">
-        <Button variant="outline" className="h-11" onClick={() => window.print()}>
-          <Printer className="size-4" /> Imprimir o guardar en PDF
-        </Button>
-      </div>
-
+       * Aquí hubo un botón de imprimir y ya no está.
+       *
+       * Llamaba a `window.print()`, o sea que abría el mismo diálogo que
+       * Ctrl+P: un botón para hacer lo que el navegador ya hace, ocupando el
+       * primer sitio de la pantalla —por encima del folio— con lo que menos
+       * importa de ella. Lo que hay que llevarse de aquí es el folio, y para
+       * eso están los botones de copiar y de descargar el pase, que sí generan
+       * algo. La hoja de impresión se queda: las clases `print:hidden` siguen
+       * puestas y quien imprima desde el navegador obtiene la misma página
+       * limpia de siempre.
+       */}
       {/*
        * De `lg:` en adelante el folio se sale de la columna y se queda fijo al
        * costado. Es la pantalla más larga del flujo —depósitos, datos del
@@ -104,7 +102,7 @@ function Pago() {
         entre, así que la pantalla se lo dice y le da las tres maneras de
         guardarlo: copiarlo, descargar la imagen o imprimir la hoja.
       */}
-        <aside className="mt-4 rounded-lg border border-border bg-card p-5 lg:p-6 text-center lg:sticky lg:top-6">
+        <aside className="rounded-lg border border-border bg-card p-5 text-center lg:sticky lg:top-6 lg:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Tu folio
           </p>
@@ -152,7 +150,7 @@ function Pago() {
 
         {/* La columna larga: todo lo que hay que hacer con ese folio. */}
         <div>
-          <div className="mt-4 rounded-lg border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-4">
+          <div className="rounded-lg border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-4 lg:p-5">
             <p className="flex items-start gap-2 text-sm font-bold text-estado-discrepancia">
               <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
               IMPORTANTE: son DOS depósitos por separado. Debes presentar DOS vouchers distintos.
