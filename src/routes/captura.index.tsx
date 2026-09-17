@@ -6,6 +6,7 @@ import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Button } from "@/components/ui/button";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 
+import { isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { meta } from "@/lib/seo";
@@ -87,7 +88,7 @@ function ConfiguracionSesion() {
           })}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          {dia.etiqueta} — {dia.fecha} · Registro de entrada: {evento.registroEntrada}
+          {dia.etiqueta} — {isoAFecha(dia.fecha)} · Registro de entrada: {evento.registroEntrada}
         </p>
       </section>
 

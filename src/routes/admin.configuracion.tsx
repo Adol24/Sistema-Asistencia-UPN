@@ -171,7 +171,7 @@ function Configuracion() {
             >
               <Campo
                 id={`fecha-${d.dia}`}
-                etiqueta={`${d.etiqueta} — fecha`}
+                etiqueta={`${d.etiqueta} — fecha (AAAA-MM-DD)`}
                 valor={d.fecha}
                 onChange={(v) =>
                   set({ dias: b.dias.map((x, k) => (k === i ? { ...x, fecha: v } : x)) })

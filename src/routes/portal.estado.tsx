@@ -6,6 +6,7 @@ import { PortalNav } from "@/components/portal-nav";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
+import { isoAFecha } from "@/lib/formato";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
@@ -213,7 +214,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2">
           <p className="text-xs text-muted-foreground">Tu asistencia presencial</p>
           <p className="mt-1 text-sm font-semibold">
-            {dia.etiqueta} — {dia.fecha} · {dia.lugar}
+            {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
           </p>
         </div>
         {p.programa ? (

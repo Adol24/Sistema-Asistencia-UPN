@@ -7,7 +7,7 @@ import { navAdmin } from "@/components/nav-admin";
 import { Progress } from "@/components/ui/progress";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
-import { comoHora } from "@/lib/formato";
+import { comoHora, isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { detectarAnomalias, metricasDelDia } from "@/lib/monitoreo";
 import { meta } from "@/lib/seo";
@@ -50,7 +50,7 @@ function Monitoreo() {
       acciones={<RelojEventoControl />}
     >
       <p className="mb-4 text-sm text-muted-foreground">
-        {info.etiqueta} — {info.fecha} · {info.lugar} · son las{" "}
+        {info.etiqueta} — {isoAFecha(info.fecha)} · {info.lugar} · son las{" "}
         <span className="font-mono font-semibold text-foreground">{comoHora(reloj.minutos)}</span>
         {/*
           Decir de dónde sale la hora, porque de ella depende el ritmo. «Son las

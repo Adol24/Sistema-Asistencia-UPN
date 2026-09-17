@@ -4,6 +4,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 
+import { isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
 import { meta } from "@/lib/seo";
@@ -45,11 +46,7 @@ function MiDia() {
 
   if (eligeSuDia) {
     return (
-      <PantallaPublica
-        titulo="Elige tu día"
-        descripcion="El encuentro se imparte tres días con el mismo programa en sedes distintas. Escoge al que asistirás."
-        volverA="/registro"
-      >
+      <PantallaPublica titulo="Elige tu día" volverA="/registro">
         <ul className="grid gap-3">
           {evento.dias.map((d) => {
             const activo = elegido === d.dia;
@@ -68,7 +65,7 @@ function MiDia() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-base font-extrabold">
-                      {d.etiqueta} — {d.fecha}
+                      {d.etiqueta} — {isoAFecha(d.fecha)}
                     </p>
                     {activo ? (
                       <span className="flex items-center gap-1 text-sm font-semibold text-primary">
@@ -90,17 +87,6 @@ function MiDia() {
             );
           })}
         </ul>
-
-        {/*
-          Los talleres se imparten en días concretos, así que el día acota el
-          catálogo. Se dice aquí y no al llegar a la lista, donde ya sería
-          tarde: quien buscaba un taller en particular tiene que poder volver y
-          cambiar de día antes de elegir, no descubrir que no está.
-        */}
-        <p className="mt-4 text-sm text-muted-foreground">
-          Cada taller se imparte en días concretos, así que el que elijas define cuáles puedes
-          tomar. Podrás volver aquí antes de pagar.
-        </p>
 
         <Button
           className="mt-6 h-12 md:h-11 w-full text-base"
@@ -161,7 +147,7 @@ function MiDia() {
         <div className="bg-primary px-5 py-5 text-primary-foreground">
           <Rotulo className="text-primary-foreground/70">Tu asistencia presencial es</Rotulo>
           <p className="mt-2 text-balance text-2xl font-extrabold leading-tight">
-            {dia.etiqueta} — {dia.fecha}
+            {dia.etiqueta} — {isoAFecha(dia.fecha)}
           </p>
         </div>
         {/* `gap-4` y no `gap-3`: son datos distintos, no una lista continua. */}

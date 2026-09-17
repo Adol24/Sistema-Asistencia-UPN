@@ -20,7 +20,7 @@ import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { hora, simularLatencia } from "@/lib/formato";
+import { hora, isoAFecha, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
 
@@ -133,7 +133,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
             <li key={dia} className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-3">
                 <p className="text-sm font-bold">
-                  {info.etiqueta} — {info.fecha}
+                  {info.etiqueta} — {isoAFecha(info.fecha)}
                 </p>
               </div>
               <div className="p-4">

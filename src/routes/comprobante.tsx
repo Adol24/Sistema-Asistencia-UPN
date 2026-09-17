@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CodigoQR } from "@/components/qr";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
-import { moneda } from "@/lib/formato";
+import { isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -76,7 +76,7 @@ function Comprobante() {
           <div>
             <dt className="text-xs text-muted-foreground">Día y lugar</dt>
             <dd className="font-medium">
-              {dia.etiqueta} — {dia.fecha} · {dia.lugar}
+              {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
             </dd>
           </div>
           <div>
