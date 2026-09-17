@@ -113,7 +113,7 @@ function MiDia() {
         titulo="Tu día y lugar"
         descripcion="Servicios Escolares todavía no reparte tu día."
       >
-        <div className="rounded-lg border border-border bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-5 lg:p-6">
           <p className="text-sm">
             Tu día se fija al confirmar tu registro, y lo verás enseguida en tu comprobante y en tu
             portal. Si eliges taller, se te asignará un día en el que ese taller se imparta.

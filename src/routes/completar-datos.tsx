@@ -140,7 +140,7 @@ function DatosDeContacto() {
   return (
     <PantallaPublica titulo="Tus datos de contacto">
       <form
-        className="rounded-lg border border-border bg-card p-5"
+        className="rounded-lg border border-border bg-card p-5 lg:p-6"
         noValidate
         onSubmit={(ev) => {
           ev.preventDefault();

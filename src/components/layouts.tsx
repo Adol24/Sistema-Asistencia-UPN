@@ -107,7 +107,7 @@ function PiePublico({ contenedor }: { contenedor: string }) {
  * casillas, y una barra de ocho casillas no informa, abruma. Cuatro se cuentan
  * de un vistazo, que es lo único que se le pide a esto.
  */
-const PASOS_DEL_FLUJO: { titulo: string; rutas: string[] }[] = [
+export const PASOS_DEL_FLUJO: { titulo: string; rutas: string[] }[] = [
   { titulo: "Identifícate", rutas: ["/alumno", "/registro", "/confirmar-nombre"] },
   { titulo: "Tus datos de contacto", rutas: ["/completar-datos"] },
   { titulo: "Tu día y tu taller", rutas: ["/mi-dia", "/talleres"] },
@@ -221,15 +221,24 @@ export function PantallaPublica({
   descripcion,
   children,
   ancho = "md",
-  riel = true,
+  variante = "flujo",
 }: {
   titulo?: string;
   descripcion?: string;
   children: ReactNode;
   ancho?: "md" | "lg" | "xl";
-  /** La portada trae su propia composición y no lleva riel. */
-  riel?: boolean;
+  /**
+   * `flujo` es un paso del pre-registro: lleva riel y se ancla arriba, porque
+   * lo que importa es empezar a leer en cuanto carga.
+   *
+   * `portada` es la entrada. No lleva riel —sería decir dos veces el nombre
+   * del encuentro— y se centra a lo alto: una portada anclada arriba deja
+   * medio metro de nada debajo, que es exactamente lo que no debe hacer la
+   * primera pantalla que alguien ve.
+   */
+  variante?: "flujo" | "portada";
 }) {
+  const riel = variante === "flujo";
   /*
    * El contenedor lo comparten la barra, el contenido y el pie, para que los
    * tres empiecen y acaben en la misma vertical.
@@ -288,7 +297,10 @@ export function PantallaPublica({
        */}
       <div
         className={cn(
-          "mx-auto w-full px-4 py-8 max-lg:alto:my-auto sm:py-12 md:px-8 md:py-10 lg:grow lg:py-14",
+          "mx-auto w-full px-4 py-8 max-lg:alto:my-auto sm:py-12 md:px-8 md:py-10 lg:py-14",
+          // Anclado arriba en el flujo; centrado en la portada. `grow` es lo
+          // que manda el pie hasta abajo cuando no hay margen que lo empuje.
+          riel ? "lg:grow" : "lg:my-auto",
           contenedor,
           riel && "lg:grid lg:grid-cols-[16rem_1fr] lg:items-start lg:gap-14",
         )}

@@ -93,7 +93,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         </Alert>
       ) : null}
 
-      <section className="rounded-lg border border-border bg-card p-5">
+      <section className="rounded-lg border border-border bg-card p-5 lg:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold">{p.nombre}</h1>
@@ -187,13 +187,13 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
        * dos: la misma información sin los huecos.
        */}
       <section className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
           <p className="text-xs text-muted-foreground">Pago del evento</p>
           <div className="mt-2">
             <EstadoPagoBadge estado={estado.evento} />
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
           <p className="text-xs text-muted-foreground">Pago del taller</p>
           <div className="mt-2">
             {estado.taller ? (
@@ -217,14 +217,14 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             </div>
           ) : null}
         </div>
-        <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
+        <div className="rounded-lg border border-border bg-card p-4 lg:p-5 sm:col-span-2 lg:col-span-1">
           <p className="text-xs text-muted-foreground">Tu asistencia presencial</p>
           <p className="mt-1 text-sm font-semibold">
             {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
           </p>
         </div>
         {p.programa ? (
-          <div className="rounded-lg border border-border bg-card p-4 sm:col-span-2 lg:col-span-1">
+          <div className="rounded-lg border border-border bg-card p-4 lg:p-5 sm:col-span-2 lg:col-span-1">
             <p className="text-xs text-muted-foreground">
               Tus datos escolares, según Servicios Escolares
             </p>

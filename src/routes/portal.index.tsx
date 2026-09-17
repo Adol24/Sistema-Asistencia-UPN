@@ -76,7 +76,7 @@ function AccesoPortal() {
       descripcion="No necesitas contraseña. Usa tu folio y tu matrícula (o el correo con el que te registraste)."
     >
       <form
-        className="rounded-lg border border-border bg-card p-5"
+        className="rounded-lg border border-border bg-card p-5 lg:p-6"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();

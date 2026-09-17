@@ -81,7 +81,7 @@ function IdentificacionAlumno() {
           ev.preventDefault();
           void buscar();
         }}
-        className="rounded-lg border border-border bg-card p-5"
+        className="rounded-lg border border-border bg-card p-5 lg:p-6"
         noValidate
       >
         <div>

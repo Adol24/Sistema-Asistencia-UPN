@@ -104,7 +104,7 @@ function Pago() {
         entre, así que la pantalla se lo dice y le da las tres maneras de
         guardarlo: copiarlo, descargar la imagen o imprimir la hoja.
       */}
-        <aside className="mt-4 rounded-lg border border-border bg-card p-5 text-center lg:sticky lg:top-6">
+        <aside className="mt-4 rounded-lg border border-border bg-card p-5 lg:p-6 text-center lg:sticky lg:top-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Tu folio
           </p>
@@ -160,13 +160,13 @@ function Pago() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <article className="rounded-lg border border-border bg-card p-4">
+            <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
               <Rotulo>Depósito 1 — Evento</Rotulo>
               <p className="mt-2 font-mono text-sm">Concepto: ENCUENTRO-{folio}</p>
               <p className="mt-1 text-2xl font-bold">{moneda(evento.cuotaEvento)}</p>
             </article>
             {taller ? (
-              <article className="rounded-lg border border-border bg-card p-4">
+              <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
                 <Rotulo>Depósito 2 — Taller</Rotulo>
                 <p className="mt-2 font-mono text-sm">Concepto: TALLER-{folio}</p>
                 <p className="mt-1 text-2xl font-bold">{moneda(taller.costo)}</p>
@@ -220,7 +220,7 @@ function Pago() {
           </section>
 
           <section className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
               <h2 className="text-sm font-semibold">Entrega de vouchers</h2>
               <p className="mt-1 text-sm text-muted-foreground">{evento.ventanilla.lugar}</p>
               <p className="text-sm text-muted-foreground">{evento.ventanilla.horario}</p>
@@ -231,7 +231,7 @@ function Pago() {
             </div>
           </section>
 
-          <section className="mt-4 rounded-lg border border-border bg-card p-4">
+          <section className="mt-4 rounded-lg border border-border bg-card p-4 lg:p-5">
             <h2 className="text-sm font-semibold">Qué llevar</h2>
             <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
               <li>Credencial vigente</li>

@@ -156,7 +156,7 @@ function ConfirmarNombre() {
         titulo="Confirma que eres tú"
         descripcion="Antes de mostrarte tu nombre necesitamos comprobar que la matrícula es tuya."
       >
-        <div className="rounded-lg border border-border bg-card p-5">
+        <div className="rounded-lg border border-border bg-card p-5 lg:p-6">
           <div className="grid gap-4">
             <div>
               <Label htmlFor="nombres">Tus nombres, sin apellidos</Label>
@@ -275,7 +275,7 @@ function ConfirmarNombre() {
       </fieldset>
 
       {opcion === "incorrecto" ? (
-        <div className="mt-3 rounded-lg border border-border bg-card p-4">
+        <div className="mt-3 rounded-lg border border-border bg-card p-4 lg:p-5">
           <Label htmlFor="correccion">¿Cómo debe decir tu nombre?</Label>
           <Input
             id="correccion"

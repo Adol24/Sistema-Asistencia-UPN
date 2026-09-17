@@ -62,7 +62,7 @@ function Comprobante() {
        */}
       <div className="lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-6 print:block">
         <div>
-          <div className="mt-4 grid gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-[1fr_auto]">
+          <div className="mt-4 grid gap-4 rounded-lg border border-border bg-card p-5 lg:p-6 sm:grid-cols-[1fr_auto]">
             <dl className="grid gap-3 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Nombre</dt>

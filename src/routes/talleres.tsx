@@ -157,7 +157,7 @@ function CatalogoTalleres() {
             <li key={t.id}>
               <article
                 className={cn(
-                  "rounded-lg border bg-card p-4 transition-all",
+                  "rounded-lg border bg-card p-4 lg:p-5 transition-all",
                   // En rejilla, dos tarjetas contiguas con descripciones de
                   // distinto largo quedaban de alturas distintas y el borde
                   // inferior se veía escalonado. Estirarlas y empujar el pie

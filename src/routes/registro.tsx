@@ -165,7 +165,7 @@ function RegistroExterno() {
       </Alert>
 
       <form
-        className="rounded-lg border border-border bg-card p-5"
+        className="rounded-lg border border-border bg-card p-5 lg:p-6"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
