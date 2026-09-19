@@ -48,6 +48,40 @@ function Bienvenida() {
          * información con una jerarquía distinta.
          */}
         <header className="text-center md:text-left">
+          {/*
+           * El logotipo oficial del Encuentro.
+           *
+           * `alt=""` y `aria-hidden` porque es decorativo: el nombre del evento
+           * va justo debajo, como `h1` y en texto. Describirlo otra vez en el
+           * alternativo haría que un lector de pantalla anunciara el encuentro
+           * dos veces seguidas.
+           *
+           * **No baja de 96 px, y es por el dibujo, no por gusto.** Son tres
+           * puños alrededor de un globo trazados a línea fina: a 28 px —el
+           * hueco que tiene la barra superior— no se distingue ninguna de las
+           * tres formas y queda un borrón gris que parece un fallo de carga. A
+           * 64 se empieza a leer y a 128 se entiende. Por eso vive en la
+           * portada, que es donde hay sitio, y la barra conserva su icono, que
+           * sí está dibujado para tamaños pequeños.
+           *
+           * `width`/`height` con las medidas reales del archivo: sin ellas el
+           * navegador no reserva el hueco y la portada entera salta hacia abajo
+           * cuando el logotipo termina de cargar.
+           *
+           * `dark:invert` está de más hoy —nada enciende la clase `dark`— y
+           * cuesta una palabra. El trazo es de un solo gris oscuro sobre
+           * transparente, así que invertirlo lo deja claro sobre oscuro sin
+           * tocar el recorte. El día que se encienda el tema oscuro, el
+           * logotipo no desaparece.
+           */}
+          <img
+            src="/logo-encuentro.png"
+            alt=""
+            aria-hidden
+            width={512}
+            height={453}
+            className="mx-auto mb-6 h-24 w-auto dark:invert md:mx-0 lg:h-32"
+          />
           <Rotulo className="text-primary">Pre-registro</Rotulo>
           <h1 className="mt-3 text-balance text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-[2.6rem]">
             {evento.nombre}
