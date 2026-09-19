@@ -12,6 +12,7 @@ import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
+import { fechaLimiteTexto } from "@/lib/formato";
 
 export const Route = createFileRoute("/portal/qr")({
   head: () =>
@@ -97,7 +98,7 @@ function MiQrContenido({ p }: { p: Participante }) {
             {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            Fecha límite de entrega de vouchers: {evento.fechaLimite}
+            Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
           </p>
           <p className="mt-3 text-xs text-muted-foreground">
             El código no se envía por correo: se descarga aquí. Esta pantalla es la única que lo

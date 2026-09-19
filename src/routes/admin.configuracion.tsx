@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { soloDigitos } from "@/lib/campos";
 import { useAforo } from "@/lib/cupo";
+import { camposSinGuardar } from "@/lib/escritura-remota";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { fechaAIso, simularLatencia } from "@/lib/formato";
+import {
+  fechaAIso,
+  fechaLimiteTexto,
+  isoAMomentoLocal,
+  momentoLocalAIso,
+  simularLatencia,
+} from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import type { Dia } from "@/dominio/tipos";
@@ -105,7 +112,33 @@ function Configuracion() {
       campos.length ? campos.join(", ") : "Cambios generales",
     );
     setGuardando(false);
-    toast.success("Configuración guardada. Las pantallas públicas ya la usan.");
+
+    /*
+     * El aviso dice lo que pasó, no lo que se esperaba que pasara.
+     *
+     * Aquí había un `toast.success` incondicional: «Configuración guardada. Las
+     * pantallas públicas ya la usan.» Se disparaba igual cuando la capa de
+     * escritura descartaba el campo por no tener columna, que era el caso de
+     * trece de los veintitrés campos de esta pantalla. Un descarte silencioso y
+     * un guardado correcto se veían exactamente igual, y por eso duró tanto.
+     *
+     * Se comparan los campos CAMBIADOS, no todos: preguntar por el parche
+     * completo haría que el aviso nombrara el catálogo académico cada vez que
+     * alguien corrige el teléfono de soporte.
+     */
+    const cambiados: Partial<ConfiguracionEvento> = {};
+    for (const campo of Object.keys(limpio) as (keyof ConfiguracionEvento)[])
+      if (JSON.stringify(limpio[campo]) !== JSON.stringify(configuracion[campo]))
+        (cambiados[campo] as unknown) = limpio[campo];
+
+    const sinGuardar = camposSinGuardar(cambiados);
+    if (sinGuardar.length)
+      toast.warning(`Se guardó todo menos ${sinGuardar.join(" y ")}.`, {
+        description:
+          "Ese cambio no se conserva: todavía no hay dónde escribirlo. Se pierde al recargar.",
+        duration: 8000,
+      });
+    else toast.success("Configuración guardada. Las pantallas públicas ya la usan.");
   };
 
   return (
@@ -159,12 +192,13 @@ function Configuracion() {
             valor={b.fechas}
             onChange={(v) => set({ fechas: v })}
           />
-          <Campo
-            id="horario"
-            etiqueta="Horario general (uso interno: no se publica)"
-            valor={b.horario}
-            onChange={(v) => set({ horario: v })}
-          />
+          {/*
+            Aquí había un campo «Horario general». Se quitó: `horario` es
+            DERIVADO —la base guarda los dos tramos de registro y el horario se
+            arma juntándolos al leer—, así que no hay columna que escribir y
+            editarlo no hacía nada. Los dos tramos se editan justo abajo, que es
+            donde el dato existe de verdad.
+          */}
           <div className="grid gap-2 sm:grid-cols-2">
             <Campo
               id="entrada"
@@ -312,12 +346,29 @@ function Configuracion() {
               pago.
             </p>
           </div>
-          <Campo
-            id="limite"
-            etiqueta="Fecha límite de entrega de vouchers"
-            valor={b.fechaLimite}
-            onChange={(v) => set({ fechaLimite: v })}
-          />
+          {/*
+            Fecha Y hora, y contra el valor crudo de la base.
+            Era un campo de texto sobre «viernes, 9 de octubre» —la frase que
+            esta pantalla recibía ya formateada—, así que no había nada que
+            guardar aunque el mapa de columnas lo hubiera admitido.
+            La hora se pide porque el vencimiento la tiene (18:00). Con un campo
+            de solo fecha, tocarlo lo habría movido a las 00:00 de ese día:
+            siete horas antes, dejando fuera a quien llegó a tiempo.
+          */}
+          <div>
+            <Label htmlFor="limite">Fecha y hora límite de entrega de vouchers</Label>
+            <Input
+              id="limite"
+              type="datetime-local"
+              value={isoAMomentoLocal(b.fechaLimite)}
+              onChange={(e) => set({ fechaLimite: momentoLocalAIso(e.target.value) })}
+              className="mt-1 h-11"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Al participante se le anuncia solo el día: «antes del{" "}
+              {fechaLimiteTexto(b.fechaLimite) || "…"}». La hora manda para el corte.
+            </p>
+          </div>
           <div>
             <Label htmlFor="horas">Horas para validar un voucher</Label>
             <Input

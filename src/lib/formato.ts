@@ -63,3 +63,51 @@ export const hoyIso = () => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
+
+/**
+ * La fecha límite tal como se lee en pantalla: «viernes, 9 de octubre».
+ *
+ * Este formateo vivía DENTRO de `aConfiguracion`, y ahí era una trampa: la
+ * configuración se quedaba con el texto y perdía la fecha. Mientras solo se
+ * leyera daba igual; en cuanto `/admin/configuracion` quiso guardarla, lo único
+ * que tenía para mandar a una columna `timestamptz` era «viernes, 9 de
+ * octubre». Formatear al leer convierte un dato en una frase, y de una frase no
+ * se vuelve.
+ *
+ * Ahora la configuración guarda el valor crudo de la base y el formateo ocurre
+ * donde se pinta, que es el mismo trato que ya tenían las fechas de los días.
+ *
+ * Solo la fecha, sin la hora, y no es un olvido: el vencimiento tiene hora
+ * —18:00— pero al participante se le promete un día. «Antes del viernes 9»
+ * es una instrucción; «antes del viernes 9 a las 18:00» invita a llegar a las
+ * 17:55 a una ventanilla con cola.
+ */
+export const fechaLimiteTexto = (iso: string) => {
+  if (!iso.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+};
+
+/**
+ * De un `timestamptz` de la base al valor que espera un `<input
+ * type="datetime-local">`: `AAAA-MM-DDTHH:mm`, en la hora del equipo.
+ *
+ * El campo es de fecha Y hora a propósito. Con uno de solo fecha, quien tocara
+ * el vencimiento lo movería sin querer a las 00:00 de ese día —siete horas
+ * ANTES de las 18:00 que tenía—, y adelantar un cierre sin decirlo deja fuera a
+ * quien llegó a tiempo.
+ */
+export const isoAMomentoLocal = (iso: string) => {
+  if (!iso.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+/** La vuelta, para escribir en la base. Lo que no reconoce lo devuelve intacto. */
+export const momentoLocalAIso = (valor: string) => {
+  const d = new Date(valor);
+  return Number.isNaN(d.getTime()) ? valor : d.toISOString();
+};

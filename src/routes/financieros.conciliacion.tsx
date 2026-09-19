@@ -10,7 +10,7 @@ import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 
-import { moneda } from "@/lib/formato";
+import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { folioDeEjemplo } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { porVencer as vencible } from "@/lib/pagos-logica";
@@ -180,7 +180,7 @@ function Conciliacion() {
           icono={<TimerOff className="size-5" aria-hidden />}
           etiqueta="Pre-registros por vencer"
           valor={String(cifras.porVencer.length)}
-          detalle={`Vencen el ${evento.fechaLimite}`}
+          detalle={`Vencen el ${fechaLimiteTexto(evento.fechaLimite)}`}
           tono="alerta"
         />
       </div>

@@ -5,7 +5,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { moneda } from "@/lib/formato";
+import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -145,7 +145,9 @@ function CatalogoTalleres() {
       {seleccion ? (
         <Alert className="mb-5">
           <Info className="size-4" />
-          <AlertTitle>Tu lugar queda apartado hasta el {configuracion.fechaLimite}</AlertTitle>
+          <AlertTitle>
+            Tu lugar queda apartado hasta el {fechaLimiteTexto(configuracion.fechaLimite)}
+          </AlertTitle>
           <AlertDescription>Si no entregas tu comprobante antes, se libera.</AlertDescription>
         </Alert>
       ) : null}

@@ -277,20 +277,25 @@ export function aConfiguracion(
   dias: FilaDia[],
   catalogo: NivelAcademico[],
 ): ConfiguracionEvento {
-  const limite = new Date(f.fecha_limite);
   return {
     nombre: f.nombre,
     subtitulo: f.subtitulo,
     fechas: f.fechas,
     horario: `${f.registro_entrada} a ${f.registro_salida}`,
     cuotaEvento: Number(f.cuota_evento),
-    // La base guarda una fecha real; las pantallas muestran el texto que la
-    // gente lee. Se arma aquí para que nadie tenga que formatearlo dos veces.
-    fechaLimite: limite.toLocaleDateString("es-MX", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }),
+    /*
+     * Crudo, tal como lo guarda la base.
+     *
+     * Aquí se formateaba a «viernes, 9 de octubre», y eso convertía un dato en
+     * una frase justo en el puente: la configuración se quedaba con el texto y
+     * perdía la fecha. Mientras solo se leyera no se notaba; en cuanto
+     * `/admin/configuracion` quiso guardarla, lo único que había para mandar a
+     * una columna `timestamptz` era esa frase.
+     *
+     * El formateo se hace donde se pinta, con `fechaLimiteTexto`, igual que ya
+     * pasaba con las fechas de los días.
+     */
+    fechaLimite: f.fecha_limite,
     horasValidacion: f.horas_validacion,
     dominioInstitucional: f.dominio_institucional ?? "",
     registroEntrada: f.registro_entrada,

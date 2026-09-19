@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CodigoQR } from "@/components/qr";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
-import { isoAFecha, moneda } from "@/lib/formato";
+import { fechaLimiteTexto, isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -187,7 +187,8 @@ function Comprobante() {
 
         <div>
           <p className="mt-6 text-center text-sm text-muted-foreground lg:mt-4 lg:text-left">
-            Siguiente paso: haz tus depósitos y entrega los vouchers antes del {evento.fechaLimite}.{" "}
+            Siguiente paso: haz tus depósitos y entrega los vouchers antes del{" "}
+            {fechaLimiteTexto(evento.fechaLimite)}.{" "}
             <Link to="/portal" className="font-semibold text-primary underline">
               Consulta tu estado en el portal
             </Link>

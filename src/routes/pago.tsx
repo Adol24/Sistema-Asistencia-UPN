@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase } from "@/components/pase";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
-import { moneda } from "@/lib/formato";
+import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -225,7 +225,7 @@ function Pago() {
             </div>
             <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
               <h2 className="text-sm font-semibold">Fecha límite de entrega</h2>
-              <p className="mt-1 text-lg font-bold">{evento.fechaLimite}</p>
+              <p className="mt-1 text-lg font-bold">{fechaLimiteTexto(evento.fechaLimite)}</p>
             </div>
           </section>
 

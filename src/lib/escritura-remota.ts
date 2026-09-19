@@ -30,19 +30,98 @@ export type ModuloDatos = typeof import("@/lib/datos");
  * rama que leer: la correspondencia se ve de un vistazo y no puede
  * desincronizarse a mitad de la escalera.
  *
- * Solo están los campos planos. Los días y el catálogo académico viven en
- * tablas aparte y se editan por su cuenta.
+ * ---------------------------------------------------------------------------
+ * **Tenía ocho entradas y el formulario edita veintitrés.**
+ *
+ * Lo que no estaba aquí se descartaba en silencio, y la pantalla decía
+ * «Configuración guardada» igual. No se guardaban: los cuatro datos bancarios,
+ * los dos de la ventanilla, la fecha límite, el aviso de privacidad, los
+ * términos, el horario de soporte y los dos tramos de registro. Trece campos.
+ *
+ * El más caro era el banco. Es la cuenta a la que depositan setecientas
+ * personas: alguien corrige la CLABE dos días antes, lee que se guardó, se va
+ * tranquilo, y los depósitos siguen yendo a la cuenta vieja.
+ *
+ * Que faltara una fila no es el defecto —una tabla se completa—; el defecto es
+ * que descartar en silencio se veía igual que guardar. Por eso ahora existe
+ * `camposSinGuardar`: lo que no tiene columna se puede NOMBRAR, y la pantalla
+ * que lo edite tiene con qué dejar de prometer.
+ * ---------------------------------------------------------------------------
+ *
+ * Solo campos planos. `dias` y `catalogoAcademico` viven en tablas aparte.
  */
 const COLUMNA = {
   nombre: "nombre",
   subtitulo: "subtitulo",
   fechas: "fechas",
   cuotaEvento: "cuota_evento",
+  fechaLimite: "fecha_limite",
   horasValidacion: "horas_validacion",
   dominioInstitucional: "dominio_institucional",
-  correoSoporte: "correo_soporte",
+  registroEntrada: "registro_entrada",
+  registroSalida: "registro_salida",
   whatsappSoporte: "whatsapp_soporte",
+  correoSoporte: "correo_soporte",
+  horarioSoporte: "horario_soporte",
+  avisoPrivacidad: "aviso_privacidad",
+  terminos: "terminos",
 } as const satisfies Partial<Record<keyof ConfiguracionEvento, string>>;
+
+/**
+ * Los dos campos que en la aplicación son un objeto y en la tabla son columnas
+ * sueltas.
+ *
+ * Van aparte y no en `COLUMNA` porque la correspondencia no es campo→columna
+ * sino campo→varias columnas, y meterlos en la misma tabla habría obligado a
+ * que cada entrada supiera si es plana o no. Son dos; se nombran los dos.
+ */
+const ANIDADAS = {
+  banco: {
+    banco: "banco_nombre",
+    cuenta: "banco_cuenta",
+    clabe: "banco_clabe",
+    beneficiario: "banco_beneficiario",
+  },
+  ventanilla: { lugar: "ventanilla_lugar", horario: "ventanilla_horario" },
+} as const satisfies Partial<Record<keyof ConfiguracionEvento, Record<string, string>>>;
+
+/**
+ * Lo que esta tabla NO puede guardar, y por qué, para poder decirlo.
+ *
+ * - `horario` es derivado: la tabla guarda los dos tramos de registro y el
+ *   horario se arma juntándolos al leer. No hay columna que escribir.
+ * - `catalogoAcademico` vive en `niveles_academicos` y `programas`, y hoy
+ *   `datos.ts` solo sabe leerlas. Escribirlas es trabajo aparte.
+ * - `dias` tiene su propia tabla y su propio camino, `guardarDia`. No se
+ *   descarta: se guarda en otro sitio.
+ */
+const SIN_COLUMNA: Record<string, string> = {
+  horario: "el horario general (se arma solo con los dos tramos de registro)",
+  catalogoAcademico: "el catálogo académico (niveles y programas)",
+};
+
+/**
+ * Dónde acaba cada campo de la configuración. Los cuatro destinos posibles.
+ *
+ * No es documentación: lo lee `bun run verificar-configuracion`, que comprueba
+ * que TODO campo de `ConfiguracionEvento` esté en uno de los cuatro grupos.
+ *
+ * Esa comprobación es la que faltaba. El defecto de los trece campos no fue
+ * que alguien se equivocara al escribir el mapa: fue que añadir un campo al
+ * formulario y olvidar la fila de aquí no rompía nada —ni compilaba mal, ni
+ * fallaba en pantalla, ni salía en una prueba—. Se descartaba en silencio y el
+ * aviso decía «guardada». Ahora olvidarlo falla el comprobante.
+ */
+export const DESTINO_DE_CAMPO = {
+  /** Una columna suya en `configuracion_evento`. */
+  columna: Object.keys(COLUMNA),
+  /** Un objeto en la aplicación, varias columnas en la tabla. */
+  anidada: Object.keys(ANIDADAS),
+  /** No se puede guardar, y se avisa a quien lo edite. */
+  sinColumna: Object.keys(SIN_COLUMNA),
+  /** Tiene tabla propia y su propio camino de escritura. */
+  tablaPropia: ["dias"],
+} as const;
 
 /** Sin dominio configurado es cadena vacía en la app y NULL en la tabla. */
 const valorDeColumna = (campo: string, valor: unknown) =>
@@ -51,14 +130,39 @@ const valorDeColumna = (campo: string, valor: unknown) =>
 export function columnasDeConfiguracion(
   patch: Partial<ConfiguracionEvento>,
 ): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(patch)
-      .filter(([campo, valor]) => valor !== undefined && campo in COLUMNA)
-      .map(([campo, valor]) => [
-        COLUMNA[campo as keyof typeof COLUMNA],
-        valorDeColumna(campo, valor),
-      ]),
-  );
+  const columnas: Record<string, unknown> = {};
+
+  for (const [campo, valor] of Object.entries(patch)) {
+    if (valor === undefined) continue;
+
+    if (campo in COLUMNA) {
+      columnas[COLUMNA[campo as keyof typeof COLUMNA]] = valorDeColumna(campo, valor);
+      continue;
+    }
+
+    const anidada = ANIDADAS[campo as keyof typeof ANIDADAS] as Record<string, string> | undefined;
+    if (anidada && valor && typeof valor === "object")
+      for (const [clave, columna] of Object.entries(anidada)) {
+        const suyo = (valor as Record<string, unknown>)[clave];
+        if (suyo !== undefined) columnas[columna] = suyo;
+      }
+  }
+
+  return columnas;
+}
+
+/**
+ * Los campos del parche que esta capa no sabe guardar, con nombre de persona.
+ *
+ * Existe para que una pantalla pueda decir la verdad. Devolver una lista vacía
+ * es «se guardó todo»; devolver algo es «esto no, y es esto». Lo que antes
+ * pasaba —descartar y anunciar éxito— no se puede distinguir de funcionar, y
+ * por eso duró.
+ */
+export function camposSinGuardar(patch: Partial<ConfiguracionEvento>): string[] {
+  return Object.entries(patch)
+    .filter(([campo, valor]) => valor !== undefined && campo in SIN_COLUMNA)
+    .map(([campo]) => SIN_COLUMNA[campo]!);
 }
 
 /**
