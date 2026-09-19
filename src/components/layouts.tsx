@@ -51,10 +51,15 @@ function BarraPublica({ contenedor }: { contenedor: string }) {
            * un borrón gris.
            *
            * Así que lo que cambia no es solo la imagen: el hueco pasa de 28 px a
-           * 40, y a 48 de `lg:` en adelante, que es donde el dibujo se lee.
-           * Medido en `docs/marca/LEEME.md`. La barra queda en unos 64 px de
-           * alto, que es lo normal para la cabecera de un sitio público, y como
-           * es `hidden md:block` el teléfono no pierde nada de pantalla.
+           * 36, y a 40 de `lg:` en adelante. Medido en `docs/marca/LEEME.md`.
+           *
+           * 36 y 40, y no 40 y 48 como estuvo un rato: a esos el logotipo se
+           * leía mejor, pero pesaba más que el nombre del encuentro que lleva al
+           * lado, y esto es una barra de utilidad, no una cabecera de marca.
+           * Aquí el logotipo acompaña; el que tiene que destacar es el nombre.
+           *
+           * Por debajo de 36 no se baja: a 28 —lo que había— no se distingue
+           * ninguna de las tres formas.
            *
            * Sin `rounded-md`: eso redondeaba las esquinas del cuadro azul. El
            * logotipo es trazo sobre transparente, no tiene caja que redondear.
@@ -65,7 +70,7 @@ function BarraPublica({ contenedor }: { contenedor: string }) {
             aria-hidden
             width={512}
             height={453}
-            className="h-10 w-auto shrink-0 dark:invert lg:h-12"
+            className="h-9 w-auto shrink-0 dark:invert lg:h-10"
           />
           {/*
            * Sin base configurada el nombre llega vacío. Se rotula el paso en que

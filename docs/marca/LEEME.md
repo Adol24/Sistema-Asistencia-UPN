@@ -38,7 +38,7 @@ Va en dos sitios:
 | --- | --- | --- |
 | Portada del pre-registro (`/bienvenida`) | 96 px · 128 px de `lg:` | Es la primera pantalla que alguien ve |
 | Cabecera de la ficha del comprobante (`/comprobante`) | 64 px | Es el papel que la persona lleva a ventanilla |
-| Barra superior pública (`BarraPublica`) | 40 px · 48 px de `lg:` | Acompaña todo el flujo, junto al nombre del evento |
+| Barra superior pública (`BarraPublica`) | 36 px · 40 px de `lg:` | Acompaña todo el flujo, junto al nombre del evento |
 
 En el comprobante no es adorno: la barra superior, el pie y el riel son los tres
 `print:hidden`, y entre los tres se llevaban el nombre del encuentro. Impreso
@@ -53,14 +53,21 @@ Son tres puños alrededor de un globo trazados a línea fina. Medido:
 | Tamaño | Cómo se ve |
 | --- | --- |
 | 28 px | Borrón gris. No se distingue ninguna de las tres formas |
+| 36 px | Se reconoce la silueta |
 | 40 px | Se distinguen los puños y el globo |
 | 48 px | Se lee bien |
 | 64 px y más | Se entiende el dibujo completo |
 
-**Por debajo de 40 px no se pone.** La barra superior tenía un hueco de 28 px y
+**Por debajo de 36 px no se pone.** La barra superior tenía un hueco de 28 px y
 la respuesta no fue meter el logotipo encogido, sino agrandar el hueco: cambiar
 un cuadro azul que al menos se veía por un borrón gris no habría sido una
 mejora.
+
+Que se lea mejor no es lo mismo que que quede mejor. En la barra estuvo un rato
+a 40/48 y se veía más nítido, pero pesaba más que el nombre del encuentro que
+lleva al lado: es una barra de utilidad, no una cabecera de marca, y ahí el
+logotipo acompaña. Bajó a 36/40. En la portada y en el comprobante manda la
+legibilidad, porque el logotipo sí es lo primero que se mira.
 
 **No va en los iconos de la aplicación instalable.** Ahí el sistema operativo
 manda el tamaño —48 px y menos en la pantalla de inicio— y no hay hueco que
