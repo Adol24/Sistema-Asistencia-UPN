@@ -314,6 +314,20 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
    *
    * T12 nace activo, así que este sí se ve, y con él el cupo y el día. Es la
    * huella que deja esa migración y no hay otra forma de dar por aplicada.
+   *
+   * **El cupo NO es parte de la comprobación, y antes lo era.** La 36 lo siembra
+   * en 35, pero `/admin/talleres` existe justamente para cambiarlo, y la
+   * organización lo subió a 70 —a propósito— a las pocas horas de que esto
+   * empezara a mirarlo. El comprobante lo cantó como FALLA.
+   *
+   * Eso es lo que este archivo dice, unas líneas más arriba, que no hay que
+   * hacer: un comprobante que avisa de algo que está bien acaba enseñando a
+   * ignorarlo, y entonces deja de servir el día que avisa de algo que está mal.
+   *
+   * Lo que sí prueba que la 36 corrió es que T12 EXISTA y que tenga solo el día
+   * 2 —antes ese grupo era el día 2 de T04—. Ninguna de las dos se edita desde
+   * el panel. El cupo se imprime como dato, para que un cambio se vea, sin
+   * pretender que sea un error.
    */
   const { data, error } = await sb
     .from("talleres")
@@ -326,11 +340,17 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
     if (!t) falla("T12 no existe: falta la migración 20260915160000 (la 36)");
     else {
       const dias = t.taller_dias.map((d) => d.dia).sort();
-      if (t.cupo_total === 35 && dias.length === 1 && dias[0] === 2)
-        ok("T12 existe con cupo 35 y solo el día 2: la 36 está aplicada");
+      if (dias.length === 1 && dias[0] === 2)
+        ok(`T12 existe y solo se imparte el día 2: la 36 está aplicada (cupo ${t.cupo_total})`);
       else
         falla(
-          `T12 existe pero con cupo ${t.cupo_total} y día(s) ${dias.join("+")}; se esperaba cupo 35 y solo el día 2`,
+          `T12 existe pero se imparte el día ${dias.join("+")}; la 36 lo deja solo en el día 2`,
+        );
+
+      // Dato, no falla: el panel puede cambiarlo y cambiarlo es legítimo.
+      if (t.cupo_total !== 35)
+        console.log(
+          `       cupo de T12: ${t.cupo_total}, y la 36 lo sembró en 35. Se cambió desde /admin/talleres.`,
         );
     }
   }
