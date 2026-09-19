@@ -32,8 +32,18 @@ Image.merge("LA", (Image.new("L", r.size, 55), r.getchannel("A"))).save(
 
 ## Dónde se usa, y dónde no
 
-Va en la **portada del pre-registro** (`/bienvenida`), a 96 px en el teléfono y
-128 px de `lg:` en adelante.
+Va en dos sitios:
+
+| Dónde | Tamaño | Para qué |
+| --- | --- | --- |
+| Portada del pre-registro (`/bienvenida`) | 96 px · 128 px de `lg:` | Es la primera pantalla que alguien ve |
+| Cabecera de la ficha del comprobante (`/comprobante`) | 64 px | Es el papel que la persona lleva a ventanilla |
+
+En el comprobante no es adorno: la barra superior, el pie y el riel son los tres
+`print:hidden`, y entre los tres se llevaban el nombre del encuentro. Impreso
+quedaba «Comprobante de pre-registro» y una ficha con un nombre, un folio y un
+QR —ni el evento, ni el año, ni las fechas—. La cabecera lleva el logotipo, el
+nombre y las fechas, así que el papel se identifica solo.
 
 **No va en la barra superior ni en los iconos de la aplicación instalable.** Son
 tres puños alrededor de un globo trazados a línea fina: a 28 px —el hueco de la

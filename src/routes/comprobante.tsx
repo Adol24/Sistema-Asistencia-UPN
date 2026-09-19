@@ -62,68 +62,110 @@ function Comprobante() {
        */}
       <div className="lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-6 print:block">
         <div>
-          <div className="mt-4 grid gap-4 rounded-lg border border-border bg-card p-5 lg:p-6 sm:grid-cols-[1fr_auto]">
-            <dl className="grid gap-3 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">Nombre</dt>
-                <dd className="text-lg font-bold">{nombre}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Folio</dt>
-                <dd className="font-mono text-lg font-bold tabular-nums">{folio}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Perfil</dt>
-                <dd className="mt-1">
-                  <PerfilBadge perfil={borrador.perfil ?? participante?.perfil ?? "alumno"} />
-                </dd>
-              </div>
-              {programa ? (
-                <div>
-                  <dt className="text-xs text-muted-foreground">Programa</dt>
-                  <dd className="font-medium">
-                    {programa}
-                    {avance_ ? <span className="text-muted-foreground"> · {avance_}</span> : null}
-                    {grupo ? <span className="text-muted-foreground"> · Grupo {grupo}</span> : null}
-                    {plantel ? <span className="text-muted-foreground"> · {plantel}</span> : null}
-                  </dd>
+          <div className="mt-4 rounded-lg border border-border bg-card p-5 lg:p-6">
+            {/*
+             * La cabecera del documento, y no es adorno: **este papel no decía
+             * de qué evento era**.
+             *
+             * La barra superior, el pie y el riel son los tres `print:hidden`,
+             * que está bien —son navegación—, pero entre los tres se llevaban el
+             * nombre del encuentro. Impreso quedaba «Comprobante de
+             * pre-registro» y una ficha con un nombre, un folio y un QR: ni el
+             * evento, ni el año, ni las fechas. Quien lo presenta en ventanilla
+             * trae un papel que no se identifica solo.
+             *
+             * El logotipo va a 64 px porque por debajo de eso el trazo no se
+             * lee —ver `docs/marca/LEEME.md`—, y una cabecera con un borrón
+             * gris habría sido peor que ninguna.
+             *
+             * El nombre se comprueba antes de pintarlo, igual que en el pie: sin
+             * base configurada llega vacío, y una cabecera con el logotipo
+             * encima de un renglón en blanco se ve como un fallo de carga.
+             */}
+            <header className="mb-5 flex items-center gap-4 border-b border-border pb-4">
+              <img
+                src="/logo-encuentro.png"
+                alt=""
+                aria-hidden
+                width={512}
+                height={453}
+                className="h-16 w-auto shrink-0 dark:invert"
+              />
+              {evento.nombre ? (
+                <div className="min-w-0">
+                  <p className="text-balance text-sm font-bold leading-snug">{evento.nombre}</p>
+                  {evento.fechas ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">{evento.fechas}</p>
+                  ) : null}
                 </div>
               ) : null}
-              <div>
-                <dt className="text-xs text-muted-foreground">Día y lugar</dt>
-                <dd className="font-medium">
-                  {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
-                </dd>
+            </header>
+
+            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+              <dl className="grid gap-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Nombre</dt>
+                  <dd className="text-lg font-bold">{nombre}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Folio</dt>
+                  <dd className="font-mono text-lg font-bold tabular-nums">{folio}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Perfil</dt>
+                  <dd className="mt-1">
+                    <PerfilBadge perfil={borrador.perfil ?? participante?.perfil ?? "alumno"} />
+                  </dd>
+                </div>
+                {programa ? (
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Programa</dt>
+                    <dd className="font-medium">
+                      {programa}
+                      {avance_ ? <span className="text-muted-foreground"> · {avance_}</span> : null}
+                      {grupo ? (
+                        <span className="text-muted-foreground"> · Grupo {grupo}</span>
+                      ) : null}
+                      {plantel ? <span className="text-muted-foreground"> · {plantel}</span> : null}
+                    </dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt className="text-xs text-muted-foreground">Día y lugar</dt>
+                  <dd className="font-medium">
+                    {dia.etiqueta} — {isoAFecha(dia.fecha)} · {dia.lugar}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Taller</dt>
+                  <dd className="font-medium">
+                    {taller ? taller.nombre : "Sin taller"}
+                    {/*
+                     * La hora y el lugar del taller van aquí y no se dan por sabidos.
+                     * El renglón de arriba dice dónde son las ponencias, que es otro
+                     * edificio: quien lleva taller se mueve por la tarde, y este papel
+                     * es lo único que trae consigo ese día.
+                     */}
+                    {taller ? (
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {taller.horario} · {taller.lugar}
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">
+                    Total por pagar (en dos depósitos)
+                  </dt>
+                  <dd className="text-lg font-bold tabular-nums">{moneda(total)}</dd>
+                </div>
+              </dl>
+              <div className="justify-self-center">
+                <CodigoQR valor={folio ?? ""} size={148} />
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Folio para ventanilla
+                </p>
               </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Taller</dt>
-                <dd className="font-medium">
-                  {taller ? taller.nombre : "Sin taller"}
-                  {/*
-                   * La hora y el lugar del taller van aquí y no se dan por sabidos.
-                   * El renglón de arriba dice dónde son las ponencias, que es otro
-                   * edificio: quien lleva taller se mueve por la tarde, y este papel
-                   * es lo único que trae consigo ese día.
-                   */}
-                  {taller ? (
-                    <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                      {taller.horario} · {taller.lugar}
-                    </span>
-                  ) : null}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">
-                  Total por pagar (en dos depósitos)
-                </dt>
-                <dd className="text-lg font-bold tabular-nums">{moneda(total)}</dd>
-              </div>
-            </dl>
-            <div className="justify-self-center">
-              <CodigoQR valor={folio ?? ""} size={148} />
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                Folio para ventanilla
-              </p>
             </div>
           </div>
 
