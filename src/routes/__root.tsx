@@ -16,7 +16,7 @@ import { EstadoEventoProvider } from "../lib/estado-evento";
 import { SesionProvider } from "../lib/sesion";
 import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
-import { AvisoInstalar, useTrabajadorDeServicio } from "../components/instalar";
+import { useTrabajadorDeServicio } from "../lib/trabajador-de-servicio";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
@@ -217,7 +217,6 @@ function RootComponent() {
             <PortalProvider>
               {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
               <Outlet />
-              <AvisoInstalar />
               <Toaster position="top-center" richColors />
             </PortalProvider>
           </PrototipoProvider>
