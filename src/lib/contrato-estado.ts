@@ -255,12 +255,6 @@ export interface Ctx {
     porDia: { dia: Dia; total: number; cupo: number; libres: number }[];
   };
   /**
-   * El día de alguien del padrón. Si la organización todavía no lo repartió, se
-   * le asigna aquí mismo el que va más vacío: nadie debería quedarse sin poder
-   * pre-registrarse porque una tarea interna no se hizo.
-   */
-  diaDe: (matricula: string) => Dia;
-  /**
    * Mueve a alguien a otro día con todo lo que eso arrastra: su sede, y su
    * inscripción al taller si ese taller no se imparte el día nuevo.
    */

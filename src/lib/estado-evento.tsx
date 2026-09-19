@@ -1299,21 +1299,6 @@ export function EstadoEventoProvider({
     [participantes, talleres, asignarDiaAVarios],
   );
 
-  const diaDe = useCallback<Ctx["diaDe"]>(
-    (matricula) => {
-      const a = padron.find((x) => x.matricula === matricula);
-      if (a?.dia) return a.dia;
-      const dia = ([1, 2, 3] as Dia[]).reduce((menor, d) =>
-        padron.filter((x) => x.dia === d).length < padron.filter((x) => x.dia === menor).length
-          ? d
-          : menor,
-      );
-      setPadron((prev) => prev.map((x) => (x.matricula === matricula ? { ...x, dia } : x)));
-      return dia;
-    },
-    [padron],
-  );
-
   const repartoPorDia = useCallback<Ctx["repartoPorDia"]>(
     () =>
       ([1, 2, 3] as Dia[]).map((dia) => {
@@ -1569,7 +1554,6 @@ export function EstadoEventoProvider({
       aplicarPadron,
       guardarPadron,
       sedes,
-      diaDe,
       repartoPorDia,
       sinDiaAsignado,
       repartirDiasPendientes,
@@ -1638,7 +1622,6 @@ export function EstadoEventoProvider({
       aplicarPadron,
       guardarPadron,
       sedes,
-      diaDe,
       repartoPorDia,
       sinDiaAsignado,
       repartirDiasPendientes,

@@ -2063,19 +2063,33 @@ Un tablero arriba de la importación: cuántos hay en cada día, con su sede, y
 cuántos esperan. Si hay pendientes, un botón los reparte y una lista permite
 asignarlos uno por uno.
 
-**El reparto va al día que va más vacío, de uno en uno.** No al azar ni en
-bloques: con tres sedes de aforo parecido, lo que importa es que ninguna se llene
-mientras otra queda a medias. Verificado: partiendo de 14/13/13 con 9 pendientes,
-queda en 17/16/16 — nunca más de uno de diferencia.
+**El reparto va al día proporcionalmente más vacío, de uno en uno, y ninguno
+pasa de su aforo.** No al azar ni en bloques: lo que importa es que ninguna sede
+se llene mientras otra queda a medias.
+
+Era «al día que va más vacío» a secas, y estaba bien mientras las tres sedes
+admitían lo mismo. Dejó de estarlo con el aforo real —700 · 700 · 600—: el día 3
+habría recibido a todo el mundo hasta empatar con los otros dos y se habría
+llenado primero siendo el más pequeño. Mirando el porcentaje de ocupación, los
+tres se llenan a la vez.
 
 #### El caso que no podía quedar sin resolver
 
 ¿Y si un alumno sin día repartido se pre-registra antes de que la organización
 haga su parte?
 
-No se le bloquea. `diaDe(matricula)` le asigna en ese momento el día que va más
-vacío, y sigue su camino. Bloquear el pre-registro porque una tarea interna está
-pendiente habría trasladado al alumno un problema que no es suyo.
+No se le bloquea. Se lo asigna la base en ese momento —`fn_dia_de`, que se apoya
+en `fn_dia_mas_vacio`— y sigue su camino. Bloquear el pre-registro porque una
+tarea interna está pendiente habría trasladado al alumno un problema que no es
+suyo.
+
+Lo decide la base y no el navegador, y es deliberado: quien se pre-registra es un
+anónimo, y las políticas le cierran `padron_alumnos`. Un cálculo en el cliente
+corría sobre una lista vacía y devolvía siempre el DÍA 1. Hubo una función de
+contexto que lo hacía, `diaDe`, y se eliminó.
+
+**Puede fallar, y eso es nuevo.** Si los tres días llegaron a su aforo no hay día
+que asignar, y `fn_dia_de` lo dice en vez de devolver un día inventado.
 
 #### Invariantes
 

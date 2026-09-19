@@ -113,11 +113,11 @@ function ConfirmarNombre() {
           /*
            * El día viene de la base, no se calcula aquí.
            *
-           * Antes salía de `diaDe`, que busca en el padrón que tiene cargado
-           * esta pestaña. Pero quien se pre-registra es un ANÓNIMO, y las
-           * políticas le cierran `padron_alumnos`: esa lista está vacía, así
-           * que el cálculo del «día más vacío» corría sobre cero alumnos y
-           * devolvía siempre el DÍA 1.
+           * Antes lo calculaba una función del contexto que buscaba en el
+           * padrón que tiene cargado esta pestaña —`diaDe`, ya eliminada—. Pero
+           * quien se pre-registra es un ANÓNIMO, y las políticas le cierran
+           * `padron_alumnos`: esa lista está vacía, así que el cálculo del «día
+           * más vacío» corría sobre cero alumnos y devolvía siempre el DÍA 1.
            *
            * Con el catálogo de talleres acotado por día, eso significaba
            * enseñarle a todo el mundo los talleres del día 1 y, si su día real
