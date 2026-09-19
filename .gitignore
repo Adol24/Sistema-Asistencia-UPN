@@ -107,3 +107,7 @@ Desktop.ini
 
 # Caché local del registro de skills (herramienta, no proyecto)
 .atl/
+
+# Índice local de CodeGraph (herramienta, no proyecto). Es por copia de trabajo:
+# cada checkout necesita el suyo y compartirlo apuntaría a rutas de otra máquina.
+.codegraph/

@@ -512,9 +512,53 @@ export async function guardarDia(d: DiaEvento): Promise<void> {
     sb
       .from("dias_evento")
       // `sede` en la base es `lugar` en la aplicación. Ver `FilaDia`.
-      .update({ etiqueta: d.etiqueta, fecha: d.fecha, sede: d.lugar, puntos: d.puntos })
+      .update({
+        etiqueta: d.etiqueta,
+        fecha: d.fecha,
+        sede: d.lugar,
+        puntos: d.puntos,
+        cupo: d.cupo,
+      })
       .eq("dia", d.dia),
   );
+}
+
+/** Los lugares de un día, tal como los cuenta `v_cupo_dia`. */
+export interface CupoDia {
+  dia: Dia;
+  sede: string;
+  cupo: number;
+  ocupados: number;
+  disponibles: number;
+  lleno: boolean;
+}
+
+/**
+ * Cuántos lugares quedan en cada día, ahora mismo.
+ *
+ * **Deliberadamente fuera de `cargarPublico`**, que es lo que se pediría por
+ * parecido. Esa tiene media hora de caché por proceso —bien para el nombre del
+ * evento, que cambia dos veces en la vida— y aquí eso significaría anunciar
+ * «quedan 3 lugares» durante treinta segundos después de que se acabaran.
+ *
+ * Lo que sale de aquí es para enseñar, no para decidir: quien decide es
+ * `fn_preregistrar_alumno` / `fn_preregistrar_externo`, que vuelven a contar
+ * con el día bajo candado. Por eso esta llamada puede fallar sin consecuencias
+ * —la pantalla simplemente no anuncia lugares— y por eso no vale la pena
+ * bloquear el flujo esperándola.
+ */
+export async function cupoPorDia(): Promise<CupoDia[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("v_cupo_dia").select("*").order("dia");
+  if (error) throw error;
+  return ((data ?? []) as unknown as CupoDia[]).map((c) => ({
+    ...c,
+    // `count()` de PostgreSQL llega como `bigint`, y PostgREST lo serializa a
+    // número; se normaliza igual por si alguna versión lo manda como texto.
+    ocupados: Number(c.ocupados),
+    disponibles: Number(c.disponibles),
+    cupo: Number(c.cupo),
+  }));
 }
 
 export async function guardarConfiguracion(patch: Record<string, unknown>): Promise<void> {

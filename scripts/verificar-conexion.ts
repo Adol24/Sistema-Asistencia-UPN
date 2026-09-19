@@ -215,6 +215,93 @@ console.log("\n=== LA PUERTA COMO TORNIQUETE ===\n");
   }
 }
 
+// ------------------------------------------------- las sedes y su aforo ---
+console.log("\n=== LAS SEDES Y SU AFORO ===\n");
+
+{
+  /*
+   * Las sedes definitivas (migración 41) y el aforo de cada una (la 42).
+   *
+   * Las sedes se comprueban por contenido y no por igualdad exacta: se editan
+   * desde /admin/configuracion y alguien puede escribir «Salón SUTERM, Teziutlán»
+   * con toda la razón. Lo que no puede pasar es que el día 3 siga diciendo lo
+   * que decía la 33, porque entonces 600 personas leerían la sede equivocada en
+   * su comprobante.
+   */
+  // Las dos comprobaciones piden columnas distintas EN CONSULTAS DISTINTAS, y
+  // no las dos a la vez. Juntas, una base con la 41 aplicada y la 42 todavía no
+  // fallaba entera por la columna que falta, y las sedes —que sí estaban bien—
+  // no llegaban a comprobarse nunca.
+  const { data, error } = await sb.from("dias_evento").select("dia, sede").order("dia");
+  if (error) falla("dias_evento: no se pudieron leer las sedes", error);
+  else {
+    const esperadas: Record<number, RegExp> = { 1: /suterm/i, 2: /suterm/i, 3: /victoria/i };
+    for (const f of (data ?? []) as { dia: number; sede: string }[]) {
+      const patron = esperadas[f.dia];
+      if (!patron) continue;
+      if (patron.test(f.sede)) ok(`día ${f.dia}: «${f.sede}»`);
+      else
+        falla(
+          `día ${f.dia}: la sede dice «${f.sede}». Se esperaba ${
+            f.dia === 3 ? "el Teatro Victoria" : "el salón SUTERM"
+          }: falta la migración 20260919120000 (la 41), o alguien la cambió a mano.`,
+        );
+    }
+  }
+}
+
+{
+  const { data, error } = await sb.from("dias_evento").select("dia, cupo").order("dia");
+  if (error) falla("dias_evento.cupo no existe: falta la migración 20260919140000 (la 42)", error);
+  else {
+    const aforos: Record<number, number> = { 1: 700, 2: 700, 3: 600 };
+    for (const f of (data ?? []) as { dia: number; cupo: number | null }[]) {
+      const esperado = aforos[f.dia];
+      if (esperado === undefined) continue;
+      if (f.cupo === null) falla(`día ${f.dia}: sin aforo cargado`);
+      else if (f.cupo === esperado) ok(`día ${f.dia}: aforo ${f.cupo}`);
+      else
+        // No es una falla: el aforo se edita desde /admin/configuracion y que
+        // la organización lo haya movido es legítimo. Se dice para que nadie
+        // descubra en octubre que alguien lo cambió sin avisar.
+        console.log(
+          `       día ${f.dia}: aforo ${f.cupo}, no ${esperado}. Se cambió desde administración.`,
+        );
+    }
+  }
+}
+
+{
+  // La vista que la pantalla pública usa para no ofrecer días agotados. Tiene
+  // que ser legible por el anónimo: como invoker devolvería cero ocupados
+  // siempre, y el evento parecería vacío hasta el final.
+  const { data, error } = await sb.from("v_cupo_dia").select("*").order("dia");
+  if (error?.code === "42501")
+    falla(
+      "v_cupo_dia existe pero está cerrada al anónimo: falta el grant de la migración 20260919140000",
+    );
+  else if (error) falla("v_cupo_dia no existe: falta la migración 20260919140000 (la 42)", error);
+  else {
+    const filas = (data ?? []) as {
+      dia: number;
+      cupo: number;
+      ocupados: number;
+      disponibles: number;
+      lleno: boolean;
+    }[];
+    if (filas.length === 3) ok("v_cupo_dia es pública y trae los tres días");
+    else falla(`v_cupo_dia devolvió ${filas.length} días, se esperaban 3`);
+
+    for (const f of filas) {
+      const linea = `día ${f.dia}: ${f.ocupados} de ${f.cupo} (${f.disponibles} libres)`;
+      if (f.ocupados > f.cupo)
+        falla(`${linea} — SOBRECUPO: ${f.ocupados - f.cupo} personas de más ya pre-registradas`);
+      else if (f.lleno) falla(`${linea} — lleno: ese día ya no admite pre-registros`);
+      else ok(linea);
+    }
+  }
+}
+
 // ------------------------------------- la estructura de los talleres ---
 console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
 

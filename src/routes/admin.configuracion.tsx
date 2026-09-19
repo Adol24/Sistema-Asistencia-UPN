@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { soloDigitos } from "@/lib/campos";
+import { useAforo } from "@/lib/cupo";
 import { PantallaPanel } from "@/components/layouts";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { fechaAIso, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { Dia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/configuracion")({
   head: () =>
@@ -37,6 +39,15 @@ function Configuracion() {
   const { configuracion, actualizarConfiguracion, registrarBitacora } = useEstadoEvento();
   const [b, setB] = useState<ConfiguracionEvento>(configuracion);
   const [guardando, setGuardando] = useState(false);
+  const aforo = useAforo();
+
+  /**
+   * Cuánta gente hay ya pre-registrada ese día, o `null` si no se pudo contar.
+   *
+   * `null` y no `0`: con 0 el aviso de «te quedas corto» no saltaría nunca y
+   * nadie sabría que no llegó a comprobarse.
+   */
+  const ocupadosDe = (dia: number): number | null => aforo.porDia.get(dia as Dia)?.ocupados ?? null;
 
   const set = (patch: Partial<ConfiguracionEvento>) => setB({ ...b, ...patch });
   const setBanco = (patch: Partial<ConfiguracionEvento["banco"]>) =>
@@ -82,6 +93,13 @@ function Configuracion() {
     if (JSON.stringify(b.banco) !== JSON.stringify(configuracion.banco))
       campos.push("datos bancarios");
     if (b.whatsappSoporte !== configuracion.whatsappSoporte) campos.push("WhatsApp de soporte");
+    // El aforo se nombra uno por uno y con los dos valores. Es el dato que más
+    // cara sale de cambiar sin que nadie se entere: deja gente fuera del evento.
+    for (const d of b.dias) {
+      const antes = configuracion.dias.find((x) => x.dia === d.dia)?.cupo;
+      if (antes !== undefined && antes !== d.cupo)
+        campos.push(`aforo del día ${d.dia} ${antes} → ${d.cupo}`);
+    }
     registrarBitacora(
       "Editó la configuración del evento",
       campos.length ? campos.join(", ") : "Cambios generales",
@@ -199,6 +217,46 @@ function Configuracion() {
                   set({ dias: b.dias.map((x, k) => (k === i ? { ...x, lugar: v } : x)) })
                 }
               />
+              {/*
+                El aforo va pegado al lugar, no en una sección aparte, porque es
+                una propiedad del edificio: el día 3 admite 600 y no 700 porque
+                es otro sitio. Separarlos hacía fácil cambiar la sede y dejar el
+                aforo de la anterior.
+              */}
+              <div className="sm:col-span-2">
+                <Label htmlFor={`cupo-${d.dia}`}>Aforo — cuánta gente cabe</Label>
+                <Input
+                  id={`cupo-${d.dia}`}
+                  type="number"
+                  min={1}
+                  value={d.cupo}
+                  onChange={(e) =>
+                    set({
+                      dias: b.dias.map((x, k) =>
+                        k === i ? { ...x, cupo: Number(e.target.value) } : x,
+                      ),
+                    })
+                  }
+                  className="mt-1 h-11"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Ocupa lugar quien se pre-registró, haya pagado o no. Al llegar al tope, ese día
+                  deja de ofrecerse y el pre-registro lo rechaza.
+                </p>
+                {/*
+                  Bajar el aforo por debajo de los que ya entraron no se
+                  prohíbe: una sede se puede reducir de verdad, y el sistema no
+                  es quién para negarlo. Lo que no puede es dejar que pase en
+                  silencio, porque a esa gente ya se le confirmó su lugar.
+                */}
+                {ocupadosDe(d.dia) !== null && d.cupo < ocupadosDe(d.dia)! ? (
+                  <p className="mt-1 text-xs font-semibold text-destructive">
+                    Ya hay {ocupadosDe(d.dia)} personas pre-registradas ese día. Si guardas {d.cupo}
+                    , {ocupadosDe(d.dia)! - d.cupo} se quedan sin lugar y hay que reubicarlas a
+                    mano.
+                  </p>
+                ) : null}
+              </div>
               {/*
                 Los puntos se escriben con el nombre que tienen en esa sede. Van
                 por día porque no es el mismo sitio, y un reporte que dice

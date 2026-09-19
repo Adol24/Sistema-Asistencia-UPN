@@ -41,6 +41,22 @@ enumerándolos en vez de aplicarse.
 formulario de externo a un alumno. Ver abajo, e **importante**: trae dos reglas y
 una de las dos está dormida hasta que se llene un campo del panel.
 
+**Pendientes también la 41 y la 42**, las dos del aforo. El comprobante ya
+pregunta por ellas y hoy contesta exactamente lo que se espera de una base sin
+aplicarlas:
+
+```
+FALLA  día 2: la sede dice «Centro de convenciones Teziutlán». Se esperaba el salón SUTERM
+FALLA  día 3: la sede dice «Centro de convenciones Teziutlán». Se esperaba el Teatro Victoria
+FALLA  dias_evento.cupo no existe: falta la migración 20260919140000 (la 42)
+FALLA  v_cupo_dia no existe: falta la migración 20260919140000 (la 42)
+```
+
+La 41 **además arregla una falla que ya venía saliendo**: la de los puntos de
+captura. El comprobante espera dos días con la puerta de SUTERM y encuentra uno,
+porque la 35 vació los del día 2 al creer que ese día cambiaba de sede. Como no
+cambia, vuelven.
+
 De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
 `p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
 aceptar nada— ya no existen. La 38 **sí cambiaba la firma** de las dos altas, y
@@ -135,6 +151,96 @@ Se dice porque ya se había desfasado una vez: este documento llamaba «30» a l
 del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
+
+### El aforo de cada sede (41 y 42) — sin aplicar
+
+Van juntas y en ese orden: la 41 dice **dónde** es cada día y la 42 dice
+**cuánta gente cabe** ahí. Separarlas es a propósito —la sede es un dato y el
+aforo es una regla nueva— pero aplicar solo la 42 dejaría los aforos colgados de
+las sedes equivocadas.
+
+#### La 41 · los tres lugares definitivos
+
+La organización corrige lo que la 35 leyó del programa oficial en Word:
+
+| Día | Fecha | Decía la 35 | Dice la organización |
+| --- | --- | --- | --- |
+| 1 | jue 15 oct | Salón SUTERM | Salón SUTERM |
+| 2 | vie 16 oct | Centro de convenciones Teziutlán | **Salón SUTERM** |
+| 3 | sáb 17 oct | Centro de convenciones Teziutlán | **Teatro Victoria** |
+
+Manda la organización y no el documento: el programa es el de las ponencias y se
+redactó antes de cerrar la logística. Queda escrito en la migración para que
+dentro de un mes nadie «arregle» las sedes volviendo a abrir el Word.
+
+Las fechas **no se tocan**: la 34 ya las dejó en 15, 16 y 17, y ahí el documento
+y la organización coinciden.
+
+Los puntos de captura del día 2 vuelven a los de SUTERM. El día 3 se queda vacío,
+igual que antes: el Teatro Victoria es otra sede y aún no sabemos cómo se llaman
+sus accesos.
+
+#### La 42 · el aforo, y quién lo respeta
+
+`dias_evento` estrena columna `cupo`: **700 · 700 · 600**. El día 3 admite menos
+porque es otro edificio, y por eso el aforo vive junto a la sede y no como un
+número suelto en `configuracion_evento`.
+
+**Ocupa lugar quien se pre-registró, haya pagado o no.** No se exige el pago
+porque entonces el aforo solo se sabría después de la fecha límite, cuando ya no
+sirve. Un pre-registro `expirado` sigue ocupando: ese estado lo deriva el reloj, y
+los lugares no deben devolverse solos a las 18:00 del 9 de octubre sin que nadie
+lo decida.
+
+El techo va en dos sitios y hacen falta los dos:
+
+| Dónde | Contra qué cuenta | Qué pasa al llegar al tope |
+| --- | --- | --- |
+| Pre-registro | `participantes` | Se rechaza el alta |
+| Reparto de días | `padron_alumnos.dia` | No se asigna ese día |
+
+Con solo el primero, Servicios Escolares podría repartir 900 alumnos al día 3 y
+el sistema lo dejaría: los primeros 600 entrarían bien y los otros 300 rebotarían
+de uno en uno, ya con la fecha encima, sin que nadie hubiera avisado.
+
+**El alumno cuyo día ya está lleno se rechaza, no se mueve.** Es decisión de la
+organización. Reubicarlo solo lo dejaría dentro sin que nadie hiciera nada, pero
+el día de un alumno se reparte por plantel, programa y grupo para que los
+compañeros coincidan, y moverlo en silencio deshace ese reparto. El docente y el
+externo sí eligen día, así que a ellos se les dice «elige otro».
+
+Lo que la 42 cambia, en orden:
+
+- `dias_evento.cupo`, sin DEFAULT: se añade vacía, se llena y solo entonces se
+  exige `not null`. Un `default 0` habría dejado los tres días llenos durante un
+  instante, y un `default 9999` habría hecho que un día mal configurado pareciera
+  correcto.
+- `v_cupo_dia`, **pública**, con los lugares libres de cada día. Sin
+  `security_invoker`, por la misma razón que `v_talleres`: cuenta filas de
+  `participantes`, que el público no puede leer, y la pantalla de «elige tu día»
+  necesita saber si su día se llenó antes de elegirlo. Solo expone agregados.
+- `v_reparto_dias` gana `cupo` y `libres`, para que la organización vea el reparto
+  contra su techo.
+- `fn_dia_mas_vacio` deja de repartir «al que tenga menos gente» y reparte **al
+  proporcionalmente más vacío**. Con tres aforos iguales daba lo mismo; con 700,
+  700 y 600 no: el día 3 habría recibido a todo el mundo hasta empatar con los
+  otros dos y se habría llenado primero siendo el más pequeño. Devuelve `NULL` si
+  los tres llegaron a su tope.
+- Las dos altas comprueban el aforo bajo `pg_advisory_xact_lock` por día. Sin el
+  candado, dos personas que pulsan «confirmar» a la vez leen las dos «queda 1» y
+  entran las dos. Es por día, así que el día 1 no hace cola con el día 2, y no
+  toca `dias_evento`, así que no estorba a la puerta.
+- `fn_asignar_dia_a_varios` —el «todos los de Psicología al día 2» de
+  `/admin/padron`— falla entera o no hace nada, y dice cuántos caben. Meter a los
+  30 primeros de 80 dejaría a la organización creyendo que movió a los 80.
+
+Las firmas de las dos altas **no cambian**, así que aquí no muerde la trampa de
+más abajo; aun así se recorren `pg_proc` y se vuelven a cerrar, como la 39 y la 40.
+
+La migración termina contando lo que encuentra. **Puede avisar de sobrecupo ya
+existente**, porque hasta ahora nada impedía repartir 900 alumnos a un día ni
+pre-registrar a 800 en otro. No echa a nadie —borrar pre-registros que la gente ya
+vio confirmados sería peor— y avisa para que la organización decida.
 
 ### Un alumno no se inscribe como externo (40) — sin aplicar
 

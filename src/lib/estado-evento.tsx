@@ -1316,11 +1316,12 @@ export function EstadoEventoProvider({
 
   const repartoPorDia = useCallback<Ctx["repartoPorDia"]>(
     () =>
-      ([1, 2, 3] as Dia[]).map((dia) => ({
-        dia,
-        total: padron.filter((a) => a.dia === dia).length,
-      })),
-    [padron],
+      ([1, 2, 3] as Dia[]).map((dia) => {
+        const total = padron.filter((a) => a.dia === dia).length;
+        const cupo = infoDia(dia).cupo;
+        return { dia, total, cupo, libres: Math.max(cupo - total, 0) };
+      }),
+    [padron, infoDia],
   );
 
   const sinDiaAsignado = useCallback<Ctx["sinDiaAsignado"]>(
@@ -1329,20 +1330,54 @@ export function EstadoEventoProvider({
   );
 
   /**
-   * Se reparte al día que va más vacío, uno por uno. No se reparte al azar ni en
-   * bloques: con tres sedes de aforo parecido, lo que importa es que ninguna se
-   * llene mientras otra queda a medias.
+   * Se reparte uno por uno al día que vaya proporcionalmente más vacío, y
+   * ninguno pasa de su aforo.
+   *
+   * **Proporcionalmente, no «el que tenga menos gente»**, que es lo que hacía
+   * antes. Daba igual mientras las tres sedes admitían lo mismo; dejó de darlo
+   * cuando el día 3 pasó al Teatro Victoria, que admite 600 frente a los 700 del
+   * salón SUTERM. Repartir al de menos gente habría mandado a todo el mundo al
+   * día 3 hasta empatar con los otros dos, y el día 3 se habría llenado primero
+   * siendo el más pequeño. Mirando el porcentaje de ocupación, los tres se
+   * llenan a la vez.
+   *
+   * Quien no cabe en ninguno se queda sin día, y se devuelve contado en
+   * `sinLugar`. Antes esto no podía pasar y por eso no existía: el reparto no
+   * tenía techo. Ahora puede, y la alternativa —dejarlo en un día que ya está
+   * lleno— sería peor: le prometería un lugar que el pre-registro le va a negar
+   * después, cuando ya nadie pueda hacer nada.
    */
   const repartirDiasPendientes = useCallback<Ctx["repartirDiasPendientes"]>(() => {
     const pendientes = padron.filter((a) => !a.dia);
     const conteo = new Map<Dia, number>(
       ([1, 2, 3] as Dia[]).map((d) => [d, padron.filter((a) => a.dia === d).length]),
     );
+    const cupos = new Map<Dia, number>(([1, 2, 3] as Dia[]).map((d) => [d, infoDia(d).cupo]));
+
+    /*
+     * Un aforo en 0 es «todavía no cargado», no «no cabe nadie». Pasa con
+     * `CONFIGURACION_VACIA`, antes de que la base responda.
+     *
+     * Con techos desconocidos NO se reparte a medias: se vuelve al reparto por
+     * conteo, sin tope, que es exactamente lo que hacía esta función antes de
+     * que el aforo existiera. Tomar el 0 al pie de la letra habría dejado a todo
+     * el padrón «sin lugar» y habría hecho parecer que el evento está agotado
+     * cuando lo único que pasa es que la configuración no ha llegado.
+     */
+    const hayAforo = ([1, 2, 3] as Dia[]).every((d) => cupos.get(d)! > 0);
+
     const asignaciones = new Map<string, Dia>();
+    let sinLugar = 0;
     for (const a of pendientes) {
-      const dia = ([1, 2, 3] as Dia[]).reduce((menor, d) =>
-        conteo.get(d)! < conteo.get(menor)! ? d : menor,
-      );
+      const conSitio = hayAforo
+        ? ([1, 2, 3] as Dia[]).filter((d) => conteo.get(d)! < cupos.get(d)!)
+        : ([1, 2, 3] as Dia[]);
+      if (conSitio.length === 0) {
+        sinLugar++;
+        continue;
+      }
+      const carga = (d: Dia) => (hayAforo ? conteo.get(d)! / cupos.get(d)! : conteo.get(d)!);
+      const dia = conSitio.reduce((mejor, d) => (carga(d) < carga(mejor) ? d : mejor));
       conteo.set(dia, conteo.get(dia)! + 1);
       asignaciones.set(a.matricula, dia);
     }
@@ -1363,15 +1398,33 @@ export function EstadoEventoProvider({
       registrarBitacora(
         "Repartió los días del padrón",
         `${asignaciones.size} alumnos sin día quedaron repartidos: ${([1, 2, 3] as Dia[])
-          .map((d) => `día ${d} ${conteo.get(d)}`)
-          .join(", ")}`,
+          .map((d) => `día ${d} ${conteo.get(d)}/${cupos.get(d)}`)
+          .join(", ")}` +
+          (sinLugar > 0 ? `. ${sinLugar} se quedaron sin día: los tres llegaron a su aforo` : ""),
       );
     }
+    // El aforo se agotó y no se movió a nadie: no hay reparto que anotar, pero
+    // sí una decisión que alguien tiene que tomar, y la bitácora es donde se
+    // busca después qué pasó ese día.
+    if (asignaciones.size === 0 && sinLugar > 0)
+      registrarBitacora(
+        "No pudo repartir los días del padrón",
+        `${sinLugar} alumnos siguen sin día: los tres días llegaron a su aforo (${(
+          [1, 2, 3] as Dia[]
+        )
+          .map((d) => `día ${d} ${conteo.get(d)}/${cupos.get(d)}`)
+          .join(", ")})`,
+      );
     return {
       asignados: asignaciones.size,
-      porDia: ([1, 2, 3] as Dia[]).map((dia) => ({ dia, total: conteo.get(dia)! })),
+      sinLugar,
+      porDia: ([1, 2, 3] as Dia[]).map((dia) => {
+        const total = conteo.get(dia)!;
+        const cupo = cupos.get(dia)!;
+        return { dia, total, cupo, libres: Math.max(cupo - total, 0) };
+      }),
     };
-  }, [padron, registrarBitacora]);
+  }, [padron, registrarBitacora, infoDia]);
 
   /**
    * Aplica el archivo de Servicios Escolares: da de alta a quien no estaba y

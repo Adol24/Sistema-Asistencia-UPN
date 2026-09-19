@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Check, Clock, MapPin } from "lucide-react";
+import { Check, Clock, MapPin, Users } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 
+import { diaDisponible, lugaresLibres, useAforo } from "@/lib/cupo";
 import { isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
@@ -39,35 +40,54 @@ function MiDia() {
   const navigate = useNavigate();
   const { borrador, participante, setBorrador } = usePrototipo();
   const { configuracion: evento, infoDia } = useEstadoEvento();
+  const aforo = useAforo();
 
   const perfil = borrador.perfil ?? participante?.perfil ?? "alumno";
   const eligeSuDia = perfil === "docente" || perfil === "externo";
   const elegido = borrador.dia ?? participante?.dia;
 
   if (eligeSuDia) {
+    /*
+     * Cada sede tiene su aforo y los tres se llenan por separado. Un día lleno
+     * se sigue enseñando —apagado y dicho— en vez de desaparecer de la lista:
+     * quien venía a elegir el día 2 tiene que ver que existe y que se acabó, o
+     * creerá que el sistema perdió un día.
+     *
+     * Si el día que ya traía elegido se llenó mientras tanto, el botón se cierra
+     * también. Sin eso la pantalla dejaría continuar con un día muerto y el
+     * rechazo llegaría al final del formulario, que es el peor sitio.
+     */
+    const elegidoSirve = elegido !== undefined && diaDisponible(aforo, elegido);
+
     return (
       <PantallaPublica titulo="Elige tu día">
         <ul className="grid gap-3">
           {evento.dias.map((d) => {
-            const activo = elegido === d.dia;
+            const dia = d.dia as Dia;
+            const activo = elegido === dia;
+            const libres = lugaresLibres(aforo, dia);
+            const lleno = !diaDisponible(aforo, dia);
             return (
               <li key={d.dia}>
                 <button
                   type="button"
-                  onClick={() => setBorrador({ dia: d.dia as Dia })}
+                  onClick={() => setBorrador({ dia })}
+                  disabled={lleno}
                   aria-pressed={activo}
                   className={cn(
                     "w-full rounded-lg border p-4 text-left transition-colors",
-                    activo
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/25"
-                      : "border-border bg-card hover:bg-muted",
+                    lleno
+                      ? "cursor-not-allowed border-border bg-muted/40 opacity-60"
+                      : activo
+                        ? "border-primary bg-primary/5 ring-2 ring-primary/25"
+                        : "border-border bg-card hover:bg-muted",
                   )}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-base font-extrabold">
                       {d.etiqueta} — {isoAFecha(d.fecha)}
                     </p>
-                    {activo ? (
+                    {activo && !lleno ? (
                       <span className="flex items-center gap-1 text-sm font-semibold text-primary">
                         <Check className="size-4" aria-hidden /> Elegido
                       </span>
@@ -81,6 +101,27 @@ function MiDia() {
                       <Clock className="size-4 text-primary" aria-hidden />
                       Registro de entrada {evento.registroEntrada}
                     </div>
+                    {/*
+                     * `libres === null` es «todavía no lo sabemos», y entonces
+                     * no se dice nada. Enseñar «0 lugares» mientras la cuenta
+                     * viaja haría parpadear el evento como agotado.
+                     */}
+                    {libres === null ? null : (
+                      <div
+                        className={cn(
+                          "flex items-center gap-2",
+                          lleno && "font-semibold text-destructive",
+                        )}
+                      >
+                        <Users
+                          className={cn("size-4", lleno ? "text-destructive" : "text-primary")}
+                          aria-hidden
+                        />
+                        {lleno
+                          ? "Este día ya no tiene lugares"
+                          : `${libres} ${libres === 1 ? "lugar disponible" : "lugares disponibles"}`}
+                      </div>
+                    )}
                   </dl>
                 </button>
               </li>
@@ -90,10 +131,10 @@ function MiDia() {
 
         <Button
           className="mt-6 h-12 md:h-11 w-full text-base"
-          disabled={!elegido}
+          disabled={!elegidoSirve}
           onClick={() => navigate({ to: "/talleres" })}
         >
-          {elegido ? "Continuar a talleres" : "Elige un día para continuar"}
+          {elegidoSirve ? "Continuar a talleres" : "Elige un día para continuar"}
         </Button>
       </PantallaPublica>
     );

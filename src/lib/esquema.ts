@@ -62,6 +62,8 @@ export interface FilaDia {
   fecha: string;
   /** Puede no venir si la migración de puntos por día aún no se aplicó. */
   puntos?: string[] | null;
+  /** Igual: puede no venir si la migración del aforo aún no se aplicó. */
+  cupo?: number | null;
   /**
    * En la base la columna se llama `sede`; en la aplicación, `lugar`.
    *
@@ -311,6 +313,10 @@ export function aConfiguracion(
       // Se filtran los blancos aquí y no en la pantalla: un punto sin nombre
       // sería un botón sin texto, y el capturista no podría saber cuál eligió.
       puntos: (d.puntos ?? []).map((p) => p.trim()).filter(Boolean),
+      // Sin aforo cargado vale 0, que en `DiaEvento` significa «sin cargar» y
+      // no «lleno». La comprobación que de verdad cierra la puerta vive en
+      // `fn_preregistrar_*`: aquí un 0 solo deja de anunciar lugares libres.
+      cupo: d.cupo ?? 0,
     })),
     catalogoAcademico: catalogo,
     avisoPrivacidad: f.aviso_privacidad,

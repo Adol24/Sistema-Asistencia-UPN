@@ -119,11 +119,20 @@ function ImportacionPadron() {
     await simularLatencia();
     const r = repartirDiasPendientes();
     setRepartiendo(false);
-    toast.success(
-      r.asignados === 0
-        ? "Nadie estaba esperando día."
-        : `${r.asignados} alumnos quedaron repartidos entre los tres días.`,
-    );
+    // `sinLugar` se avisa como error y no como éxito con nota al pie: es gente
+    // que se queda fuera del evento, y pide una decisión de la organización.
+    if (r.sinLugar > 0)
+      toast.error(
+        r.asignados === 0
+          ? `Nadie se pudo repartir: los tres días llegaron a su aforo y ${r.sinLugar} alumnos siguen sin día.`
+          : `${r.asignados} quedaron repartidos, pero ${r.sinLugar} no caben en ningún día. Amplía un aforo o reubícalos a mano.`,
+      );
+    else
+      toast.success(
+        r.asignados === 0
+          ? "Nadie estaba esperando día."
+          : `${r.asignados} alumnos quedaron repartidos entre los tres días.`,
+      );
   };
 
   // ------------------------------------------------- filtro del reparto ---
@@ -289,14 +298,51 @@ function ImportacionPadron() {
           </p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            {repartoPorDia().map(({ dia, total }) => (
-              <div key={dia} className="rounded-lg border border-border bg-muted/40 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Día {dia} · {infoDia(dia).lugar}
-                </p>
-                <p className="text-2xl font-extrabold tabular-nums">{total}</p>
-              </div>
-            ))}
+            {/*
+              El reparto se enseña contra el aforo y no a secas. «Día 3: 612» no
+              dice nada por sí solo; «612 de 600» dice que hay doce personas a
+              las que se les va a negar el pre-registro, y eso es accionable hoy
+              y no el 17 de octubre.
+            */}
+            {repartoPorDia().map(({ dia, total, cupo, libres }) => {
+              const rebasado = cupo > 0 && total > cupo;
+              return (
+                <div
+                  key={dia}
+                  className={cn(
+                    "rounded-lg border p-3",
+                    rebasado
+                      ? "border-estado-discrepancia/40 bg-estado-discrepancia-bg"
+                      : "border-border bg-muted/40",
+                  )}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Día {dia} · {infoDia(dia).lugar}
+                  </p>
+                  <p className="text-2xl font-extrabold tabular-nums">
+                    {total}
+                    {cupo > 0 ? (
+                      <span className="text-base font-semibold text-muted-foreground">
+                        {" "}
+                        / {cupo}
+                      </span>
+                    ) : null}
+                  </p>
+                  {cupo > 0 ? (
+                    <p
+                      className={cn(
+                        "text-xs",
+                        rebasado ? "font-semibold text-destructive" : "text-muted-foreground",
+                      )}
+                    >
+                      {rebasado
+                        ? `${total - cupo} de más: no van a caber`
+                        : `${libres} lugares libres`}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
             <div
               className={cn(
                 "rounded-lg border p-3",

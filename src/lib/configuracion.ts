@@ -16,6 +16,20 @@ export interface DiaEvento {
    * en lugar de dejar al capturista sin ningún punto que elegir.
    */
   puntos: string[];
+  /**
+   * Cuánta gente cabe en esa sede. Ocupa lugar quien se pre-registró, haya
+   * pagado o no.
+   *
+   * Va por día y no en `ConfiguracionEvento` porque no es una política del
+   * evento sino una propiedad del edificio: el día 3 admite 600 en vez de 700
+   * porque es el Teatro Victoria y no el salón SUTERM. Quien cambie el lugar
+   * tiene que ver el aforo en la misma fila, o lo dejará con el número del
+   * lugar anterior.
+   *
+   * `0` significa «sin cargar», no «lleno»: es lo que vale en
+   * `CONFIGURACION_VACIA`, antes de que la base responda.
+   */
+  cupo: number;
 }
 
 /**
@@ -91,9 +105,9 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   banco: { banco: "", cuenta: "", clabe: "", beneficiario: "" },
   ventanilla: { lugar: "", horario: "" },
   dias: [
-    { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "", puntos: [] },
-    { dia: 2, etiqueta: "DÍA 2", fecha: "", lugar: "", puntos: [] },
-    { dia: 3, etiqueta: "DÍA 3", fecha: "", lugar: "", puntos: [] },
+    { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "", puntos: [], cupo: 0 },
+    { dia: 2, etiqueta: "DÍA 2", fecha: "", lugar: "", puntos: [], cupo: 0 },
+    { dia: 3, etiqueta: "DÍA 3", fecha: "", lugar: "", puntos: [], cupo: 0 },
   ],
   registroEntrada: "",
   registroSalida: "",

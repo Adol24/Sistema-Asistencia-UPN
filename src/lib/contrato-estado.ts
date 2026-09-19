@@ -238,14 +238,22 @@ export interface Ctx {
    * entrega Servicios Escolares: lo reparte la organización, y este es el
    * tablero desde el que se hace.
    */
-  repartoPorDia: () => { dia: Dia; total: number }[];
+  repartoPorDia: () => { dia: Dia; total: number; cupo: number; libres: number }[];
   /** Los del padrón que todavía no tienen día. */
   sinDiaAsignado: () => AlumnoPadron[];
   /**
-   * Reparte día a quienes no lo tienen, equilibrando los tres. Devuelve cuántos
-   * quedaron en cada uno.
+   * Reparte día a quienes no lo tienen, equilibrando los tres **sin pasar del
+   * aforo de ninguno**. Devuelve cuántos quedaron en cada uno y cuántos no
+   * cupieron en ninguno.
+   *
+   * `sinLugar > 0` no es un fallo de esta función: es el evento lleno, y la
+   * única salida es ampliar un aforo o mover gente a mano.
    */
-  repartirDiasPendientes: () => { asignados: number; porDia: { dia: Dia; total: number }[] };
+  repartirDiasPendientes: () => {
+    asignados: number;
+    sinLugar: number;
+    porDia: { dia: Dia; total: number; cupo: number; libres: number }[];
+  };
   /**
    * El día de alguien del padrón. Si la organización todavía no lo repartió, se
    * le asigna aquí mismo el que va más vacío: nadie debería quedarse sin poder
