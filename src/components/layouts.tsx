@@ -39,12 +39,33 @@ function BarraPublica({ contenedor }: { contenedor: string }) {
        * nada, que es lo que hace que una página se vea armada a ojo.
        */}
       <div className={cn("mx-auto flex w-full items-center gap-4 px-8 py-3", contenedor)}>
-        <Link to="/bienvenida" className="flex min-w-0 items-center gap-2.5">
+        <Link to="/bienvenida" className="flex min-w-0 items-center gap-3">
+          {/*
+           * El logotipo oficial, y la barra creció para que quepa.
+           *
+           * Aquí había el icono de la aplicación instalable —el ojo localizador
+           * de QR, un cuadro azul— a 28 px. Cambiarlo por el logotipo a ese
+           * mismo tamaño no servía: son tres puños alrededor de un globo
+           * trazados a línea fina, y a 28 px no se distingue ninguna de las tres
+           * formas. Habría sido cambiar un cuadro azul que al menos se veía por
+           * un borrón gris.
+           *
+           * Así que lo que cambia no es solo la imagen: el hueco pasa de 28 px a
+           * 40, y a 48 de `lg:` en adelante, que es donde el dibujo se lee.
+           * Medido en `docs/marca/LEEME.md`. La barra queda en unos 64 px de
+           * alto, que es lo normal para la cabecera de un sitio público, y como
+           * es `hidden md:block` el teléfono no pierde nada de pantalla.
+           *
+           * Sin `rounded-md`: eso redondeaba las esquinas del cuadro azul. El
+           * logotipo es trazo sobre transparente, no tiene caja que redondear.
+           */}
           <img
-            src="/icons/icono-192.png"
+            src="/logo-encuentro.png"
             alt=""
             aria-hidden
-            className="size-7 shrink-0 rounded-md"
+            width={512}
+            height={453}
+            className="h-10 w-auto shrink-0 dark:invert lg:h-12"
           />
           {/*
            * Sin base configurada el nombre llega vacío. Se rotula el paso en que
