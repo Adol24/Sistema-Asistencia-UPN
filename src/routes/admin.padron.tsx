@@ -19,7 +19,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { descargarCsv } from "@/lib/exportar";
 import { analizarPadron, COLUMNAS_PADRON, type FilaPadron } from "@/lib/padron-importacion";
-import { avanceTexto } from "@/dominio/catalogos";
+import { avanceTexto, cuentaDeAvance } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -175,6 +175,16 @@ function ImportacionPadron() {
   const [fPrograma, setFPrograma] = useState("todos");
   const [fGrupo, setFGrupo] = useState("todos");
   /*
+   * El avance es el quinto filtro y el que faltaba.
+   *
+   * Los otros cuatro describen de dónde viene el alumno; este describe por
+   * dónde va, y es el que se usa para las preguntas que no son de logística:
+   * cuántos de octavo quedan sin día, si los de primero de una sede entera ya
+   * están puestos. Sin él había que exportar el padrón a Excel para contestar
+   * algo que la pantalla ya tenía delante.
+   */
+  const [fAvance, setFAvance] = useState("todos");
+  /*
    * Arranca en «todos», no en «sin día».
    *
    * Antes empezaba filtrando a los pendientes porque era lo único accionable:
@@ -194,6 +204,37 @@ function ImportacionPadron() {
   );
 
   /*
+   * Los avances que existen, sacados del padrón y no de un rango inventado.
+   *
+   * No se puede ofrecer «de 1 a 8»: la licenciatura modular llega al 13 y las
+   * maestrías tampoco cuentan igual. Ofrecer un rango fijo significaría o
+   * esconder el módulo 13 o listar semestres que nadie cursa. Los que hay son
+   * los que hay.
+   */
+  const avances = useMemo(
+    () => [...new Set(padron.map((a) => a.avance))].sort((x, y) => x - y),
+    [padron],
+  );
+
+  /*
+   * Cómo se llama el avance cuando el filtro de programa lo deja claro.
+   *
+   * Con un programa elegido el rótulo puede decir «Módulo» o «Semestre», que
+   * es la palabra que esa persona tiene en la cabeza. Sin programa conviven
+   * los dos en la misma lista y la única palabra honesta es la genérica: decir
+   * «Semestre 13» de alguien que cursa un módulo sería inventarlo.
+   */
+  const etiquetaAvance = useMemo(() => {
+    if (fPrograma === "todos") return "Avance";
+    const nivel = configuracion.catalogoAcademico.find((n) =>
+      n.programas.some((x) => x.nombre === fPrograma),
+    );
+    return (
+      cuentaDeAvance(configuracion.catalogoAcademico, nivel?.nivel, fPrograma)?.etiqueta ?? "Avance"
+    );
+  }, [configuracion.catalogoAcademico, fPrograma]);
+
+  /*
    * La búsqueda es un filtro más, no algo aparte, y eso importa: lo que la
    * asignación en bloque mueve es exactamente lo que se está viendo. Si buscar
    * dejara la selección intacta, se buscaría a una persona, se pulsaría «día 2»
@@ -206,13 +247,14 @@ function ImportacionPadron() {
         (fSede === "todas" || a.plantel === fSede) &&
         (fPrograma === "todos" || a.programa === fPrograma) &&
         (fGrupo === "todos" || a.grupo === fGrupo) &&
+        (fAvance === "todos" || a.avance === Number(fAvance)) &&
         (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))) &&
         (!t ||
           a.matricula.toLowerCase().includes(t) ||
           a.nombre.toLowerCase().includes(t) ||
           (a.grupo ?? "").toLowerCase().includes(t)),
     );
-  }, [padron, fSede, fPrograma, fGrupo, fDia, q]);
+  }, [padron, fSede, fPrograma, fGrupo, fAvance, fDia, q]);
 
   /*
    * Los filtros devuelven a la página 1; reasignarle el día a un alumno no.
@@ -222,7 +264,7 @@ function ImportacionPadron() {
   const tramoReparto = usePaginacion(
     seleccion,
     POR_PAGINA,
-    `${fSede}|${fPrograma}|${fGrupo}|${fDia}|${q}`,
+    `${fSede}|${fPrograma}|${fGrupo}|${fAvance}|${fDia}|${q}`,
   );
 
   const asignarASeleccion = (dia: 1 | 2 | 3) => {
@@ -365,7 +407,7 @@ function ImportacionPadron() {
               <Upload className="size-4" aria-hidden /> Importar archivo
             </TabsTrigger>
             <TabsTrigger value="reparto" className="gap-2">
-              <CalendarDays className="size-4" aria-hidden /> Reparto por días
+              <CalendarDays className="size-4" aria-hidden /> Padrón y reparto
               {/*
                 El pendiente se rotula en la pestaña porque es la única forma
                 de enterarse sin abrirla, y es justo lo que caduca: un alumno
@@ -477,13 +519,21 @@ function ImportacionPadron() {
             </div>
 
             <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
-              <h3 className="text-sm font-semibold">Asignar día a un conjunto</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Una sede viaja junta desde su municipio, así que se reparte por sede, por programa o
-                por grupo, no alumno por alumno. Filtra y dale el día al conjunto entero.
+              {/*
+                El rótulo nombra las dos cosas que se hacen aquí.
+                Decía solo «Asignar día a un conjunto», y por eso quien quería
+                mirar su padrón —quién es de qué programa, cuántos van por el
+                octavo— no lo buscaba en esta pantalla: el título prometía una
+                herramienta de escritura y esto es antes que nada la única
+                lista consultable del padrón que hay.
+              */}
+              <h3 className="text-sm font-semibold">Consultar el padrón y asignar día</h3>
+              <p className="mt-1 max-w-4xl text-sm text-muted-foreground">
+                Filtra para mirar a quien quieras. Una sede viaja junta desde su municipio, así que
+                el día se le da al conjunto entero que quede filtrado, no alumno por alumno.
               </p>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
                   {sedes.map((x) => (
                     <option key={x} value={x}>
@@ -512,7 +562,24 @@ function ImportacionPadron() {
                     </option>
                   ))}
                 </FiltroSelect>
-                <FiltroSelect etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
+                <FiltroSelect
+                  etiqueta={etiquetaAvance}
+                  valor={fAvance}
+                  alCambiar={setFAvance}
+                  todos="todos"
+                >
+                  {avances.map((x) => (
+                    <option key={x} value={String(x)}>
+                      {etiquetaAvance === "Avance" ? x : `${etiquetaAvance} ${x}`}
+                    </option>
+                  ))}
+                </FiltroSelect>
+                <FiltroSelect
+                  etiqueta="Día asignado"
+                  valor={fDia}
+                  alCambiar={setFDia}
+                  todos="todos"
+                >
                   <option value="sin-dia">Sin día</option>
                   {([1, 2, 3] as const).map((d) => (
                     <option key={d} value={String(d)}>
