@@ -339,6 +339,7 @@ export function PantallaPanel({
   descripcion,
   area,
   acciones,
+  ancho,
   children,
 }: {
   titulo: string;
@@ -348,12 +349,20 @@ export function PantallaPanel({
    *  atributos diciendo lo mismo y uno de los dos podía olvidarse. */
   area: Area;
   acciones?: ReactNode;
+  /** Ver `ArmazonPanel`: `lectura` para formularios, `completo` para datos. */
+  ancho?: "completo" | "lectura";
   children: ReactNode;
 }) {
   return (
     <Protegido area={area}>
       <AvisoPrototipo />
-      <ArmazonPanel area={area} titulo={titulo} descripcion={descripcion} acciones={acciones}>
+      <ArmazonPanel
+        area={area}
+        titulo={titulo}
+        descripcion={descripcion}
+        acciones={acciones}
+        {...(ancho ? { ancho } : {})}
+      >
         {children}
       </ArmazonPanel>
     </Protegido>

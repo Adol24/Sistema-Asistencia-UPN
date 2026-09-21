@@ -162,6 +162,7 @@ function Configuracion() {
     <PantallaPanel
       area="admin"
       titulo="Configuración del evento"
+      ancho="lectura"
       descripcion="Estos valores alimentan las pantallas públicas: el cambio se ve sin recargar."
       acciones={
         <Button className="h-11" disabled={!cambios || guardando} onClick={() => void guardar()}>

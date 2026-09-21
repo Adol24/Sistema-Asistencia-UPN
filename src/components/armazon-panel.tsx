@@ -116,12 +116,27 @@ export function ArmazonPanel({
   titulo,
   descripcion,
   acciones,
+  ancho = "completo",
   children,
 }: {
   area: Area;
   titulo: string;
   descripcion?: string;
   acciones?: ReactNode;
+  /**
+   * Cuánto ancho se queda el contenido.
+   *
+   * `completo` es lo que pide una tabla, un tablero o una lista: ahí el ancho
+   * es dato que cabe, y recortarlo fue el defecto que este rediseño vino a
+   * corregir.
+   *
+   * `lectura` es lo que pide un formulario. Un campo de texto de mil quinientos
+   * píxeles no se llena mejor: se llena peor, porque la etiqueta queda a un
+   * palmo de su control y el renglón se alarga más allá de donde el ojo lo
+   * sigue de vuelta. Dar ancho a todo por igual es el mismo error que quitarlo
+   * a todo por igual.
+   */
+  ancho?: "completo" | "lectura";
   children: ReactNode;
 }) {
   const grupos = NAVEGACION_PANEL[area] ?? [];
@@ -254,7 +269,12 @@ export function ArmazonPanel({
           se mantiene, pero en 110rem, que es donde una línea de texto sí se
           vuelve incómoda de seguir; hasta ahí manda el contenido.
         */}
-        <main className="mx-auto w-full max-w-[110rem] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main
+          className={cn(
+            "mx-auto w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8",
+            ancho === "completo" ? "max-w-[110rem]" : "max-w-5xl",
+          )}
+        >
           <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight lg:text-[1.75rem]">{titulo}</h1>

@@ -4,7 +4,7 @@ import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { Campo } from "@/components/tipografia";
 import { useImportador } from "@/lib/importador";
 import type { OrigenTabla } from "@/lib/csv";
-import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -12,6 +12,7 @@ import { usePaginacion } from "@/lib/paginacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -33,6 +34,9 @@ import { cn } from "@/lib/utils";
  * fuera: están todos, repartidos.
  */
 const POR_PAGINA = 10;
+
+/** Los dos trabajos de esta pantalla. Ver el comentario de las pestañas. */
+type Pestana = "importar" | "reparto";
 
 export const Route = createFileRoute("/admin/padron")({
   head: () =>
@@ -69,6 +73,13 @@ function ImportacionPadron() {
     sinDia: number;
   } | null>(null);
   const [repartiendo, setRepartiendo] = useState(false);
+  /*
+   * Arranca en «importar» porque es el nombre de la pantalla y a lo que se
+   * entra desde el menú. Al reparto se llega después de aplicar un archivo, y
+   * para eso está el botón del aviso: llevar ahí de entrada obligaría a volver
+   * a la pestaña que sí se venía a usar.
+   */
+  const [pestana, setPestana] = useState<Pestana>("importar");
 
   // Mismo flujo que la carga masiva de pagos: soltar, analizar, filtrar,
   // confirmar y aplicar. Lo único propio es qué analiza y qué columnas pinta.
@@ -304,292 +315,353 @@ function ImportacionPadron() {
               {aplicado.altas} altas y {aplicado.actualizaciones} actualizaciones. El padrón tiene
               ahora {padron.length} alumnos y la identificación pública ya usa estos datos.
             </span>
+            {/*
+              El aviso lleva al reparto en vez de decir dónde está.
+              Decía «lo reparte la organización, abajo» cuando las dos cosas
+              iban en la misma columna. Ahora el reparto es la otra pestaña, y
+              un aviso que nombra un sitio al que hay que llegar por tu cuenta
+              es un aviso que se pospone.
+            */}
             {aplicado.sinDia > 0 ? (
-              <span className="rounded-md bg-estado-discrepancia-bg p-2 text-estado-discrepancia">
-                <span className="font-semibold">{aplicado.sinDia} quedaron sin día asignado.</span>{" "}
-                El archivo de Servicios Escolares no trae el día: lo reparte la organización, abajo.
-                Mientras tanto, si uno de ellos se pre-registra, el sistema le asigna el día que va
-                más vacío.
+              <span className="flex flex-wrap items-center gap-3 rounded-md bg-estado-discrepancia-bg p-3 text-estado-discrepancia">
+                <span className="min-w-0 flex-1">
+                  <span className="font-semibold">
+                    {aplicado.sinDia} quedaron sin día asignado.
+                  </span>{" "}
+                  El archivo de Servicios Escolares no trae el día: lo asigna la organización.
+                  Mientras tanto, a quien se pre-registre le toca el día que va más vacío.
+                </span>
+                <Button
+                  variant="outline"
+                  className="h-10 shrink-0 bg-card"
+                  onClick={() => setPestana("reparto")}
+                >
+                  <CalendarDays className="size-4" /> Repartir los días
+                </Button>
               </span>
             ) : null}
           </AlertDescription>
         </Alert>
       ) : null}
 
-      {!filas && !leyendo ? (
-        <section className="mb-4 rounded-lg border border-border bg-card p-4">
-          <h2 className="flex items-center gap-2 text-sm font-bold">
-            <CalendarDays className="size-4 text-primary" aria-hidden />
-            Reparto por días
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            El día no lo entrega Servicios Escolares: lo asigna la organización. Aquí se ve cómo
-            está repartido el padrón y se asigna día a quien todavía no tiene.
-          </p>
+      {/*
+        Dos tareas, dos pestañas.
+        Esta pantalla se llama «Importación del padrón» y abría con el reparto
+        por días: lo primero que se veía era un tablero de aforos y filtros que
+        no tiene nada que ver con subir un archivo, y la zona de soltarlo
+        quedaba debajo, fuera de la primera pantalla. Son dos trabajos
+        distintos sobre los mismos datos —traer el padrón, y repartirlo entre
+        los tres días— y encadenarlos en una columna obligaba a bajar por el
+        que no se venía a hacer.
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        Con un archivo a medio revisar no hay pestañas: ahí se está en una
+        tarea concreta, con cambios sin aplicar, y ofrecer una salida lateral
+        solo da ocasión de perderlos.
+      */}
+      {filas || leyendo ? null : (
+        <Tabs value={pestana} onValueChange={(v) => setPestana(v as Pestana)}>
+          <TabsList className="mb-5">
+            <TabsTrigger value="importar" className="gap-2">
+              <Upload className="size-4" aria-hidden /> Importar archivo
+            </TabsTrigger>
+            <TabsTrigger value="reparto" className="gap-2">
+              <CalendarDays className="size-4" aria-hidden /> Reparto por días
+              {/*
+                El pendiente se rotula en la pestaña porque es la única forma
+                de enterarse sin abrirla, y es justo lo que caduca: un alumno
+                sin día que llega al evento no tiene dónde presentarse.
+              */}
+              {pendientes.length > 0 ? (
+                <span className="rounded-full bg-estado-discrepancia px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                  {pendientes.length}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="importar">
             {/*
-              El reparto se enseña contra el aforo y no a secas. «Día 3: 612» no
-              dice nada por sí solo; «612 de 600» dice que hay doce personas a
-              las que se les va a negar el pre-registro, y eso es accionable hoy
-              y no el 17 de octubre.
-            */}
-            {repartoPorDia().map(({ dia, total, cupo, libres }) => {
-              const rebasado = cupo > 0 && total > cupo;
-              return (
-                <div
-                  key={dia}
-                  className={cn(
-                    "rounded-lg border p-3",
-                    rebasado
-                      ? "border-estado-discrepancia/40 bg-estado-discrepancia-bg"
-                      : "border-border bg-muted/40",
-                  )}
-                >
-                  <p className="text-xs text-muted-foreground">
-                    Día {dia} · {infoDia(dia).lugar}
-                  </p>
-                  <p className="text-2xl font-extrabold tabular-nums">
-                    {total}
-                    {cupo > 0 ? (
-                      <span className="text-base font-semibold text-muted-foreground">
-                        {" "}
-                        / {cupo}
-                      </span>
-                    ) : null}
-                  </p>
-                  {cupo > 0 ? (
-                    <p
-                      className={cn(
-                        "text-xs",
-                        rebasado ? "font-semibold text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {rebasado
-                        ? `${total - cupo} de más: no van a caber`
-                        : `${libres} lugares libres`}
-                    </p>
-                  ) : null}
-                </div>
-              );
-            })}
-            <div
-              className={cn(
-                "rounded-lg border p-3",
-                pendientes.length > 0
-                  ? "border-estado-discrepancia/40 bg-estado-discrepancia-bg"
-                  : "border-border bg-muted/40",
-              )}
-            >
-              <p className="text-xs text-muted-foreground">Sin día</p>
-              <p
-                className={cn(
-                  "text-2xl font-extrabold tabular-nums",
-                  pendientes.length > 0 && "text-estado-discrepancia",
-                )}
-              >
-                {pendientes.length}
-              </p>
-            </div>
-          </div>
+             * Aquí vivía un bloque de «columnas requeridas» con la lista de las seis, un
+             * párrafo explicando qué valida cada una y un enlace a un CSV de ejemplo
+             * con siete errores a propósito.
+             *
+             * Tenía sentido cuando el importador exigía el encabezado exacto y había
+             * que decirle a alguien cómo escribirlo. Ya no: el archivo llega de
+             * Servicios Escolares tal como ellos lo generan, con sus propios nombres
+             * de columna, y el importador los reconoce. Quien sube el padrón no
+             * redacta el encabezado y no puede hacer nada con esa lista.
+             *
+             * Y si algo no casa, la vista previa lo dice fila por fila con el valor
+             * que trae y lo que se esperaba, que es cuando la explicación sirve de
+             * algo. Un texto que se lee antes del problema compite con la zona de
+             * soltar el archivo, que es lo único que hay que hacer en esta pantalla.
+             */}
+            <ZonaDeArchivo importador={imp} titulo="el padrón de Servicios Escolares" />
+          </TabsContent>
 
-          <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
-            <h3 className="text-sm font-semibold">Asignar día a un conjunto</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Una sede viaja junta desde su municipio, así que se reparte por sede, por programa o
-              por grupo, no alumno por alumno. Filtra y dale el día al conjunto entero.
+          <TabsContent value="reparto">
+            {/*
+              Sin encabezado propio: lo dice la pestaña.
+              Aquí había un «Reparto por días» con su icono, que era necesario
+              cuando esto era una tarjeta más de una columna y hacía falta
+              separarlo de lo de arriba. Repetirlo debajo de la pestaña que ya
+              se llama igual solo gasta el primer renglón, que es el sitio
+              donde se mira el aforo.
+            */}
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              El día no lo entrega Servicios Escolares: lo asigna la organización. Aquí se ve cómo
+              está repartido el padrón y se asigna día a quien todavía no tiene.
             </p>
 
-            <div className="mt-3 flex flex-wrap gap-3">
-              <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
-                {sedes.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </FiltroSelect>
-              <FiltroSelect
-                etiqueta="Programa"
-                valor={fPrograma}
-                alCambiar={setFPrograma}
-                todos="todos"
-              >
-                {configuracion.catalogoAcademico.flatMap((n) =>
-                  n.programas.map((x) => (
-                    <option key={x.nombre} value={x.nombre}>
-                      {x.nombre}
-                    </option>
-                  )),
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {/*
+                El reparto se enseña contra el aforo y no a secas. «Día 3: 612» no
+                dice nada por sí solo; «612 de 600» dice que hay doce personas a
+                las que se les va a negar el pre-registro, y eso es accionable hoy
+                y no el 17 de octubre.
+              */}
+              {repartoPorDia().map(({ dia, total, cupo, libres }) => {
+                const rebasado = cupo > 0 && total > cupo;
+                return (
+                  <div
+                    key={dia}
+                    className={cn(
+                      "rounded-lg border p-3",
+                      rebasado
+                        ? "border-estado-discrepancia/40 bg-estado-discrepancia-bg"
+                        : "border-border bg-muted/40",
+                    )}
+                  >
+                    <p className="text-xs text-muted-foreground">
+                      Día {dia} · {infoDia(dia).lugar}
+                    </p>
+                    <p className="text-2xl font-extrabold tabular-nums">
+                      {total}
+                      {cupo > 0 ? (
+                        <span className="text-base font-semibold text-muted-foreground">
+                          {" "}
+                          / {cupo}
+                        </span>
+                      ) : null}
+                    </p>
+                    {cupo > 0 ? (
+                      <p
+                        className={cn(
+                          "text-xs",
+                          rebasado ? "font-semibold text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {rebasado
+                          ? `${total - cupo} de más: no van a caber`
+                          : `${libres} lugares libres`}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+              <div
+                className={cn(
+                  "rounded-lg border p-3",
+                  pendientes.length > 0
+                    ? "border-estado-discrepancia/40 bg-estado-discrepancia-bg"
+                    : "border-border bg-muted/40",
                 )}
-              </FiltroSelect>
-              <FiltroSelect etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
-                {grupos.map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </FiltroSelect>
-              <FiltroSelect etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
-                <option value="sin-dia">Sin día</option>
-                {([1, 2, 3] as const).map((d) => (
-                  <option key={d} value={String(d)}>
-                    Día {d}
-                  </option>
-                ))}
-              </FiltroSelect>
+              >
+                <p className="text-xs text-muted-foreground">Sin día</p>
+                <p
+                  className={cn(
+                    "text-2xl font-extrabold tabular-nums",
+                    pendientes.length > 0 && "text-estado-discrepancia",
+                  )}
+                >
+                  {pendientes.length}
+                </p>
+              </div>
             </div>
 
-            <div className="mt-3">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por matrícula, nombre o grupo"
-                aria-label="Buscar en el padrón"
-                className="h-11"
-              />
-              {q.trim() ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  La búsqueda acota la selección: lo que asignes abajo se aplica solo a estos.
+            <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
+              <h3 className="text-sm font-semibold">Asignar día a un conjunto</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Una sede viaja junta desde su municipio, así que se reparte por sede, por programa o
+                por grupo, no alumno por alumno. Filtra y dale el día al conjunto entero.
+              </p>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
+                  {sedes.map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  ))}
+                </FiltroSelect>
+                <FiltroSelect
+                  etiqueta="Programa"
+                  valor={fPrograma}
+                  alCambiar={setFPrograma}
+                  todos="todos"
+                >
+                  {configuracion.catalogoAcademico.flatMap((n) =>
+                    n.programas.map((x) => (
+                      <option key={x.nombre} value={x.nombre}>
+                        {x.nombre}
+                      </option>
+                    )),
+                  )}
+                </FiltroSelect>
+                <FiltroSelect etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
+                  {grupos.map((x) => (
+                    <option key={x} value={x}>
+                      {x}
+                    </option>
+                  ))}
+                </FiltroSelect>
+                <FiltroSelect etiqueta="Día actual" valor={fDia} alCambiar={setFDia} todos="todos">
+                  <option value="sin-dia">Sin día</option>
+                  {([1, 2, 3] as const).map((d) => (
+                    <option key={d} value={String(d)}>
+                      Día {d}
+                    </option>
+                  ))}
+                </FiltroSelect>
+              </div>
+
+              <div className="mt-3">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Buscar por matrícula, nombre o grupo"
+                  aria-label="Buscar en el padrón"
+                  className="h-11"
+                />
+                {q.trim() ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    La búsqueda acota la selección: lo que asignes abajo se aplica solo a estos.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                <p className="text-sm">
+                  <span className="text-2xl font-extrabold tabular-nums">{seleccion.length}</span>{" "}
+                  <span className="text-muted-foreground">
+                    {seleccion.length === 1 ? "alumno coincide" : "alumnos coinciden"}
+                  </span>
+                </p>
+                <span className="flex flex-wrap gap-2 sm:ml-auto">
+                  {([1, 2, 3] as const).map((d) => (
+                    <Button
+                      key={d}
+                      variant="outline"
+                      className="h-11"
+                      disabled={seleccion.length === 0}
+                      onClick={() => asignarASeleccion(d)}
+                    >
+                      <CalendarDays className="size-4" /> Al día {d} · {infoDia(d).lugar}
+                    </Button>
+                  ))}
+                </span>
+              </div>
+              {seleccion.length > 0 && seleccion.some((a) => a.dia) ? (
+                <p className="mt-2 text-xs text-estado-discrepancia">
+                  {seleccion.filter((a) => a.dia).length} de estos ya tenían día. Se les cambia, y a
+                  quien tuviera un taller que no se imparte el día nuevo se le libera la
+                  inscripción.
                 </p>
               ) : null}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-              <p className="text-sm">
-                <span className="text-2xl font-extrabold tabular-nums">{seleccion.length}</span>{" "}
-                <span className="text-muted-foreground">
-                  {seleccion.length === 1 ? "alumno coincide" : "alumnos coinciden"}
-                </span>
+            {pendientes.length > 0 ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button className="h-11" disabled={repartiendo} onClick={() => void repartir()}>
+                  {repartiendo ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" /> Repartiendo…
+                    </>
+                  ) : (
+                    <>
+                      <CalendarDays className="size-4" /> Repartir los {pendientes.length}{" "}
+                      pendientes
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Salida rápida: cada uno cae en el día que va más vacío, sin mirar de qué sede
+                  viene. Para repartir por sede usa el filtro de arriba.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                Los {padron.length} alumnos del padrón tienen día asignado.
               </p>
-              <span className="flex flex-wrap gap-2 sm:ml-auto">
-                {([1, 2, 3] as const).map((d) => (
-                  <Button
-                    key={d}
-                    variant="outline"
-                    className="h-11"
-                    disabled={seleccion.length === 0}
-                    onClick={() => asignarASeleccion(d)}
-                  >
-                    <CalendarDays className="size-4" /> Al día {d} · {infoDia(d).lugar}
-                  </Button>
-                ))}
-              </span>
-            </div>
-            {seleccion.length > 0 && seleccion.some((a) => a.dia) ? (
-              <p className="mt-2 text-xs text-estado-discrepancia">
-                {seleccion.filter((a) => a.dia).length} de estos ya tenían día. Se les cambia, y a
-                quien tuviera un taller que no se imparte el día nuevo se le libera la inscripción.
-              </p>
+            )}
+
+            {/*
+              La lista de quienes coinciden con los filtros.
+              Antes solo se listaban los pendientes —y solo doce—, así que filtrar
+              por «Día 1» decía cuántos había pero nunca quiénes: no se podía
+              comprobar a quién le tocaba qué, ni corregir a una persona sin
+              mover a todo su grupo.
+            */}
+            {seleccion.length > 0 ? (
+              <div className="mt-4">
+                <Tabla
+                  anchoMinimo="40rem"
+                  columnas={["Alumno", "Grupo · sede", "Día", "Cambiar a"]}
+                >
+                  {tramoReparto.visibles.map((a) => (
+                    <Fila key={a.matricula} className="align-middle">
+                      <td className="px-3 py-2">
+                        <span className="font-semibold">{a.nombre}</span>
+                        <span className="block font-mono text-xs text-muted-foreground">
+                          {a.matricula}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {a.grupo ?? "sin grupo"} · {a.plantel}
+                      </td>
+                      <td className="px-3 py-2">
+                        {a.dia ? (
+                          <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
+                            Día {a.dia} · {infoDia(a.dia).lugar}
+                          </span>
+                        ) : (
+                          <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
+                            Sin día
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="flex gap-1">
+                          {([1, 2, 3] as const).map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              // El día que ya tiene no se ofrece: pulsarlo no
+                              // haría nada y ocupa el sitio de los que sí.
+                              disabled={a.dia === d}
+                              onClick={() => {
+                                reasignarDia(a.matricula, d);
+                                toast.success(`${a.nombre} queda en el día ${d}.`);
+                              }}
+                              className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
+                            >
+                              {d}
+                            </button>
+                          ))}
+                        </span>
+                      </td>
+                    </Fila>
+                  ))}
+                </Tabla>
+                <Paginacion
+                  tramo={tramoReparto}
+                  nota={`Los botones de asignación de arriba aplican a los ${seleccion.length}, no solo a esta página.`}
+                />
+              </div>
             ) : null}
-          </div>
-
-          {pendientes.length > 0 ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Button className="h-11" disabled={repartiendo} onClick={() => void repartir()}>
-                {repartiendo ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" /> Repartiendo…
-                  </>
-                ) : (
-                  <>
-                    <CalendarDays className="size-4" /> Repartir los {pendientes.length} pendientes
-                  </>
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Salida rápida: cada uno cae en el día que va más vacío, sin mirar de qué sede viene.
-                Para repartir por sede usa el filtro de arriba.
-              </p>
-            </div>
-          ) : (
-            <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-              Los {padron.length} alumnos del padrón tienen día asignado.
-            </p>
-          )}
-
-          {/*
-            La lista de quienes coinciden con los filtros.
-            Antes solo se listaban los pendientes —y solo doce—, así que filtrar
-            por «Día 1» decía cuántos había pero nunca quiénes: no se podía
-            comprobar a quién le tocaba qué, ni corregir a una persona sin
-            mover a todo su grupo.
-          */}
-          {seleccion.length > 0 ? (
-            <div className="mt-4">
-              <Tabla anchoMinimo="40rem" columnas={["Alumno", "Grupo · sede", "Día", "Cambiar a"]}>
-                {tramoReparto.visibles.map((a) => (
-                  <Fila key={a.matricula} className="align-middle">
-                    <td className="px-3 py-2">
-                      <span className="font-semibold">{a.nombre}</span>
-                      <span className="block font-mono text-xs text-muted-foreground">
-                        {a.matricula}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {a.grupo ?? "sin grupo"} · {a.plantel}
-                    </td>
-                    <td className="px-3 py-2">
-                      {a.dia ? (
-                        <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
-                          Día {a.dia} · {infoDia(a.dia).lugar}
-                        </span>
-                      ) : (
-                        <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
-                          Sin día
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="flex gap-1">
-                        {([1, 2, 3] as const).map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            // El día que ya tiene no se ofrece: pulsarlo no
-                            // haría nada y ocupa el sitio de los que sí.
-                            disabled={a.dia === d}
-                            onClick={() => {
-                              reasignarDia(a.matricula, d);
-                              toast.success(`${a.nombre} queda en el día ${d}.`);
-                            }}
-                            className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
-                          >
-                            {d}
-                          </button>
-                        ))}
-                      </span>
-                    </td>
-                  </Fila>
-                ))}
-              </Tabla>
-              <Paginacion
-                tramo={tramoReparto}
-                nota={`Los botones de asignación de arriba aplican a los ${seleccion.length}, no solo a esta página.`}
-              />
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {/*
-       * Aquí vivía un bloque de «columnas requeridas» con la lista de las seis, un
-       * párrafo explicando qué valida cada una y un enlace a un CSV de ejemplo
-       * con siete errores a propósito.
-       *
-       * Tenía sentido cuando el importador exigía el encabezado exacto y había
-       * que decirle a alguien cómo escribirlo. Ya no: el archivo llega de
-       * Servicios Escolares tal como ellos lo generan, con sus propios nombres
-       * de columna, y el importador los reconoce. Quien sube el padrón no
-       * redacta el encabezado y no puede hacer nada con esa lista.
-       *
-       * Y si algo no casa, la vista previa lo dice fila por fila con el valor
-       * que trae y lo que se esperaba, que es cuando la explicación sirve de
-       * algo. Un texto que se lee antes del problema compite con la zona de
-       * soltar el archivo, que es lo único que hay que hacer en esta pantalla.
-       */}
-      {!filas && !leyendo ? (
-        <ZonaDeArchivo importador={imp} titulo="el padrón de Servicios Escolares" />
-      ) : null}
+          </TabsContent>
+        </Tabs>
+      )}
 
       {leyendo ? (
         <div className="rounded-lg border border-border bg-card p-4">
@@ -774,7 +846,7 @@ function FiltroSelect({
       <select
         value={valor}
         onChange={(e) => alCambiar(e.target.value)}
-        className="h-11 max-w-56 rounded-md border border-input bg-card px-2 text-sm"
+        className="h-11 w-full rounded-md border border-input bg-card px-2 text-sm"
       >
         <option value={todos}>{todos === "todas" ? "Todas" : "Todos"}</option>
         {children}
