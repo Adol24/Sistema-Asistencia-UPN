@@ -218,7 +218,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
 
   const publico = await cargarPublico();
   if (!publico) return null;
-  const { configuracion, idPorClave, talleresBase } = publico;
+  const { configuracion } = publico;
   const lugarPorDia = (d: Dia) =>
     configuracion.dias.find((x) => x.dia === d)?.lugar ?? configuracion.dias[0]!.lugar;
 
@@ -238,47 +238,73 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
    * Ahora se piden aparte y su fallo no arrastra al resto: quien no tiene
    * permiso recibe listas vacías, que es lo que ya se decía que pasaba.
    */
-  const [participantes, estadoPago, pagos, padron, asistencias, evidencias, usuarios, casos] =
-    await Promise.all([
-      sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
-      /*
-       * El estado derivado, que puede leer cualquier miembro del personal.
-       * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
-       * pagó nadie ni con qué referencia.
-       */
-      sb.from("v_estado_pago").select("participante_id, concepto, estado"),
-      /*
-       * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
-       * los demás las políticas les devuelven cero filas, sin error.
-       *
-       * Se ordenan del más antiguo al más reciente porque `estadoDePagos`
-       * recorre la lista al revés y se queda con la primera coincidencia: el
-       * último pago de un concepto es el que manda, y ese orden es el que lo
-       * garantiza.
-       */
-      sb.from("pagos").select(COLS_PAGO).order("registrado_en"),
-      sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
-      sb
-        .from("asistencias")
-        .select(
-          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-        )
-        .is("anulada_en", null)
-        .order("registrada_en"),
-      sb
-        .from("evidencias")
-        .select(
-          "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
-        )
-        .order("dia"),
-      sb.from("usuarios_internos").select("*").order("nombre"),
-      sb
-        .from("casos_soporte")
-        .select(
-          "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
-        )
-        .order("creado_en", { ascending: false }),
-    ]);
+  const [
+    participantes,
+    estadoPago,
+    pagos,
+    padron,
+    asistencias,
+    evidencias,
+    usuarios,
+    casos,
+    talleresConSesion,
+  ] = await Promise.all([
+    sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
+    /*
+     * El estado derivado, que puede leer cualquier miembro del personal.
+     * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
+     * pagó nadie ni con qué referencia.
+     */
+    sb.from("v_estado_pago").select("participante_id, concepto, estado"),
+    /*
+     * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
+     * los demás las políticas les devuelven cero filas, sin error.
+     *
+     * Se ordenan del más antiguo al más reciente porque `estadoDePagos`
+     * recorre la lista al revés y se queda con la primera coincidencia: el
+     * último pago de un concepto es el que manda, y ese orden es el que lo
+     * garantiza.
+     */
+    sb.from("pagos").select(COLS_PAGO).order("registrado_en"),
+    sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
+    sb
+      .from("asistencias")
+      .select(
+        "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+      )
+      .is("anulada_en", null)
+      .order("registrada_en"),
+    sb
+      .from("evidencias")
+      .select(
+        "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
+      )
+      .order("dia"),
+    sb.from("usuarios_internos").select("*").order("nombre"),
+    sb
+      .from("casos_soporte")
+      .select(
+        "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
+      )
+      .order("creado_en", { ascending: false }),
+    /*
+     * Los talleres se vuelven a pedir aquí, con la sesión puesta, en vez de
+     * heredarlos de `cargarPublico`.
+     *
+     * **Este era el fallo que dejó cuatro talleres apagados sin forma de
+     * encenderlos.** `talleres_lectura` es `using (activo or
+     * es_interno_activo())`, así que un taller inactivo solo se ve con sesión.
+     * Y `cargarPublico` se pide también desde el servidor, antes de pintar,
+     * donde no hay sesión de nadie —y su resultado se guarda en caché medio
+     * minuto—: el panel recibía la lista que ve un anónimo.
+     *
+     * De ahí que `/admin/talleres` no listara T01 a T04 y que su distintivo de
+     * «Inactivo» fuera código muerto: para que se pintara, tenía que llegar un
+     * taller inactivo, y nunca llegaba ninguno. Quien los apagó desde el panel
+     * los perdió de vista en el mismo clic.
+     */
+    sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
+  ]);
 
   // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
   // público ya se cargó arriba. Solo lo público es imprescindible.
@@ -311,6 +337,17 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     porParticipante.set(`${e.participante_id}:${e.concepto}`, e.estado);
   const estadoDeriva = (id: string, concepto: "evento" | "taller") =>
     porParticipante.get(`${id}:${concepto}`);
+
+  /*
+   * Con sesión mandan los talleres recién pedidos, que incluyen los inactivos.
+   * Sin ella —o si esa consulta falló— se cae a los del caché público, que son
+   * los activos: es lo mismo que ve un visitante, y es lo correcto ahí.
+   */
+  const filasTaller = (talleresConSesion.data ?? []) as unknown as FilaTaller[];
+  const talleresBase = filasTaller.length ? filasTaller.map(aTallerBase) : publico.talleresBase;
+  const idPorClave = filasTaller.length
+    ? Object.fromEntries(filasTaller.map((t) => [t.clave, t.id]))
+    : publico.idPorClave;
 
   return {
     configuracion,
