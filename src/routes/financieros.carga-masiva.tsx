@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { useImportador } from "@/lib/importador";
+import type { OrigenTabla } from "@/lib/csv";
 import { AlertTriangle, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
@@ -34,7 +35,7 @@ function CargaMasiva() {
   // datos simulados: validar un archivo real contra participantes inventados
   // marcaba como inexistente cualquier folio verdadero.
   const analizar = useCallback(
-    (texto: string) => analizarArchivo(texto, pagos, getParticipante, getTaller),
+    (origen: OrigenTabla) => analizarArchivo(origen, pagos, getParticipante, getTaller),
     [pagos, getParticipante, getTaller],
   );
   const imp = useImportador<FilaAnalizada>(analizar);

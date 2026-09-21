@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { Campo } from "@/components/tipografia";
 import { useImportador } from "@/lib/importador";
+import type { OrigenTabla } from "@/lib/csv";
 import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
@@ -63,9 +64,9 @@ function ImportacionPadron() {
   // Mismo flujo que la carga masiva de pagos: soltar, analizar, filtrar,
   // confirmar y aplicar. Lo único propio es qué analiza y qué columnas pinta.
   const analizar = useCallback(
-    (texto: string) =>
+    (origen: OrigenTabla) =>
       analizarPadron({
-        texto,
+        origen,
         padronActual: padron,
         participantes,
         catalogo: configuracion.catalogoAcademico,

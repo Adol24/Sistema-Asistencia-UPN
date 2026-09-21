@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { simularLatencia } from "@/lib/formato";
+import { leerLibro, type HojaXlsx } from "@/lib/xlsx";
+import type { OrigenTabla } from "@/lib/csv";
 
 /**
  * La mecánica común de las dos pantallas que importan un archivo: el padrón de
@@ -33,6 +35,18 @@ export interface Importador<F extends FilaConSemaforo> {
   aplicando: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
 
+  /**
+   * Las hojas del libro, cuando el archivo es un Excel con más de una.
+   *
+   * `null` cuando el archivo es un CSV o trae una sola hoja: ahí no hay nada que
+   * elegir y preguntarlo sería un paso de más.
+   */
+  hojas: HojaXlsx[] | null;
+  /** Qué pestaña se está mirando. */
+  hoja: string | null;
+  /** Analiza otra pestaña del mismo libro, sin volver a leer el archivo. */
+  elegirHoja: (nombre: string) => void;
+
   /** Las filas que pasan el filtro elegido. */
   visibles: F[];
   /** Cuántas hay de cada color, y cuántas se aplicarían. */
@@ -51,7 +65,7 @@ export interface Importador<F extends FilaConSemaforo> {
 }
 
 export function useImportador<F extends FilaConSemaforo>(
-  analizar: (texto: string) => F[],
+  analizar: (origen: OrigenTabla) => F[],
 ): Importador<F> {
   const [arrastrando, setArrastrando] = useState(false);
   const [leyendo, setLeyendo] = useState(false);
@@ -61,18 +75,46 @@ export function useImportador<F extends FilaConSemaforo>(
   const [filtro, setFiltro] = useState<"todas" | F["semaforo"]>("todas");
   const [confirmando, setConfirmando] = useState(false);
   const [aplicando, setAplicando] = useState(false);
+  const [hojas, setHojas] = useState<HojaXlsx[] | null>(null);
+  const [hoja, setHoja] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Un `.xlsx` es un ZIP y empieza por «PK». Se mira el contenido y no solo la
+   * extensión porque el archivo puede llegar renombrado, y el error de un ZIP
+   * leído como texto —celdas de símbolos raros— no se parece en nada a la
+   * causa.
+   */
+  const esExcel = async (f: File) => {
+    if (/\.xlsx?$/i.test(f.name)) return true;
+    const cabecera = new Uint8Array(await f.slice(0, 2).arrayBuffer());
+    return cabecera[0] === 0x50 && cabecera[1] === 0x4b;
+  };
 
   const cargar = useCallback(
     async (f: File) => {
       setErrorArchivo(null);
       setFilas(null);
+      setHojas(null);
+      setHoja(null);
       setArchivo(f.name);
       setLeyendo(true);
-      const texto = await f.text();
-      await simularLatencia();
       try {
-        setFilas(analizar(texto));
+        if (await esExcel(f)) {
+          const libro = await leerLibro(await f.arrayBuffer());
+          await simularLatencia();
+          setHojas(libro);
+          // Con varias pestañas se abre la primera y se deja elegir. Analizarlas
+          // todas juntas mezclaría hojas que la universidad separó a propósito, y
+          // no analizar ninguna obligaría a un clic antes de ver nada.
+          const primera = libro[0]!;
+          setHoja(primera.nombre);
+          setFilas(analizar(primera.filas));
+        } else {
+          const texto = await f.text();
+          await simularLatencia();
+          setFilas(analizar(texto));
+        }
       } catch (e) {
         setErrorArchivo(e instanceof Error ? e.message : "No se pudo leer el archivo.");
       } finally {
@@ -82,10 +124,31 @@ export function useImportador<F extends FilaConSemaforo>(
     [analizar],
   );
 
+  const elegirHoja = useCallback(
+    (nombre: string) => {
+      const elegida = hojas?.find((h) => h.nombre === nombre);
+      if (!elegida) return;
+      setErrorArchivo(null);
+      setFilas(null);
+      setHoja(nombre);
+      setFiltro("todas");
+      try {
+        setFilas(analizar(elegida.filas));
+      } catch (e) {
+        // Una pestaña vacía o con otro encabezado no invalida el libro: se dice
+        // qué pasa con ESA y las demás siguen a un clic.
+        setErrorArchivo(e instanceof Error ? e.message : "No se pudo leer esa hoja.");
+      }
+    },
+    [analizar, hojas],
+  );
+
   const limpiar = useCallback(() => {
     setFilas(null);
     setArchivo(null);
     setErrorArchivo(null);
+    setHojas(null);
+    setHoja(null);
     setFiltro("todas");
   }, []);
 
@@ -125,6 +188,9 @@ export function useImportador<F extends FilaConSemaforo>(
     confirmando,
     aplicando,
     inputRef,
+    hojas,
+    hoja,
+    elegirHoja,
     visibles,
     resumen,
     setArrastrando,

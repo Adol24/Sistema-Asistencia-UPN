@@ -11,7 +11,7 @@
  * que eso se marca en ámbar aunque el dato sea válido.
  */
 
-import { leerTabla } from "@/lib/csv";
+import { leerOrigen, type OrigenTabla } from "@/lib/csv";
 import type { AlumnoPadron, Participante } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
 
@@ -42,7 +42,44 @@ export const COLUMNAS_PADRON = [
  * correcto se rechace entero por una palabra del encabezado.
  */
 const SINONIMOS: Record<string, string[]> = {
+  matricula: ["boleta", "no. de control", "numero de control"],
+  nombre: ["nombre del alumno", "nombre completo", "alumno"],
+  // El encabezado del avance dice cómo se cuenta ESE archivo: la hoja de la
+  // licenciatura modular se titula «Modulo» y la de las demás «Semestre». Se
+  // aceptan los dos y el genérico con el que llegan las hojas mixtas.
+  avance: ["modulo", "módulo", "semestre", "cuatrimestre", "semestre/modulo", "semestre/módulo"],
   sede: ["plantel", "unidad", "subsede"],
+};
+
+/**
+ * Los ordinales con los que el padrón escribe el avance.
+ *
+ * Tres de las cinco hojas del archivo oficial no traen un número sino la
+ * palabra: «TERCER», «QUINTO». `soloNumero` las dejaba en blanco y la fila
+ * moría con «avance inválido: ""», que no le dice a nadie qué arreglar.
+ *
+ * Llega al 13 porque ese es el tope de la licenciatura modular y de las
+ * maestrías. Se aceptan las dos formas de los que cambian —«tercer» y
+ * «tercero»— porque las dos se escriben.
+ */
+const ORDINALES: Record<string, number> = {
+  primer: 1,
+  primero: 1,
+  segundo: 2,
+  tercer: 3,
+  tercero: 3,
+  cuarto: 4,
+  quinto: 5,
+  sexto: 6,
+  septimo: 7,
+  octavo: 8,
+  noveno: 9,
+  decimo: 10,
+  undecimo: 11,
+  decimoprimero: 11,
+  duodecimo: 12,
+  decimosegundo: 12,
+  decimotercero: 13,
 };
 
 /**
@@ -63,7 +100,21 @@ const igual = (a: string, b: string) =>
  * lo acompaña ya la sabe el catálogo —es la etiqueta del nivel— y repetirla en
  * cada celda solo da ocasión de que no coincida.
  */
-const soloNumero = (v: string | undefined) => (v ?? "").replace(/[^\d]/g, "").trim();
+const soloNumero = (v: string | undefined) => {
+  const texto = (v ?? "").trim();
+  const digitos = texto.replace(/[^\d]/g, "");
+  if (digitos) return digitos;
+
+  // Sin dígitos, puede ser el ordinal escrito. Se normaliza igual que los demás
+  // nombres del archivo —sin acentos, sin mayúsculas— y se le quita la palabra
+  // que a veces lo acompaña: «TERCER SEMESTRE» es «tercer».
+  const palabras = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/\s+/);
+  for (const palabra of palabras) {
+    const n = ORDINALES[palabra];
+    if (n) return String(n);
+  }
+  return "";
+};
 
 /**
  * Quita la palabra que precede a un valor: «Grupo A» -> «A».
@@ -95,7 +146,8 @@ export interface FilaPadron {
 }
 
 export interface EntradaAnalisisPadron {
-  texto: string;
+  /** El CSV completo, o las celdas de una hoja de Excel ya leída. */
+  origen: OrigenTabla;
   padronActual: AlumnoPadron[];
   participantes: Participante[];
   /** Contra qué se validan el nivel, el programa y el avance de cada fila. */
@@ -111,7 +163,7 @@ export interface EntradaAnalisisPadron {
 }
 
 export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
-  const { encabezado, filas } = leerTabla(e.texto);
+  const { encabezado, filas } = leerOrigen(e.origen);
   const faltantes = COLUMNAS_PADRON.filter((c) => !columnaDe(encabezado, c));
   if (faltantes.length)
     throw new Error(`Al archivo le faltan estas columnas: ${faltantes.join(", ")}.`);
@@ -122,24 +174,39 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
   );
   const vistas = new Map<string, number>();
 
+  /*
+   * Con qué nombre aparece cada columna en ESTE archivo.
+   *
+   * Se resuelve una vez, fuera del recorrido, y **para las seis**. Antes solo la
+   * sede pasaba por aquí y las otras cinco se leían por su nombre literal
+   * (`crudo["matricula"]`), así que sus sinónimos estaban declarados pero no se
+   * usaban: un archivo con la columna «BOLETA» pasaba la comprobación de
+   * columnas faltantes y después daba matrícula vacía en las mil filas.
+   */
+  const nombreDeColumna = Object.fromEntries(
+    COLUMNAS_PADRON.map((c) => [c, columnaDe(encabezado, c) ?? c]),
+  ) as Record<(typeof COLUMNAS_PADRON)[number], string>;
+
   return filas.map((base) => {
     const { n, crudo } = base;
     const error = (motivo: string): FilaPadron => ({ ...base, semaforo: "error", motivo });
+    const celda = (columna: (typeof COLUMNAS_PADRON)[number]) =>
+      crudo[nombreDeColumna[columna]] ?? "";
 
-    const matricula = (crudo["matricula"] ?? "").trim();
+    const matricula = celda("matricula").trim();
     // El archivo llega con el nombre tal como lo escribió Servicios Escolares
     // —«Matias Santos Ramos»— y la base lo quiere en mayúsculas. Se convierte
     // aquí en vez de rechazar la fila: es una diferencia de forma, no un dato
     // que falte, y devolverle a alguien dos mil filas por eso sería absurdo.
-    const nombre = (crudo["nombre"] ?? "").trim().toUpperCase();
-    const programa = (crudo["programa"] ?? "").trim();
-    const avanceTxt = soloNumero(crudo["avance"]);
-    const grupo = sinEtiqueta(crudo["grupo"], "grupo").toUpperCase();
-    const plantel = (crudo[columnaDe(encabezado, "sede") ?? "sede"] ?? "").trim();
+    const nombre = celda("nombre").trim().toUpperCase();
+    const programa = celda("programa").trim();
+    const avanceTxt = soloNumero(celda("avance"));
+    const grupo = sinEtiqueta(celda("grupo"), "grupo").toUpperCase();
+    const plantel = celda("sede").trim();
 
     if (!/^\d{11}$/.test(matricula))
       return error(
-        `Matrícula con formato inválido: "${crudo["matricula"]}". Se esperan 11 dígitos.`,
+        `Matrícula con formato inválido: "${celda("matricula")}". Se esperan 11 dígitos.`,
       );
     if (!nombre) return error("Falta el nombre.");
     if (nombre.trim().split(/\s+/).length < 2)

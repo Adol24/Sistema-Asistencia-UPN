@@ -21,7 +21,8 @@ export function ZonaDeArchivo<F extends FilaConSemaforo>({
   /** «el archivo de pagos», «el padrón de Servicios Escolares». */
   titulo: string;
 }) {
-  const { arrastrando, setArrastrando, cargar, inputRef, errorArchivo } = importador;
+  const { arrastrando, setArrastrando, cargar, inputRef, errorArchivo, hojas, hoja, elegirHoja } =
+    importador;
 
   return (
     <>
@@ -51,7 +52,7 @@ export function ZonaDeArchivo<F extends FilaConSemaforo>({
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -59,6 +60,30 @@ export function ZonaDeArchivo<F extends FilaConSemaforo>({
           }}
         />
       </div>
+
+      {/*
+       * El libro de Excel con varias pestañas.
+       *
+       * El padrón oficial llega así —una hoja por grupo de cohortes— y antes
+       * había que abrirlo, exportar cada pestaña a CSV y subirlas de una en una.
+       * Aquí se cambia de hoja sin volver a leer el archivo.
+       */}
+      {hojas && hojas.length > 1 ? (
+        <div className="mt-4 rounded-lg border border-border bg-card p-3">
+          <p className="mb-2 text-sm font-semibold">
+            Ese archivo trae {hojas.length} hojas. Estás viendo{" "}
+            <span className="text-primary">{hoja}</span>.
+          </p>
+          <GrupoFiltro
+            valor={hoja ?? ""}
+            alElegir={elegirHoja}
+            opciones={hojas.map((h) => [h.nombre, h.nombre] as const)}
+          />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Se sube una hoja a la vez. Al aplicar esta, vuelve aquí y elige la siguiente.
+          </p>
+        </div>
+      ) : null}
 
       {errorArchivo ? (
         <Alert variant="destructive" className="mt-4">

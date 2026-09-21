@@ -1,7 +1,8 @@
 /**
  * Lectura y análisis del archivo de carga masiva de pagos, sin React.
  *
- * `analizarArchivo` es una función pura: recibe el texto del archivo y los pagos
+ * `analizarArchivo` es una función pura: recibe el archivo —un CSV o una hoja
+ * de Excel ya leída— y los pagos
  * ya registrados, y devuelve el diagnóstico fila por fila. No registra nada. La
  * pantalla solo aplica los pagos cuando el usuario confirma, y usa exactamente
  * los `pago` que esta función preparó.
@@ -15,7 +16,7 @@ import {
   type PagoRegistrado,
 } from "@/lib/pagos-logica";
 import type { Participante, Taller } from "@/dominio/tipos";
-import { leerTabla } from "@/lib/csv";
+import { leerOrigen, type OrigenTabla } from "@/lib/csv";
 
 export const COLUMNAS = [
   "folio",
@@ -45,7 +46,7 @@ const moneda = (n: number) => `$${n.toFixed(2)}`;
  * devuelven como semáforo rojo, no como excepción.
  */
 export function analizarArchivo(
-  texto: string,
+  origen: OrigenTabla,
   pagosRegistrados: PagoRegistrado[],
   /*
    * Las listas se reciben, no se importan.
@@ -58,7 +59,7 @@ export function analizarArchivo(
   buscarParticipante: (folio: string) => Participante | undefined,
   buscarTaller: (id?: string) => Taller | undefined,
 ): FilaAnalizada[] {
-  const { encabezado, filas } = leerTabla(texto);
+  const { encabezado, filas } = leerOrigen(origen);
   const faltantes = COLUMNAS.filter((c) => !encabezado.includes(c));
   if (faltantes.length)
     throw new Error(`Al archivo le faltan estas columnas: ${faltantes.join(", ")}.`);
