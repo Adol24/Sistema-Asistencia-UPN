@@ -20,6 +20,7 @@ import {
   aAsistencia,
   aFechaHora,
   aCaso,
+  aEntradaBitacora,
   aCatalogo,
   aConfiguracion,
   aEvidencia,
@@ -28,6 +29,7 @@ import {
   aTallerBase,
   aUsuario,
   type FilaAsistencia,
+  type FilaBitacora,
   type FilaCaso,
   type FilaConfiguracion,
   type FilaDia,
@@ -56,6 +58,7 @@ import type { NivelAcademico } from "@/dominio/catalogos";
 import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
+import type { EntradaBitacora } from "@/lib/contrato-estado";
 
 /** Todo lo que el contexto necesita para arrancar. */
 export interface Instantanea {
@@ -77,6 +80,15 @@ export interface Instantanea {
   evidencias: Evidencia[];
   usuarios: UsuarioInterno[];
   casos: CasoSoporte[];
+  /**
+   * Lo ya anotado en la bitácora.
+   *
+   * Llega vacía para quien no puede leerla —`bitacora_lectura` es de
+   * administración y soporte—, igual que los pagos. Se pide un tope de
+   * registros y no la tabla entera: en un evento de cinco mil personas esto
+   * crece por miles y la pantalla lo que necesita es lo reciente.
+   */
+  bitacora: EntradaBitacora[];
 }
 
 /*
@@ -248,6 +260,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     usuarios,
     casos,
     talleresConSesion,
+    bitacora,
   ] = await Promise.all([
     sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
     /*
@@ -304,6 +317,20 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
      * los perdió de vista en el mismo clic.
      */
     sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
+    /*
+     * Lo ya anotado en la bitácora, de lo más reciente hacia atrás.
+     *
+     * Se pide con tope. La bitácora no se poda —no tiene política de DELETE, es
+     * inmutable a propósito— así que en un evento de cinco mil personas crece
+     * por miles de filas, y traerlas todas para pintar una tabla que pagina de
+     * diez sería pagar el histórico entero en cada carga. Lo que la pantalla
+     * contesta es «quién hizo esto», y eso se pregunta sobre lo reciente.
+     */
+    sb
+      .from("bitacora")
+      .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
+      .order("ocurrido_en", { ascending: false })
+      .limit(500),
   ]);
 
   // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
@@ -367,6 +394,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     ),
     usuarios: ((usuarios.data ?? []) as unknown as FilaUsuario[]).map(aUsuario),
     casos: ((casos.data ?? []) as unknown as FilaCaso[]).map(aCaso),
+    bitacora: ((bitacora.data ?? []) as unknown as FilaBitacora[]).map(aEntradaBitacora),
   };
 }
 

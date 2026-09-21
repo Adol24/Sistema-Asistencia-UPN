@@ -79,6 +79,13 @@ function Bitacora() {
     <PantallaPanel
       area="admin"
       titulo="Bitácora"
+      /*
+       * Este subtítulo se quitó junto con los que justificaban su pantalla, y
+       * fue un error: «Talleres» o «Reportes» se explican solos, «Bitácora» no
+       * dice a qué se usa. Vuelve, pero diciendo para qué sirve y no por qué
+       * existe, que era el defecto de los otros.
+       */
+      descripcion="Quién hizo qué y cuándo. Es lo que aclara una inconformidad."
       acciones={
         <Button variant="outline" className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar ({visibles.length})

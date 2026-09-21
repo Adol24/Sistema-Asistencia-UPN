@@ -12,6 +12,7 @@
  * que saber de las dos convenciones.
  */
 
+import type { EntradaBitacora } from "@/lib/contrato-estado";
 import type {
   AlumnoPadron,
   Asistencia,
@@ -260,6 +261,33 @@ export interface FilaCaso {
   usuarios_internos: { nombre: string } | null;
   participantes: { folio: string; nombre: string } | null;
 }
+
+/**
+ * Una anotación de la bitácora, tal como llega de la base.
+ *
+ * `usuario_id` apunta al personal y `usuario_texto` cubre lo que no hace una
+ * persona —el pre-registro en línea, un disparador—. Llega uno de los dos, así
+ * que el nombre se resuelve al mapear y nunca queda una entrada sin autor.
+ */
+export interface FilaBitacora {
+  id: string;
+  accion: string;
+  detalle: string;
+  ocurrido_en: string;
+  usuario_texto: string | null;
+  usuarios_internos: { nombre: string } | null;
+}
+
+export const aEntradaBitacora = (f: FilaBitacora): EntradaBitacora => ({
+  id: f.id,
+  fecha: aFechaHora(f.ocurrido_en),
+  usuario: f.usuarios_internos?.nombre ?? f.usuario_texto ?? "Sistema",
+  accion: f.accion,
+  detalle: f.detalle,
+  // Lo que viene de la base es, por definición, lo ya ocurrido: la marca de
+  // «sesión» la pone quien la anota en este navegador.
+  deLaSesion: false,
+});
 
 // ================================================================ el puente ===
 

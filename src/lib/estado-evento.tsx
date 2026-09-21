@@ -263,6 +263,7 @@ export function EstadoEventoProvider({
         // internas no queden vacías cuando las mira alguien sin sesión.
         if (datos.usuarios.length) setUsuarios(datos.usuarios);
         if (datos.casos.length) setCasos(datos.casos);
+        setBitacoraBase(datos.bitacora);
         setConectado(true);
         setCargadoEn(Date.now());
       } catch (e: unknown) {
@@ -352,6 +353,21 @@ export function EstadoEventoProvider({
     Record<string, Partial<Participante>>
   >({});
   const [bitacoraSesion, setBitacoraSesion] = useState<EntradaBitacora[]>([]);
+  /*
+   * Lo que la bitácora ya tenía anotado antes de abrir esta pestaña.
+   *
+   * Faltaba, y con ella faltaba la pantalla entera: lo que se anotaba sí se
+   * guardaba en la base —y ahí sigue, sin política de borrado— pero nadie lo
+   * volvía a leer nunca. La vista se alimentaba solo de `bitacoraSesion`, que
+   * arranca vacía en cada carga, así que recargar dejaba la bitácora en blanco
+   * y preguntarle quién cobró un pago ayer no tenía respuesta. Un registro de
+   * auditoría que solo enseña lo que acabas de hacer delante no audita nada.
+   */
+  const [bitacoraBase, setBitacoraBase] = useState<EntradaBitacora[]>([]);
+  const bitacoraDeVista = useMemo(
+    () => [...bitacoraSesion, ...bitacoraBase],
+    [bitacoraSesion, bitacoraBase],
+  );
   /*
    * Si hay conexión de verdad, no si alguien pulsó un botón.
    *
@@ -1583,7 +1599,18 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
-      bitacora: bitacoraSesion,
+      /*
+       * Lo de esta sesión primero y lo ya anotado debajo, que es el orden en
+       * que se busca: se entra a la bitácora a comprobar lo que se acaba de
+       * hacer, o a buscar hacia atrás. Las dos mitades van juntas en una sola
+       * lista para que los filtros y la exportación las alcancen por igual;
+       * la columna de origen las distingue.
+       *
+       * No se deduplica: la anotación que este navegador acaba de escribir en
+       * la base no vuelve hasta la siguiente carga, y cuando vuelva ya no
+       * estará la copia de sesión.
+       */
+      bitacora: bitacoraDeVista,
       registrarBitacora,
       usuarioActual,
       reloj,
@@ -1651,7 +1678,7 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
-      bitacoraSesion,
+      bitacoraDeVista,
       registrarBitacora,
       usuarioActual,
       reloj,
