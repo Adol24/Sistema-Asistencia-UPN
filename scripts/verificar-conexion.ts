@@ -493,6 +493,88 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
   ok("así se ve el catálogo de talleres desde el pre-registro");
 }
 
+// ----------------------------------- cuándo puede registrarse cada grupo ---
+console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
+
+{
+  const { data, error } = await sb
+    .from("ventanas_preregistro")
+    .select("etiqueta, abre, cierra, ventana_cohortes ( avance, programas ( nombre ) )")
+    .order("abre");
+
+  // PostgREST contesta PGRST205 cuando la tabla no está en su caché de esquema,
+  // y 42P01 cuando PostgreSQL dice que no existe. Son el mismo hecho visto desde
+  // dos capas, y las dos significan lo mismo aquí: falta la migración.
+  if (error?.code === "42P01" || error?.code === "PGRST205")
+    falla("no existe `ventanas_preregistro`: falta la migración 20260921140000 (la 44)", error);
+  else if (error) falla("no se pudieron leer las ventanas", error);
+  else {
+    /*
+     * `programas` llega como objeto, no como lista, porque la relación es a uno.
+     * El tipo que infiere el cliente dice lista, así que se pasa por `unknown`:
+     * afirmar la forma que de verdad devuelve PostgREST es más honesto que
+     * escribir código defensivo para un array que nunca llega.
+     */
+    const ventanas = data as unknown as {
+      etiqueta: string;
+      abre: string;
+      cierra: string;
+      ventana_cohortes: { avance: number; programas: { nombre: string } | null }[];
+    }[];
+
+    if (!ventanas.length) {
+      /*
+       * Cero ventanas NO es una falla: es el interruptor apagado, y el
+       * pre-registro queda abierto para todos, como estaba antes de la 44.
+       * Marcarlo en rojo obligaría a inventar ventanas para callar el
+       * comprobante, que es peor que no tenerlas.
+       */
+      ok("sin ventanas cargadas: el pre-registro está abierto para todos");
+    } else {
+      const ahora = Date.now();
+      for (const v of ventanas) {
+        const abre = new Date(v.abre).getTime();
+        const cierra = new Date(v.cierra).getTime();
+        const estado = ahora < abre ? "aún no abre" : ahora > cierra ? "ya cerró" : "ABIERTA AHORA";
+        const fecha = (iso: string) =>
+          new Date(iso).toLocaleDateString("es-MX", { timeZone: "America/Mexico_City" });
+        ok(`«${v.etiqueta}» — del ${fecha(v.abre)} al ${fecha(v.cierra)} · ${estado}`);
+
+        // Una ventana sin cohortes no deja pasar a nadie y no lo parece: se ve
+        // cargada en el panel y en la base, y rechaza a todo el mundo con
+        // «todavía no se anuncia la fecha de tu grupo».
+        if (!v.ventana_cohortes.length) {
+          falla(`«${v.etiqueta}» no admite a nadie: no tiene ningún programa declarado`);
+          continue;
+        }
+        const porAvance = new Map<number, string[]>();
+        for (const c of v.ventana_cohortes)
+          porAvance.set(c.avance, [
+            ...(porAvance.get(c.avance) ?? []),
+            c.programas?.nombre ?? "(programa borrado)",
+          ]);
+        for (const [avance, programas] of [...porAvance.entries()].sort((a, b) => a[0] - b[0]))
+          console.log(`       avance ${avance}: ${programas.length} programas`);
+      }
+
+      // Que nadie quede sin ventana no se puede comprobar desde aquí —el padrón
+      // está cerrado al anónimo—, pero sí que el catálogo entero esté cubierto.
+      const { data: progs } = await sb.from("programas").select("nombre");
+      const cubiertos = new Set(
+        ventanas.flatMap((v) => v.ventana_cohortes.map((c) => c.programas?.nombre)),
+      );
+      const fuera = ((progs ?? []) as { nombre: string }[])
+        .map((p) => p.nombre)
+        .filter((n) => !cubiertos.has(n));
+      if (fuera.length)
+        console.log(
+          `       sin ventana todavía: ${fuera.join(", ")} — sus alumnos verán «aún no se anuncia»`,
+        );
+      else ok("los nueve programas tienen ventana");
+    }
+  }
+}
+
 // ------------------------------------- un solo pre-registro por persona ---
 console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
 

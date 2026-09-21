@@ -66,6 +66,15 @@ function ConfirmarNombre() {
   const [errorIdentidad, setErrorIdentidad] = useState("");
   const [intentos, setIntentos] = useState(0);
   const [comprobando, setComprobando] = useState(false);
+  /**
+   * La frase que explica por qué todavía no le toca, o "" si sí le toca.
+   *
+   * Se pregunta aquí, en cuanto confirma su identidad, y no al enviar: la puerta
+   * de verdad es un disparador de la base, pero enterarse al final —con el
+   * correo, el celular y el taller ya tecleados— es la diferencia entre una
+   * fecha y un portazo.
+   */
+  const [fueraDeVentana, setFueraDeVentana] = useState("");
   const bloqueado = intentos >= INTENTOS;
 
   const programas = useMemo(
@@ -104,6 +113,9 @@ function ConfirmarNombre() {
       const ficha = await confirmarEnPadronRemoto(matricula, nombresPila, programa);
       if (ficha) {
         ok = true;
+        // Su turno. Si no es ahora, se dice aquí y no se sigue.
+        const { ventanaDeMatriculaRemota } = await import("@/lib/datos");
+        setFueraDeVentana((await ventanaDeMatriculaRemota(matricula)) ?? "");
         // El expediente llega ahora, no antes. Se guarda para los pasos
         // siguientes del pre-registro.
         setBorrador({
@@ -232,6 +244,44 @@ function ConfirmarNombre() {
           ¿Te equivocaste de matrícula?{" "}
           <Link to="/alumno" className="underline">
             Escríbela de nuevo
+          </Link>
+        </p>
+      </PantallaPublica>
+    );
+  }
+
+  /*
+   * Confirmó que es él, pero todavía no le toca.
+   *
+   * Es pantalla propia y no un aviso encima del formulario: lo único accionable
+   * aquí es una fecha, y dejar el botón de continuar a la vista invita a
+   * intentarlo igual para chocar contra el disparador al final. Su nombre sí se
+   * le enseña —ya se ganó el derecho a verlo— para que sepa que el sistema lo
+   * tiene bien y que solo es cuestión de volver.
+   */
+  if (fueraDeVentana) {
+    return (
+      <PantallaPublica
+        titulo="Todavía no te toca"
+        descripcion="Tus datos están bien. Lo único que falta es la fecha."
+      >
+        <Alert className="border-primary/30">
+          <Info className="size-4" />
+          <AlertTitle>{nombre}</AlertTitle>
+          <AlertDescription>{fueraDeVentana}</AlertDescription>
+        </Alert>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Guárdate esta página o anótate la fecha. No hace falta que hagas nada más ahora.
+        </p>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          ¿Crees que es un error?{" "}
+          <a href={wa} className="underline" target="_blank" rel="noreferrer">
+            Escríbenos por WhatsApp
+          </a>
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          <Link to="/bienvenida" className="underline">
+            Volver al inicio
           </Link>
         </p>
       </PantallaPublica>

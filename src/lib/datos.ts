@@ -1056,6 +1056,23 @@ export async function confirmarEnPadronRemoto(
 }
 
 /**
+ * Si a esta matrícula todavía no le toca pre-registrarse, la frase que hay que
+ * enseñarle. `null` cuando puede continuar.
+ *
+ * Se pregunta en cuanto confirma su identidad y no al enviar el formulario. La
+ * regla de verdad vive en un disparador de `participantes` —esto no es la
+ * puerta, es el aviso—, pero enterarse al final, después de teclear correo,
+ * celular y elegir taller, es la diferencia entre una fecha y un portazo.
+ *
+ * Una matrícula que no está en el padrón devuelve `null`, no un error: quien la
+ * rechaza es el alta, con su propio mensaje, y contestar aquí convertiría esto
+ * en el enumerador del padrón que ya se cerró una vez.
+ */
+export async function ventanaDeMatriculaRemota(matricula: string): Promise<string | null> {
+  return llamar<string | null>("fn_ventana_de_matricula", { p_matricula: matricula });
+}
+
+/**
  * El uuid del taller a partir de su clave, o `null` si no eligió ninguno.
  *
  * **Tercera vez que este identificador se manda sin traducir.** `TallerBase.id`
