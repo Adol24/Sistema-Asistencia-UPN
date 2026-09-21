@@ -137,9 +137,29 @@ const columnaDe = (encabezado: string[], columna: string): string | undefined =>
 
 export type SemaforoPadron = "listo" | "advertencia" | "error";
 
+/** Una de las seis columnas que el padrón necesita, por su nombre interno. */
+export type ColumnaPadron = (typeof COLUMNAS_PADRON)[number];
+
 export interface FilaPadron {
   n: number;
+  /** Las celdas tal como venían, bajo el encabezado literal del archivo. */
   crudo: Record<string, string>;
+  /**
+   * Las mismas celdas, pero buscadas por el nombre interno de la columna y no
+   * por el que traiga el archivo.
+   *
+   * Existe porque el sinónimo se resolvía aquí dentro y la pantalla lo volvía a
+   * resolver a mano, mal: leía `crudo["avance"]` y un archivo cuyo encabezado
+   * dice «Modulo» —el de la licenciatura modular, que es una hoja entera—
+   * enseñaba la columna del avance en blanco aunque la fila se validara bien.
+   * El mismo agujero dejaba en blanco la matrícula de un archivo con «BOLETA» y
+   * la sede de uno con «UNIDAD», y se llevaba esas columnas vacías al CSV de
+   * errores.
+   *
+   * Resolver el encabezado es trabajo de quien ya leyó el encabezado. La
+   * pantalla pinta lo que hay aquí y no vuelve a adivinar.
+   */
+  datos: Record<ColumnaPadron, string>;
   semaforo: SemaforoPadron;
   motivo: string;
   alumno?: AlumnoPadron | undefined;
@@ -189,9 +209,14 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
 
   return filas.map((base) => {
     const { n, crudo } = base;
-    const error = (motivo: string): FilaPadron => ({ ...base, semaforo: "error", motivo });
-    const celda = (columna: (typeof COLUMNAS_PADRON)[number]) =>
-      crudo[nombreDeColumna[columna]] ?? "";
+    const celda = (columna: ColumnaPadron) => crudo[nombreDeColumna[columna]] ?? "";
+    // Se arma una vez y viaja en la fila, incluidas las que mueren con error:
+    // son justo las que hay que poder mirar para saber qué corregir.
+    const datos = Object.fromEntries(COLUMNAS_PADRON.map((c) => [c, celda(c)])) as Record<
+      ColumnaPadron,
+      string
+    >;
+    const error = (motivo: string): FilaPadron => ({ ...base, datos, semaforo: "error", motivo });
 
     const matricula = celda("matricula").trim();
     // El archivo llega con el nombre tal como lo escribió Servicios Escolares
@@ -286,6 +311,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       const pagado = participante && e.estadoDe(participante).evento === "pagado";
       return {
         ...base,
+        datos,
         semaforo: "advertencia",
         motivo: pagado
           ? `Cambia el nombre de "${existente.nombre}" a "${nombre}" y YA PAGÓ: su constancia sale con el nombre nuevo, confírmalo antes de aplicar.`
@@ -296,6 +322,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     if (existente)
       return {
         ...base,
+        datos,
         semaforo: "listo",
         motivo: existente.dia
           ? `Actualiza un registro existente. Conserva su día ${existente.dia}.`
@@ -304,6 +331,7 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       };
     return {
       ...base,
+      datos,
       semaforo: "advertencia",
       motivo: "Alta nueva. Queda sin día asignado hasta que se reparta.",
       alumno,

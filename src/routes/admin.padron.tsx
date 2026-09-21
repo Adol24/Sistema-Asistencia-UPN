@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { usePaginacion } from "@/lib/paginacion";
-import { SemaforoFilaBadge } from "@/components/estado-badges";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -667,7 +666,7 @@ function ImportacionPadron() {
                     ["fila", ...COLUMNAS_PADRON, "motivo"],
                     filas
                       .filter((f) => f.semaforo === "error")
-                      .map((f) => [f.n, ...COLUMNAS_PADRON.map((c) => f.crudo[c] ?? ""), f.motivo]),
+                      .map((f) => [f.n, ...COLUMNAS_PADRON.map((c) => f.datos[c]), f.motivo]),
                   )
                 }
               >
@@ -687,20 +686,18 @@ function ImportacionPadron() {
             </div>
           </div>
 
+          {/*
+            Sin «Estado», «Día» ni «Resultado».
+            El semáforo y el motivo salían en cada fila y empujaban la tabla a
+            68rem de ancho mínimo: en un monitor normal se leía de lado. El
+            color sigue filtrándose arriba, el conteo está en el aviso y el
+            motivo viaja completo en «Descargar errores». El día nunca fue del
+            archivo —lo reparte la organización más abajo— así que la columna
+            decía «—» en todas las altas.
+          */}
           <Tabla
-            anchoMinimo="68rem"
-            columnas={[
-              "#",
-              "Estado",
-              "Matrícula",
-              "Nombre completo",
-              "Programa",
-              "Avance",
-              "Grupo",
-              "Sede",
-              "Día",
-              "Resultado",
-            ]}
+            anchoMinimo="48rem"
+            columnas={["#", "Matrícula", "Nombre completo", "Programa", "Avance", "Grupo", "Sede"]}
             vacio={
               visibles.length === 0 ? (
                 <span className="text-muted-foreground">Ninguna fila con ese resultado.</span>
@@ -710,21 +707,12 @@ function ImportacionPadron() {
             {tramoPrevio.visibles.map((f) => (
               <Fila key={f.n}>
                 <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
-                <td className="px-3 py-2">
-                  <SemaforoFilaBadge estado={f.semaforo} />
-                </td>
-                <td className="px-3 py-2 font-mono text-xs">{f.crudo["matricula"]}</td>
-                <td className="px-3 py-2">{f.crudo["nombre"]}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{f.crudo["programa"]}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{f.crudo["avance"]}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {f.crudo["grupo"] || "—"}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {f.crudo["sede"] ?? f.crudo["plantel"]}
-                </td>
-                <td className="px-3 py-2">{f.alumno?.dia ?? "—"}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{f.motivo}</td>
+                <td className="px-3 py-2 font-mono text-xs">{f.datos.matricula}</td>
+                <td className="px-3 py-2">{f.datos.nombre}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.programa}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.avance || "—"}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.grupo || "—"}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.sede}</td>
               </Fila>
             ))}
           </Tabla>
