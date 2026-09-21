@@ -160,6 +160,35 @@ Eso incluye a T04, o sea que **el grupo del día 1 del taller de decolonialidad 
 se puede elegir y el del día 2 sí** —T12 nació activo—. Los 35 lugares del
 jueves están ahí pero nadie los ve.
 
+### La 46 tampoco se puede comprobar desde el comprobante
+
+Igual que la 37, y por la misma clase de motivo: `bun run verificar-conexion`
+pregunta con la clave publicable, y la pertenencia a una publicación se lee de
+`pg_publication_tables`, que no se expone por PostgREST.
+
+**Abrir la escucha no lo comprueba.** Se probó: suscribirse a
+`ventanas_preregistro` —que a propósito NO está publicada— devuelve
+`SUBSCRIBED` igual que `participantes`. El canal se abre y luego no llega
+nada, que es exactamente el fallo que esta migración viene a arreglar, así que
+esa señal no distingue las dos situaciones.
+
+Para verlo de verdad, en el editor SQL del proyecto:
+
+```sql
+select tablename
+  from pg_publication_tables
+ where pubname = 'supabase_realtime'
+ order by tablename;
+```
+
+Deben salir 17, y entre ellas `bitacora`, `niveles_academicos`, `planteles` y
+`programas`. NO debe salir `ventanas_preregistro`.
+
+La prueba práctica, si no se quiere abrir el editor: dos pestañas con sesión de
+administración, una en `/admin/bitacora` y otra en cualquier pantalla que
+escriba —dar de alta un taller, por ejemplo—. La anotación tiene que aparecer
+en la primera sin recargarla.
+
 ### Lo que sigue abierto del pre-registro doble
 
 El alumno **sí** está protegido, y por el esquema y no por la aplicación:
@@ -216,7 +245,7 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### Publicar lo que faltaba de tiempo real (46) — sin aplicar
+### Publicar lo que faltaba de tiempo real (46) — aplicada
 
 La escucha en vivo existe desde la 21 y funciona, pero su lista se armó con las
 pantallas que había entonces. Cuatro tablas que el panel sí lee se quedaron
