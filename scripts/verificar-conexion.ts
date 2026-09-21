@@ -474,6 +474,31 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
     taller_dias: { dia: number }[];
   }[];
 
+  /*
+   * Qué claves faltan, y por qué esto merece decirse aunque no sea una falla.
+   *
+   * El programa oficial trae doce talleres, T01 a T12. Desde el rol anónimo, un
+   * taller APAGADO y uno BORRADO se ven exactamente igual: `talleres_lectura` es
+   * `using (activo or es_interno_activo())`, así que en los dos casos no
+   * aparece. Durante semanas se dio por hecho que T01 a T04 estaban inactivos, y
+   * al mirarlos con permisos resultó que no existían: alguien usó el botón de
+   * eliminar del panel en vez del interruptor.
+   *
+   * Este comprobante no puede distinguirlos —no tiene permisos— pero sí puede
+   * dejar de esconder la pregunta. Enumerar las claves ausentes y decir que la
+   * diferencia no se ve desde aquí es lo único honesto, y es lo que habría
+   * ahorrado el rodeo.
+   */
+  const esperadas = Array.from({ length: 12 }, (_, i) => `T${String(i + 1).padStart(2, "0")}`);
+  const visibles = new Set(activos.map((t) => t.clave));
+  const ausentes = esperadas.filter((c) => !visibles.has(c));
+  if (ausentes.length) {
+    console.log(`       no se ven: ${ausentes.join(", ")} — apagados o borrados, desde el rol`);
+    console.log("       anónimo no se distingue. Con una sesión con permisos:");
+    console.log("         select clave, activo from talleres order by clave;");
+    console.log("       Si no salen ahí tampoco, están borrados y hay que restituirlos.");
+  } else ok("los doce talleres del programa oficial están a la vista");
+
   // Un taller activo que no declara ningún día SÍ es una falla: está a la vista
   // y no se puede elegir desde ningún sitio.
   const huerfanos = activos.filter((t) => t.taller_dias.length === 0);

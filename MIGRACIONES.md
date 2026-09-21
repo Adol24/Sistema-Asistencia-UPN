@@ -125,8 +125,16 @@ Al mirar los talleres para saber si la 36 había corrido salió otra cosa, que n
 es una migración: **T01, T02, T03 y T04 están inactivos** en el proyecto real. La
 política `talleres_lectura` los oculta al anónimo (`using (activo or
 es_interno_activo())`), así que el pre-registro ofrece ocho talleres de los doce.
-Ninguna migración los apaga: se desactivaron desde `/admin/talleres`, y ahí
-mismo se vuelven a encender.
+**Corrección del 2026-09-21: no estaban apagados, estaban BORRADOS.** Al
+mirarlos con permisos, `talleres` tenía ocho filas. Desde el rol anónimo las dos
+cosas se ven igual —`talleres_lectura` es `using (activo or
+es_interno_activo())`, así que ni el apagado ni el inexistente aparecen— y todo
+lo que se dedujo desde fuera encajaba con las dos explicaciones.
+
+`/admin/talleres` tiene un botón de eliminar junto al interruptor de activo.
+Quien quiso apagarlos los borró. Los restituye la **45**
+(`20260921160000_devolver_los_talleres_del_dia_1`), y el comprobante ya enumera
+las claves ausentes diciendo que no puede distinguir un caso del otro.
 
 **Lo que eso deja, contado por días** (lo imprime `verificar-conexion`):
 
