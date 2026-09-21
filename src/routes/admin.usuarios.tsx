@@ -4,7 +4,6 @@ import { Pencil, Plus, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,7 +85,6 @@ function AdminUsuarios() {
       area="admin"
       titulo="Usuarios y roles"
       descripcion="Quien asigna permisos debe saber qué está concediendo."
-      nav={navAdmin}
       acciones={
         <Button className="h-11" onClick={() => setEditando(nuevo())}>
           <Plus className="size-4" /> Nuevo usuario

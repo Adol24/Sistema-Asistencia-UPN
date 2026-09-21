@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Download, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -349,7 +348,6 @@ function Reportes() {
       area="admin"
       titulo="Reportes"
       descripcion="Se calculan del estado de la sesión: lo que registres hoy aparece aquí sin recargar."
-      nav={navAdmin}
       acciones={
         <Button className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})

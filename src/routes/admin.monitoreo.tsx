@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Clock, DoorOpen, Gauge, ShieldAlert, Users } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
 import { EstadoVacio } from "@/components/tipografia";
-import { navAdmin } from "@/components/nav-admin";
 import { Progress } from "@/components/ui/progress";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
@@ -46,7 +45,6 @@ function Monitoreo() {
       area="admin"
       titulo="Monitoreo en vivo"
       descripcion={`Registro de entrada: ${configuracion.registroEntrada}. Si el ritmo no alcanza, hay que abrir otra puerta.`}
-      nav={navAdmin}
       acciones={<RelojEventoControl />}
     >
       <p className="mb-4 text-sm text-muted-foreground">

@@ -19,7 +19,6 @@ import {
   YAxis,
 } from "recharts";
 import { PantallaPanel } from "@/components/layouts";
-import { navAdmin } from "@/components/nav-admin";
 import { Progress } from "@/components/ui/progress";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import {
@@ -159,7 +158,6 @@ function Dashboard() {
       area="admin"
       titulo="Dashboard"
       descripcion={`${configuracion.nombre} · ${configuracion.fechas}`}
-      nav={navAdmin}
       acciones={<RelojEventoControl />}
     >
       {/* Lo que se pregunta cada mañana, arriba de todo */}

@@ -16,7 +16,6 @@ import { soloDigitos } from "@/lib/campos";
 import { useAforo } from "@/lib/cupo";
 import { camposSinGuardar } from "@/lib/escritura-remota";
 import { PantallaPanel } from "@/components/layouts";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,7 +163,6 @@ function Configuracion() {
       area="admin"
       titulo="Configuración del evento"
       descripcion="Estos valores alimentan las pantallas públicas: el cambio se ve sin recargar."
-      nav={navAdmin}
       acciones={
         <Button className="h-11" disabled={!cambios || guardando} onClick={() => void guardar()}>
           <Save className="size-4" /> {guardando ? "Guardando…" : "Guardar cambios"}

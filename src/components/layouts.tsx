@@ -3,7 +3,8 @@ import { CalendarDays, Check, Lock, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
 import { Titulo, Texto, Rotulo } from "@/components/tipografia";
-import { AvisoPrototipo, BotonSalir, Protegido } from "@/components/acceso";
+import { AvisoPrototipo, Protegido } from "@/components/acceso";
+import { ArmazonPanel } from "@/components/armazon-panel";
 import { ENLACE_NAV } from "@/lib/estilos";
 import { PASOS_DEL_FLUJO } from "@/lib/flujo-publico";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -339,40 +340,23 @@ export function PantallaPanel({
   descripcion,
   area,
   acciones,
-  nav,
   children,
 }: {
   titulo: string;
   descripcion?: string;
-  /** Zona interna a la que pertenece la pantalla. Decide quién puede entrar. */
+  /** Zona interna a la que pertenece la pantalla. Decide quién puede entrar
+   *  y, desde el rediseño, también qué barra lateral se dibuja: eran dos
+   *  atributos diciendo lo mismo y uno de los dos podía olvidarse. */
   area: Area;
   acciones?: ReactNode;
-  nav?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <Protegido area={area}>
-      <div className="min-h-svh bg-background">
-        <AvisoPrototipo />
-        {nav ? (
-          <div className="border-b border-border bg-card print:hidden">
-            <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-2">
-              {nav}
-              <BotonSalir className="ml-auto" />
-            </div>
-          </div>
-        ) : null}
-        <main className="mx-auto max-w-6xl px-4 py-8">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-            <div>
-              <Titulo>{titulo}</Titulo>
-              {descripcion ? <Texto className="mt-2">{descripcion}</Texto> : null}
-            </div>
-            {acciones}
-          </div>
-          {children}
-        </main>
-      </div>
+      <AvisoPrototipo />
+      <ArmazonPanel area={area} titulo={titulo} descripcion={descripcion} acciones={acciones}>
+        {children}
+      </ArmazonPanel>
     </Protegido>
   );
 }

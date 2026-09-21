@@ -17,7 +17,6 @@ import {
 import { toast } from "sonner";
 import { Buscador } from "@/components/buscador";
 import { PantallaPanel } from "@/components/layouts";
-import { navAdmin } from "@/components/nav-admin";
 import { EstadoCasoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Campo, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
@@ -182,7 +181,6 @@ function Soporte() {
       area="admin"
       titulo="Casos de soporte"
       descripcion="Contraparte del botón de WhatsApp y de la casilla de nombre incorrecto del pre-registro."
-      nav={navAdmin}
       acciones={
         <Button
           className="h-11"

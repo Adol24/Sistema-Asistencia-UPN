@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
 import { SemaforoFilaBadge } from "@/components/estado-badges";
-import { navFinancieros } from "@/components/nav-financieros";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -67,7 +66,6 @@ function CargaMasiva() {
       area="financieros"
       titulo="Carga masiva de pagos"
       descripcion="Nada cambia de estado hasta que confirmas. Primero revisas, después aplicas."
-      nav={navFinancieros}
       acciones={
         <Button
           variant="outline"

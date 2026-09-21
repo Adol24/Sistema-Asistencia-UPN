@@ -6,7 +6,6 @@ import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
 import { CamaraQR } from "@/components/camara-qr";
 import { buscarEnParticipantes } from "@/lib/busqueda";
-import { navFinancieros } from "@/components/nav-financieros";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -183,7 +182,6 @@ function Ventanilla() {
       area="financieros"
       titulo="Servicios Financieros"
       descripcion="Atiende la fila: busca a la persona y confirma su pago."
-      nav={navFinancieros}
     >
       <form className="flex flex-col gap-3 sm:flex-row" onSubmit={(e) => e.preventDefault()}>
         <Input

@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { usePaginacion } from "@/lib/paginacion";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -264,7 +263,6 @@ function ImportacionPadron() {
       area="admin"
       titulo="Importación del padrón"
       descripcion="Nada cambia hasta que confirmas. Primero revisas la vista previa, después aplicas."
-      nav={navAdmin}
       acciones={
         <Button
           variant="outline"
@@ -573,44 +571,24 @@ function ImportacionPadron() {
         </section>
       ) : null}
 
+      {/*
+       * Aquí vivía un bloque de «columnas requeridas» con la lista de las seis, un
+       * párrafo explicando qué valida cada una y un enlace a un CSV de ejemplo
+       * con siete errores a propósito.
+       *
+       * Tenía sentido cuando el importador exigía el encabezado exacto y había
+       * que decirle a alguien cómo escribirlo. Ya no: el archivo llega de
+       * Servicios Escolares tal como ellos lo generan, con sus propios nombres
+       * de columna, y el importador los reconoce. Quien sube el padrón no
+       * redacta el encabezado y no puede hacer nada con esa lista.
+       *
+       * Y si algo no casa, la vista previa lo dice fila por fila con el valor
+       * que trae y lo que se esperaba, que es cuando la explicación sirve de
+       * algo. Un texto que se lee antes del problema compite con la zona de
+       * soltar el archivo, que es lo único que hay que hacer en esta pantalla.
+       */}
       {!filas && !leyendo ? (
-        <>
-          <ZonaDeArchivo importador={imp} titulo="el padrón de Servicios Escolares" />
-
-          <section className="mt-6 rounded-lg border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Columnas requeridas</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              El padrón actual tiene {padron.length} alumnos. Una matrícula que ya exista se
-              actualiza; una nueva se da de alta. El nombre va completo en una sola columna, y el
-              nivel, el programa y el avance se validan contra el catálogo académico. El{" "}
-              <span className="font-semibold">plantel</span> es dónde estudia, no el lugar del
-              evento: esa la asigna la organización al repartir los días.
-            </p>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {COLUMNAS_PADRON.map((c) => (
-                <li
-                  key={c}
-                  className="rounded-md border border-border bg-muted px-2 py-1 font-mono text-xs"
-                >
-                  {c}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Para probar hay un archivo de ejemplo:{" "}
-              <a
-                href="/ejemplos/padron-mixto.csv"
-                download
-                className="font-semibold text-primary underline"
-              >
-                padron-mixto.csv
-              </a>{" "}
-              — dispara altas nuevas sin día, actualizaciones, un cambio de nombre de alguien que ya
-              pagó y siete errores distintos, incluidos un nivel que no existe, un programa que no
-              es de su nivel y un avance fuera de rango.
-            </p>
-          </section>
-        </>
+        <ZonaDeArchivo importador={imp} titulo="el padrón de Servicios Escolares" />
       ) : null}
 
       {leyendo ? (

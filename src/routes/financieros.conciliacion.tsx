@@ -6,7 +6,6 @@ import { Buscador } from "@/components/buscador";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
 import { Indicador } from "@/components/indicador";
-import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 
@@ -130,7 +129,6 @@ function Conciliacion() {
       area="financieros"
       titulo="Conciliación"
       descripcion="Todo lo de esta pantalla se calcula de los pagos registrados en la sesión."
-      nav={navFinancieros}
       acciones={
         <Button variant="outline" className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar ({filas.length})

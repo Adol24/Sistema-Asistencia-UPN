@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Search, SearchX, UserRound } from "lucide-react";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
-import { navFinancieros } from "@/components/nav-financieros";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import type { Participante } from "@/dominio/tipos";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
@@ -41,7 +40,6 @@ function SinParticipante() {
       area="financieros"
       titulo="Ficha del participante"
       descripcion="Primero busca a la persona por folio, matrícula o nombre."
-      nav={navFinancieros}
     >
       <EstadoVacio icono={<Search className="size-8" aria-hidden />} titulo="Nadie seleccionado">
         Vuelve a la búsqueda y elige a quién quieres atender.
@@ -66,7 +64,6 @@ function FichaDe({ p }: { p: Participante }) {
       area="financieros"
       titulo="Ficha del participante"
       descripcion="Consulta los montos que el sistema espera y los pagos ya registrados."
-      nav={navFinancieros}
       acciones={
         <Link
           to="/financieros"

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Buscador } from "@/components/buscador";
 import { Campo, Rotulo } from "@/components/tipografia";
-import { navAdmin } from "@/components/nav-admin";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -173,7 +172,6 @@ function Elegibles() {
       area="admin"
       titulo="Listado de elegibles"
       descripcion="El sistema no genera las constancias: calcula quién cumple y entrega el listado a quien las elabora."
-      nav={navAdmin}
       acciones={
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="h-11" onClick={() => exportarEvento(false)}>

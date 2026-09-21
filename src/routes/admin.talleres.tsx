@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +58,6 @@ function AdminTalleres() {
       area="admin"
       titulo="Talleres"
       descripcion="El cupo ocupado se calcula de las inscripciones; no se edita a mano."
-      nav={navAdmin}
       acciones={
         <Button className="h-11" onClick={() => setEditando(nuevo())}>
           <Plus className="size-4" /> Nuevo taller

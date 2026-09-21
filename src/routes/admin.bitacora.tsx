@@ -6,7 +6,6 @@ import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
 import { Buscador } from "@/components/buscador";
 import { Campo } from "@/components/tipografia";
-import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -81,7 +80,6 @@ function Bitacora() {
       area="admin"
       titulo="Bitácora"
       descripcion="Registra lo que ocurre en la sesión, no solo lo histórico. Sin eso no se puede aclarar ninguna inconformidad."
-      nav={navAdmin}
       acciones={
         <Button variant="outline" className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar ({visibles.length})
