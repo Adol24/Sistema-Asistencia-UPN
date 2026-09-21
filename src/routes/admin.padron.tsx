@@ -19,6 +19,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { descargarCsv } from "@/lib/exportar";
 import { analizarPadron, COLUMNAS_PADRON, type FilaPadron } from "@/lib/padron-importacion";
+import { avanceTexto } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -710,7 +711,32 @@ function ImportacionPadron() {
                 <td className="px-3 py-2 font-mono text-xs">{f.datos.matricula}</td>
                 <td className="px-3 py-2">{f.datos.nombre}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.programa}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.avance || "—"}</td>
+                {/*
+                  La palabra va en la celda y no en el encabezado.
+                  Un archivo mixto trae en la misma tabla a la licenciatura
+                  modular y a las que van por semestre —por eso se acepta el
+                  encabezado «semestre/modulo»—, así que un rótulo único
+                  obligaría a decidir cuál de los dos aplica en cada fila. Así
+                  cada fila lo dice sola.
+
+                  La fila válida enseña lo que el sistema entendió, no lo que
+                  venía escrito: eso es lo que se está revisando. «TERCER
+                  SEMESTRE» se lee «Semestre 3», y ahí se ve que el ordinal se
+                  interpretó bien. La que murió con error no tiene nada
+                  interpretado, así que enseña su texto tal cual, que es lo que
+                  hay que corregir.
+                */}
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {(f.alumno &&
+                    avanceTexto(
+                      configuracion.catalogoAcademico,
+                      f.alumno.nivel,
+                      f.alumno.avance,
+                      f.alumno.programa,
+                    )) ||
+                    f.datos.avance ||
+                    "—"}
+                </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.grupo || "—"}</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.sede}</td>
               </Fila>
