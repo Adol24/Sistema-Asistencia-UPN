@@ -3,7 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Download, History } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
-import { Fila, Tabla } from "@/components/tabla";
+import { Fila, Paginacion, Tabla } from "@/components/tabla";
+import { usePaginacion } from "@/lib/paginacion";
 import { Buscador } from "@/components/buscador";
 import { Campo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,16 @@ function Bitacora() {
       );
     });
   }, [bitacora, usuario, accion, desde, hasta, q]);
+
+  /*
+   * La bitácora no se poda —no tiene política de borrado— así que se lee con
+   * tope de 500 y aun así son cincuenta páginas. Se pagina de veinte y no de
+   * diez como el padrón: aquí cada fila es un renglón corto que se recorre con
+   * la vista, no una persona sobre la que se decide algo.
+   *
+   * Vuelve a la página 1 al tocar cualquier filtro, porque es otra lista.
+   */
+  const tramo = usePaginacion(visibles, 20, `${usuario}|${accion}|${desde}|${hasta}|${q}`);
 
   const deLaSesion = bitacora.filter((b) => b.deLaSesion).length;
 
@@ -183,7 +194,7 @@ function Bitacora() {
           ) : null
         }
       >
-        {visibles.map((b) => (
+        {tramo.visibles.map((b) => (
           <Fila key={b.id} className={cn(b.deLaSesion && "bg-secondary/40")}>
             <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{b.fecha}</td>
             <td className="px-3 py-2">{b.usuario}</td>
@@ -204,6 +215,10 @@ function Bitacora() {
           </Fila>
         ))}
       </Tabla>
+      <Paginacion
+        tramo={tramo}
+        nota="Exportar se lleva las que pasan el filtro, no solo esta página."
+      />
     </PantallaPanel>
   );
 }

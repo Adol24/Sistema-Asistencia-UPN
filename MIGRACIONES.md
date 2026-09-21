@@ -216,6 +216,36 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
+### Publicar lo que faltaba de tiempo real (46) — sin aplicar
+
+La escucha en vivo existe desde la 21 y funciona, pero su lista se armó con las
+pantallas que había entonces. Cuatro tablas que el panel sí lee se quedaron
+fuera, y su ausencia no se nota: la pantalla no dice «esto está viejo», enseña
+lo de antes y ya.
+
+- **`bitacora`.** La pantalla que la consulta acaba de empezar a leerla de la
+  base. Sin publicarla, la anotación de OTRA persona —el cobro de la ventanilla
+  de al lado— no aparece hasta recargar. Un registro de auditoría que llega
+  tarde se consulta tarde.
+- **`niveles_academicos` y `programas`.** El catálogo contra el que se valida el
+  padrón. Quien da de alta un programa lo ve al instante; quien está importando
+  en otra máquina sigue con el catálogo viejo y su archivo se rechaza entero con
+  «programa desconocido» por un programa que ya existe. Ese error no se parece
+  en nada a su causa.
+- **`planteles`.** Las sedes, que el padrón también valida. Mismo caso y mismo
+  mensaje engañoso.
+
+No publica `ventanas_preregistro` ni `ventana_cohortes`: existen pero ningún
+cliente las lee —la regla la aplica un disparador— y publicar una tabla que
+nadie escucha solo cuesta WAL.
+
+Es idempotente: comprueba `pg_publication_tables` antes de añadir cada una,
+igual que la 21, así que volver a correrla es inofensivo.
+
+No cambia la seguridad. Realtime evalúa las políticas de fila de quien escucha
+antes de entregarle nada, así que a un capturista no le llega una anotación de
+la bitácora aunque la tabla esté publicada.
+
 ### El avance lo manda el programa (43)
 
 Va después de las dos del aforo, pero no depende de ellas: toca `programas` y

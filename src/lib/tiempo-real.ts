@@ -24,7 +24,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 /**
  * Las tablas que se escuchan.
  *
- * Es la misma lista que publica la migración `20260910140000_tiempo_real.sql`.
+ * Es la misma lista que publican `20260910140000_tiempo_real.sql` y
+ * `20260921180000_publicar_lo_que_faltaba.sql`.
  * Si aquí sobra una que allá no está, esta pantalla nunca se entera de sus
  * cambios y nada lo delata, así que las dos listas se mantienen juntas a
  * propósito.
@@ -43,6 +44,16 @@ const TABLAS = [
   "dias_evento",
   "usuarios_internos",
   "casos_soporte",
+  // La bitácora: una anotación de OTRA persona —el cobro de la ventanilla de
+  // al lado— no aparecía hasta recargar, y un registro de auditoría que llega
+  // tarde se consulta tarde.
+  "bitacora",
+  // El catálogo contra el que se valida el padrón. Sin esto, quien importa en
+  // otra máquina sigue con el catálogo viejo y su archivo se rechaza entero
+  // con «programa desconocido» por un programa dado de alta hace un minuto.
+  "niveles_academicos",
+  "programas",
+  "planteles",
 ] as const;
 
 /**
