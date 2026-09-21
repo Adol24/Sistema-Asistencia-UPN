@@ -24,11 +24,26 @@
 -- nueve, dentro de un año nadie sabría cuál de ellos es el raro.
 -- =============================================================================
 
+-- `if not exists` para poder correrla dos veces sin que se caiga en la primera
+-- sentencia. Es el mismo cuidado que tomó la 42 con `dias_evento.cupo`, y aquí
+-- importa igual: estas migraciones se aplican a mano desde el editor SQL, donde
+-- no hay nada que lleve la cuenta de cuáles ya corrieron.
 alter table programas
-  add column etiqueta_avance text
-    check (etiqueta_avance is null or length(trim(etiqueta_avance)) > 0),
-  add column total_avance smallint
-    check (total_avance is null or total_avance >= 1);
+  add column if not exists etiqueta_avance text,
+  add column if not exists total_avance smallint;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'chk_etiqueta_avance_programa') then
+    alter table programas add constraint chk_etiqueta_avance_programa
+      check (etiqueta_avance is null or length(trim(etiqueta_avance)) > 0);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'chk_total_avance_programa') then
+    alter table programas add constraint chk_total_avance_programa
+      check (total_avance is null or total_avance >= 1);
+  end if;
+end;
+$$;
 
 comment on column programas.etiqueta_avance is
   'NULL = se cuenta como diga su nivel. Solo se llena cuando el programa es la excepción.';

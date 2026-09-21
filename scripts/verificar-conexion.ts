@@ -302,6 +302,68 @@ console.log("\n=== LAS SEDES Y SU AFORO ===\n");
   }
 }
 
+// ------------------------------------------- cómo se cuenta el avance ---
+console.log("\n=== CÓMO SE CUENTA EL AVANCE ===\n");
+
+/*
+ * La 43 sí se puede comprobar desde aquí, y no es casualidad.
+ *
+ * `programas` está abierta al anónimo (`programas_lectura using (true)`), así
+ * que sus columnas nuevas se ven. Es la diferencia con la 37, que solo cambió
+ * el cuerpo de una función cerrada y por eso no hay forma de mirarla desde
+ * fuera. Al escribir una migración vale la pena preguntarse esto antes: una que
+ * deja huella en una tabla legible se puede verificar, y una que no, no.
+ */
+{
+  const { data, error } = await sb
+    .from("programas")
+    .select("nombre, etiqueta_avance, total_avance")
+    .order("nombre");
+
+  if (error) falla("no se pudo leer `programas`", error);
+  else {
+    const filas = data as {
+      nombre: string;
+      etiqueta_avance: string | null;
+      total_avance: number | null;
+    }[];
+
+    // Que las columnas existan se nota en que PostgREST no se queja de ellas:
+    // una columna inexistente tumba la consulta entera con 42703.
+    ok(`las columnas de excepción existen en \`programas\` (${filas.length} programas)`);
+
+    const modular = filas.find((p) =>
+      p.nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().includes("INNOVACION PEDAGOGICA"),
+    );
+
+    if (!modular)
+      falla(
+        "no existe la Licenciatura en Educación e Innovación Pedagógica: sin ella no hay excepción que comprobar",
+      );
+    else if (modular.total_avance === 13 && modular.etiqueta_avance === "Módulo")
+      ok(`«${modular.nombre}» se cuenta por módulos hasta 13: la 43 está aplicada`);
+    else
+      falla(
+        `«${modular.nombre}» dice «${modular.etiqueta_avance ?? "lo que diga su nivel"}» hasta ${
+          modular.total_avance ?? "el tope de su nivel"
+        }. Se esperaba Módulo hasta 13: falta la migración 20260921120000 (la 43), o se editó desde el panel.`,
+      );
+
+    // La excepción tiene que ser UNA. Si alguien copió «Módulo 13» al resto de
+    // las licenciaturas, el padrón dejaría entrar un «semestre 12» de Pedagogía
+    // y lo imprimiría en su comprobante.
+    const conExcepcion = filas.filter((p) => p.total_avance !== null || p.etiqueta_avance !== null);
+    if (conExcepcion.length <= 1)
+      ok("ningún otro programa declara excepción: los demás heredan de su nivel");
+    else
+      falla(
+        `${conExcepcion.length} programas declaran su propio avance: ${conExcepcion
+          .map((p) => p.nombre)
+          .join(", ")}. Solo la licenciatura modular debería.`,
+      );
+  }
+}
+
 // ------------------------------------- la estructura de los talleres ---
 console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
 

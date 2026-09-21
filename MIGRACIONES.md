@@ -188,6 +188,17 @@ llama como la LEIP, la migración se detiene diciéndolo. Sin ese freno, un
 renombre dejaría la excepción sin aplicar y el padrón volvería a rechazar 293
 filas sin motivo visible.
 
+**Se puede correr dos veces.** Las columnas entran con `if not exists` y las
+restricciones dentro de un `do $$` que pregunta por `pg_constraint`, igual que
+hizo la 42 con `dias_evento.cupo`. Importa porque estas migraciones se aplican a
+mano desde el editor SQL, donde nada lleva la cuenta de cuáles ya corrieron.
+
+**Y se puede comprobar**, al revés que la 37: `programas` está abierta al
+anónimo, así que `bun run verificar-conexion` mira sus columnas nuevas y dice si
+la excepción está puesta. También avisa si hay **más de un** programa
+declarándola: copiar «Módulo 13» al resto de las licenciaturas dejaría pasar un
+semestre 12 de Pedagogía.
+
 **Los 13 módulos los dijo la organización**, no el archivo: 13 es el valor más
 alto que aparece, que no es lo mismo que el tope del plan. Desde esta migración,
 además, el tope se puede corregir desde `/admin/configuracion` sin otra
