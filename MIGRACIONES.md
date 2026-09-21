@@ -125,7 +125,28 @@ Al mirar los talleres para saber si la 36 había corrido salió otra cosa, que n
 es una migración: **T01, T02, T03 y T04 están inactivos** en el proyecto real. La
 política `talleres_lectura` los oculta al anónimo (`using (activo or
 es_interno_activo())`), así que el pre-registro ofrece ocho talleres de los doce.
-Si no es deliberado, se activan desde `/admin/talleres`.
+Ninguna migración los apaga: se desactivaron desde `/admin/talleres`, y ahí
+mismo se vuelven a encender.
+
+**Lo que eso deja, contado por días** (lo imprime `verificar-conexion`):
+
+```
+día 1: 2 talleres ·  60 lugares para un aforo de 700  [T05 T06]
+día 2: 8 talleres · 280 lugares para un aforo de 700  [T05 T06 T07 T08 T09 T10 T11 T12]
+día 3: 0 talleres ·   0 lugares para un aforo de 600
+```
+
+Los cuatro apagados son los que sostienen el día 1: T01 (habilidades
+emocionales), T02 (humanismo y práctica docente), T03 (emociones y
+responsabilidad docente) y T04 —el grupo del día 1 de decolonialidad, cuyo
+hermano del día 2, T12, sí está activo—. Encenderlos llevaría el día 1 de 60 a
+220 lugares.
+
+El día 3 sin talleres **es de diseño**: ningún taller declara ese día, y la 33
+lo dejó escrito. El día 1 con 60 lugares para 700 personas no lo es
+necesariamente, y por eso se imprime: el reparto de días es ciego a esta cuenta
+—`fn_dia_mas_vacio` reparte por aforo de la sede— y puede mandar a cientos de
+personas a un día donde casi no hay taller que elegir.
 
 Eso incluye a T04, o sea que **el grupo del día 1 del taller de decolonialidad no
 se puede elegir y el del día 2 sí** —T12 nació activo—. Los 35 lugares del

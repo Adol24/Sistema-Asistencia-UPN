@@ -447,6 +447,52 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
   else falla(`T05 y T06 deberían tener dos días cada uno; con dos días hay ${conDosDias}`);
 }
 
+/*
+ * Cuántos talleres puede elegir de verdad quien cae en cada día.
+ *
+ * Esto no se deduce de ninguna migración, y por eso se cuenta aquí: depende de
+ * qué talleres están ACTIVOS —que se cambia desde `/admin/talleres` sin dejar
+ * rastro en las migraciones— cruzado con qué días declara cada uno.
+ *
+ * La cuenta importa porque el reparto de días es ciego a ella. `fn_dia_mas_vacio`
+ * reparte por aforo de la sede, así que puede mandar a seiscientas personas a un
+ * día donde solo hay sesenta lugares de taller. Nadie se entera hasta que el
+ * alumno abre el desplegable y lo ve medio vacío.
+ *
+ * No es una falla: cuántos talleres se imparten cada día lo decide la
+ * organización. Se imprime para que sea una decisión con los números delante.
+ */
+{
+  const { data: talleres } = await sb
+    .from("talleres")
+    .select("clave, cupo_total, taller_dias ( dia )");
+  const { data: diasEvento } = await sb.from("dias_evento").select("dia, cupo").order("dia");
+
+  const activos = (talleres ?? []) as {
+    clave: string;
+    cupo_total: number;
+    taller_dias: { dia: number }[];
+  }[];
+
+  // Un taller activo que no declara ningún día SÍ es una falla: está a la vista
+  // y no se puede elegir desde ningún sitio.
+  const huerfanos = activos.filter((t) => t.taller_dias.length === 0);
+  if (huerfanos.length)
+    falla(
+      `${huerfanos.map((t) => t.clave).join(", ")} están activos pero no declaran día: nadie puede elegirlos`,
+    );
+
+  for (const d of (diasEvento ?? []) as { dia: number; cupo: number }[]) {
+    const suyos = activos.filter((t) => t.taller_dias.some((x) => x.dia === d.dia));
+    const lugares = suyos.reduce((n, t) => n + t.cupo_total, 0);
+    const detalle = suyos.length ? ` [${suyos.map((t) => t.clave).join(" ")}]` : "";
+    console.log(
+      `       día ${d.dia}: ${suyos.length} talleres · ${lugares} lugares para un aforo de ${d.cupo}${detalle}`,
+    );
+  }
+  ok("así se ve el catálogo de talleres desde el pre-registro");
+}
+
 // ------------------------------------- un solo pre-registro por persona ---
 console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
 
@@ -643,11 +689,27 @@ console.log("\n=== AVISO DE PRIVACIDAD ===\n");
 // --------------------------------------------------------------- vistas ---
 console.log("\n=== VISTAS ===\n");
 
+/*
+ * `count: "exact"` da el total; `.limit(1)` evita traerse las filas.
+ *
+ * Antes esto hacía `.limit(5)` y luego imprimía cuántas habían llegado, así que
+ * cualquier vista con datos decía «5 filas visibles» dijera lo que dijera la
+ * base. Ya hizo perder un rato: se leyó ese 5 como el número de talleres
+ * activos —son 8— y se salió a buscar tres talleres que no faltaban. Un número
+ * que siempre sale igual no informa de nada, y encima miente con aspecto de
+ * dato.
+ *
+ * Lo que NO se puede usar aquí es `head: true`, aunque sea lo que pide el
+ * cuerpo: sin cuerpo en la respuesta, el cliente no puede leer el código del
+ * error, y las tres vistas cerradas pasan de «cerrada al anónimo (42501)» a un
+ * error vacío indistinguible de una vista rota. Se pagan unas filas de más a
+ * cambio de poder distinguir las dos cosas.
+ */
 for (const vista of ["v_talleres", "v_estado_pago", "v_elegibles", "v_reparto_dias"] as const) {
-  const { data, error } = await sb.from(vista).select("*").limit(5);
+  const { count, error } = await sb.from(vista).select("*", { count: "exact" }).limit(1);
   if (error && error.code === "42501") ok(`${vista.padEnd(22)} existe y está cerrada al anónimo`);
   else if (error) falla(`${vista}`, error);
-  else ok(`${vista.padEnd(22)} ${data?.length ?? 0} filas visibles`);
+  else ok(`${vista.padEnd(22)} ${count ?? 0} filas visibles`);
 }
 
 console.log(fallas === 0 ? "\nLA CONEXIÓN FUNCIONA" : `\n${fallas} PROBLEMAS`);
