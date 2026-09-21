@@ -486,11 +486,13 @@ console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
    * primera —«ese correo ya está registrado como alumno»— no se puede probar
    * desde aquí sin conocer el correo de un alumno real, y no se va a adivinar.
    *
-   * La segunda sí, y además es la que de verdad cierra el hueco: rechaza los
-   * correos del dominio de alumnos, que es lo único que caza a quien todavía no
-   * se ha pre-registrado. Depende de un campo del panel, así que puede estar
-   * apagada sin que nadie lo note. Eso es exactamente lo que un comprobante
-   * tiene que decir en voz alta.
+   * La segunda depende de `dominio_institucional`, y en ESTA universidad ese
+   * campo se queda vacío: nadie tiene cuenta institucional, ni alumnos ni
+   * docentes. Así que la regla está apagada por decisión, no por descuido.
+   *
+   * Lo que se comprueba, entonces, cambia según el caso: con el campo vacío, que
+   * siga vacío y que quede dicho qué queda al descubierto; con el campo lleno,
+   * que la regla de verdad muerda.
    */
   const { data: cfg } = await sb
     .from("configuracion_evento")
@@ -502,11 +504,29 @@ console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
   ).trim();
 
   if (!dominio) {
-    falla(
-      "`dominio_institucional` está vacío: un alumno que no se haya pre-registrado todavía " +
-        "puede entrar por /registro como externo y nada lo detecta",
-    );
-    console.log("       se llena en /admin/configuracion; sin él la regla de la 40 está dormida");
+    /*
+     * Vacío es LO CORRECTO en esta universidad, y por eso esto no es una falla.
+     *
+     * Aquí ni los alumnos ni los docentes tienen cuenta institucional: cada
+     * quien se registra con el correo que usa. El campo es un interruptor con
+     * dos filos —al alumno le EXIGE ese dominio y al externo se lo PROHÍBE—, así
+     * que llenarlo cerraría el hueco del duplicado a cambio de dejar fuera del
+     * evento a todo el que tenga gmail. Ya pasó una vez: la base venía sembrada
+     * con `alumnos.universidad.mx` y ningún alumno podía pre-registrarse, hasta
+     * que la migración 20260910180000 lo vació.
+     *
+     * Esto salía en rojo y no había nada que arreglar. Un comprobante que avisa
+     * de algo que está bien acaba enseñando a ignorarlo, y entonces deja de
+     * servir el día que avisa de algo que está mal —es la misma lección que ya
+     * costó la falla de `fn_buscar_en_padron`, cincuenta líneas más arriba—.
+     */
+    ok("`dominio_institucional` vacío: cada quien se registra con el correo que usa");
+    console.log("       es deliberado, no un pendiente: aquí nadie tiene cuenta institucional.");
+    console.log("       La segunda regla de la 40 queda dormida a propósito, y el hueco que");
+    console.log("       deja es acotado: el alumno que NUNCA se pre-registró puede sacar un");
+    console.log("       segundo folio como externo. La primera regla sí actúa —si ya tiene");
+    console.log("       folio, su correo lo delata— y un duplicado se limpia; alguien que no");
+    console.log("       puede inscribirse, no.");
   } else {
     const { error: eDominio } = await sb.rpc("fn_preregistrar_externo", {
       p_perfil: "docente",

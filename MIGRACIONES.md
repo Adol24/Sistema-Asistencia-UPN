@@ -38,8 +38,7 @@ No había duplicados previos: si los hubiera, la migración se habría detenido
 enumerándolos en vez de aplicarse.
 
 **La 40, la 41, la 42 y la 43 también**, el 2026-09-21, en ese orden. El
-comprobante pasó de seis fallas a una, y la que queda no es de ninguna
-migración: `dominio_institucional` sigue vacío y se llena desde el panel.
+comprobante termina en **LA CONEXIÓN FUNCIONA**, sin fallas.
 
 ```
 OK     día 1: «Salón SUTERM»        OK  día 1: aforo 700
@@ -49,6 +48,37 @@ OK     dias_evento.puntos sembrado: 2 días con la puerta de SUTERM
 OK     «Licenciatura en Educación e Innovación Pedagógica» se cuenta por módulos hasta 13
 OK     ningún otro programa declara excepción: los demás heredan de su nivel
 ```
+
+### El dominio institucional se queda vacío, y es una decisión
+
+`configuracion_evento.dominio_institucional` **no es un pendiente**. En la UPN
+212 **nadie tiene cuenta institucional** —ni alumnos ni docentes—: cada quien se
+registra con el correo que usa. Dicho por la organización el 2026-09-21.
+
+Conviene saber por qué no se llena «por si acaso», porque el campo parece
+inofensivo y no lo es. Es **un interruptor con dos filos opuestos**:
+
+| Quién se registra | Qué hace el dominio si se llena |
+| --- | --- |
+| Alumno (`fn_preregistrar_alumno`) | **Le exige** ese correo. Con gmail, lo rechaza. |
+| Docente o externo (`fn_preregistrar_externo`) | **Le prohíbe** ese correo: «entra como alumno». |
+
+Llenarlo cerraría el hueco del duplicado a cambio de dejar fuera del evento a
+todo el que no tenga esa cuenta. **Ya pasó una vez**: la base vino sembrada con
+`alumnos.universidad.mx`, un dominio inventado, y ningún alumno podía
+pre-registrarse hasta que la 22 —`20260910180000_correo_personal_del_alumno`— lo
+vació.
+
+Lo que queda al descubierto, y se acepta: **el alumno que NUNCA se pre-registró**
+puede sacar un segundo folio por `/registro` como externo. La primera regla de la
+40 sí actúa —si ya tiene folio, su correo lo delata—, y el padrón guarda
+matrícula y nombre pero no correo, así que no hay con qué comparar a quien aún
+no existe en `participantes`. Un duplicado se limpia; alguien que no puede
+inscribirse, no.
+
+El comprobante ya no lo marca en rojo. Lo dice en verde y enumera lo que queda
+abierto, que es lo honesto: avisar de algo que está bien enseña a ignorar los
+avisos.
 
 **De la 40 no hay prueba directa**, y conviene decirlo: solo reemplaza el cuerpo
 de `fn_preregistrar_externo` sin cambiar su firma, y esa función está cerrada al
