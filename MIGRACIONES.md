@@ -37,29 +37,30 @@ select indexdef from pg_indexes where indexname = 'uq_participante_sin_matricula
 No había duplicados previos: si los hubiera, la migración se habría detenido
 enumerándolos en vez de aplicarse.
 
-**Pendiente: la 40** —`20260917160000_un_alumno_no_es_externo`—, que le cierra el
-formulario de externo a un alumno. Ver abajo, e **importante**: trae dos reglas y
-una de las dos está dormida hasta que se llene un campo del panel.
-
-**Pendiente también la 43** —`20260921120000_el_avance_lo_manda_el_programa`—,
-que es la que permite cargar el padrón real. Ver abajo: sin ella, las 293 filas
-de la hoja «MÓDULO 13» se rechazan una por una.
-
-**Pendientes también la 41 y la 42**, las dos del aforo. El comprobante ya
-pregunta por ellas y hoy contesta exactamente lo que se espera de una base sin
-aplicarlas:
+**La 40, la 41, la 42 y la 43 también**, el 2026-09-21, en ese orden. El
+comprobante pasó de seis fallas a una, y la que queda no es de ninguna
+migración: `dominio_institucional` sigue vacío y se llena desde el panel.
 
 ```
-FALLA  día 2: la sede dice «Centro de convenciones Teziutlán». Se esperaba el salón SUTERM
-FALLA  día 3: la sede dice «Centro de convenciones Teziutlán». Se esperaba el Teatro Victoria
-FALLA  dias_evento.cupo no existe: falta la migración 20260919140000 (la 42)
-FALLA  v_cupo_dia no existe: falta la migración 20260919140000 (la 42)
+OK     día 1: «Salón SUTERM»        OK  día 1: aforo 700
+OK     día 2: «Salón SUTERM»        OK  día 2: aforo 700
+OK     día 3: «Teatro Victoria»      OK  día 3: aforo 600
+OK     dias_evento.puntos sembrado: 2 días con la puerta de SUTERM
+OK     «Licenciatura en Educación e Innovación Pedagógica» se cuenta por módulos hasta 13
+OK     ningún otro programa declara excepción: los demás heredan de su nivel
 ```
 
-La 41 **además arregla una falla que ya venía saliendo**: la de los puntos de
-captura. El comprobante espera dos días con la puerta de SUTERM y encuentra uno,
-porque la 35 vació los del día 2 al creer que ese día cambiaba de sede. Como no
-cambia, vuelven.
+**De la 40 no hay prueba directa**, y conviene decirlo: solo reemplaza el cuerpo
+de `fn_preregistrar_externo` sin cambiar su firma, y esa función está cerrada al
+anónimo. Es el mismo punto ciego que la 37. Se corrió igual porque volver a
+correrla es inofensivo, que sale más barato que la duda. Su segunda regla
+—la que caza al alumno que nunca se pre-registró— **sigue dormida** hasta que se
+llene `dominio_institucional`.
+
+La 41 arregló de paso una falla que ya venía saliendo: la de los puntos de
+captura del día 2, que la 35 había vaciado al creer que ese día cambiaba de
+sede. El día 3 sigue sin puntos a propósito: el Teatro Victoria es otra sede y
+aún no sabemos cómo se llaman sus accesos.
 
 De la 38 se comprueban cuatro cosas y las cuatro contestan: las dos altas exigen
 `p_acepto_aviso`, y las dos firmas viejas —las que dejarían registrarse sin
@@ -156,7 +157,7 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### El avance lo manda el programa (43) — sin aplicar
+### El avance lo manda el programa (43)
 
 Va después de las dos del aforo, pero no depende de ellas: toca `programas` y
 `padron_alumnos`, que las otras no tocan.
@@ -204,7 +205,7 @@ alto que aparece, que no es lo mismo que el tope del plan. Desde esta migración
 además, el tope se puede corregir desde `/admin/configuracion` sin otra
 migración.
 
-### El aforo de cada sede (41 y 42) — sin aplicar
+### El aforo de cada sede (41 y 42)
 
 Van juntas y en ese orden: la 41 dice **dónde** es cada día y la 42 dice
 **cuánta gente cabe** ahí. Separarlas es a propósito —la sede es un dato y el
