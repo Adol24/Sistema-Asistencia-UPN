@@ -280,6 +280,30 @@ function ImportacionPadron() {
           ? ` A ${r.talleresLiberados} se les liberó el taller porque no se imparte ese día.`
           : ""),
     );
+
+    /*
+     * Sobrepasar el aforo al repartir se PERMITE, y por eso hay que decirlo.
+     *
+     * El padrón es un plan sobre gente que todavía no se ha inscrito y que en
+     * buena parte no lo hará, así que planear 800 para un día de 700 puede ser
+     * deliberado. Lo que no puede es pasar inadvertido: si se inscriben más de
+     * los que caben, los últimos se encuentran la puerta cerrada DESPUÉS de que
+     * se les dijera qué día les tocaba.
+     *
+     * El aviso sale después del éxito y en ámbar, no en rojo: no ha fallado
+     * nada, y tratarlo como un error enseñaría a ignorarlo.
+     */
+    const despues = repartoPorDia().find((x) => x.dia === dia);
+    if (despues && despues.cupo > 0 && despues.total > despues.cupo)
+      toast.warning(
+        `El día ${dia} queda con ${despues.total} alumnos planeados y caben ${despues.cupo}.`,
+        {
+          description:
+            "Se permite: el lugar lo ocupa quien se pre-registra, no quien está en el padrón. " +
+            `Pero si se inscriben más de ${despues.cupo}, a los últimos se les rechazará el alta.`,
+          duration: 10000,
+        },
+      );
   };
 
   /**
@@ -484,11 +508,24 @@ function ImportacionPadron() {
                       <p
                         className={cn(
                           "text-xs",
-                          rebasado ? "font-semibold text-destructive" : "text-muted-foreground",
+                          rebasado
+                            ? "font-semibold text-estado-discrepancia"
+                            : "text-muted-foreground",
                         )}
                       >
+                        {/*
+                         * Ámbar y no rojo, y «por encima del aforo» y no «no van a
+                         * caber».
+                         *
+                         * Planear más alumnos de los que caben está permitido y
+                         * puede ser deliberado: el padrón es una previsión sobre
+                         * gente que aún no se inscribe y que en buena parte no lo
+                         * hará. Lo que de verdad ocurre no es que no quepan —la
+                         * mayoría ni aparecerá— sino que si se inscriben todos,
+                         * a los últimos se les rechaza. Eso es lo que dice ahora.
+                         */}
                         {rebasado
-                          ? `${total - cupo} de más: no van a caber`
+                          ? `${total - cupo} por encima del aforo`
                           : `${libres} lugares libres`}
                       </p>
                     ) : null}

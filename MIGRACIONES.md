@@ -386,12 +386,18 @@ sirve. Un pre-registro `expirado` sigue ocupando: ese estado lo deriva el reloj,
 los lugares no deben devolverse solos a las 18:00 del 9 de octubre sin que nadie
 lo decida.
 
-El techo va en dos sitios y hacen falta los dos:
+El techo iba en dos sitios:
 
 | Dónde | Contra qué cuenta | Qué pasa al llegar al tope |
 | --- | --- | --- |
 | Pre-registro | `participantes` | Se rechaza el alta |
-| Reparto de días | `padron_alumnos.dia` | No se asigna ese día |
+| Reparto de días | `padron_alumnos.dia` | ~~No se asigna ese día~~ |
+
+**El segundo se retiró en la 47**, y conviene saber por qué: confundía el PLAN
+con la RESERVA. `padron_alumnos.dia` es una intención de la universidad sobre
+gente que todavía no se inscribe y que en buena parte no lo hará. Con el tope
+ahí, asignar el día 1 a los 800 alumnos de una zona era imposible aunque se
+supiera que solo van a inscribirse unos quinientos. Ver abajo.
 
 Con solo el primero, Servicios Escolares podría repartir 900 alumnos al día 3 y
 el sistema lo dejaría: los primeros 600 entrarían bien y los otros 300 rebotarían
