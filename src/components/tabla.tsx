@@ -1,4 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { Tramo } from "@/lib/paginacion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,5 +82,50 @@ export function Fila({ className, children, ...resto }: ComponentProps<"tr">) {
     <tr {...resto} className={cn("border-b border-border last:border-0", className)}>
       {children}
     </tr>
+  );
+}
+
+/**
+ * El pie de una tabla paginada: dónde se está y cómo pasar de página.
+ *
+ * Siempre dice el total, incluso cuando cabe en una sola página y los botones
+ * sobran. Una tabla recortada sin decirlo se lee como «no hay más», y en el
+ * padrón eso significaría dar por visto a quien nunca se pintó.
+ *
+ * @param nota Lo que esta pantalla necesita aclarar sobre el recorte —a qué
+ *   se aplican los botones de arriba, qué se lleva la exportación—. Va detrás
+ *   del conteo porque primero se mira cuántos hay.
+ */
+export function Paginacion<T>({ tramo, nota }: { tramo: Tramo<T>; nota?: ReactNode }) {
+  if (tramo.total === 0) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-muted-foreground">
+        Mostrando {tramo.desde + 1}–{tramo.hasta} de {tramo.total}.{nota ? <> {nota}</> : null}
+      </p>
+      {tramo.totalPaginas > 1 ? (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            className="h-10"
+            disabled={tramo.pagina === 1}
+            onClick={() => tramo.irA(tramo.pagina - 1)}
+          >
+            <ChevronLeft className="size-4" /> Anterior
+          </Button>
+          <span className="px-2 text-sm text-muted-foreground">
+            Página {tramo.pagina} de {tramo.totalPaginas}
+          </span>
+          <Button
+            variant="outline"
+            className="h-10"
+            disabled={tramo.pagina === tramo.totalPaginas}
+            onClick={() => tramo.irA(tramo.pagina + 1)}
+          >
+            Siguiente <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }

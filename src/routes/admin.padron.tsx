@@ -7,7 +7,8 @@ import type { OrigenTabla } from "@/lib/csv";
 import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
-import { Fila, Tabla } from "@/components/tabla";
+import { Fila, Paginacion, Tabla } from "@/components/tabla";
+import { usePaginacion } from "@/lib/paginacion";
 import { SemaforoFilaBadge } from "@/components/estado-badges";
 import { navAdmin } from "@/components/nav-admin";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,17 @@ import { analizarPadron, COLUMNAS_PADRON, type FilaPadron } from "@/lib/padron-i
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
-/** Cuántas filas del padrón se pintan de una vez. Ver el aviso del final. */
-const TOPE_LISTA = 100;
+/**
+ * Cuántas filas se pintan por página, en las dos tablas de esta pantalla.
+ *
+ * Antes la vista previa las pintaba todas —un padrón de Servicios Escolares
+ * trae miles— y la lista del reparto cortaba en las primeras cien con un
+ * aviso, así que a quien estuviera en el alumno 101 no había forma de llegar
+ * salvo acotando los filtros hasta dar con él. Diez por página es lo que se
+ * abarca de una mirada sin desplazar la pantalla, y ahora no queda nadie
+ * fuera: están todos, repartidos.
+ */
+const POR_PAGINA = 10;
 
 export const Route = createFileRoute("/admin/padron")({
   head: () =>
@@ -76,7 +86,17 @@ function ImportacionPadron() {
     [padron, participantes, configuracion.catalogoAcademico, sedes, estadoDe],
   );
   const imp = useImportador<FilaPadron>(analizar);
-  const { filas, leyendo, archivo, confirmando, aplicando, resumen, visibles } = imp;
+  const { filas, leyendo, archivo, confirmando, aplicando, resumen, visibles, filtro, hoja } = imp;
+  /*
+   * La vista previa se pagina, y vuelve al principio al cambiar de semáforo,
+   * de pestaña o de archivo: ahí sí se está mirando otra lista. Pulsar «error»
+   * y caer en la página 7 de las tres que hay sería empezar por el final.
+   */
+  const tramoPrevio = usePaginacion(
+    visibles,
+    POR_PAGINA,
+    `${filtro}|${archivo ?? ""}|${hoja ?? ""}`,
+  );
   const pendientes = sinDiaAsignado();
 
   const altasNuevas = useMemo(
@@ -183,6 +203,17 @@ function ImportacionPadron() {
           (a.grupo ?? "").toLowerCase().includes(t)),
     );
   }, [padron, fSede, fPrograma, fGrupo, fDia, q]);
+
+  /*
+   * Los filtros devuelven a la página 1; reasignarle el día a un alumno no.
+   * Corregir a alguien de la página 9 y aparecer en la 1 obligaría a volver a
+   * bajar por cada corrección, que es justo lo que se está haciendo aquí.
+   */
+  const tramoReparto = usePaginacion(
+    seleccion,
+    POR_PAGINA,
+    `${fSede}|${fPrograma}|${fGrupo}|${fDia}|${q}`,
+  );
 
   const asignarASeleccion = (dia: 1 | 2 | 3) => {
     const r = asignarDiaAVarios(
@@ -488,7 +519,7 @@ function ImportacionPadron() {
           {seleccion.length > 0 ? (
             <div className="mt-4">
               <Tabla anchoMinimo="40rem" columnas={["Alumno", "Grupo · sede", "Día", "Cambiar a"]}>
-                {seleccion.slice(0, TOPE_LISTA).map((a) => (
+                {tramoReparto.visibles.map((a) => (
                   <Fila key={a.matricula} className="align-middle">
                     <td className="px-3 py-2">
                       <span className="font-semibold">{a.nombre}</span>
@@ -533,17 +564,10 @@ function ImportacionPadron() {
                   </Fila>
                 ))}
               </Tabla>
-              {/*
-                El tope se anuncia en vez de recortar en silencio: una lista
-                truncada sin aviso se lee como «no hay más», y aquí eso
-                significaría dar por asignado a quien nadie llegó a ver.
-              */}
-              {seleccion.length > TOPE_LISTA ? (
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Se muestran {TOPE_LISTA} de {seleccion.length}. Acota con los filtros o el
-                  buscador; los botones de arriba sí aplican a los {seleccion.length}.
-                </p>
-              ) : null}
+              <Paginacion
+                tramo={tramoReparto}
+                nota={`Los botones de asignación de arriba aplican a los ${seleccion.length}, no solo a esta página.`}
+              />
             </div>
           ) : null}
         </section>
@@ -683,7 +707,7 @@ function ImportacionPadron() {
               ) : null
             }
           >
-            {visibles.map((f) => (
+            {tramoPrevio.visibles.map((f) => (
               <Fila key={f.n}>
                 <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
                 <td className="px-3 py-2">
@@ -704,6 +728,10 @@ function ImportacionPadron() {
               </Fila>
             ))}
           </Tabla>
+          <Paginacion
+            tramo={tramoPrevio}
+            nota="Se aplican y se descargan todas las que pasan el filtro, no solo las de esta página."
+          />
         </>
       ) : null}
 
