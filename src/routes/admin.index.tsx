@@ -64,23 +64,6 @@ function Dashboard() {
   const [motivo, setMotivo] = useState("");
 
   /**
-   * Los mismos invariantes de `bun run verificar-mocks`, pero sobre el estado
-   * VIVO. Importar el padrón o editar un taller mueve días e inscripciones, así
-   * que las reglas que se respetan al arrancar pueden romperse en marcha; esto
-   * lo hace visible sin salir del panel.
-   */
-  /*
-   * La comprobación de invariantes se retiró con los datos simulados.
-   *
-   * Verificaba reglas del conjunto de ejemplo —que el cupo de un taller cuadrara
-   * con quién lo eligió, que nadie estuviera inscrito un día que no le tocaba—.
-   * Contra datos reales esas comprobaciones tienen que vivir en la base, como
-   * restricciones, no en una pantalla que solo mira lo que ya está cargado.
-   */
-  const integridad: { detalle: string; invariante?: string }[] = [];
-  const historico: { detalle: string }[] = [];
-
-  /**
    * Las asistencias que quedaron en un día que ya no es el del participante.
    * Se calculan aquí y no se leen de las violaciones porque hace falta el
    * registro completo, no su descripción: sin el id no se puede anular.
@@ -153,6 +136,10 @@ function Dashboard() {
     };
   }, [participantes, estadoDe, asistencias, evidencias, casos, entorno, reloj.dia]);
 
+  // El día que manda es el del reloj, igual que en monitoreo.
+  const hoy = datos.delReloj;
+  const infoHoy = configuracion.dias.find((d) => d.dia === reloj.dia);
+
   return (
     <PantallaPanel
       area="admin"
@@ -169,24 +156,30 @@ function Dashboard() {
           detalle={`de ${participantes.length} pre-registrados`}
           tono={datos.porPagar > 0 ? "alerta" : undefined}
         />
+        {/*
+          Decía «hoy» y enseñaba siempre el día 1.
+          Leía `asistenciaPorDia[0]`, el primero de la lista, mientras dos
+          líneas más arriba se calculaba `delReloj` —el día que el reloj dice
+          que es— y no se usaba en ninguna parte. El 18 de octubre el tablero
+          daba las cifras del 17 bajo la palabra «hoy», que es la clase de
+          error que nadie comprueba porque el número se ve razonable.
+
+          El tono tampoco era tono: iba fijo en «alerta», así que la casilla
+          salía roja incluso con todos dentro. Ahora se enciende cuando falta
+          alguien, que es cuando significa algo.
+        */}
         <Indicador
           icono={<ScanLine className="size-5" aria-hidden />}
-          etiqueta="Faltan por entrar hoy"
-          valor={String(
-            Math.max(
-              0,
-              (datos.asistenciaPorDia[0]?.esperados ?? 0) -
-                (datos.asistenciaPorDia[0]?.entradas ?? 0),
-            ),
-          )}
-          detalle={`Día 1 · ${datos.asistenciaPorDia[0]?.entradas ?? 0} de ${datos.asistenciaPorDia[0]?.esperados ?? 0} dentro`}
-          tono="alerta"
+          etiqueta={`Faltan por entrar el día ${reloj.dia}`}
+          valor={String(Math.max(0, (hoy?.esperados ?? 0) - (hoy?.entradas ?? 0)))}
+          detalle={`${hoy?.entradas ?? 0} de ${hoy?.esperados ?? 0} dentro · ${infoHoy?.lugar ?? ""}`}
+          tono={(hoy?.esperados ?? 0) > (hoy?.entradas ?? 0) ? "alerta" : undefined}
         />
         <Indicador
           icono={<ImageUp className="size-5" aria-hidden />}
           etiqueta="Evidencias revisadas"
           valor={`${datos.revisadas} / ${evidencias.length}`}
-          detalle={`${Math.round((datos.revisadas / Math.max(1, evidencias.length)) * 100)}% de la muestra`}
+          detalle={`${Math.round((datos.revisadas / Math.max(1, evidencias.length)) * 100)}% revisado`}
         />
         <Indicador
           icono={<Award className="size-5" aria-hidden />}
@@ -200,82 +193,84 @@ function Dashboard() {
         />
       </div>
 
-      {historico.length > 0 && integridad.length === 0 ? (
+      {/*
+        Esta alerta estaba muerta, y con ella la única forma de anular.
+        La condición era `historico.length > 0`, y `historico` era un arreglo
+        vacío declarado dos líneas más arriba: quedó así cuando se retiró la
+        comprobación de invariantes junto con los datos simulados. La sección
+        no se pintaba nunca, y dentro vivía el ÚNICO botón que llama a
+        `anularAsistencia` en toda la aplicación —lo comprobé—, así que anular
+        una asistencia que quedó en el día equivocado no se podía hacer desde
+        ninguna pantalla.
+
+        `desfasadas` sí se calculaba de verdad todo este tiempo. Ahora manda
+        ella, que es el dato que la sección enseña.
+
+        Con `historico` se va también el bloque de «reglas de datos rotas», que
+        leía el otro arreglo vacío y además se anunciaba como los invariantes
+        de `verificar-mocks`: un comprobante de los datos de ejemplo, que ya no
+        existen.
+      */}
+      {desfasadas.length > 0 ? (
         <section className="mt-4 rounded-lg border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-4">
           <h2 className="flex items-center gap-2 text-sm font-bold text-estado-discrepancia">
             <ShieldAlert className="size-4" aria-hidden />
-            {historico.length} registro{historico.length === 1 ? "" : "s"} quedaron en un día que ya
-            no corresponde
+            {desfasadas.length} registro{desfasadas.length === 1 ? "" : "s"} quedaron en un día que
+            ya no corresponde
           </h2>
           <p className="mt-1 text-sm text-estado-discrepancia">
-            Alguien cambió de día asignado y sus asistencias o evidencias anteriores siguen en el
-            día viejo. No es un error: la historia no se reescribe. Conviene revisarlo antes de
-            cerrar el evento.
+            Alguien cambió de día asignado y sus asistencias anteriores siguen en el día viejo. No
+            es un error: la historia no se reescribe. Conviene revisarlo antes de cerrar el evento.
           </p>
-          {desfasadas.length > 0 ? (
-            <ul className="mt-3 grid gap-2">
-              {desfasadas.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-3 py-2 text-xs"
-                >
-                  <span>
-                    <span className="font-semibold">{a.nombre}</span> · {a.folio} · {a.tipo} del día{" "}
-                    {a.dia} a las {a.hora}
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · hoy le corresponde el día{" "}
-                      {participantes.find((p) => p.folio === a.folio)?.dia}
-                    </span>
+          <ul className="mt-3 grid gap-2 xl:grid-cols-2">
+            {desfasadas.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-3 py-2 text-xs"
+              >
+                <span>
+                  <span className="font-semibold">{a.nombre}</span> · {a.folio} · {a.tipo} del día{" "}
+                  {a.dia} a las {a.hora}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · hoy le corresponde el día{" "}
+                    {participantes.find((p) => p.folio === a.folio)?.dia}
                   </span>
-                  <Button
-                    variant="outline"
-                    className="h-9"
-                    onClick={() => {
-                      setAnulando(a);
-                      setMotivo("");
-                    }}
-                  >
-                    Anular
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <ul className="mt-2 grid gap-1 text-xs text-estado-discrepancia">
-              {historico.slice(0, 5).map((x, i) => (
-                <li key={i}>{x.detalle}</li>
-              ))}
-              {historico.length > 5 ? <li>… y {historico.length - 5} más</li> : null}
-            </ul>
-          )}
-        </section>
-      ) : null}
-
-      {integridad.length > 0 ? (
-        <section className="mt-4 rounded-lg border-2 border-estado-cancelado/40 bg-estado-cancelado-bg p-4">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-estado-cancelado">
-            <ShieldAlert className="size-4" aria-hidden />
-            {integridad.length} regla{integridad.length === 1 ? "" : "s"} de datos rota
-            {integridad.length === 1 ? "" : "s"} en esta sesión
-          </h2>
-          <p className="mt-1 text-sm text-estado-cancelado">
-            Son los mismos invariantes que valida <code>bun run verificar-mocks</code>, aplicados al
-            estado vivo. Suelen aparecer tras importar el padrón o editar un taller.
-          </p>
-          <ul className="mt-2 grid gap-1 text-xs text-estado-cancelado">
-            {integridad.slice(0, 6).map((x, i) => (
-              <li key={i}>
-                <span className="font-mono font-semibold">[{x.invariante}]</span> {x.detalle}
+                </span>
+                <Button
+                  variant="outline"
+                  className="h-9"
+                  onClick={() => {
+                    setAnulando(a);
+                    setMotivo("");
+                  }}
+                >
+                  Anular
+                </Button>
               </li>
             ))}
-            {integridad.length > 6 ? <li>… y {integridad.length - 6} más</li> : null}
           </ul>
         </section>
       ) : null}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Tarjeta titulo="Pre-registros por perfil" nota="Reparto de los 60 participantes">
+      {/*
+        Tres columnas arriba y el reparto de talleres ocupando dos abajo.
+        Con `lg:grid-cols-2` y cinco tarjetas de alturas muy distintas, cada
+        renglón se estiraba al alto de la más grande y quedaban huecos; con
+        `items-start` no se estiran, y con estas dos anchuras no queda ni una
+        celda vacía en ninguno de los dos tamaños:
+
+          en lg  · perfil | día      ·  embudo | asistencia  ·  talleres (2)
+          en xl  · perfil | día | embudo        ·  asistencia | talleres (2)
+
+        Y el corte también es de sentido: el primer renglón es quién se
+        registró y cuánto pagó, el segundo quién llegó y a qué taller entró.
+      */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <Tarjeta
+          titulo="Pre-registros por perfil"
+          nota={`Reparto de ${participantes.length} pre-registrados`}
+        >
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="45%" height={180}>
               <PieChart>
@@ -388,9 +383,9 @@ function Dashboard() {
         </Tarjeta>
 
         <Tarjeta
-          titulo="Ocupación de los 11 talleres"
-          nota="Incluye a los inscritos fuera del conjunto simulado"
-          className="lg:col-span-2"
+          titulo={`Ocupación de ${talleres.length} ${talleres.length === 1 ? "taller" : "talleres"}`}
+          nota="El cupo ocupado sale de las inscripciones"
+          className="lg:col-span-2 xl:col-span-2"
         >
           {talleres.length === 0 ? (
             <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
