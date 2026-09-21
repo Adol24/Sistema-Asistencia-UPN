@@ -113,8 +113,6 @@ function Configuracion() {
     if (b.horasValidacion !== configuracion.horasValidacion) campos.push("horas de validación");
     if (JSON.stringify(b.catalogoAcademico) !== JSON.stringify(configuracion.catalogoAcademico))
       campos.push("catálogo académico");
-    if (b.dominioInstitucional !== configuracion.dominioInstitucional)
-      campos.push("dominio institucional");
     if (JSON.stringify(b.banco) !== JSON.stringify(configuracion.banco))
       campos.push("datos bancarios");
     if (b.whatsappSoporte !== configuracion.whatsappSoporte) campos.push("WhatsApp de soporte");
@@ -415,7 +413,7 @@ function Configuracion() {
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Es el plazo que se le promete al alumno: pasado ese tiempo descarga su QR del
-                portal. Si ventanilla se retrasa, súbelo aquí antes de que empiecen a reclamar.
+                portal.
               </p>
             </div>
             <Campo
@@ -438,22 +436,21 @@ function Configuracion() {
             titulo="Catálogo académico"
             icono={<GraduationCap className="size-4" aria-hidden />}
           >
-            <p className="text-sm text-muted-foreground">
-              Los niveles, sus programas y cómo se llama su avance. Es lo que el alumno elige al
-              pre-registrarse, y de aquí salen los reportes por programa. Si la universidad abre un
-              doctorado, se agrega aquí y aparece en el formulario.
-            </p>
-            <Campo
-              id="dominio"
-              etiqueta="Dominio del correo institucional"
-              valor={b.dominioInstitucional}
-              onChange={(v) => set({ dominioInstitucional: v.trim().replace(/^@/, "") })}
-            />
-            <p className="-mt-2 text-xs text-muted-foreground">
-              Si lo dejas vacío se acepta cualquier correo. Hay universidades que no dan cuenta
-              institucional a todos, y rechazar a quien no la tiene lo dejaría fuera del evento.
-            </p>
+            {/*
+              Aquí estaba el dominio del correo institucional, y se retira.
+              En la UPN nadie tiene cuenta institucional, así que el campo
+              existía para dejarse vacío siempre: una casilla que solo se puede
+              contestar de una manera no es una decisión, es un trámite. Encima
+              vivía dentro del catálogo académico, con el que no tiene nada que
+              ver, porque no había dónde ponerlo.
 
+              No se toca nada más. La columna sigue en la base, y la
+              comprobación de `completar-datos` sigue en pie —es `if (dominio
+              && ...)`, inerte mientras esté vacío— igual que la de
+              `fn_preregistrar_alumno`, que es la que manda. Si algún día la
+              universidad da cuentas, el campo vuelve aquí y todo lo demás ya
+              está puesto.
+            */}
             {b.catalogoAcademico.map((n, i) => (
               <div key={i} className="rounded-lg border border-border p-4">
                 <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
