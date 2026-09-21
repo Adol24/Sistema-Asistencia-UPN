@@ -29,6 +29,7 @@ import {
   simularLatencia,
 } from "@/lib/formato";
 import { meta } from "@/lib/seo";
+import { cn } from "@/lib/utils";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import type { Dia } from "@/dominio/tipos";
 import type { ProgramaAcademico } from "@/dominio/catalogos";
@@ -162,7 +163,6 @@ function Configuracion() {
     <PantallaPanel
       area="admin"
       titulo="Configuración del evento"
-      ancho="lectura"
       descripcion="Estos valores alimentan las pantallas públicas: el cambio se ve sin recargar."
       acciones={
         <Button className="h-11" disabled={!cambios || guardando} onClick={() => void guardar()}>
@@ -189,447 +189,472 @@ function Configuracion() {
         </span>
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Seccion titulo="Identidad y fechas" icono={<Building2 className="size-4" aria-hidden />}>
-          <Campo
-            id="nombre"
-            etiqueta="Nombre del evento"
-            valor={b.nombre}
-            onChange={(v) => set({ nombre: v })}
-          />
-          <Campo
-            id="subtitulo"
-            etiqueta="Subtítulo"
-            valor={b.subtitulo}
-            onChange={(v) => set({ subtitulo: v })}
-          />
-          <Campo
-            id="fechas"
-            etiqueta="Fechas"
-            valor={b.fechas}
-            onChange={(v) => set({ fechas: v })}
-          />
-          {/*
-            Aquí había un campo «Horario general». Se quitó: `horario` es
-            DERIVADO —la base guarda los dos tramos de registro y el horario se
-            arma juntándolos al leer—, así que no hay columna que escribir y
-            editarlo no hacía nada. Los dos tramos se editan justo abajo, que es
-            donde el dato existe de verdad.
-          */}
-          <div className="grid gap-2 sm:grid-cols-2">
+      {/*
+        Dos columnas independientes, no una rejilla de dos.
+        Con `grid-cols-2` cada renglón se alinea al alto de la tarjeta más
+        grande, y aquí una sección va de veinte líneas a ciento cuarenta: el
+        catálogo académico dejaba media pantalla en blanco al lado de «Datos
+        bancarios». Dos pilas que crecen por su cuenta no tienen renglones que
+        alinear, así que no queda hueco que rellenar.
+
+        El reparto es por sentido y no por tamaño: a la izquierda el evento
+        —qué es, dónde, cuándo y cuánto cuesta— y a la derecha los catálogos y
+        la letra pequeña. Que además queden parejas de alto es casualidad
+        afortunada, no el criterio.
+      */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="grid content-start gap-4">
+          <Seccion titulo="Identidad y fechas" icono={<Building2 className="size-4" aria-hidden />}>
             <Campo
-              id="entrada"
-              etiqueta="Registro de entrada"
-              valor={b.registroEntrada}
-              onChange={(v) => set({ registroEntrada: v })}
+              id="nombre"
+              etiqueta="Nombre del evento"
+              valor={b.nombre}
+              onChange={(v) => set({ nombre: v })}
+            />
+            <Campo
+              id="subtitulo"
+              etiqueta="Subtítulo"
+              valor={b.subtitulo}
+              onChange={(v) => set({ subtitulo: v })}
+            />
+            <Campo
+              id="fechas"
+              etiqueta="Fechas"
+              valor={b.fechas}
+              onChange={(v) => set({ fechas: v })}
             />
             {/*
-              No dice «registro de salida» porque no se registra ninguna: es la
-              hora a la que termina el día, y solo se publica como horario.
+              Aquí había un campo «Horario general». Se quitó: `horario` es
+              DERIVADO —la base guarda los dos tramos de registro y el horario se
+              arma juntándolos al leer—, así que no hay columna que escribir y
+              editarlo no hacía nada. Los dos tramos se editan justo abajo, que es
+              donde el dato existe de verdad.
             */}
-            <Campo
-              id="salida"
-              etiqueta="Término del día (no se escanea salida)"
-              valor={b.registroSalida}
-              onChange={(v) => set({ registroSalida: v })}
-            />
-          </div>
-        </Seccion>
-
-        <Seccion titulo="Lugares por día" icono={<Building2 className="size-4" aria-hidden />}>
-          {b.dias.map((d, i) => (
-            <div
-              key={d.dia}
-              className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
-            >
-              {/*
-                La fecha se elige en el calendario del dispositivo y no se
-                escribe a mano. La columna es de tipo `date` y el reloj del
-                evento la compara contra el día de hoy, así que tiene que ser
-                AAAA-MM-DD exacto: un «15/10/2026» tecleado se guardaba como el
-                9 de octubre o reventaba, y el error no se ve hasta que la
-                puerta no reconoce el día. `fechaAIso` rescata lo que ya
-                estuviera guardado en el formato de lectura.
-              */}
+            <div className="grid gap-2 sm:grid-cols-2">
               <Campo
-                id={`fecha-${d.dia}`}
-                etiqueta={`${d.etiqueta} — fecha`}
-                tipo="date"
-                valor={fechaAIso(d.fecha)}
-                onChange={(v) =>
-                  set({ dias: b.dias.map((x, k) => (k === i ? { ...x, fecha: v } : x)) })
-                }
-              />
-              <Campo
-                id={`lugar-${d.dia}`}
-                etiqueta="Lugar"
-                valor={d.lugar}
-                onChange={(v) =>
-                  set({ dias: b.dias.map((x, k) => (k === i ? { ...x, lugar: v } : x)) })
-                }
+                id="entrada"
+                etiqueta="Registro de entrada"
+                valor={b.registroEntrada}
+                onChange={(v) => set({ registroEntrada: v })}
               />
               {/*
-                El aforo va pegado al lugar, no en una sección aparte, porque es
-                una propiedad del edificio: el día 3 admite 600 y no 700 porque
-                es otro sitio. Separarlos hacía fácil cambiar la sede y dejar el
-                aforo de la anterior.
+                No dice «registro de salida» porque no se registra ninguna: es la
+                hora a la que termina el día, y solo se publica como horario.
               */}
-              <div className="sm:col-span-2">
-                <Label htmlFor={`cupo-${d.dia}`}>Aforo — cuánta gente cabe</Label>
-                <Input
-                  id={`cupo-${d.dia}`}
-                  type="number"
-                  min={1}
-                  value={d.cupo}
-                  onChange={(e) =>
-                    set({
-                      dias: b.dias.map((x, k) =>
-                        k === i ? { ...x, cupo: Number(e.target.value) } : x,
-                      ),
-                    })
-                  }
-                  className="mt-1 h-11"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Ocupa lugar quien se pre-registró, haya pagado o no. Al llegar al tope, ese día
-                  deja de ofrecerse y el pre-registro lo rechaza.
-                </p>
-                {/*
-                  Bajar el aforo por debajo de los que ya entraron no se
-                  prohíbe: una sede se puede reducir de verdad, y el sistema no
-                  es quién para negarlo. Lo que no puede es dejar que pase en
-                  silencio, porque a esa gente ya se le confirmó su lugar.
-                */}
-                {ocupadosDe(d.dia) !== null && d.cupo < ocupadosDe(d.dia)! ? (
-                  <p className="mt-1 text-xs font-semibold text-destructive">
-                    Ya hay {ocupadosDe(d.dia)} personas pre-registradas ese día. Si guardas {d.cupo}
-                    , {ocupadosDe(d.dia)! - d.cupo} se quedan sin lugar y hay que reubicarlas a
-                    mano.
-                  </p>
-                ) : null}
-              </div>
-              {/*
-                Los puntos se escriben con el nombre que tienen en esa sede. Van
-                por día porque no es el mismo sitio, y un reporte que dice
-                «Puerta A» es un reporte que nadie sabe traducir a un lugar real.
-              */}
-              <div className="sm:col-span-2">
-                <Campo
-                  id={`puntos-${d.dia}`}
-                  etiqueta="Puntos de captura, separados por comas"
-                  valor={d.puntos.join(", ")}
-                  onChange={(v) =>
-                    set({
-                      dias: b.dias.map((x, k) =>
-                        k === i
-                          ? {
-                              ...x,
-                              puntos: v
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean),
-                            }
-                          : x,
-                      ),
-                    })
-                  }
-                />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Uno por cada capturista, con el nombre de esa sede. Incluye la mesa de
-                  incidencias: ahí se registra la entrada de quien salió en rojo y resultó estar
-                  bien. En blanco, la aplicación usa nombres genéricos.
-                </p>
-              </div>
+              <Campo
+                id="salida"
+                etiqueta="Término del día (no se escanea salida)"
+                valor={b.registroSalida}
+                onChange={(v) => set({ registroSalida: v })}
+              />
             </div>
-          ))}
-        </Seccion>
+          </Seccion>
 
-        <Seccion
-          titulo="Cuotas y fechas límite"
-          icono={<CreditCard className="size-4" aria-hidden />}
-        >
-          <div>
-            <Label htmlFor="cuota">Cuota del evento (MXN)</Label>
-            <Input
-              id="cuota"
-              type="number"
-              min={0}
-              value={b.cuotaEvento}
-              onChange={(e) => set({ cuotaEvento: Number(e.target.value) })}
-              className="mt-1 h-11"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Es el monto que Servicios Financieros espera y el que aparece en las instrucciones de
-              pago.
-            </p>
-          </div>
-          {/*
-            Fecha Y hora, y contra el valor crudo de la base.
-            Era un campo de texto sobre «viernes, 9 de octubre» —la frase que
-            esta pantalla recibía ya formateada—, así que no había nada que
-            guardar aunque el mapa de columnas lo hubiera admitido.
-            La hora se pide porque el vencimiento la tiene (18:00). Con un campo
-            de solo fecha, tocarlo lo habría movido a las 00:00 de ese día:
-            siete horas antes, dejando fuera a quien llegó a tiempo.
-          */}
-          <div>
-            <Label htmlFor="limite">Fecha y hora límite de entrega de vouchers</Label>
-            <Input
-              id="limite"
-              type="datetime-local"
-              value={isoAMomentoLocal(b.fechaLimite)}
-              onChange={(e) => set({ fechaLimite: momentoLocalAIso(e.target.value) })}
-              className="mt-1 h-11"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Al participante se le anuncia solo el día: «antes del{" "}
-              {fechaLimiteTexto(b.fechaLimite) || "…"}». La hora manda para el corte.
-            </p>
-          </div>
-          <div>
-            <Label htmlFor="horas">Horas para validar un voucher</Label>
-            <Input
-              id="horas"
-              inputMode="numeric"
-              maxLength={2}
-              value={String(b.horasValidacion)}
-              onChange={(e) => {
-                const n = soloDigitos(e.target.value, 2);
-                set({ horasValidacion: n ? Number(n) : 0 });
-              }}
-              className="mt-1 h-11"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Es el plazo que se le promete al alumno: pasado ese tiempo descarga su QR del portal.
-              Si ventanilla se retrasa, súbelo aquí antes de que empiecen a reclamar.
-            </p>
-          </div>
-          <Campo
-            id="v-lugar"
-            etiqueta="Ventanilla — lugar"
-            valor={b.ventanilla.lugar}
-            onChange={(v) => setVentanilla({ lugar: v })}
-          />
-          <Campo
-            id="v-horario"
-            etiqueta="Ventanilla — horario"
-            valor={b.ventanilla.horario}
-            onChange={(v) => setVentanilla({ horario: v })}
-          />
-        </Seccion>
-
-        <Seccion titulo="Datos bancarios" icono={<CreditCard className="size-4" aria-hidden />}>
-          <Campo
-            id="banco"
-            etiqueta="Banco"
-            valor={b.banco.banco}
-            onChange={(v) => setBanco({ banco: v })}
-          />
-          <Campo
-            id="cuenta"
-            etiqueta="Número de cuenta"
-            valor={b.banco.cuenta}
-            onChange={(v) => setBanco({ cuenta: v })}
-          />
-          <Campo
-            id="clabe"
-            etiqueta="CLABE"
-            valor={b.banco.clabe}
-            onChange={(v) => setBanco({ clabe: v })}
-          />
-          <Campo
-            id="benef"
-            etiqueta="Beneficiario"
-            valor={b.banco.beneficiario}
-            onChange={(v) => setBanco({ beneficiario: v })}
-          />
-        </Seccion>
-
-        <Seccion
-          titulo="Catálogo académico"
-          icono={<GraduationCap className="size-4" aria-hidden />}
-        >
-          <p className="text-sm text-muted-foreground">
-            Los niveles, sus programas y cómo se llama su avance. Es lo que el alumno elige al
-            pre-registrarse, y de aquí salen los reportes por programa. Si la universidad abre un
-            doctorado, se agrega aquí y aparece en el formulario.
-          </p>
-          <Campo
-            id="dominio"
-            etiqueta="Dominio del correo institucional"
-            valor={b.dominioInstitucional}
-            onChange={(v) => set({ dominioInstitucional: v.trim().replace(/^@/, "") })}
-          />
-          <p className="-mt-2 text-xs text-muted-foreground">
-            Si lo dejas vacío se acepta cualquier correo. Hay universidades que no dan cuenta
-            institucional a todos, y rechazar a quien no la tiene lo dejaría fuera del evento.
-          </p>
-
-          {b.catalogoAcademico.map((n, i) => (
-            <div key={i} className="rounded-lg border border-border p-4">
-              <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+          <Seccion titulo="Lugares por día" icono={<Building2 className="size-4" aria-hidden />}>
+            {b.dias.map((d, i) => (
+              <div
+                key={d.dia}
+                className="grid gap-2 rounded-md border border-border p-3 sm:grid-cols-2"
+              >
+                {/*
+                  La fecha se elige en el calendario del dispositivo y no se
+                  escribe a mano. La columna es de tipo `date` y el reloj del
+                  evento la compara contra el día de hoy, así que tiene que ser
+                  AAAA-MM-DD exacto: un «15/10/2026» tecleado se guardaba como el
+                  9 de octubre o reventaba, y el error no se ve hasta que la
+                  puerta no reconoce el día. `fechaAIso` rescata lo que ya
+                  estuviera guardado en el formato de lectura.
+                */}
                 <Campo
-                  id={`nivel-${i}`}
-                  etiqueta="Nivel"
-                  valor={n.nivel}
-                  onChange={(v) => setNivel(i, { nivel: v })}
+                  id={`fecha-${d.dia}`}
+                  etiqueta={`${d.etiqueta} — fecha`}
+                  tipo="date"
+                  valor={fechaAIso(d.fecha)}
+                  onChange={(v) =>
+                    set({ dias: b.dias.map((x, k) => (k === i ? { ...x, fecha: v } : x)) })
+                  }
                 />
                 <Campo
-                  id={`etiqueta-${i}`}
-                  etiqueta="Su avance se llama"
-                  valor={n.etiquetaAvance}
-                  onChange={(v) => setNivel(i, { etiquetaAvance: v })}
+                  id={`lugar-${d.dia}`}
+                  etiqueta="Lugar"
+                  valor={d.lugar}
+                  onChange={(v) =>
+                    set({ dias: b.dias.map((x, k) => (k === i ? { ...x, lugar: v } : x)) })
+                  }
                 />
-                <div>
-                  <Label htmlFor={`total-${i}`}>Hasta</Label>
+                {/*
+                  El aforo va pegado al lugar, no en una sección aparte, porque es
+                  una propiedad del edificio: el día 3 admite 600 y no 700 porque
+                  es otro sitio. Separarlos hacía fácil cambiar la sede y dejar el
+                  aforo de la anterior.
+                */}
+                <div className="sm:col-span-2">
+                  <Label htmlFor={`cupo-${d.dia}`}>Aforo — cuánta gente cabe</Label>
                   <Input
-                    id={`total-${i}`}
-                    inputMode="numeric"
-                    maxLength={2}
-                    value={String(n.totalAvance)}
-                    onChange={(e) => {
-                      const d = soloDigitos(e.target.value, 2);
-                      setNivel(i, { totalAvance: d ? Number(d) : 0 });
-                    }}
+                    id={`cupo-${d.dia}`}
+                    type="number"
+                    min={1}
+                    value={d.cupo}
+                    onChange={(e) =>
+                      set({
+                        dias: b.dias.map((x, k) =>
+                          k === i ? { ...x, cupo: Number(e.target.value) } : x,
+                        ),
+                      })
+                    }
                     className="mt-1 h-11"
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Ocupa lugar quien se pre-registró, haya pagado o no. Al llegar al tope, ese día
+                    deja de ofrecerse y el pre-registro lo rechaza.
+                  </p>
+                  {/*
+                    Bajar el aforo por debajo de los que ya entraron no se
+                    prohíbe: una sede se puede reducir de verdad, y el sistema no
+                    es quién para negarlo. Lo que no puede es dejar que pase en
+                    silencio, porque a esa gente ya se le confirmó su lugar.
+                  */}
+                  {ocupadosDe(d.dia) !== null && d.cupo < ocupadosDe(d.dia)! ? (
+                    <p className="mt-1 text-xs font-semibold text-destructive">
+                      Ya hay {ocupadosDe(d.dia)} personas pre-registradas ese día. Si guardas{" "}
+                      {d.cupo}, {ocupadosDe(d.dia)! - d.cupo} se quedan sin lugar y hay que
+                      reubicarlas a mano.
+                    </p>
+                  ) : null}
+                </div>
+                {/*
+                  Los puntos se escriben con el nombre que tienen en esa sede. Van
+                  por día porque no es el mismo sitio, y un reporte que dice
+                  «Puerta A» es un reporte que nadie sabe traducir a un lugar real.
+                */}
+                <div className="sm:col-span-2">
+                  <Campo
+                    id={`puntos-${d.dia}`}
+                    etiqueta="Puntos de captura, separados por comas"
+                    valor={d.puntos.join(", ")}
+                    onChange={(v) =>
+                      set({
+                        dias: b.dias.map((x, k) =>
+                          k === i
+                            ? {
+                                ...x,
+                                puntos: v
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean),
+                              }
+                            : x,
+                        ),
+                      })
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Uno por cada capturista, con el nombre de esa sede. Incluye la mesa de
+                    incidencias: ahí se registra la entrada de quien salió en rojo y resultó estar
+                    bien. En blanco, la aplicación usa nombres genéricos.
+                  </p>
                 </div>
               </div>
-              <div className="mt-3">
-                <Label>Programas</Label>
-                <p className="mb-2 mt-1 text-xs text-muted-foreground">
-                  Los dos campos de la derecha solo se llenan cuando el programa <strong>no</strong>{" "}
-                  se cuenta como su nivel. Vacíos heredan «{n.etiquetaAvance}» hasta {n.totalAvance}
-                  .
-                </p>
-                <div className="grid gap-2">
-                  {n.programas.map((p, j) => (
-                    <div key={j} className="grid gap-2 sm:grid-cols-[1fr_9rem_5rem_auto]">
-                      <Input
-                        aria-label={`Nombre del programa ${j + 1} de ${n.nivel}`}
-                        value={p.nombre}
-                        onChange={(e) => setPrograma(i, j, { nombre: e.target.value.trimStart() })}
-                        className="h-11"
-                      />
-                      <Input
-                        aria-label={`Cómo se cuenta el avance de ${p.nombre || "este programa"}`}
-                        placeholder={n.etiquetaAvance}
-                        value={p.etiquetaAvance ?? ""}
-                        onChange={(e) =>
-                          setPrograma(i, j, { etiquetaAvance: e.target.value.trim() || undefined })
-                        }
-                        className="h-11"
-                      />
-                      <Input
-                        aria-label={`Hasta qué avance llega ${p.nombre || "este programa"}`}
-                        inputMode="numeric"
-                        maxLength={2}
-                        placeholder={String(n.totalAvance)}
-                        value={p.totalAvance ? String(p.totalAvance) : ""}
-                        onChange={(e) => {
-                          const d = soloDigitos(e.target.value, 2);
-                          setPrograma(i, j, { totalAvance: d ? Number(d) : undefined });
-                        }}
-                        className="h-11"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Quitar ${p.nombre || "este programa"}`}
-                        className="h-11 w-11 text-destructive hover:text-destructive"
-                        onClick={() =>
-                          setNivel(i, { programas: n.programas.filter((_, k) => k !== j) })
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
+            ))}
+          </Seccion>
+
+          <Seccion
+            titulo="Cuotas y fechas límite"
+            icono={<CreditCard className="size-4" aria-hidden />}
+          >
+            <div>
+              <Label htmlFor="cuota">Cuota del evento (MXN)</Label>
+              <Input
+                id="cuota"
+                type="number"
+                min={0}
+                value={b.cuotaEvento}
+                onChange={(e) => set({ cuotaEvento: Number(e.target.value) })}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Es el monto que Servicios Financieros espera y el que aparece en las instrucciones
+                de pago.
+              </p>
+            </div>
+            {/*
+              Fecha Y hora, y contra el valor crudo de la base.
+              Era un campo de texto sobre «viernes, 9 de octubre» —la frase que
+              esta pantalla recibía ya formateada—, así que no había nada que
+              guardar aunque el mapa de columnas lo hubiera admitido.
+              La hora se pide porque el vencimiento la tiene (18:00). Con un campo
+              de solo fecha, tocarlo lo habría movido a las 00:00 de ese día:
+              siete horas antes, dejando fuera a quien llegó a tiempo.
+            */}
+            <div>
+              <Label htmlFor="limite">Fecha y hora límite de entrega de vouchers</Label>
+              <Input
+                id="limite"
+                type="datetime-local"
+                value={isoAMomentoLocal(b.fechaLimite)}
+                onChange={(e) => set({ fechaLimite: momentoLocalAIso(e.target.value) })}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Al participante se le anuncia solo el día: «antes del{" "}
+                {fechaLimiteTexto(b.fechaLimite) || "…"}». La hora manda para el corte.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="horas">Horas para validar un voucher</Label>
+              <Input
+                id="horas"
+                inputMode="numeric"
+                maxLength={2}
+                value={String(b.horasValidacion)}
+                onChange={(e) => {
+                  const n = soloDigitos(e.target.value, 2);
+                  set({ horasValidacion: n ? Number(n) : 0 });
+                }}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Es el plazo que se le promete al alumno: pasado ese tiempo descarga su QR del
+                portal. Si ventanilla se retrasa, súbelo aquí antes de que empiecen a reclamar.
+              </p>
+            </div>
+            <Campo
+              id="v-lugar"
+              etiqueta="Ventanilla — lugar"
+              valor={b.ventanilla.lugar}
+              onChange={(v) => setVentanilla({ lugar: v })}
+            />
+            <Campo
+              id="v-horario"
+              etiqueta="Ventanilla — horario"
+              valor={b.ventanilla.horario}
+              onChange={(v) => setVentanilla({ horario: v })}
+            />
+          </Seccion>
+        </div>
+
+        <div className="grid content-start gap-4">
+          <Seccion
+            titulo="Catálogo académico"
+            icono={<GraduationCap className="size-4" aria-hidden />}
+          >
+            <p className="text-sm text-muted-foreground">
+              Los niveles, sus programas y cómo se llama su avance. Es lo que el alumno elige al
+              pre-registrarse, y de aquí salen los reportes por programa. Si la universidad abre un
+              doctorado, se agrega aquí y aparece en el formulario.
+            </p>
+            <Campo
+              id="dominio"
+              etiqueta="Dominio del correo institucional"
+              valor={b.dominioInstitucional}
+              onChange={(v) => set({ dominioInstitucional: v.trim().replace(/^@/, "") })}
+            />
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Si lo dejas vacío se acepta cualquier correo. Hay universidades que no dan cuenta
+              institucional a todos, y rechazar a quien no la tiene lo dejaría fuera del evento.
+            </p>
+
+            {b.catalogoAcademico.map((n, i) => (
+              <div key={i} className="rounded-lg border border-border p-4">
+                <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+                  <Campo
+                    id={`nivel-${i}`}
+                    etiqueta="Nivel"
+                    valor={n.nivel}
+                    onChange={(v) => setNivel(i, { nivel: v })}
+                  />
+                  <Campo
+                    id={`etiqueta-${i}`}
+                    etiqueta="Su avance se llama"
+                    valor={n.etiquetaAvance}
+                    onChange={(v) => setNivel(i, { etiquetaAvance: v })}
+                  />
+                  <div>
+                    <Label htmlFor={`total-${i}`}>Hasta</Label>
+                    <Input
+                      id={`total-${i}`}
+                      inputMode="numeric"
+                      maxLength={2}
+                      value={String(n.totalAvance)}
+                      onChange={(e) => {
+                        const d = soloDigitos(e.target.value, 2);
+                        setNivel(i, { totalAvance: d ? Number(d) : 0 });
+                      }}
+                      className="mt-1 h-11"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Label>Programas</Label>
+                  <p className="mb-2 mt-1 text-xs text-muted-foreground">
+                    Los dos campos de la derecha solo se llenan cuando el programa{" "}
+                    <strong>no</strong> se cuenta como su nivel. Vacíos heredan «{n.etiquetaAvance}»
+                    hasta {n.totalAvance}.
+                  </p>
+                  <div className="grid gap-2">
+                    {n.programas.map((p, j) => (
+                      <div key={j} className="grid gap-2 sm:grid-cols-[1fr_9rem_5rem_auto]">
+                        <Input
+                          aria-label={`Nombre del programa ${j + 1} de ${n.nivel}`}
+                          value={p.nombre}
+                          onChange={(e) =>
+                            setPrograma(i, j, { nombre: e.target.value.trimStart() })
+                          }
+                          className="h-11"
+                        />
+                        <Input
+                          aria-label={`Cómo se cuenta el avance de ${p.nombre || "este programa"}`}
+                          placeholder={n.etiquetaAvance}
+                          value={p.etiquetaAvance ?? ""}
+                          onChange={(e) =>
+                            setPrograma(i, j, {
+                              etiquetaAvance: e.target.value.trim() || undefined,
+                            })
+                          }
+                          className="h-11"
+                        />
+                        <Input
+                          aria-label={`Hasta qué avance llega ${p.nombre || "este programa"}`}
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder={String(n.totalAvance)}
+                          value={p.totalAvance ? String(p.totalAvance) : ""}
+                          onChange={(e) => {
+                            const d = soloDigitos(e.target.value, 2);
+                            setPrograma(i, j, { totalAvance: d ? Number(d) : undefined });
+                          }}
+                          className="h-11"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Quitar ${p.nombre || "este programa"}`}
+                          className="h-11 w-11 text-destructive hover:text-destructive"
+                          onClick={() =>
+                            setNivel(i, { programas: n.programas.filter((_, k) => k !== j) })
+                          }
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="mt-2 h-10"
+                    onClick={() => setNivel(i, { programas: [...n.programas, { nombre: "" }] })}
+                  >
+                    <Plus className="size-4" /> Agregar un programa
+                  </Button>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {n.programas.filter((p) => p.nombre.trim()).length} programas. Los que se queden
+                    sin nombre se descartan al guardar.
+                  </p>
                 </div>
                 <Button
-                  variant="outline"
-                  className="mt-2 h-10"
-                  onClick={() => setNivel(i, { programas: [...n.programas, { nombre: "" }] })}
+                  variant="ghost"
+                  className="mt-3 h-10 text-destructive hover:text-destructive"
+                  disabled={b.catalogoAcademico.length === 1}
+                  onClick={() =>
+                    set({ catalogoAcademico: b.catalogoAcademico.filter((_, k) => k !== i) })
+                  }
                 >
-                  <Plus className="size-4" /> Agregar un programa
+                  <Trash2 className="size-4" /> Quitar {n.nivel || "este nivel"}
                 </Button>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {n.programas.filter((p) => p.nombre.trim()).length} programas. Los que se queden
-                  sin nombre se descartan al guardar.
-                </p>
               </div>
-              <Button
-                variant="ghost"
-                className="mt-3 h-10 text-destructive hover:text-destructive"
-                disabled={b.catalogoAcademico.length === 1}
-                onClick={() =>
-                  set({ catalogoAcademico: b.catalogoAcademico.filter((_, k) => k !== i) })
-                }
-              >
-                <Trash2 className="size-4" /> Quitar {n.nivel || "este nivel"}
-              </Button>
-            </div>
-          ))}
+            ))}
 
-          <Button
-            variant="outline"
-            className="h-11"
-            onClick={() =>
-              set({
-                catalogoAcademico: [
-                  ...b.catalogoAcademico,
-                  { nivel: "", etiquetaAvance: "Semestre", totalAvance: 8, programas: [] },
-                ],
-              })
-            }
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() =>
+                set({
+                  catalogoAcademico: [
+                    ...b.catalogoAcademico,
+                    { nivel: "", etiquetaAvance: "Semestre", totalAvance: 8, programas: [] },
+                  ],
+                })
+              }
+            >
+              <Plus className="size-4" /> Agregar un nivel
+            </Button>
+          </Seccion>
+
+          <Seccion
+            titulo="Datos bancarios"
+            icono={<CreditCard className="size-4" aria-hidden />}
+            pares
           >
-            <Plus className="size-4" /> Agregar un nivel
-          </Button>
-        </Seccion>
-
-        <Seccion titulo="Soporte" icono={<LifeBuoy className="size-4" aria-hidden />}>
-          <Campo
-            id="wa"
-            etiqueta="WhatsApp de soporte (con lada)"
-            valor={b.whatsappSoporte}
-            onChange={(v) => set({ whatsappSoporte: v })}
-          />
-          <Campo
-            id="correo"
-            etiqueta="Correo de soporte"
-            valor={b.correoSoporte}
-            onChange={(v) => set({ correoSoporte: v })}
-          />
-          <Campo
-            id="horario-sop"
-            etiqueta="Horario de atención"
-            valor={b.horarioSoporte}
-            onChange={(v) => set({ horarioSoporte: v })}
-          />
-        </Seccion>
-
-        <Seccion titulo="Textos legales" icono={<ScrollText className="size-4" aria-hidden />}>
-          <div>
-            <Label htmlFor="aviso">Aviso de privacidad</Label>
-            <Textarea
-              id="aviso"
-              rows={4}
-              value={b.avisoPrivacidad}
-              onChange={(e) => set({ avisoPrivacidad: e.target.value })}
-              className="mt-1"
+            <Campo
+              id="banco"
+              etiqueta="Banco"
+              valor={b.banco.banco}
+              onChange={(v) => setBanco({ banco: v })}
             />
-          </div>
-          <div>
-            <Label htmlFor="terminos">Términos de participación</Label>
-            <Textarea
-              id="terminos"
-              rows={4}
-              value={b.terminos}
-              onChange={(e) => set({ terminos: e.target.value })}
-              className="mt-1"
+            <Campo
+              id="cuenta"
+              etiqueta="Número de cuenta"
+              valor={b.banco.cuenta}
+              onChange={(v) => setBanco({ cuenta: v })}
             />
-          </div>
-        </Seccion>
+            <Campo
+              id="clabe"
+              etiqueta="CLABE"
+              valor={b.banco.clabe}
+              onChange={(v) => setBanco({ clabe: v })}
+            />
+            <Campo
+              id="benef"
+              etiqueta="Beneficiario"
+              valor={b.banco.beneficiario}
+              onChange={(v) => setBanco({ beneficiario: v })}
+            />
+          </Seccion>
+
+          <Seccion titulo="Soporte" icono={<LifeBuoy className="size-4" aria-hidden />} pares>
+            <Campo
+              id="wa"
+              etiqueta="WhatsApp de soporte (con lada)"
+              valor={b.whatsappSoporte}
+              onChange={(v) => set({ whatsappSoporte: v })}
+            />
+            <Campo
+              id="correo"
+              etiqueta="Correo de soporte"
+              valor={b.correoSoporte}
+              onChange={(v) => set({ correoSoporte: v })}
+            />
+            <Campo
+              id="horario-sop"
+              etiqueta="Horario de atención"
+              valor={b.horarioSoporte}
+              onChange={(v) => set({ horarioSoporte: v })}
+            />
+          </Seccion>
+
+          <Seccion titulo="Textos legales" icono={<ScrollText className="size-4" aria-hidden />}>
+            <div>
+              <Label htmlFor="aviso">Aviso de privacidad</Label>
+              <Textarea
+                id="aviso"
+                rows={4}
+                value={b.avisoPrivacidad}
+                onChange={(e) => set({ avisoPrivacidad: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="terminos">Términos de participación</Label>
+              <Textarea
+                id="terminos"
+                rows={4}
+                value={b.terminos}
+                onChange={(e) => set({ terminos: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+          </Seccion>
+        </div>
       </div>
     </PantallaPanel>
   );
@@ -638,10 +663,24 @@ function Configuracion() {
 function Seccion({
   titulo,
   icono,
+  pares,
   children,
 }: {
   titulo: string;
   icono: React.ReactNode;
+  /**
+   * Pone los campos de dos en dos cuando la tarjeta tiene sitio.
+   *
+   * Es lo que se hace con el ancho que sobra, y no ensanchar el campo. Una
+   * CLABE son 18 dígitos y un horario cabe en cinco palabras: estirarlos a
+   * media pantalla no los hace más fáciles de llenar, solo aleja la etiqueta
+   * de su control y deja la mitad derecha en blanco. Dos por renglón usan el
+   * mismo espacio enseñando el doble.
+   *
+   * No lo llevan las secciones cuyos campos son largos de verdad —los textos
+   * legales, el catálogo académico— ni las que ya arman su propia rejilla.
+   */
+  pares?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -650,7 +689,7 @@ function Seccion({
         {icono}
         {titulo}
       </h2>
-      <div className="mt-3 grid gap-3">{children}</div>
+      <div className={cn("mt-3 grid gap-3", pares && "sm:grid-cols-2")}>{children}</div>
     </section>
   );
 }
