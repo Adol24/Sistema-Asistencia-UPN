@@ -6,6 +6,7 @@ import { EstadoVacio } from "@/components/tipografia";
 import { Progress } from "@/components/ui/progress";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
+import { SelloEnVivo } from "@/components/sello-en-vivo";
 import { comoHora, isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { detectarAnomalias, metricasDelDia } from "@/lib/monitoreo";
@@ -45,11 +46,34 @@ function Monitoreo() {
       area="admin"
       titulo="Monitoreo en vivo"
       descripcion={`Registro de entrada: ${configuracion.registroEntrada}. Si el ritmo no alcanza, hay que abrir otra puerta.`}
-      acciones={<RelojEventoControl />}
+      /*
+        El sello va aquí y no como adorno del texto.
+        Esta pantalla se llama «en vivo» y era la única del sistema que no
+        decía si lo estaba: si el WebSocket se cae, los números se congelan y
+        nada lo delata. Quien vigila la puerta para decidir si abre otra deja
+        de actualizar precisamente porque cree que no hace falta.
+      */
+      acciones={
+        <>
+          <SelloEnVivo className="h-11 px-3" />
+          <RelojEventoControl />
+        </>
+      }
     >
-      <p className="mb-4 text-sm text-muted-foreground">
-        {info.etiqueta} — {isoAFecha(info.fecha)} · {info.lugar} · son las{" "}
-        <span className="font-mono font-semibold text-foreground">{comoHora(reloj.minutos)}</span>
+      {/*
+        Dónde y cuándo, en una barra y no en un párrafo gris.
+        Es el encabezado de todo lo que hay debajo: los cinco indicadores, el
+        avance y las anomalías son TODOS del día que dice aquí. Escrito en
+        texto atenuado como una nota al pie, se leía como algo prescindible, y
+        es lo único que da sentido a los números.
+      */}
+      <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-4 py-3 text-sm">
+        <span className="font-bold">{info.etiqueta}</span>
+        <span className="text-muted-foreground">{isoAFecha(info.fecha)}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">{info.lugar}</span>
+        <span className="text-muted-foreground">· son las</span>
+        <span className="font-mono text-base font-bold">{comoHora(reloj.minutos)}</span>
         {/*
           Decir de dónde sale la hora, porque de ella depende el ritmo. «Son las
           9:15» a secas se lee como un dato del sistema, y si el reloj está
@@ -114,7 +138,63 @@ function Monitoreo() {
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/*
+        Las anomalías suben por delante del detalle.
+        Estaban al final, debajo de dos paneles: el indicador de arriba decía
+        «3 anomalías detectadas» y había que bajar la pantalla entera para
+        saber cuáles. Un ritmo imposible o un escaneo fuera de horario es lo
+        único de aquí sobre lo que hay que actuar AHORA —alguien está pasando
+        códigos en lote, o un reloj va mal— y lo urgente no va debajo de lo
+        informativo. El avance y el reparto por punto se miran cuando todo va
+        bien; esto, cuando no.
+      */}
+      <section className="mt-4">
+        <h2 className="text-sm font-bold">Alertas de anomalías</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Ritmos imposibles y escaneos fuera de la ventana del evento
+        </p>
+        {anomalias.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
+            <p className="text-sm font-semibold">Sin anomalías el día {dia}</p>
+            <p className="text-sm text-muted-foreground">
+              Los registros del día caen dentro del horario y a un ritmo humano. Cambia de día para
+              revisar los demás.
+            </p>
+          </div>
+        ) : (
+          <ul className="grid gap-3 xl:grid-cols-2">
+            {anomalias.map((a, i) => (
+              <li
+                key={`${a.clase}-${i}`}
+                className="rounded-lg border-2 border-estado-cancelado/40 bg-estado-cancelado-bg p-4"
+              >
+                <p className="flex items-start gap-2 text-sm font-bold text-estado-cancelado">
+                  <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
+                  {a.titulo}
+                </p>
+                <p className="mt-1 text-sm text-estado-cancelado">{a.detalle}</p>
+                <p className="mt-2 rounded-md bg-card p-2 text-sm">
+                  <span className="font-semibold">Qué hacer:</span> {a.accion}
+                </p>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs font-semibold text-estado-cancelado">
+                    Ver los {a.afectadas.length} registros
+                  </summary>
+                  <ul className="mt-2 grid gap-1">
+                    {a.afectadas.map((x) => (
+                      <li key={x.id} className="font-mono text-xs text-muted-foreground">
+                        {x.hora} · {x.folio} · {x.nombre} · {x.punto}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-border bg-card p-4">
           <h2 className="text-sm font-bold">Avance de la puerta</h2>
           <p className="mb-3 text-xs text-muted-foreground">
@@ -167,52 +247,6 @@ function Monitoreo() {
           )}
         </section>
       </div>
-
-      <section className="mt-4">
-        <h2 className="text-sm font-bold">Alertas de anomalías</h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Ritmos imposibles y escaneos fuera de la ventana del evento
-        </p>
-        {anomalias.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-sm font-semibold">Sin anomalías el día {dia}</p>
-            <p className="text-sm text-muted-foreground">
-              Los registros del día caen dentro del horario y a un ritmo humano. Cambia de día para
-              revisar los demás.
-            </p>
-          </div>
-        ) : (
-          <ul className="grid gap-3">
-            {anomalias.map((a, i) => (
-              <li
-                key={`${a.clase}-${i}`}
-                className="rounded-lg border-2 border-estado-cancelado/40 bg-estado-cancelado-bg p-4"
-              >
-                <p className="flex items-start gap-2 text-sm font-bold text-estado-cancelado">
-                  <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
-                  {a.titulo}
-                </p>
-                <p className="mt-1 text-sm text-estado-cancelado">{a.detalle}</p>
-                <p className="mt-2 rounded-md bg-card p-2 text-sm">
-                  <span className="font-semibold">Qué hacer:</span> {a.accion}
-                </p>
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs font-semibold text-estado-cancelado">
-                    Ver los {a.afectadas.length} registros
-                  </summary>
-                  <ul className="mt-2 grid gap-1">
-                    {a.afectadas.map((x) => (
-                      <li key={x.id} className="font-mono text-xs text-muted-foreground">
-                        {x.hora} · {x.folio} · {x.nombre} · {x.punto}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </PantallaPanel>
   );
 }

@@ -7,6 +7,7 @@ import { Fila, Tabla } from "@/components/tabla";
 import { CamaraQR } from "@/components/camara-qr";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { Button } from "@/components/ui/button";
+import { SelloEnVivo } from "@/components/sello-en-vivo";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -227,28 +228,7 @@ function Ventanilla() {
           cuando nadie lo comprobó es peor que no decir nada: quien atiende
           dejaría de actualizar creyendo que no hace falta.
         */}
-        <span
-          className={cn(
-            "flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
-            enVivo
-              ? "border-estado-pagado/40 text-estado-pagado"
-              : "border-border text-muted-foreground",
-          )}
-          title={
-            enVivo
-              ? "Los cambios de otras ventanillas y los pre-registros nuevos llegan solos."
-              : "Sin escucha en vivo: pulsa Actualizar para ver los cambios de otros."
-          }
-        >
-          <span
-            className={cn(
-              "size-2 rounded-full",
-              enVivo ? "animate-pulse bg-estado-pagado" : "bg-muted-foreground/50",
-            )}
-            aria-hidden
-          />
-          {enVivo ? "En vivo" : "Sin conexión en vivo"}
-        </span>
+        <SelloEnVivo />
         <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
           <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
           Actualizar
