@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { CalendarDays, Check, Lock, MessageCircle } from "lucide-react";
+import { CalendarDays, Check, MessageCircle } from "lucide-react";
 import type { ReactNode } from "react";
-import { estadoDeRuta, type RutaConstruida } from "@/lib/mapa-pantallas";
 import { Titulo, Texto, Rotulo } from "@/components/tipografia";
 import { AvisoPrototipo, Protegido } from "@/components/acceso";
 import { ArmazonPanel } from "@/components/armazon-panel";
@@ -358,39 +357,5 @@ export function PantallaPanel({
         {children}
       </ArmazonPanel>
     </Protegido>
-  );
-}
-
-/**
- * Barra de navegación de un panel. Las entradas cuya pantalla todavía no se
- * construye se dibujan atenuadas y sin comportamiento de clic, en lugar de
- * enlazar a una ruta inexistente. El estado se consulta en `mapa-pantallas`.
- */
-export function NavPanel({ items }: { items: { to: RutaConstruida; label: string }[] }) {
-  return (
-    <>
-      {items.map((i) =>
-        estadoDeRuta(i.to) === "listo" ? (
-          <Link
-            key={i.to}
-            to={i.to}
-            {...ENLACE_NAV}
-            className="flex h-10 items-center rounded-md px-3 text-sm font-medium transition-colors"
-          >
-            {i.label}
-          </Link>
-        ) : (
-          <span
-            key={i.to}
-            aria-disabled="true"
-            title="Esta pantalla aún no se construye"
-            className="flex h-10 cursor-not-allowed items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground opacity-50"
-          >
-            <Lock className="size-3.5 shrink-0" aria-hidden />
-            {i.label}
-          </span>
-        ),
-      )}
-    </>
   );
 }
