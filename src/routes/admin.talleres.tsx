@@ -113,7 +113,7 @@ function AdminTalleres() {
                       libres <= 0 && "text-estado-cancelado",
                       libres > 0 && libres < 5 && "text-estado-discrepancia",
                     )}
-                    title="Cupo ocupado: inscritos previos más los del prototipo"
+                    title="Cupo ocupado: los pre-registrados a este taller más los inscritos previos"
                   >
                     <Users className="size-4" aria-hidden />
                     {t.cupoOcupado}/{t.cupoTotal}
@@ -134,9 +134,19 @@ function AdminTalleres() {
                 </div>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">{t.descripcion}</p>
+              {/*
+               * Los dos orígenes del cupo ocupado, nombrados como lo que son.
+               *
+               * Decía «inscritos del prototipo» y «fuera del conjunto simulado», que
+               * era cierto cuando los participantes eran inventados. Hoy los
+               * primeros son gente que se pre-registró y los segundos son
+               * invitados y cortesías que no pasan por el sistema; llamarlos
+               * «simulados» en un panel en producción hace dudar de si el número
+               * de al lado es real.
+               */}
               <p className="mt-1 text-xs text-muted-foreground">
-                {delPrototipo} inscritos del prototipo · {t.cupoOcupado - delPrototipo} inscritos
-                fuera del conjunto simulado
+                {delPrototipo} pre-registrados · {t.cupoOcupado - delPrototipo} inscritos previos
+                (invitados y cortesías)
               </p>
             </li>
           );
@@ -182,7 +192,7 @@ function AdminTalleres() {
           <>
             {borrando && inscritos(borrando) > 0
               ? `Hay ${inscritos(borrando)} participantes inscritos. Quedarán sin taller y su pago de taller no tendrá a qué corresponder.`
-              : "No hay participantes del prototipo inscritos en este taller."}{" "}
+              : "Nadie se ha pre-registrado a este taller."}{" "}
             La acción no se puede deshacer desde esta pantalla.
           </>
         }
@@ -327,7 +337,7 @@ function FormularioTaller({
           <div className="rounded-md bg-muted p-3 text-sm">
             <p className="font-semibold">Cupo ocupado: {ocupado}</p>
             <p className="text-muted-foreground">
-              {inscritos} inscritos del prototipo más {b.ocupadosPrevios} previos. Es un valor
+              {inscritos} pre-registrados más {b.ocupadosPrevios} inscritos previos. Es un valor
               derivado: no se edita aquí.
             </p>
           </div>
