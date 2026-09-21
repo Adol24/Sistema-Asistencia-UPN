@@ -52,6 +52,7 @@ import type {
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento, DiaEvento } from "@/lib/configuracion";
+import type { NivelAcademico } from "@/dominio/catalogos";
 import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
@@ -565,6 +566,112 @@ export async function cupoPorDia(): Promise<CupoDia[]> {
 
 export async function guardarConfiguracion(patch: Record<string, unknown>): Promise<void> {
   await exigir(exigirBase().from("configuracion_evento").update(patch).eq("id", 1));
+}
+
+/** Lo que la base no dejó borrar del catálogo, y por qué. */
+export interface RechazoCatalogo {
+  que: string;
+  motivo: string;
+}
+
+/**
+ * Guarda el catálogo académico: los niveles y sus programas.
+ *
+ * Viven en dos tablas propias, así que no entran por `guardarConfiguracion`.
+ * Hasta aquí `/admin/configuracion` los dejaba editar y avisaba de que no se
+ * guardaban; cambiarlos era escribir una migración. Con la excepción de la
+ * licenciatura modular eso dejó de ser aceptable: el tope de un programa es un
+ * dato de la universidad y cambia cuando cambia un plan de estudios.
+ *
+ * **Lo que se borra no se borra a la fuerza.** `padron_alumnos` apunta a
+ * `programas` con `on delete restrict`, así que quitar un programa que tiene
+ * alumnos lo rechaza la base —y hace bien: borrarlo dejaría sin programa a
+ * gente que está inscrita—. Esos rechazos se devuelven para poder enseñarlos,
+ * porque un borrado que no ocurre y no se dice es el mismo defecto silencioso
+ * que este cambio viene a cerrar.
+ */
+export async function guardarCatalogo(catalogo: NivelAcademico[]): Promise<RechazoCatalogo[]> {
+  const sb = exigirBase();
+  const rechazos: RechazoCatalogo[] = [];
+
+  /*
+   * El `orden` sale de la posición en la pantalla, no se pide aparte.
+   *
+   * Es lo que decide cómo se listan los niveles en el pre-registro, y pedirlo
+   * como número suelto obliga a renumerar a mano al mover uno de sitio.
+   */
+  const filasNivel = catalogo
+    .filter((n) => n.nivel.trim())
+    .map((n, i) => ({
+      nivel: n.nivel.trim(),
+      etiqueta_avance: n.etiquetaAvance.trim(),
+      total_avance: n.totalAvance,
+      orden: i,
+    }));
+
+  // `upsert` sobre `nivel`, que es único: así un nivel que ya existía conserva
+  // su id y los programas que cuelgan de él no se quedan huérfanos. Volver a
+  // insertarlo les rompería la llave foránea.
+  const niveles = await datosDe<{ id: string; nivel: string }[]>(
+    sb.from("niveles_academicos").upsert(filasNivel, { onConflict: "nivel" }).select("id, nivel"),
+  );
+  const idDeNivel = new Map(niveles.map((n) => [n.nivel, n.id]));
+
+  const filasPrograma = catalogo.flatMap((n) =>
+    n.programas
+      .filter((p) => p.nombre.trim())
+      .map((p) => ({
+        nivel_id: idDeNivel.get(n.nivel.trim())!,
+        nombre: p.nombre.trim(),
+        // Vacío en la pantalla es NULL en la tabla, y NULL significa «como mi
+        // nivel». Guardar la etiqueta del nivel copiada convertiría la herencia
+        // en una copia que se queda vieja en cuanto el nivel cambie.
+        etiqueta_avance: p.etiquetaAvance?.trim() || null,
+        total_avance: p.totalAvance ?? null,
+      }))
+      .filter((p) => p.nivel_id),
+  );
+
+  const programas = await datosDe<{ id: string }[]>(
+    sb
+      .from("programas")
+      .upsert(filasPrograma, { onConflict: "nivel_id,nombre" })
+      .select("id, nivel_id, nombre"),
+  );
+
+  // ----------------------------------------------------- lo que sobra ---
+  // Se borra al final y uno por uno, no en bloque: un borrado en bloque que la
+  // llave foránea rechaza se cae entero, y entonces un solo programa con
+  // alumnos impediría quitar los otros cuatro que sí se podían quitar.
+  const vivos = new Set(programas.map((p) => p.id));
+  const todos = await datosDe<{ id: string; nombre: string }[]>(
+    sb.from("programas").select("id, nombre"),
+  );
+  for (const p of todos) {
+    if (vivos.has(p.id)) continue;
+    const { error } = await sb.from("programas").delete().eq("id", p.id);
+    if (error)
+      rechazos.push({
+        que: `el programa «${p.nombre}»`,
+        motivo: "tiene alumnos en el padrón. Quítalos o reasígnalos antes de borrarlo.",
+      });
+  }
+
+  const nivelesVivos = new Set(niveles.map((n) => n.id));
+  const todosNiveles = await datosDe<{ id: string; nivel: string }[]>(
+    sb.from("niveles_academicos").select("id, nivel"),
+  );
+  for (const n of todosNiveles) {
+    if (nivelesVivos.has(n.id)) continue;
+    const { error } = await sb.from("niveles_academicos").delete().eq("id", n.id);
+    if (error)
+      rechazos.push({
+        que: `el nivel «${n.nivel}»`,
+        motivo: "todavía tiene programas colgando. Quítalos primero.",
+      });
+  }
+
+  return rechazos;
 }
 
 /**

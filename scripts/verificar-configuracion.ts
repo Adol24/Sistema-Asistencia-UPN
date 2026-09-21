@@ -149,13 +149,17 @@ igual(
   {},
 );
 {
-  const avisos = camposSinGuardar({ horario: "8:00 a 14:00", catalogoAcademico: [] });
-  if (avisos.length === 2) ok("y los dos se pueden nombrar para avisar");
-  else falla("los campos sin columna deberían poder nombrarse", 2, avisos.length);
+  const avisos = camposSinGuardar({ horario: "8:00 a 14:00" });
+  if (avisos.length === 1) ok("y el horario se puede nombrar para avisar");
+  else falla("el horario debería poder nombrarse", 1, avisos.length);
 }
 igual("un parche que sí se guarda no inventa avisos", camposSinGuardar({ nombre: "X" }), []);
-// `dias` no se descarta: tiene su propio camino de escritura, `guardarDia`.
+// Ni `dias` ni el catálogo se descartan: los dos tienen tabla propia y su
+// propio camino de escritura, `guardarDia` y `guardarCatalogo`. Que no
+// produzcan columnas no es lo mismo que perderse, y confundirlo haría que la
+// pantalla avisara de una pérdida que no ocurre.
 igual("los días NO se reportan como perdidos", camposSinGuardar({ dias: [] }), []);
+igual("el catálogo académico tampoco", camposSinGuardar({ catalogoAcademico: [] }), []);
 
 // ---------------------------------------------------------------------------
 console.log("\n=== EL VIAJE DE IDA Y VUELTA DE LA FECHA LÍMITE ===\n");

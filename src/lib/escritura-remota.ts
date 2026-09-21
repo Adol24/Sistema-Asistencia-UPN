@@ -90,14 +90,14 @@ const ANIDADAS = {
  *
  * - `horario` es derivado: la tabla guarda los dos tramos de registro y el
  *   horario se arma juntándolos al leer. No hay columna que escribir.
- * - `catalogoAcademico` vive en `niveles_academicos` y `programas`, y hoy
- *   `datos.ts` solo sabe leerlas. Escribirlas es trabajo aparte.
  * - `dias` tiene su propia tabla y su propio camino, `guardarDia`. No se
  *   descarta: se guarda en otro sitio.
+ * - `catalogoAcademico` también, desde que la licenciatura modular obligó a que
+ *   el tope de un programa se pudiera corregir sin escribir una migración. Va
+ *   por `guardarCatalogo`.
  */
 const SIN_COLUMNA: Record<string, string> = {
   horario: "el horario general (se arma solo con los dos tramos de registro)",
-  catalogoAcademico: "el catálogo académico (niveles y programas)",
 };
 
 /**
@@ -120,7 +120,7 @@ export const DESTINO_DE_CAMPO = {
   /** No se puede guardar, y se avisa a quien lo edite. */
   sinColumna: Object.keys(SIN_COLUMNA),
   /** Tiene tabla propia y su propio camino de escritura. */
-  tablaPropia: ["dias"],
+  tablaPropia: ["dias", "catalogoAcademico"],
 } as const;
 
 /** Sin dominio configurado es cadena vacía en la app y NULL en la tabla. */

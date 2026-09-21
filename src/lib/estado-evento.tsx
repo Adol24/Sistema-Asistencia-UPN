@@ -942,6 +942,30 @@ export function EstadoEventoProvider({
         (d) => Promise.all(dias.map((x) => d.guardarDia(x))).then(() => d.olvidarPublico()),
         () => avisarFallo("No se pudieron guardar los días del evento."),
       );
+
+    /*
+     * El catálogo académico también tiene tablas propias.
+     *
+     * Hasta que la licenciatura modular obligó a distinguir el tope de un
+     * programa del de su nivel, esto se editaba en pantalla y no se guardaba:
+     * la pantalla lo advertía, y cambiarlo de verdad era escribir una
+     * migración. Un tope que depende del plan de estudios no puede vivir así.
+     *
+     * Lo que la base no deja borrar —un programa con alumnos en el padrón— se
+     * avisa nombrándolo. Es lo mismo que hace la importación con las filas que
+     * rechaza: un borrado que no ocurre y no se dice es peor que uno que falla.
+     */
+    const catalogo = patch.catalogoAcademico;
+    if (catalogo)
+      escribir(
+        "el catálogo académico",
+        async (d) => {
+          const rechazos = await d.guardarCatalogo(catalogo);
+          d.olvidarPublico();
+          for (const r of rechazos) avisarFallo(`No se pudo quitar ${r.que}: ${r.motivo}`);
+        },
+        () => avisarFallo("No se pudo guardar el catálogo académico."),
+      );
   }, []);
 
   // ------------------------------------------------------------ talleres ---
