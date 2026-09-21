@@ -212,6 +212,29 @@ Y lo que no son migraciones: los **días 2 y 3** no tienen puntos de captura, y 
 los talleres les falta descripción. Ambas cosas se llenan desde el panel
 —`/admin/configuracion` y `/admin/talleres`— sin tocar la base.
 
+### El cupo de un taller de dos días es compartido, y está bien
+
+Se estuvo a punto de «arreglar» algo que no estaba roto, así que queda escrito.
+
+`talleres.cupo_total` es un número por taller y `v_talleres` cuenta sus
+inscritos **sin mirar el día**. En un taller de dos fechas el cupo se comparte
+entre las dos, y eso es lo correcto:
+
+| Taller | Días | Cupo | Qué significa |
+| --- | --- | --- | --- |
+| T03, T05, T06 | 1 y 2 | 30 | **30 lugares en total.** Quien lo elige ocupa uno, venga el día que venga. |
+| T04 / T12 | 1 / 2 | 70 + 70 | **Dos grupos con listas distintas.** Por eso son dos claves. |
+
+La decolonialidad es el único caso de dos grupos, y con un solo renglón los del
+jueves y los del viernes competirían por el mismo cupo. La duplicación que se ve
+en el panel no es un defecto: son dos grupos de verdad. El alumno no la ve nunca,
+porque `/talleres` solo le ofrece los de su día.
+
+**Cuidado con la lectura fácil**: «van las mismas 30 personas los dos días»
+significa los mismos 30 LUGARES, no las mismas 30 personas asistiendo dos veces.
+Una persona va a **un solo día** del evento. Leerlo al revés lleva a dar cupo por
+día y a anunciar el doble de lugares de los que existen.
+
 ### La trampa que hay que recordar al escribir la siguiente
 
 `20260911120000` creó dos funciones y las cerró con `revoke ... from public`. En

@@ -409,10 +409,32 @@ console.log("\n=== LA ESTRUCTURA DE LOS TALLERES ===\n");
           `T12 existe pero se imparte el día ${dias.join("+")}; la 36 lo deja solo en el día 2`,
         );
 
-      // Dato, no falla: el panel puede cambiarlo y cambiarlo es legítimo.
-      if (t.cupo_total !== 35)
-        console.log(
-          `       cupo de T12: ${t.cupo_total}, y la 36 lo sembró en 35. Se cambió desde /admin/talleres.`,
+      /*
+       * Los dos grupos de decolonialidad tienen que ser iguales.
+       *
+       * T04 y T12 son el mismo taller con dos grupos distintos, uno por día, y
+       * la organización los quiere de 70 cada uno (migración 46). La 36 los
+       * había sembrado en 35, y durante un tiempo T12 estuvo en 70 y T04 en 35:
+       * el mismo taller anunciaba el doble de lugares el viernes que el jueves
+       * sin que nadie lo hubiera decidido.
+       *
+       * Se comprueba que coincidan, no que valgan 70: el número lo puede
+       * cambiar la organización desde el panel y eso es legítimo. Lo que no es
+       * legítimo es que se separen.
+       */
+      const { data: gemelo } = await sb
+        .from("talleres")
+        .select("cupo_total")
+        .eq("clave", "T04")
+        .maybeSingle();
+      const cupoT04 = (gemelo as { cupo_total: number } | null)?.cupo_total;
+      if (cupoT04 === undefined || cupoT04 === null)
+        console.log("       T04 no se ve: apagado o borrado. Es el grupo del día 1 de T12.");
+      else if (cupoT04 === t.cupo_total)
+        ok(`los dos grupos de decolonialidad son de ${t.cupo_total}: T04 el día 1 y T12 el día 2`);
+      else
+        falla(
+          `los dos grupos de decolonialidad no coinciden: T04 tiene ${cupoT04} y T12 tiene ${t.cupo_total}. Es el mismo taller.`,
         );
     }
   }
