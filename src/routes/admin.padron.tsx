@@ -515,107 +515,14 @@ function ImportacionPadron() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
-              {/*
-                El rótulo nombra las dos cosas que se hacen aquí.
-                Decía solo «Asignar día a un conjunto», y por eso quien quería
-                mirar su padrón —quién es de qué programa, cuántos van por el
-                octavo— no lo buscaba en esta pantalla: el título prometía una
-                herramienta de escritura y esto es antes que nada la única
-                lista consultable del padrón que hay.
-              */}
-              <h3 className="text-sm font-semibold">Consultar el padrón y asignar día</h3>
-              <p className="mt-1 max-w-4xl text-sm text-muted-foreground">
-                Filtra para mirar a quien quieras. Una sede viaja junta desde su municipio, así que
-                el día se le da al conjunto entero que quede filtrado, no alumno por alumno.
-              </p>
-
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
-                  {sedes.map((x) => (
-                    <option key={x} value={x}>
-                      {x}
-                    </option>
-                  ))}
-                </FiltroSelect>
-                <FiltroSelect
-                  etiqueta="Programa"
-                  valor={fPrograma}
-                  alCambiar={setFPrograma}
-                  todos="todos"
-                >
-                  {configuracion.catalogoAcademico.flatMap((n) =>
-                    n.programas.map((x) => (
-                      <option key={x.nombre} value={x.nombre}>
-                        {x.nombre}
-                      </option>
-                    )),
-                  )}
-                </FiltroSelect>
-                <FiltroSelect etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
-                  {grupos.map((x) => (
-                    <option key={x} value={x}>
-                      {x}
-                    </option>
-                  ))}
-                </FiltroSelect>
-                <FiltroSelect
-                  etiqueta={etiquetaAvance}
-                  valor={fAvance}
-                  alCambiar={setFAvance}
-                  todos="todos"
-                >
-                  {avances.map((x) => (
-                    <option key={x} value={String(x)}>
-                      {etiquetaAvance === "Avance" ? x : `${etiquetaAvance} ${x}`}
-                    </option>
-                  ))}
-                </FiltroSelect>
-                <FiltroSelect
-                  etiqueta="Día asignado"
-                  valor={fDia}
-                  alCambiar={setFDia}
-                  todos="todos"
-                >
-                  <option value="sin-dia">Sin día</option>
-                  {([1, 2, 3] as const).map((d) => (
-                    <option key={d} value={String(d)}>
-                      Día {d}
-                    </option>
-                  ))}
-                </FiltroSelect>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                <p className="text-sm">
-                  <span className="text-2xl font-extrabold tabular-nums">{seleccion.length}</span>{" "}
-                  <span className="text-muted-foreground">
-                    {seleccion.length === 1 ? "alumno coincide" : "alumnos coinciden"}
-                  </span>
-                </p>
-                <span className="flex flex-wrap gap-2 sm:ml-auto">
-                  {([1, 2, 3] as const).map((d) => (
-                    <Button
-                      key={d}
-                      variant="outline"
-                      className="h-11"
-                      disabled={seleccion.length === 0}
-                      onClick={() => asignarASeleccion(d)}
-                    >
-                      <CalendarDays className="size-4" /> Al día {d} · {infoDia(d).lugar}
-                    </Button>
-                  ))}
-                </span>
-              </div>
-              {seleccion.length > 0 && seleccion.some((a) => a.dia) ? (
-                <p className="mt-2 text-xs text-estado-discrepancia">
-                  {seleccion.filter((a) => a.dia).length} de estos ya tenían día. Se les cambia, y a
-                  quien tuviera un taller que no se imparte el día nuevo se le libera la
-                  inscripción.
-                </p>
-              ) : null}
-            </div>
-
+            {/*
+              El reparto rápido va antes de la lista, no después.
+              Es la única acción de aquí que NO depende de los filtros —cada
+              pendiente cae en el día que va más vacío— así que colgaba al final
+              de una tabla filtrada dando a entender lo contrario. Arriba, junto
+              al aforo que va a mover, se lee por lo que es: la salida rápida
+              antes de ponerse a repartir a mano.
+            */}
             {pendientes.length > 0 ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Button className="h-11" disabled={repartiendo} onClick={() => void repartir()}>
@@ -642,69 +549,190 @@ function ImportacionPadron() {
             )}
 
             {/*
-              La lista de quienes coinciden con los filtros.
-              Antes solo se listaban los pendientes —y solo doce—, así que filtrar
-              por «Día 1» decía cuántos había pero nunca quiénes: no se podía
-              comprobar a quién le tocaba qué, ni corregir a una persona sin
-              mover a todo su grupo.
+              Los filtros van DENTRO de la caja de la tabla y pegados a ella.
+              Estaban en una tarjeta aparte con los tres botones de asignar
+              justo debajo, y la tabla empezaba después de todo eso. Con la
+              acción de escritura metida entre el filtro y su resultado, los
+              desplegables se leían como parte del asignador y no como lo que
+              acota la lista: se podía tener el padrón entero delante sin ver
+              que era filtrable. Lo que acota una tabla se pone encima de esa
+              tabla y sin nada en medio.
             */}
-            {seleccion.length > 0 ? (
-              <div className="mt-4">
-                <Tabla
-                  anchoMinimo="40rem"
-                  columnas={["Alumno", "Grupo · sede", "Día", "Cambiar a"]}
-                >
-                  {tramoReparto.visibles.map((a) => (
-                    <Fila key={a.matricula} className="align-middle">
-                      <td className="px-3 py-2">
-                        <span className="font-semibold">{a.nombre}</span>
-                        <span className="block font-mono text-xs text-muted-foreground">
-                          {a.matricula}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {a.grupo ?? "sin grupo"} · {a.plantel}
-                      </td>
-                      <td className="px-3 py-2">
-                        {a.dia ? (
-                          <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
-                            Día {a.dia} · {infoDia(a.dia).lugar}
-                          </span>
-                        ) : (
-                          <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
-                            Sin día
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="flex gap-1">
-                          {([1, 2, 3] as const).map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              // El día que ya tiene no se ofrece: pulsarlo no
-                              // haría nada y ocupa el sitio de los que sí.
-                              disabled={a.dia === d}
-                              onClick={() => {
-                                reasignarDia(a.matricula, d);
-                                toast.success(`${a.nombre} queda en el día ${d}.`);
-                              }}
-                              className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
-                            >
-                              {d}
-                            </button>
-                          ))}
-                        </span>
-                      </td>
-                    </Fila>
-                  ))}
-                </Tabla>
-                <Paginacion
-                  tramo={tramoReparto}
-                  nota={`Los botones de asignación de arriba aplican a los ${seleccion.length}, no solo a esta página.`}
-                />
+            <section className="mt-5 overflow-hidden rounded-lg border border-border bg-card">
+              <div className="border-b border-border bg-muted/30 p-4">
+                <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+                  <h3 className="text-sm font-semibold">El padrón</h3>
+                  <p className="text-sm">
+                    <span className="text-xl font-extrabold tabular-nums">{seleccion.length}</span>{" "}
+                    <span className="text-muted-foreground">
+                      {seleccion.length === 1 ? "alumno" : "alumnos"} de {padron.length}
+                    </span>
+                  </p>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  <FiltroSelect etiqueta="Sede" valor={fSede} alCambiar={setFSede} todos="todas">
+                    {sedes.map((x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    ))}
+                  </FiltroSelect>
+                  <FiltroSelect
+                    etiqueta="Programa"
+                    valor={fPrograma}
+                    alCambiar={setFPrograma}
+                    todos="todos"
+                  >
+                    {configuracion.catalogoAcademico.flatMap((n) =>
+                      n.programas.map((x) => (
+                        <option key={x.nombre} value={x.nombre}>
+                          {x.nombre}
+                        </option>
+                      )),
+                    )}
+                  </FiltroSelect>
+                  <FiltroSelect etiqueta="Grupo" valor={fGrupo} alCambiar={setFGrupo} todos="todos">
+                    {grupos.map((x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    ))}
+                  </FiltroSelect>
+                  <FiltroSelect
+                    etiqueta={etiquetaAvance}
+                    valor={fAvance}
+                    alCambiar={setFAvance}
+                    todos="todos"
+                  >
+                    {avances.map((x) => (
+                      <option key={x} value={String(x)}>
+                        {etiquetaAvance === "Avance" ? x : `${etiquetaAvance} ${x}`}
+                      </option>
+                    ))}
+                  </FiltroSelect>
+                  <FiltroSelect
+                    etiqueta="Día asignado"
+                    valor={fDia}
+                    alCambiar={setFDia}
+                    todos="todos"
+                  >
+                    <option value="sin-dia">Sin día</option>
+                    {([1, 2, 3] as const).map((d) => (
+                      <option key={d} value={String(d)}>
+                        Día {d}
+                      </option>
+                    ))}
+                  </FiltroSelect>
+                </div>
               </div>
-            ) : null}
+
+              {seleccion.length === 0 ? (
+                <p className="p-10 text-center text-sm text-muted-foreground">
+                  Ningún alumno coincide con estos filtros.
+                </p>
+              ) : (
+                <>
+                  <Tabla
+                    className="rounded-none border-0"
+                    anchoMinimo="62rem"
+                    columnas={["Alumno", "Programa", "Avance", "Grupo · sede", "Día", "Cambiar a"]}
+                  >
+                    {tramoReparto.visibles.map((a) => (
+                      <Fila key={a.matricula} className="align-middle">
+                        <td className="px-3 py-2">
+                          <span className="font-semibold">{a.nombre}</span>
+                          <span className="block font-mono text-xs text-muted-foreground">
+                            {a.matricula}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{a.programa}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {avanceTexto(
+                            configuracion.catalogoAcademico,
+                            a.nivel,
+                            a.avance,
+                            a.programa,
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {a.grupo ?? "sin grupo"} · {a.plantel}
+                        </td>
+                        <td className="px-3 py-2">
+                          {a.dia ? (
+                            <span className="whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs font-semibold">
+                              Día {a.dia} · {infoDia(a.dia).lugar}
+                            </span>
+                          ) : (
+                            <span className="whitespace-nowrap rounded-full border border-estado-discrepancia/40 px-2 py-1 text-xs font-semibold text-estado-discrepancia">
+                              Sin día
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="flex gap-1">
+                            {([1, 2, 3] as const).map((d) => (
+                              <button
+                                key={d}
+                                type="button"
+                                // El día que ya tiene no se ofrece: pulsarlo no
+                                // haría nada y ocupa el sitio de los que sí.
+                                disabled={a.dia === d}
+                                onClick={() => {
+                                  reasignarDia(a.matricula, d);
+                                  toast.success(`${a.nombre} queda en el día ${d}.`);
+                                }}
+                                className="h-9 rounded-md border border-border px-2.5 text-xs font-semibold hover:bg-muted disabled:opacity-30"
+                              >
+                                {d}
+                              </button>
+                            ))}
+                          </span>
+                        </td>
+                      </Fila>
+                    ))}
+                  </Tabla>
+                  <div className="border-t border-border px-4 pb-3">
+                    <Paginacion tramo={tramoReparto} />
+                  </div>
+                </>
+              )}
+
+              {/*
+                La asignación en bloque, debajo de la tabla y nombrando a
+                cuántos toca. Arriba se leía como el dueño de los filtros;
+                aquí se lee como lo que es: lo que le pasa a lo que se está
+                viendo. El número va en el propio rótulo porque es la única
+                cifra que importa antes de pulsar.
+              */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-border bg-muted/30 p-4">
+                <p className="min-w-0 text-sm">
+                  <span className="font-semibold">
+                    Asignar día a{" "}
+                    {seleccion.length === 1 ? "este alumno" : `estos ${seleccion.length}`}
+                  </span>
+                  {seleccion.some((a) => a.dia) ? (
+                    <span className="block text-xs text-estado-discrepancia">
+                      {seleccion.filter((a) => a.dia).length} ya tenían día. Se les cambia, y a
+                      quien tuviera un taller que no se imparte el día nuevo se le libera la
+                      inscripción.
+                    </span>
+                  ) : null}
+                </p>
+                <span className="flex flex-wrap gap-2 sm:ml-auto">
+                  {([1, 2, 3] as const).map((d) => (
+                    <Button
+                      key={d}
+                      variant="outline"
+                      className="h-11 bg-card"
+                      disabled={seleccion.length === 0}
+                      onClick={() => asignarASeleccion(d)}
+                    >
+                      <CalendarDays className="size-4" /> Al día {d} · {infoDia(d).lugar}
+                    </Button>
+                  ))}
+                </span>
+              </div>
+            </section>
           </TabsContent>
         </Tabs>
       )}

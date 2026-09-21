@@ -132,14 +132,29 @@ function CatalogoTalleres() {
     }
   };
 
+  /*
+   * No hay taller que ofrecerle, y eso no es un fallo.
+   *
+   * Los talleres se imparten el día 1 y el 2; el día 3 es en el Teatro Victoria
+   * y su programa es otro. Quien caiga en ese día llega aquí y no hay nada que
+   * elegir, y pueden ser hasta seiscientas personas.
+   *
+   * Por eso la pantalla cambia de título en vez de invitar a elegir de algo
+   * vacío: pedir que se elija y no ofrecer nada se lee como un error del sistema,
+   * y quien lo lee así se detiene a averiguar qué hizo mal en lugar de seguir.
+   */
+  const sinTalleres = talleres.length === 0;
+
   return (
     <PantallaPublica
       ancho="xl"
-      titulo="Elige un taller (opcional)"
+      titulo={sinTalleres ? "Tu día no lleva talleres" : "Elige un taller (opcional)"}
       descripcion={
-        dia
-          ? `Estos son los talleres del día ${dia}. Puedes elegir máximo uno, con costo adicional que se paga por separado.`
-          : "Puedes elegir máximo uno. Como todavía no tienes día asignado, se te dará uno en el que se imparta el taller que elijas."
+        sinTalleres
+          ? "Los talleres se imparten los otros días del Encuentro. Continúa: tu registro al evento no depende de esto."
+          : dia
+            ? `Estos son los talleres del día ${dia}. Puedes elegir máximo uno, con costo adicional que se paga por separado.`
+            : "Puedes elegir máximo uno. Como todavía no tienes día asignado, se te dará uno en el que se imparta el taller que elijas."
       }
     >
       {seleccion ? (
@@ -152,14 +167,16 @@ function CatalogoTalleres() {
         </Alert>
       ) : null}
 
-      {talleres.length === 0 ? (
+      {sinTalleres ? (
         <EstadoVacio
           icono={<Info className="size-8" aria-hidden />}
           titulo={
             dia ? `Ningún taller se imparte el día ${dia}` : "Por ahora no hay talleres disponibles"
           }
         >
-          Puedes continuar sin taller; tu registro al evento no depende de esto.
+          {dia
+            ? "No tienes que hacer nada al respecto. Pulsa continuar y termina tu registro."
+            : "Puedes continuar sin taller; tu registro al evento no depende de esto."}
         </EstadoVacio>
       ) : null}
 
@@ -259,23 +276,36 @@ function CatalogoTalleres() {
         })}
       </ul>
 
-      <div className="sticky bottom-0 mt-6 grid gap-2 border-t border-border bg-background/95 py-4 backdrop-blur sm:grid-cols-2">
+      {/*
+       * Sin talleres queda un solo botón, y deja de llamarse «continuar SIN
+       * taller»: nombrar una elección que no se ofreció hace dudar de si uno se
+       * perdió un paso. Y el segundo botón desaparece en vez de quedarse
+       * desactivado para siempre, que es ruido con aspecto de algo que falta.
+       */}
+      <div
+        className={cn(
+          "sticky bottom-0 mt-6 grid gap-2 border-t border-border bg-background/95 py-4 backdrop-blur",
+          sinTalleres ? "" : "sm:grid-cols-2",
+        )}
+      >
         <Button
-          variant="outline"
+          variant={sinTalleres ? "default" : "outline"}
           className="h-12 md:h-11 text-base"
           disabled={registrando}
           onClick={() => void cerrarPreregistro(undefined)}
         >
-          Continuar sin taller
+          {sinTalleres ? "Continuar" : "Continuar sin taller"}
         </Button>
-        <Button
-          className="h-12 md:h-11 text-base"
-          disabled={!seleccion || registrando}
-          onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
-        >
-          {registrando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-          {registrando ? "Guardando…" : "Continuar con el taller elegido"}
-        </Button>
+        {sinTalleres ? null : (
+          <Button
+            className="h-12 md:h-11 text-base"
+            disabled={!seleccion || registrando}
+            onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
+          >
+            {registrando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+            {registrando ? "Guardando…" : "Continuar con el taller elegido"}
+          </Button>
+        )}
       </div>
     </PantallaPublica>
   );
