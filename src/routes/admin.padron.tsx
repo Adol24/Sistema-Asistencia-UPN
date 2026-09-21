@@ -10,7 +10,6 @@ import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { usePaginacion } from "@/lib/paginacion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -195,9 +194,6 @@ function ImportacionPadron() {
    * pendientes siguen a un clic, y su botón de reparto no depende del filtro.
    */
   const [fDia, setFDia] = useState("todos");
-  /** Búsqueda libre por matrícula o nombre, para dar con una persona concreta. */
-  const [q, setQ] = useState("");
-
   const grupos = useMemo(
     () => [...new Set(padron.map((a) => a.grupo).filter((g): g is string => !!g))].sort(),
     [padron],
@@ -235,26 +231,27 @@ function ImportacionPadron() {
   }, [configuracion.catalogoAcademico, fPrograma]);
 
   /*
-   * La búsqueda es un filtro más, no algo aparte, y eso importa: lo que la
-   * asignación en bloque mueve es exactamente lo que se está viendo. Si buscar
-   * dejara la selección intacta, se buscaría a una persona, se pulsaría «día 2»
-   * y se movería a todo el grupo sin darse cuenta.
+   * Lo que la asignación en bloque mueve es exactamente lo que se está viendo.
+   * Por eso el conjunto sale de un solo sitio: si algún modo de acotar la lista
+   * no entrara aquí, se acotaría la vista, se pulsaría «día 2» y se movería a
+   * gente que no estaba en pantalla.
+   *
+   * Aquí hubo además una búsqueda libre por matrícula, nombre o grupo. Se
+   * retiró: los cinco desplegables ya llegan hasta el grupo de una sede, y lo
+   * que quedaba debajo era buscar a UNA persona para reasignarla sola, que es
+   * el botón de día de su propia fila. Un campo de texto sobre una lista que ya
+   * se acota por cinco vías es un sexto modo de llegar al mismo sitio.
    */
   const seleccion = useMemo(() => {
-    const t = q.trim().toLowerCase();
     return padron.filter(
       (a) =>
         (fSede === "todas" || a.plantel === fSede) &&
         (fPrograma === "todos" || a.programa === fPrograma) &&
         (fGrupo === "todos" || a.grupo === fGrupo) &&
         (fAvance === "todos" || a.avance === Number(fAvance)) &&
-        (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))) &&
-        (!t ||
-          a.matricula.toLowerCase().includes(t) ||
-          a.nombre.toLowerCase().includes(t) ||
-          (a.grupo ?? "").toLowerCase().includes(t)),
+        (fDia === "todos" || (fDia === "sin-dia" ? !a.dia : a.dia === Number(fDia))),
     );
-  }, [padron, fSede, fPrograma, fGrupo, fAvance, fDia, q]);
+  }, [padron, fSede, fPrograma, fGrupo, fAvance, fDia]);
 
   /*
    * Los filtros devuelven a la página 1; reasignarle el día a un alumno no.
@@ -264,7 +261,7 @@ function ImportacionPadron() {
   const tramoReparto = usePaginacion(
     seleccion,
     POR_PAGINA,
-    `${fSede}|${fPrograma}|${fGrupo}|${fAvance}|${fDia}|${q}`,
+    `${fSede}|${fPrograma}|${fGrupo}|${fAvance}|${fDia}`,
   );
 
   const asignarASeleccion = (dia: 1 | 2 | 3) => {
@@ -587,21 +584,6 @@ function ImportacionPadron() {
                     </option>
                   ))}
                 </FiltroSelect>
-              </div>
-
-              <div className="mt-3">
-                <Input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar por matrícula, nombre o grupo"
-                  aria-label="Buscar en el padrón"
-                  className="h-11"
-                />
-                {q.trim() ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    La búsqueda acota la selección: lo que asignes abajo se aplica solo a estos.
-                  </p>
-                ) : null}
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
