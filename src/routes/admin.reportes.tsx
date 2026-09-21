@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Download, Table2 } from "lucide-react";
+import { Download, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
-import { Fila, Tabla } from "@/components/tabla";
+import { Fila, Paginacion, Tabla } from "@/components/tabla";
+import { usePaginacion } from "@/lib/paginacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -59,7 +60,6 @@ function Reportes() {
   } = useEstadoEvento();
   const entorno = useEntornoConstancias();
   const [activo, setActivo] = useState<IdReporte>("pagos");
-  const [pagina, setPagina] = useState(1);
   const [q, setQ] = useState("");
 
   // Todo sale del contexto compartido: un reporte generado después de registrar
@@ -327,12 +327,13 @@ function Reportes() {
     return r.filas.filter((f) => f.some((c) => String(c).toLowerCase().includes(t)));
   }, [r.filas, q]);
 
-  // La vista pagina; la exportación lleva lo que se está viendo, filtro incluido.
-  const POR_PAGINA = 50;
-  const totalPaginas = Math.max(1, Math.ceil(filas.length / POR_PAGINA));
-  const paginaActual = Math.min(pagina, totalPaginas);
-  const desde = (paginaActual - 1) * POR_PAGINA;
-  const visibles = filas.slice(desde, desde + POR_PAGINA);
+  /*
+   * La vista pagina; la exportación lleva lo que se está viendo, filtro
+   * incluido. Se vuelve a la página 1 al cambiar de reporte o de búsqueda:
+   * son otra lista, y quedarse en la página 7 de otra cosa es empezar por el
+   * final.
+   */
+  const tramo = usePaginacion(filas, 50, `${activo}|${q}`);
 
   const exportar = () => {
     // Se exporta lo filtrado, no el reporte entero: quien acotó a un grupo y
@@ -347,7 +348,6 @@ function Reportes() {
     <PantallaPanel
       area="admin"
       titulo="Reportes"
-      descripcion="Se calculan del estado de la sesión: lo que registres hoy aparece aquí sin recargar."
       acciones={
         <Button className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
@@ -356,10 +356,7 @@ function Reportes() {
     >
       <GrupoFiltro
         valor={activo}
-        alElegir={(id) => {
-          setActivo(id);
-          setPagina(1);
-        }}
+        alElegir={setActivo}
         claseBoton="h-11 gap-2"
         opciones={reportes.map(
           (x) =>
@@ -378,7 +375,6 @@ function Reportes() {
           value={q}
           onChange={(e) => {
             setQ(e.target.value);
-            setPagina(1);
           }}
           placeholder="Buscar en este reporte: matrícula, nombre, folio…"
           aria-label="Buscar en el reporte"
@@ -410,8 +406,8 @@ function Reportes() {
           ) : null
         }
       >
-        {visibles.map((fila, i) => (
-          <Fila key={desde + i}>
+        {tramo.visibles.map((fila, i) => (
+          <Fila key={tramo.desde + i}>
             {fila.map((celda, k) => (
               <td key={k} className="px-3 py-2">
                 {String(celda)}
@@ -420,37 +416,20 @@ function Reportes() {
           </Fila>
         ))}
       </Tabla>
-      {r.filas.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Mostrando {desde + 1}–{Math.min(desde + POR_PAGINA, r.filas.length)} de {r.filas.length}
-            . La exportación incluye siempre el reporte completo.
-          </p>
-          {totalPaginas > 1 ? (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                className="h-10"
-                disabled={paginaActual === 1}
-                onClick={() => setPagina(paginaActual - 1)}
-              >
-                <ChevronLeft className="size-4" /> Anterior
-              </Button>
-              <span className="px-2 text-sm text-muted-foreground">
-                Página {paginaActual} de {totalPaginas}
-              </span>
-              <Button
-                variant="outline"
-                className="h-10"
-                disabled={paginaActual === totalPaginas}
-                onClick={() => setPagina(paginaActual + 1)}
-              >
-                Siguiente <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {/*
+        El pie decía dos cosas que no eran ciertas.
+        Contaba «de {r.filas.length}» —el reporte entero— mientras paginaba
+        sobre lo filtrado, así que al buscar algo el total seguía siendo el de
+        antes y las cuentas no cerraban. Y prometía que «la exportación incluye
+        siempre el reporte completo» cuando `exportar` lleva justo lo filtrado,
+        a propósito: quien acota a un grupo y pulsa exportar espera ese grupo.
+        Las dos salían de escribir el pie a mano; ahora los números los da el
+        mismo tramo que recortó las filas.
+      */}
+      <Paginacion
+        tramo={tramo}
+        nota="La exportación se lleva estas mismas, con el filtro puesto."
+      />
     </PantallaPanel>
   );
 }

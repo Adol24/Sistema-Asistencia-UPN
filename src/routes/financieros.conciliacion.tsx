@@ -128,7 +128,6 @@ function Conciliacion() {
     <PantallaPanel
       area="financieros"
       titulo="Conciliación"
-      descripcion="Todo lo de esta pantalla se calcula de los pagos registrados en la sesión."
       acciones={
         <Button variant="outline" className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar ({filas.length})

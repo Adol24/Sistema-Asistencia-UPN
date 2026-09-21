@@ -79,7 +79,6 @@ function Bitacora() {
     <PantallaPanel
       area="admin"
       titulo="Bitácora"
-      descripcion="Registra lo que ocurre en la sesión, no solo lo histórico. Sin eso no se puede aclarar ninguna inconformidad."
       acciones={
         <Button variant="outline" className="h-11" onClick={exportar}>
           <Download className="size-4" /> Exportar ({visibles.length})

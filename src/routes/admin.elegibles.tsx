@@ -171,7 +171,7 @@ function Elegibles() {
     <PantallaPanel
       area="admin"
       titulo="Listado de elegibles"
-      descripcion="El sistema no genera las constancias: calcula quién cumple y entrega el listado a quien las elabora."
+      descripcion="Las constancias no se emiten aquí: esto calcula quién cumple y entrega el listado."
       acciones={
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="h-11" onClick={() => exportarEvento(false)}>

@@ -401,19 +401,16 @@ function ImportacionPadron() {
 
           <TabsContent value="reparto">
             {/*
-              Sin encabezado propio: lo dice la pestaña.
-              Aquí había un «Reparto por días» con su icono, que era necesario
-              cuando esto era una tarjeta más de una columna y hacía falta
-              separarlo de lo de arriba. Repetirlo debajo de la pestaña que ya
-              se llama igual solo gasta el primer renglón, que es el sitio
-              donde se mira el aforo.
+              Sin encabezado ni párrafo de entrada: lo primero es el aforo.
+              Aquí había un «Reparto por días» con su icono y debajo un párrafo
+              explicando que el día lo asigna la organización. Los dos hacían
+              falta cuando esto era una tarjeta más dentro de una columna larga
+              y había que decir dónde empezaba. Ya no: la pestaña se llama
+              igual, y el párrafo explicaba la pantalla a quien ya la abrió a
+              propósito. Gastaban los dos primeros renglones, que es donde se
+              mira cuánta gente cabe cada día.
             */}
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              El día no lo entrega Servicios Escolares: lo asigna la organización. Aquí se ve cómo
-              está repartido el padrón y se asigna día a quien todavía no tiene.
-            </p>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {/*
                 El reparto se enseña contra el aforo y no a secas. «Día 3: 612» no
                 dice nada por sí solo; «612 de 600» dice que hay doce personas a

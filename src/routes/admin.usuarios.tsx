@@ -84,7 +84,6 @@ function AdminUsuarios() {
     <PantallaPanel
       area="admin"
       titulo="Usuarios y roles"
-      descripcion="Quien asigna permisos debe saber qué está concediendo."
       acciones={
         <Button className="h-11" onClick={() => setEditando(nuevo())}>
           <Plus className="size-4" /> Nuevo usuario

@@ -180,7 +180,7 @@ function Soporte() {
     <PantallaPanel
       area="admin"
       titulo="Casos de soporte"
-      descripcion="Contraparte del botón de WhatsApp y de la casilla de nombre incorrecto del pre-registro."
+      descripcion="Llegan del botón de WhatsApp y de «mi nombre está mal» del pre-registro."
       acciones={
         <Button
           className="h-11"
