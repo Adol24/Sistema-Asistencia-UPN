@@ -41,6 +41,10 @@ enumerándolos en vez de aplicarse.
 formulario de externo a un alumno. Ver abajo, e **importante**: trae dos reglas y
 una de las dos está dormida hasta que se llene un campo del panel.
 
+**Pendiente también la 43** —`20260921120000_el_avance_lo_manda_el_programa`—,
+que es la que permite cargar el padrón real. Ver abajo: sin ella, las 293 filas
+de la hoja «MÓDULO 13» se rechazan una por una.
+
 **Pendientes también la 41 y la 42**, las dos del aforo. El comprobante ya
 pregunta por ellas y hoy contesta exactamente lo que se espera de una base sin
 aplicarlas:
@@ -151,6 +155,43 @@ Se dice porque ya se había desfasado una vez: este documento llamaba «30» a l
 del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
+
+### El avance lo manda el programa (43) — sin aplicar
+
+Va después de las dos del aforo, pero no depende de ellas: toca `programas` y
+`padron_alumnos`, que las otras no tocan.
+
+**Qué la provocó.** El padrón oficial de Servicios Escolares
+(`plantilla-padron-oficial.xlsx`) trae una hoja «MÓDULO 13» con 293 alumnos de la
+**Licenciatura en Educación e Innovación Pedagógica**, y su avance es el módulo
+13. El sistema creía que el NIVEL decide cómo se cuenta el avance y hasta dónde
+llega —Licenciatura → «Semestre», 1 a 8—, así que las 293 se rechazaban con
+«Semestre 13 está fuera de rango: ese nivel llega a 8».
+
+**Por qué no bastaba subirle el tope a Licenciatura.** Son seis licenciaturas y
+solo esa va por módulos. Poner 13 a todas habría dejado pasar un «Semestre 11» de
+Pedagogía y lo habría impreso en su comprobante.
+
+**Lo que hace.** `programas` estrena `etiqueta_avance` y `total_avance`, las dos
+NULL por omisión. NULL significa «me cuento como diga mi nivel», y ocho de los
+nueve programas se quedan así. Solo la LEIP se llena, con «Módulo» y 13. Que la
+excepción se vea como excepción es el punto.
+
+`fn_validar_avance` conserva su firma —`create or replace` mantiene sus
+concesiones, y no hay que recorrer `pg_proc`— y solo cambia a quién le pregunta:
+`coalesce(programa, nivel)`. Su disparador **sí** cambia, porque ahora también
+tiene que vigilar `programa_id`: cambiar de Pedagogía a Innovación Pedagógica
+mueve el tope sin cambiar de nivel.
+
+**Trae un freno.** Si al aplicarla el catálogo ya tiene programas y ninguno se
+llama como la LEIP, la migración se detiene diciéndolo. Sin ese freno, un
+renombre dejaría la excepción sin aplicar y el padrón volvería a rechazar 293
+filas sin motivo visible.
+
+**Los 13 módulos los dijo la organización**, no el archivo: 13 es el valor más
+alto que aparece, que no es lo mismo que el tope del plan. Desde esta migración,
+además, el tope se puede corregir desde `/admin/configuracion` sin otra
+migración.
 
 ### El aforo de cada sede (41 y 42) — sin aplicar
 

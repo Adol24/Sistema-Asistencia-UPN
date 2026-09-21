@@ -173,7 +173,9 @@ export async function cargarPublico(): Promise<Publico | null> {
     sb.from("dias_evento").select("*").order("dia"),
     sb
       .from("niveles_academicos")
-      .select("id, nivel, etiqueta_avance, total_avance, orden, programas ( nombre )"),
+      .select(
+        "id, nivel, etiqueta_avance, total_avance, orden, programas ( nombre, etiqueta_avance, total_avance )",
+      ),
     sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
     sb.from("planteles").select("nombre").order("nombre"),
   ]);

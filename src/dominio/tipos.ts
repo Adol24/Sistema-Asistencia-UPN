@@ -24,7 +24,11 @@ export interface Participante {
    */
   nivel?: string | undefined;
   programa?: string | undefined;
-  /** Semestre en licenciatura, módulo en maestría. El nivel dice cómo llamarlo. */
+  /**
+   * Cómo se cuenta depende del PROGRAMA y, si no dice nada, de su nivel. Casi
+   * todas las licenciaturas van por semestre; la de Educación e Innovación
+   * Pedagógica va por módulos y llega al 13. Resuelve `cuentaDeAvance`.
+   */
   avance?: number | undefined;
   grupo?: string | undefined;
   /**
@@ -69,7 +73,11 @@ export interface AlumnoPadron {
   nombre: string;
   nivel: string;
   programa: string;
-  /** Semestre en licenciatura, módulo en maestría. El nivel dice cómo llamarlo. */
+  /**
+   * Cómo se cuenta depende del PROGRAMA y, si no dice nada, de su nivel. Casi
+   * todas las licenciaturas van por semestre; la de Educación e Innovación
+   * Pedagógica va por módulos y llega al 13. Resuelve `cuentaDeAvance`.
+   */
   avance: number;
   /** No todos los programas manejan grupo. */
   grupo?: string | undefined;

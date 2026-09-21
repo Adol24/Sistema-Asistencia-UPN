@@ -103,8 +103,8 @@ function FichaDe({ p }: { p: Participante }) {
             {p.programa ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 {p.programa}
-                {avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance)
-                  ? ` · ${avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance)}`
+                {avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa)
+                  ? ` · ${avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa)}`
                   : ""}
                 {p.grupo ? ` · Grupo ${p.grupo}` : ""}
                 {p.plantel ? ` · ${p.plantel}` : ""}

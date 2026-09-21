@@ -69,7 +69,10 @@ function ConfirmarNombre() {
   const bloqueado = intentos >= INTENTOS;
 
   const programas = useMemo(
-    () => evento.catalogoAcademico.flatMap((n) => n.programas).sort((a, b) => a.localeCompare(b)),
+    () =>
+      evento.catalogoAcademico
+        .flatMap((n) => n.programas.map((p) => p.nombre))
+        .sort((a, b) => a.localeCompare(b)),
     [evento.catalogoAcademico],
   );
 

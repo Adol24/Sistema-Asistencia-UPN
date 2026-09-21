@@ -386,8 +386,8 @@ function ImportacionPadron() {
               >
                 {configuracion.catalogoAcademico.flatMap((n) =>
                   n.programas.map((x) => (
-                    <option key={x} value={x}>
-                      {x}
+                    <option key={x.nombre} value={x.nombre}>
+                      {x.nombre}
                     </option>
                   )),
                 )}

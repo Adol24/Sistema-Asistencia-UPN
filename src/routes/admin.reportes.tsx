@@ -114,7 +114,7 @@ function Reportes() {
             p.nombre,
             p.nivel ?? "",
             p.programa ?? "",
-            avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance),
+            avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
             p.grupo ?? "",
             p.plantel ?? "",
             p.correo,

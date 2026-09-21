@@ -32,6 +32,7 @@ import {
 import { meta } from "@/lib/seo";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import type { Dia } from "@/dominio/tipos";
+import type { ProgramaAcademico } from "@/dominio/catalogos";
 
 export const Route = createFileRoute("/admin/configuracion")({
   head: () =>
@@ -65,6 +66,21 @@ function Configuracion() {
       catalogoAcademico: prev.catalogoAcademico.map((n, k) => (k === i ? { ...n, ...patch } : n)),
     }));
 
+  /**
+   * Un programa dentro de un nivel. `undefined` en la etiqueta o en el tope
+   * significa «como mi nivel», así que el patch los borra en vez de guardar
+   * cadena vacía o cero: un 0 se leería como «llega hasta cero».
+   */
+  const setPrograma = (i: number, j: number, patch: Partial<ProgramaAcademico>) =>
+    setB((prev) => ({
+      ...prev,
+      catalogoAcademico: prev.catalogoAcademico.map((n, k) =>
+        k === i
+          ? { ...n, programas: n.programas.map((p, m) => (m === j ? { ...p, ...patch } : p)) }
+          : n,
+      ),
+    }));
+
   const setVentanilla = (patch: Partial<ConfiguracionEvento["ventanilla"]>) =>
     setB({ ...b, ventanilla: { ...b.ventanilla, ...patch } });
 
@@ -83,7 +99,9 @@ function Configuracion() {
       dias: b.dias.map((d) => ({ ...d, fecha: fechaAIso(d.fecha) })),
       catalogoAcademico: b.catalogoAcademico.map((n) => ({
         ...n,
-        programas: n.programas.map((x) => x.trim()).filter(Boolean),
+        programas: n.programas
+          .map((p) => ({ ...p, nombre: p.nombre.trim() }))
+          .filter((p) => p.nombre),
       })),
     };
     actualizarConfiguracion(limpio);
@@ -479,21 +497,66 @@ function Configuracion() {
                 </div>
               </div>
               <div className="mt-3">
-                <Label htmlFor={`programas-${i}`}>Programas, uno por renglón</Label>
-                <Textarea
-                  id={`programas-${i}`}
-                  rows={Math.min(10, n.programas.length + 1)}
-                  value={n.programas.join("\n")}
-                  onChange={(e) =>
-                    setNivel(i, {
-                      programas: e.target.value.split("\n").map((x) => x.trimStart()),
-                    })
-                  }
-                  className="mt-1"
-                />
+                <Label>Programas</Label>
+                <p className="mb-2 mt-1 text-xs text-muted-foreground">
+                  Los dos campos de la derecha solo se llenan cuando el programa <strong>no</strong>{" "}
+                  se cuenta como su nivel. Vacíos heredan «{n.etiquetaAvance}» hasta {n.totalAvance}
+                  .
+                </p>
+                <div className="grid gap-2">
+                  {n.programas.map((p, j) => (
+                    <div key={j} className="grid gap-2 sm:grid-cols-[1fr_9rem_5rem_auto]">
+                      <Input
+                        aria-label={`Nombre del programa ${j + 1} de ${n.nivel}`}
+                        value={p.nombre}
+                        onChange={(e) => setPrograma(i, j, { nombre: e.target.value.trimStart() })}
+                        className="h-11"
+                      />
+                      <Input
+                        aria-label={`Cómo se cuenta el avance de ${p.nombre || "este programa"}`}
+                        placeholder={n.etiquetaAvance}
+                        value={p.etiquetaAvance ?? ""}
+                        onChange={(e) =>
+                          setPrograma(i, j, { etiquetaAvance: e.target.value.trim() || undefined })
+                        }
+                        className="h-11"
+                      />
+                      <Input
+                        aria-label={`Hasta qué avance llega ${p.nombre || "este programa"}`}
+                        inputMode="numeric"
+                        maxLength={2}
+                        placeholder={String(n.totalAvance)}
+                        value={p.totalAvance ? String(p.totalAvance) : ""}
+                        onChange={(e) => {
+                          const d = soloDigitos(e.target.value, 2);
+                          setPrograma(i, j, { totalAvance: d ? Number(d) : undefined });
+                        }}
+                        className="h-11"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Quitar ${p.nombre || "este programa"}`}
+                        className="h-11 w-11 text-destructive hover:text-destructive"
+                        onClick={() =>
+                          setNivel(i, { programas: n.programas.filter((_, k) => k !== j) })
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  className="mt-2 h-10"
+                  onClick={() => setNivel(i, { programas: [...n.programas, { nombre: "" }] })}
+                >
+                  <Plus className="size-4" /> Agregar un programa
+                </Button>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {n.programas.filter(Boolean).length} programas. Los renglones vacíos se descartan
-                  al guardar.
+                  {n.programas.filter((p) => p.nombre.trim()).length} programas. Los que se queden
+                  sin nombre se descartan al guardar.
                 </p>
               </div>
               <Button

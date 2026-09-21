@@ -29,7 +29,7 @@ function Comprobante() {
   const avance = borrador.avance ?? participante?.avance;
   const grupo = borrador.grupo ?? participante?.grupo;
   const plantel = borrador.plantel ?? participante?.plantel;
-  const avance_ = avanceTexto(evento.catalogoAcademico, nivel, avance);
+  const avance_ = avanceTexto(evento.catalogoAcademico, nivel, avance, programa);
   // El folio del pre-registro recién creado, no el del participante de contexto.
   const folio = borrador.folio ?? participante?.folio;
   const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);

@@ -157,21 +157,37 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
      * pueden contradecirse. Si viene la columna se acepta, pero manda el
      * catálogo: es él quien sabe a qué nivel pertenece cada programa.
      */
-    const nivel = e.catalogo.find((n) => n.programas.some((p) => igual(p, programa)));
+    const nivel = e.catalogo.find((n) => n.programas.some((p) => igual(p.nombre, programa)));
     if (!nivel)
       return error(
         `Programa desconocido: "${programa}". El catálogo tiene ${e.catalogo
-          .flatMap((n) => n.programas)
+          .flatMap((n) => n.programas.map((p) => p.nombre))
           .join(", ")}.`,
       );
     // Se guarda el nombre del catálogo, no el del archivo: así una fila escrita
     // «Maestria en educacion basica» no crea una segunda versión del programa en
     // los reportes.
-    const programaCanonico = nivel.programas.find((p) => igual(p, programa))!;
+    const programaDelCatalogo = nivel.programas.find((p) => igual(p.nombre, programa))!;
+    const programaCanonico = programaDelCatalogo.nombre;
+    /*
+     * El tope y la etiqueta los manda el programa cuando los declara.
+     *
+     * La Licenciatura en Educación e Innovación Pedagógica se cuenta por módulos
+     * y llega al 13 siendo licenciatura. Con la regla anterior —el nivel manda—
+     * sus 293 alumnos se rechazaban con «Semestre 13, en Licenciatura va de 1 a
+     * 8», y no había forma de cargarlos sin subirle el tope a las otras cinco
+     * licenciaturas, que sí van por semestre.
+     */
+    const etiquetaAvance = programaDelCatalogo.etiquetaAvance ?? nivel.etiquetaAvance;
+    const topeAvance = programaDelCatalogo.totalAvance ?? nivel.totalAvance;
     const avance = Number(avanceTxt);
-    if (!/^\d+$/.test(avanceTxt) || avance < 1 || avance > nivel.totalAvance)
+    if (!/^\d+$/.test(avanceTxt) || avance < 1 || avance > topeAvance)
       return error(
-        `${nivel.etiquetaAvance} inválido: "${avanceTxt}". En ${nivel.nivel} va de 1 a ${nivel.totalAvance}.`,
+        // Se nombra el programa y no el nivel cuando el tope es suyo: decir «en
+        // Licenciatura va de 1 a 13» sería falso para las otras cinco.
+        `${etiquetaAvance} inválido: "${avanceTxt}". En ${
+          programaDelCatalogo.totalAvance ? programaCanonico : nivel.nivel
+        } va de 1 a ${topeAvance}.`,
       );
     if (!plantel) return error("Falta la sede.");
     const sedeCanonica = e.sedes.find((x) => igual(x, plantel));

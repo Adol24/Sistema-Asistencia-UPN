@@ -54,7 +54,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const estado = estadoDe(p);
   const dia = infoDia(p.dia);
   const taller = getTaller(p.tallerId);
-  const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance);
+  const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance, p.programa);
   const avisos = avisosDe(p.folio);
   const actual = indiceDe(estado.evento);
 

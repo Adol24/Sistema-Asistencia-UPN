@@ -13,15 +13,34 @@
  * que cambia, y no debería requerir tocar código.
  */
 
+/**
+ * Un programa del catálogo, con la excepción que pueda traer.
+ *
+ * Casi todos se cuentan como diga su nivel, y por eso los dos campos son
+ * opcionales: `undefined` significa «lo que diga mi nivel», no «sin dato». Que
+ * la excepción se vea como excepción importa —copiar la etiqueta y el tope a los
+ * nueve programas dejaría de distinguir cuál de ellos es el raro—.
+ *
+ * La que existe hoy es la **Licenciatura en Educación e Innovación Pedagógica**,
+ * que se cuenta por módulos y llega al 13 siendo licenciatura.
+ */
+export interface ProgramaAcademico {
+  nombre: string;
+  /** «Módulo» cuando este programa no se cuenta como su nivel. */
+  etiquetaAvance?: string | undefined;
+  /** Su propio tope, cuando no es el del nivel. */
+  totalAvance?: number | undefined;
+}
+
 /** Un nivel educativo con su catálogo de programas y su forma de contar avance. */
 export interface NivelAcademico {
   /** «Licenciatura», «Maestría», «Doctorado»… */
   nivel: string;
-  /** Cómo se llama el avance en este nivel: «Semestre», «Módulo», «Cuatrimestre». */
+  /** Cómo se cuenta el avance aquí, salvo que un programa diga otra cosa. */
   etiquetaAvance: string;
-  /** Hasta dónde llega ese avance. */
+  /** Hasta dónde llega ese avance, salvo que un programa diga otra cosa. */
   totalAvance: number;
-  programas: string[];
+  programas: ProgramaAcademico[];
 }
 
 /*
@@ -39,15 +58,62 @@ export const buscarNivel = (catalogo: NivelAcademico[], nivel?: string) =>
   nivel ? catalogo.find((n) => n.nivel === nivel) : undefined;
 
 /**
- * Cómo se lee el avance de alguien: «Semestre 6», «Módulo 3». Devuelve cadena
+ * Compara dos nombres del catálogo ignorando acentos, mayúsculas y espacios de
+ * más.
+ *
+ * El padrón llega de Servicios Escolares en mayúsculas y sin garantía de
+ * acentos: «LICENCIATURA EN EDUCACIÓN E INNOVACIÓN PEDAGÓGICA» tiene que
+ * encontrar a «Licenciatura en Educación e Innovación Pedagógica». Si no
+ * coincidiera, el programa parecería no tener excepción y su alumno de módulo 13
+ * se rechazaría como si fuera semestre 13.
+ */
+const mismoNombre = (a: string, b: string) => {
+  const limpio = (s: string) =>
+    s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
+  return limpio(a) === limpio(b);
+};
+
+/** El programa con ese nombre dentro de un nivel, o undefined. */
+export const buscarPrograma = (n: NivelAcademico | undefined, programa?: string) =>
+  n && programa ? n.programas.find((p) => mismoNombre(p.nombre, programa)) : undefined;
+
+/**
+ * Cómo se cuenta el avance de alguien: su etiqueta y su tope.
+ *
+ * Manda el programa y, si no dice nada, el nivel. Esa precedencia está en un
+ * solo sitio a propósito: la comparte la pantalla que lo pinta, el importador
+ * que valida el archivo y el disparador de la base, y si cada uno la resolviera
+ * a su manera acabarían discrepando.
+ */
+export const cuentaDeAvance = (
+  catalogo: NivelAcademico[],
+  nivel?: string,
+  programa?: string,
+): { etiqueta: string; total: number } | undefined => {
+  const n = buscarNivel(catalogo, nivel);
+  if (!n) return undefined;
+  const p = buscarPrograma(n, programa);
+  return {
+    etiqueta: p?.etiquetaAvance ?? n.etiquetaAvance,
+    total: p?.totalAvance ?? n.totalAvance,
+  };
+};
+
+/**
+ * Cómo se lee el avance de alguien: «Semestre 6», «Módulo 13». Devuelve cadena
  * vacía si falta el dato o si su nivel ya no existe, para que quien lo pinte no
  * tenga que comprobarlo.
+ *
+ * El programa es opcional por compatibilidad con quien todavía no lo tenga a
+ * mano, pero sin él la excepción no se puede aplicar: un alumno de Innovación
+ * Pedagógica saldría como «Semestre 13». Pásalo siempre que exista.
  */
 export const avanceTexto = (
   catalogo: NivelAcademico[],
   nivel?: string,
   avance?: number,
+  programa?: string,
 ): string => {
-  const n = buscarNivel(catalogo, nivel);
-  return n && avance ? `${n.etiquetaAvance} ${avance}` : "";
+  const cuenta = cuentaDeAvance(catalogo, nivel, programa);
+  return cuenta && avance ? `${cuenta.etiqueta} ${avance}` : "";
 };

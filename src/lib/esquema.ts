@@ -82,7 +82,11 @@ export interface FilaNivel {
   etiqueta_avance: string;
   total_avance: number;
   orden: number;
-  programas: { nombre: string }[];
+  /**
+   * Las dos columnas de excepción son NULL en casi todos: significan «me cuento
+   * como diga mi nivel». Ver `20260921120000_el_avance_lo_manda_el_programa`.
+   */
+  programas: { nombre: string; etiqueta_avance: string | null; total_avance: number | null }[];
 }
 
 export interface FilaTaller {
@@ -336,7 +340,15 @@ export const aCatalogo = (filas: FilaNivel[]): NivelAcademico[] =>
       nivel: n.nivel,
       etiquetaAvance: n.etiqueta_avance,
       totalAvance: n.total_avance,
-      programas: n.programas.map((p) => p.nombre).sort((a, b) => a.localeCompare(b)),
+      programas: n.programas
+        .map((p) => ({
+          nombre: p.nombre,
+          // NULL en la columna es «hereda del nivel», y en la aplicación eso se
+          // escribe `undefined`: así `?? nivel` lo resuelve sin preguntar.
+          etiquetaAvance: p.etiqueta_avance ?? undefined,
+          totalAvance: p.total_avance ?? undefined,
+        }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     }));
 
 /**
