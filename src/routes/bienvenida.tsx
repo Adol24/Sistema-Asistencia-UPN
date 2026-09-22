@@ -39,7 +39,17 @@ function Bienvenida() {
        * mientras al lado sobraba sitio: dos botones no necesitan tanto. La
        * proporción de abajo le da al título el ancho para caber en dos.
        */}
-      <div className="md:grid md:grid-cols-2 md:items-center md:gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
+      {/*
+       * El escalón de `2xl:` acompaña al del contenedor, y sin él no habría
+       * servido de nada.
+       *
+       * Dar más ancho a la portada y dejar el logotipo en 128 px y el título en
+       * 41 no la arregla: solo reparte el mismo dibujo pequeño sobre más sitio,
+       * y entonces lo que flota no es la tarjeta sino el texto dentro de ella.
+       * En un monitor grande la portada tiene que verse más grande, no más
+       * separada.
+       */}
+      <div className="md:grid md:grid-cols-2 md:items-center md:gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-16 2xl:gap-20">
         {/*
          * La portada no lleva tarjeta. Encerrar el título del evento en un
          * recuadro lo convertía en un widget más, del mismo peso visual que las
@@ -80,13 +90,13 @@ function Bienvenida() {
             aria-hidden
             width={512}
             height={453}
-            className="mx-auto mb-6 h-24 w-auto dark:invert md:mx-0 lg:h-32"
+            className="mx-auto mb-6 h-24 w-auto dark:invert md:mx-0 lg:h-32 2xl:h-40"
           />
           <Rotulo className="text-primary">Pre-registro</Rotulo>
-          <h1 className="mt-3 text-balance text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-[2.6rem]">
+          <h1 className="mt-3 text-balance text-2xl font-bold leading-[1.15] tracking-tight sm:text-3xl lg:text-[2.6rem] 2xl:text-5xl">
             {evento.nombre}
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-muted-foreground md:mx-0">
+          <p className="mx-auto mt-3 max-w-md text-pretty text-sm text-muted-foreground md:mx-0 2xl:max-w-lg 2xl:text-base">
             {evento.subtitulo}
           </p>
           {/*
@@ -96,7 +106,7 @@ function Bienvenida() {
            * escrito, la hora exacta no está cerrada. Prometer una hora en la
            * portada es lo que hace que alguien llegue cuando no debe.
            */}
-          <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground 2xl:text-base">
             <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
             {evento.fechas}
           </p>

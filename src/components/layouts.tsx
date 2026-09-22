@@ -256,10 +256,45 @@ export function PantallaPublica({
    * El contenedor lo comparten la barra, el contenido y el pie, para que los
    * tres empiecen y acaben en la misma vertical.
    */
+  /*
+   * -------------------------------------------------------------------------
+   * Y por encima de 1024 no pasaba nada más.
+   * -------------------------------------------------------------------------
+   * Estos topes se detenían todos en `lg:`, que es el ancho de una laptop. De
+   * ahí en adelante la página no volvía a cambiar: en un monitor de 1920 la
+   * portada seguía midiendo los mismos 1024 y dejaba 448 píxeles de nada a cada
+   * lado, como una tarjeta flotando en medio de la pantalla. En uno de 2560,
+   * 768 a cada lado. `2xl:` no aparecía ni una vez en todo el proyecto.
+   *
+   * El panel ya había pasado por esto y lo resolvió subiendo a `max-w-[110rem]`
+   * —ver `armazon-panel.tsx`—. Lo público se quedó sin ese arreglo.
+   *
+   * Lo que NO se toca, y es la mitad de la decisión:
+   *
+   * - **`md` no crece.** Son los formularios. Su tope es la suma exacta de riel
+   *   (16rem) + hueco (3.5rem) + el campo de siempre (36rem), así que cualquier
+   *   píxel de más se lo queda la columna del formulario, y un campo de texto
+   *   ancho se llena peor: rompe la relación entre la etiqueta y su control. El
+   *   ancho que le sobra a la ventana no es un hueco que tapar.
+   *
+   * - **`lg` tampoco.** Es el portal —estado, evidencias, constancia, código—,
+   *   y ahí el contenido es de leer. Estirarlo alarga el renglón más allá de
+   *   donde el ojo lo sigue de vuelta sin perderse.
+   *
+   * Crecen los dos que son COMPOSICIONES y no lecturas: la portada, que reparte
+   * título y opciones en dos columnas, y las pantallas de `xl` —comprobante e
+   * instrucciones de pago—, que ya se dibujan a dos columnas de por sí.
+   */
   const contenedor = cn(
     ancho === "md" && (riel ? "max-w-xl lg:max-w-4xl" : "max-w-xl"),
     ancho === "lg" && (riel ? "max-w-3xl lg:max-w-[68rem]" : "max-w-3xl lg:max-w-4xl"),
-    ancho === "xl" && (riel ? "max-w-3xl lg:max-w-[78rem]" : "max-w-3xl lg:max-w-5xl"),
+    ancho === "xl" &&
+      (riel
+        ? "max-w-3xl lg:max-w-[78rem] 2xl:max-w-[88rem]"
+        : // La portada sube en dos escalones y se detiene en 84rem. Más allá,
+          // las dos columnas se alejan tanto que el título y los botones dejan
+          // de leerse como una sola composición y pasan a ser dos islas.
+          "max-w-3xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-[84rem]"),
   );
 
   return (
