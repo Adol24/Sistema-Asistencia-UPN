@@ -309,7 +309,13 @@ function ConfirmarNombre() {
         </p>
       </div>
 
-      <fieldset className="mt-6 grid gap-2">
+      {/*
+       * Las dos opciones, lado a lado a partir de 640: son una disyuntiva —o el
+       * nombre está bien o está mal—, y en columna se leían como una lista de
+       * tareas en la que se puede marcar las dos. Es el mismo reparto que ya
+       * usan «Docente / Externo» en `registro` y los botones de `talleres`.
+       */}
+      <fieldset className="mt-6 grid gap-2 sm:grid-cols-2">
         <legend className="sr-only">Confirmación del nombre</legend>
         <label className="flex min-h-14 md:min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4">
           <Checkbox
@@ -338,7 +344,11 @@ function ConfirmarNombre() {
               setErrorCorreccion("");
             }}
             placeholder={nombre}
-            className="mt-1.5 h-12 md:h-11 text-base uppercase"
+            // `max-w-xl`: cabe el nombre más largo del padrón con holgura y no
+            // se estira hasta el ancho de la tarjeta cuando la ventana es
+            // grande. Un campo suelto se acota donde se sabe qué se escribe
+            // dentro; ver el mismo criterio en `alumno`.
+            className="mt-1.5 h-12 md:h-11 w-full max-w-xl text-base uppercase"
             {...CAMPO_MAYUSCULAS}
             aria-invalid={!!errorCorreccion}
           />

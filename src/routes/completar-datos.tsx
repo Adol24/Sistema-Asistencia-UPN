@@ -166,7 +166,14 @@ function DatosDeContacto() {
           Son las dos vías por las que te avisamos si surge cualquier situación con tu registro.
         </p>
 
-        <div className="mt-5 grid gap-4">
+        {/*
+         * Correo y celular caben de sobra uno al lado del otro, y es lo que son:
+         * «las dos vías por las que te avisamos», dicho ahí arriba. Apilados, el
+         * encabezado los presentaba como un par y la pantalla los dibujaba como
+         * una lista. Cada uno lleva su renglón de ayuda debajo, así que la
+         * rejilla iguala las alturas y los dos textos quedan a la misma línea.
+         */}
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div>
             <Label htmlFor="correo">{dominio ? "Correo institucional" : "Correo personal"}</Label>
             <Input

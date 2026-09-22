@@ -61,7 +61,21 @@ function MiDia() {
 
     return (
       <PantallaPublica titulo="Elige tu día">
-        <ul className="grid gap-3">
+        {/*
+         * Los tres días, en fila a partir de 1280.
+         *
+         * Esto es elegir entre tres, y elegir se hace comparando: sede, hora de
+         * entrada y lugares libres, los tres a la vez. Apilados había que
+         * recordar el primero para juzgar el tercero, con el ancho de la
+         * pantalla vacío al lado.
+         *
+         * `xl:` y no `lg:` porque el reparto depende del ancho que le queda a
+         * esta columna una vez descontado el riel: en 1280 son 712 px y cada
+         * tarjeta se lleva unos 226, que es donde «Registro de entrada» todavía
+         * cabe. Por debajo se quedan apiladas, que a tres tarjetas de 160 px no
+         * le sobra nada.
+         */}
+        <ul className="grid gap-3 xl:grid-cols-3">
           {evento.dias.map((d) => {
             const dia = d.dia as Dia;
             const activo = elegido === dia;

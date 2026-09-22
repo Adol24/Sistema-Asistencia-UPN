@@ -226,7 +226,27 @@ function RegistroExterno() {
           ))}
         </div>
 
-        <div className="mt-5 grid gap-4">
+        {/*
+         * Seis campos cortos, en dos columnas a partir de 768.
+         *
+         * Apilados eran seis renglones y el formulario medía más que la
+         * ventana: en un monitor de 1920 —que es ancho y BAJO— el aviso de
+         * privacidad salía cortado y el botón «Continuar» no llegaba a verse.
+         * Había que desplazar para encontrar el final de un formulario de seis
+         * campos, con media pantalla vacía a los lados.
+         *
+         * Son seis exactos, así que en dos columnas salen tres renglones justos,
+         * sin huecos: nombres|paterno, materno|correo, celular|institución. El
+         * orden no cambia —se lee de izquierda a derecha y hacia abajo, igual
+         * que en papel— así que el recorrido con el tabulador sigue siendo el
+         * mismo.
+         *
+         * Lo que NO se hace es ensanchar los campos: a 1280 cada columna mide
+         * unos 348 px, menos que los 520 de cuando iban apilados. Un celular de
+         * diez dígitos en 520 px era el síntoma de que el ancho sobrante se
+         * estaba repartiendo mal.
+         */}
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
           {(
             [
               ["nombres", "Nombre(s)", "JUAN CARLOS"],

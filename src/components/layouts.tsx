@@ -269,24 +269,46 @@ export function PantallaPublica({
    * El panel ya había pasado por esto y lo resolvió subiendo a `max-w-[110rem]`
    * —ver `armazon-panel.tsx`—. Lo público se quedó sin ese arreglo.
    *
-   * Lo que NO se toca, y es la mitad de la decisión:
+   * Lo que NO se toca:
    *
-   * - **`md` no crece.** Son los formularios. Su tope es la suma exacta de riel
-   *   (16rem) + hueco (3.5rem) + el campo de siempre (36rem), así que cualquier
-   *   píxel de más se lo queda la columna del formulario, y un campo de texto
-   *   ancho se llena peor: rompe la relación entre la etiqueta y su control. El
-   *   ancho que le sobra a la ventana no es un hueco que tapar.
-   *
-   * - **`lg` tampoco.** Es el portal —estado, evidencias, constancia, código—,
+   * - **`lg` no crece.** Es el portal —estado, evidencias, constancia, código—,
    *   y ahí el contenido es de leer. Estirarlo alarga el renglón más allá de
    *   donde el ojo lo sigue de vuelta sin perderse.
    *
-   * Crecen los dos que son COMPOSICIONES y no lecturas: la portada, que reparte
+   * Crecen los que son COMPOSICIONES y no lecturas: la portada, que reparte
    * título y opciones en dos columnas, y las pantallas de `xl` —comprobante e
    * instrucciones de pago—, que ya se dibujan a dos columnas de por sí.
+   *
+   * -------------------------------------------------------------------------
+   * Y `md` también crece, al contrario de lo que decía aquí.
+   * -------------------------------------------------------------------------
+   * Esto se detenía en `lg:max-w-4xl` con un argumento que es cierto a medias:
+   * «un campo de texto ancho se llena peor, rompe la relación entre la etiqueta
+   * y su control». Lo primero es verdad y se sigue respetando. Lo segundo no se
+   * deduce de lo primero: **no ensanchar el CAMPO no obliga a no ensanchar el
+   * CONTENEDOR.** Prohíbe estirar un `input`; no prohíbe poner dos uno al lado
+   * del otro.
+   *
+   * Y el resultado de confundir las dos cosas se veía en un monitor de 1920: el
+   * formulario medía 520 píxeles, la ventana 1920, y el 53 % de la pantalla
+   * estaba vacío mientras seis campos cortos se apilaban hacia abajo hasta
+   * empujar el aviso de privacidad y el botón fuera del pliegue. Una ventana
+   * ancha y baja con una página angosta y alta dentro: la forma de la página
+   * iba en contra de la forma del hueco que tenía que llenar.
+   *
+   * El escalón es uno solo y modesto —68rem—, y de ahí no pasa. Con el riel en
+   * 16rem le deja a la columna del formulario 712 px, que en dos columnas son
+   * 348 por campo: más cómodo que los 520 de antes para un celular de diez
+   * dígitos, y lejos todavía del campo kilométrico que el argumento de arriba
+   * teme con razón.
+   *
+   * Quien lo aprovecha reparte sus campos con `md:grid-cols-2` —`registro`,
+   * `completar-datos`— o sus tarjetas con `xl:grid-cols-3` —`mi-dia`—. Lo que
+   * tiene un campo suelto lo acota por su lado, que es donde se sabe cuánto
+   * mide lo que se escribe dentro: ver el tope de la tarjeta en `alumno`.
    */
   const contenedor = cn(
-    ancho === "md" && (riel ? "max-w-xl lg:max-w-4xl" : "max-w-xl"),
+    ancho === "md" && (riel ? "max-w-xl lg:max-w-4xl xl:max-w-[68rem]" : "max-w-xl"),
     ancho === "lg" && (riel ? "max-w-3xl lg:max-w-[68rem]" : "max-w-3xl lg:max-w-4xl"),
     ancho === "xl" &&
       (riel

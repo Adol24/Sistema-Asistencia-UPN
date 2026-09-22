@@ -94,12 +94,20 @@ function IdentificacionAlumno() {
       titulo="Escribe tu matrícula"
       descripcion="Con eso te buscamos en los registros de Servicios Escolares. En la siguiente pantalla verás tu nombre para confirmar que eres tú."
     >
+      {/*
+       * La tarjeta se acota, y es la excepción que confirma la regla de
+       * `PantallaPublica`: ahí el contenedor creció para que los formularios
+       * repartan sus campos en columnas, y esta pantalla tiene UN campo. Sin
+       * tope, a 1280 la matrícula se escribía en una caja de 664 px para once
+       * dígitos. Se acota aquí y no allá porque el único sitio donde se sabe
+       * cuánto mide lo que se escribe dentro es el que lo pide.
+       */}
       <form
         onSubmit={(ev) => {
           ev.preventDefault();
           void buscar();
         }}
-        className="rounded-lg border border-border bg-card p-5 lg:p-6"
+        className="mx-auto w-full max-w-lg rounded-lg border border-border bg-card p-5 lg:p-6"
         noValidate
       >
         <div>
