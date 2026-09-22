@@ -217,6 +217,70 @@ export async function cargarPublico(): Promise<Publico | null> {
 }
 
 /**
+ * Cuántas filas trae PostgREST de una vez, y el tope que se pide por tramo.
+ *
+ * Mil es el `max-rows` con el que viene un proyecto de Supabase. Pedir tramos de
+ * ese tamaño hace que la última página venga corta justo cuando se acabó la
+ * tabla, que es la señal con la que `porTramos` sabe parar.
+ */
+const TRAMO = 1000;
+
+/**
+ * Techo de tramos por consulta. Existe solo para que un servidor que ignorara
+ * `range` no deje al navegador pidiendo páginas para siempre contra la base de
+ * producción. Cien tramos son cien mil filas: muy por encima de cualquier tabla
+ * de este evento, y muy por debajo de un bucle infinito.
+ */
+const MAX_TRAMOS = 100;
+
+/**
+ * Filas, o el error que tumbó la consulta. La forma en que PostgREST contesta a
+ * una LECTURA; `Respuesta`, más abajo, es la de una escritura.
+ */
+interface RespuestaLectura {
+  data: unknown[] | null;
+  error: { message: string; code?: string; hint?: string } | null;
+}
+
+/**
+ * Trae una tabla COMPLETA, por tramos.
+ *
+ * PostgREST no devuelve todo lo que se le pide: tiene un tope de filas por
+ * respuesta y lo aplica **en silencio**. No es un error, y la respuesta no trae
+ * ninguna señal de que falte algo — llegan mil filas y parecen la tabla entera.
+ *
+ * Ese silencio costó un fallo de los que no se ven hasta que los datos crecen.
+ * `padron_alumnos` se pedía de un tirón, y un padrón de Servicios Escolares trae
+ * miles: la aplicación solo conocía a los mil primeros por matrícula. El
+ * importador, que reconoce a quien ya está cargado buscándolo en esa lista, daba
+ * por **alta nueva** a todos los demás, así que volver a subir el mismo archivo
+ * no los detectaba como ya cargados. Y el reparto de días contaba su aforo sobre
+ * ese mismo padrón recortado.
+ *
+ * Quien llama tiene que ordenar por algo **único y estable**. No es un detalle
+ * de estilo: paginar sobre un orden con empates deja filas repetidas en un tramo
+ * y omitidas en el siguiente, y eso es peor que traer de menos, porque no se
+ * nota. Por eso las consultas que ordenan por una fecha añaden `id` detrás.
+ */
+async function porTramos(pedir: (desde: number, hasta: number) => PromiseLike<RespuestaLectura>) {
+  const todo: unknown[] = [];
+  for (let tramo = 0; tramo < MAX_TRAMOS; tramo++) {
+    const desde = tramo * TRAMO;
+    const r = await pedir(desde, desde + TRAMO - 1);
+    if (r.error) return { data: null, error: r.error };
+    const lote = r.data ?? [];
+    todo.push(...lote);
+    // Un tramo corto es el final de la tabla. Uno exacto puede no serlo, así que
+    // se pide el siguiente aunque venga vacío.
+    if (lote.length < TRAMO) return { data: todo, error: null };
+  }
+  console.error(
+    `Una consulta pasó de ${MAX_TRAMOS * TRAMO} filas y se cortó ahí. Las pantallas que la usen estarán incompletas.`,
+  );
+  return { data: todo, error: null };
+}
+
+/**
  * @param conSesion Si quien pregunta ya se identificó como personal interno.
  *   Solo cambia cómo se REPORTA el fallo de las tablas del personal, nunca lo
  *   que se pide: sin sesión el 401 es lo esperado y callarlo es correcto; con
@@ -262,13 +326,24 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     talleresConSesion,
     bitacora,
   ] = await Promise.all([
-    sb.from("participantes").select(COLS_PARTICIPANTE).order("folio"),
+    porTramos((desde, hasta) =>
+      sb.from("participantes").select(COLS_PARTICIPANTE).order("folio").range(desde, hasta),
+    ),
     /*
      * El estado derivado, que puede leer cualquier miembro del personal.
      * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
      * pagó nadie ni con qué referencia.
      */
-    sb.from("v_estado_pago").select("participante_id, concepto, estado"),
+    porTramos((desde, hasta) =>
+      sb
+        .from("v_estado_pago")
+        .select("participante_id, concepto, estado")
+        // La vista tiene una fila por participante y concepto, así que las dos
+        // columnas juntas son su clave y dan el orden estable que el tramo pide.
+        .order("participante_id")
+        .order("concepto")
+        .range(desde, hasta),
+    ),
     /*
      * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
      * los demás las políticas les devuelven cero filas, sin error.
@@ -278,21 +353,47 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
      * último pago de un concepto es el que manda, y ese orden es el que lo
      * garantiza.
      */
-    sb.from("pagos").select(COLS_PAGO).order("registrado_en"),
-    sb.from("padron_alumnos").select(COLS_PADRON).order("matricula"),
-    sb
-      .from("asistencias")
-      .select(
-        "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-      )
-      .is("anulada_en", null)
-      .order("registrada_en"),
-    sb
-      .from("evidencias")
-      .select(
-        "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
-      )
-      .order("dia"),
+    porTramos((desde, hasta) =>
+      sb
+        .from("pagos")
+        .select(COLS_PAGO)
+        // `id` detrás de la fecha: dos pagos del mismo instante empatan, y un
+        // empate al paginar repite filas en un tramo y las pierde en el otro.
+        .order("registrado_en")
+        .order("id")
+        .range(desde, hasta),
+    ),
+    porTramos((desde, hasta) =>
+      sb.from("padron_alumnos").select(COLS_PADRON).order("matricula").range(desde, hasta),
+    ),
+    porTramos((desde, hasta) =>
+      sb
+        .from("asistencias")
+        .select(
+          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+        )
+        .is("anulada_en", null)
+        // `id` detrás de la fecha: dos registros del mismo instante empatan, y
+        // un empate al paginar repite filas en un tramo y las pierde en el otro.
+        .order("registrada_en")
+        .order("id")
+        .range(desde, hasta),
+    ),
+    porTramos((desde, hasta) =>
+      sb
+        .from("evidencias")
+        .select(
+          "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
+        )
+        // Por día hay miles de empates: sin `id` detrás, paginar sobre `dia`
+        // devolvería unas evidencias dos veces y otras ninguna.
+        .order("dia")
+        .order("id")
+        .range(desde, hasta),
+    ),
+    // `usuarios_internos` y `casos_soporte` se piden enteros a propósito: son
+    // decenas de filas, no miles, y no alimentan ningún recuento que se falsee
+    // si faltara una. La bitácora ya tiene su propio tope, más abajo.
     sb.from("usuarios_internos").select("*").order("nombre"),
     sb
       .from("casos_soporte")
