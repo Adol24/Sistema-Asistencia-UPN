@@ -31,6 +31,13 @@ import {
   DESTINO_DE_CAMPO,
 } from "@/lib/escritura-remota";
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
+import {
+  estadoDeVentana,
+  problemasDeVentana,
+  programasSinVentana,
+  type ProgramaDeVentana,
+  type VentanaPreregistro,
+} from "@/lib/ventanas";
 
 let fallas = 0;
 const ok = (m: string) => console.log(`OK     ${m}`);
@@ -183,6 +190,121 @@ console.log("\n=== EL VIAJE DE IDA Y VUELTA DE LA FECHA LÍMITE ===\n");
 
   igual("una fecha vacía no revienta", fechaLimiteTexto(""), "");
   igual("una fecha que no se entiende se devuelve intacta", fechaLimiteTexto("ayer"), "ayer");
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Lo que se comprueba aquí es lo que la base NO puede comprobar.
+ *
+ * `ventanas_preregistro` tiene su `check (cierra > abre)` y `ventana_cohortes`
+ * su `check (avance >= 1)`, así que esos dos errores acaban rebotando de todas
+ * formas. Los otros dos no: una ventana sin ningún programa y una cohorte de un
+ * avance que ese programa no alcanza son filas perfectamente válidas para
+ * PostgreSQL, y las dos rechazan a todo el mundo con «todavía no se anuncia la
+ * fecha de registro para tu grupo». Ese es el defecto que esta pantalla puede
+ * introducir sin que nada falle, y por eso se comprueba antes de guardar.
+ */
+{
+  const PROGRAMAS: ProgramaDeVentana[] = [
+    {
+      id: "p-pedagogia",
+      nombre: "Licenciatura en Pedagogía",
+      nivel: "Licenciatura",
+      etiquetaAvance: "Semestre",
+      totalAvance: 8,
+    },
+    {
+      id: "p-leip",
+      nombre: "Licenciatura en Educación e Innovación Pedagógica",
+      nivel: "Licenciatura",
+      etiquetaAvance: "Módulo",
+      totalAvance: 13,
+    },
+  ];
+
+  const base: VentanaPreregistro = {
+    id: "v1",
+    etiqueta: "El registro previo para semestre 7 y módulo 13",
+    abre: "2026-09-25T06:00:00.000Z",
+    cierra: "2026-09-28T05:59:59.000Z",
+    cohortes: [
+      { programaId: "p-pedagogia", avance: 7 },
+      { programaId: "p-leip", avance: 13 },
+    ],
+  };
+
+  igual("una ventana completa se puede guardar", problemasDeVentana(base, PROGRAMAS), []);
+
+  // El error que ninguna restricción detecta, y el más fácil de cometer: se
+  // crea la ventana, se ponen las fechas y se guarda sin marcar a nadie.
+  const sinNadie = problemasDeVentana({ ...base, cohortes: [] }, PROGRAMAS);
+  if (sinNadie.some((p) => p.includes("no admite a nadie")))
+    ok("una ventana sin programas se detiene antes de llegar a la base");
+  else falla("una ventana sin programas tiene que bloquear el guardado", "un aviso", sinNadie);
+
+  const sinAvance = problemasDeVentana(
+    { ...base, cohortes: [{ programaId: "p-pedagogia", avance: null }] },
+    PROGRAMAS,
+  );
+  if (sinAvance.some((p) => p.includes("Falta el avance")))
+    ok("una casilla marcada sin avance tampoco pasa");
+  else falla("un programa marcado sin avance tiene que bloquear", "un aviso", sinAvance);
+
+  // El otro silencioso: semestre 13 no existe en una licenciatura de 8, así que
+  // esa cohorte no contiene a nadie y la ventana parece cargada.
+  const fuera = problemasDeVentana(
+    { ...base, cohortes: [{ programaId: "p-pedagogia", avance: 13 }] },
+    PROGRAMAS,
+  );
+  if (fuera.some((p) => p.includes("no existe en")))
+    ok("un avance por encima del tope del programa se nombra");
+  else falla("un avance fuera de rango tiene que bloquear", "un aviso", fuera);
+
+  const alReves = problemasDeVentana({ ...base, abre: base.cierra, cierra: base.abre }, PROGRAMAS);
+  if (alReves.some((p) => p.includes("cierra antes de abrir")))
+    ok("cerrar antes de abrir se dice aquí y no en el error de la base");
+  else falla("una ventana invertida tiene que bloquear", "un aviso", alReves);
+
+  const sinTexto = problemasDeVentana({ ...base, etiqueta: "  " }, PROGRAMAS);
+  if (sinTexto.some((p) => p.includes("Falta el texto")))
+    ok("sin texto no se guarda: es lo que lee quien llega tarde");
+  else falla("una ventana sin etiqueta tiene que bloquear", "un aviso", sinTexto);
+
+  // --------------------------------------------------------------- estado ---
+  const antes = Date.parse("2026-09-20T12:00:00.000Z");
+  const durante = Date.parse("2026-09-26T12:00:00.000Z");
+  const despues = Date.parse("2026-10-01T12:00:00.000Z");
+  igual("antes de abrir está pendiente", estadoDeVentana(base, antes), "pendiente");
+  igual("entre las dos fechas está abierta", estadoDeVentana(base, durante), "abierta");
+  igual("pasado el cierre está cerrada", estadoDeVentana(base, despues), "cerrada");
+
+  // ------------------------------------------------------ quién queda fuera ---
+  igual(
+    "con las dos cohortes declaradas no queda ningún programa fuera",
+    programasSinVentana([base], PROGRAMAS).map((p) => p.id),
+    [],
+  );
+  igual(
+    "y si solo entra una, la otra se puede nombrar",
+    programasSinVentana(
+      [{ ...base, cohortes: [{ programaId: "p-leip", avance: 13 }] }],
+      PROGRAMAS,
+    ).map((p) => p.id),
+    ["p-pedagogia"],
+  );
+  /*
+   * Sin ninguna ventana TODOS quedan «sin ventana», y eso no es que nadie pueda
+   * registrarse: es que puede registrarse cualquiera. El interruptor de la
+   * migración 44 va al revés de lo que sugiere una lista vacía, así que la
+   * pantalla no enseña este aviso en ese caso —enseña el otro—.
+   */
+  igual(
+    "sin ninguna ventana, ningún programa tiene la suya",
+    programasSinVentana([], PROGRAMAS).length,
+    PROGRAMAS.length,
+  );
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);

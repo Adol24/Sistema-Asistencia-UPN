@@ -55,6 +55,9 @@ import type {
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento, DiaEvento } from "@/lib/configuracion";
 import type { NivelAcademico } from "@/dominio/catalogos";
+// Solo los tipos: `@/lib/ventanas` arrastra React, y este módulo lo carga
+// también el servidor para pintar lo público antes de que haya navegador.
+import type { ProgramaDeVentana, VentanaPreregistro } from "@/lib/ventanas";
 import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
@@ -838,6 +841,136 @@ export async function guardarCatalogo(catalogo: NivelAcademico[]): Promise<Recha
   }
 
   return rechazos;
+}
+
+// ------------------------------- cuándo puede registrarse cada grupo ---
+
+/**
+ * El catálogo de programas con su id, que el catálogo académico no lleva.
+ *
+ * `NivelAcademico` identifica a sus programas por nombre, y para la mayoría de
+ * las pantallas eso basta. Aquí no: `ventana_cohortes` apunta a `programas` por
+ * llave foránea, y el nombre no es único en la tabla —lo único es `(nivel_id,
+ * nombre)`—, así que resolverlo por nombre sería inventarse una clave que la
+ * base no garantiza.
+ *
+ * El avance sale ya resuelto con la misma precedencia que estrenó la 43: manda
+ * el programa y el nivel suple.
+ */
+export async function programasDeVentana(): Promise<ProgramaDeVentana[]> {
+  const filas = await datosDe<
+    {
+      id: string;
+      nombre: string;
+      etiqueta_avance: string | null;
+      total_avance: number | null;
+      niveles_academicos: {
+        nivel: string;
+        etiqueta_avance: string;
+        total_avance: number;
+        orden: number;
+      } | null;
+    }[]
+  >(
+    exigirBase()
+      .from("programas")
+      .select(
+        "id, nombre, etiqueta_avance, total_avance, niveles_academicos ( nivel, etiqueta_avance, total_avance, orden )",
+      )
+      .order("nombre"),
+  );
+
+  return (
+    filas
+      .map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        nivel: p.niveles_academicos?.nivel ?? "",
+        etiquetaAvance: p.etiqueta_avance ?? p.niveles_academicos?.etiqueta_avance ?? "Avance",
+        totalAvance: p.total_avance ?? p.niveles_academicos?.total_avance ?? 1,
+        orden: p.niveles_academicos?.orden ?? 0,
+      }))
+      // Por nivel y luego por nombre: es el mismo orden en el que el pre-registro
+      // los ofrece, y así la lista de la pantalla se parece a la que ve el alumno.
+      .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre))
+      .map(({ orden: _orden, ...p }) => p)
+  );
+}
+
+export async function cargarVentanas(): Promise<VentanaPreregistro[]> {
+  const filas = await datosDe<
+    {
+      id: string;
+      etiqueta: string;
+      abre: string;
+      cierra: string;
+      ventana_cohortes: { programa_id: string; avance: number }[];
+    }[]
+  >(
+    exigirBase()
+      .from("ventanas_preregistro")
+      .select("id, etiqueta, abre, cierra, ventana_cohortes ( programa_id, avance )")
+      .order("abre"),
+  );
+
+  return filas.map((v) => ({
+    id: v.id,
+    etiqueta: v.etiqueta,
+    abre: v.abre,
+    cierra: v.cierra,
+    cohortes: v.ventana_cohortes.map((c) => ({ programaId: c.programa_id, avance: c.avance })),
+  }));
+}
+
+/**
+ * Guarda las ventanas tal como quedaron en pantalla.
+ *
+ * **Se manda la lista entera, no lo que cambió.** Son tres o cuatro filas con
+ * una decena de cohortes cada una: calcular la diferencia costaría más código
+ * del que ahorra, y una diferencia mal calculada aquí deja fuera del evento a
+ * una generación entera.
+ *
+ * Los cohortes se reemplazan enteros por ventana, como `taller_dias`: la tabla
+ * no tiene más columnas que su propia clave, así que no hay nada que conservar
+ * en una fila que se vuelve a insertar igual.
+ *
+ * El borrado de las ventanas que sobran va **al final** a propósito. Si algo se
+ * cae a mitad, lo que queda es de más y no de menos: una ventana vieja que
+ * todavía cierra la puerta es un estorbo que se ve y se corrige; una ventana
+ * que desapareció abre el pre-registro a todo el mundo y no lo delata nada.
+ */
+export async function guardarVentanas(ventanas: VentanaPreregistro[]): Promise<void> {
+  const sb = exigirBase();
+  const vivas: string[] = [];
+
+  for (const v of ventanas) {
+    const fila = { etiqueta: v.etiqueta.trim(), abre: v.abre, cierra: v.cierra };
+    // Sin id es una ventana que nunca se guardó. No hay `upsert` por etiqueta
+    // porque la etiqueta no es única —ni debería serlo: es una frase que se
+    // corrige— así que el alta y la modificación son dos caminos distintos.
+    const guardada = await datosDe<{ id: string }>(
+      v.id
+        ? sb.from("ventanas_preregistro").update(fila).eq("id", v.id).select("id").single()
+        : sb.from("ventanas_preregistro").insert(fila).select("id").single(),
+    );
+
+    vivas.push(guardada.id);
+    await exigir(sb.from("ventana_cohortes").delete().eq("ventana_id", guardada.id));
+    if (v.cohortes.length)
+      await exigir(
+        sb.from("ventana_cohortes").insert(
+          v.cohortes.map((c) => ({
+            ventana_id: guardada.id,
+            programa_id: c.programaId,
+            avance: c.avance,
+          })),
+        ),
+      );
+  }
+
+  const todas = await datosDe<{ id: string }[]>(sb.from("ventanas_preregistro").select("id"));
+  const sobran = todas.map((v) => v.id).filter((id) => !vivas.includes(id));
+  if (sobran.length) await exigir(sb.from("ventanas_preregistro").delete().in("id", sobran));
 }
 
 /**

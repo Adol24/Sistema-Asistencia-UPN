@@ -287,9 +287,11 @@ lo de antes y ya.
 - **`planteles`.** Las sedes, que el padrón también valida. Mismo caso y mismo
   mensaje engañoso.
 
-No publica `ventanas_preregistro` ni `ventana_cohortes`: existen pero ningún
-cliente las lee —la regla la aplica un disparador— y publicar una tabla que
-nadie escucha solo cuesta WAL.
+No publica `ventanas_preregistro` ni `ventana_cohortes`. Desde que
+`/admin/configuracion` las edita sí hay un cliente que las lee, pero las pide al
+entrar y las vuelve a pedir al guardar: no hay nadie esperando a que cambien
+solas. La regla que importa la sigue aplicando un disparador, y publicar una
+tabla que nadie escucha solo cuesta WAL.
 
 Es idempotente: comprueba `pg_publication_tables` antes de añadir cada una,
 igual que la 21, así que volver a correrla es inofensivo.
