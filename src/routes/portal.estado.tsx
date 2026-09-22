@@ -170,11 +170,11 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             <span>
               Servicios Financieros tarda unas{" "}
               <span className="font-semibold">{evento.horasValidacion} horas</span> en validar tu
-              voucher. Cuando termine, tu código QR aparece en{" "}
+              voucher. Cuando termine, tu código empieza a abrir la puerta y lo ves así en{" "}
               <Link to="/portal/qr" className="font-semibold text-primary underline">
                 Mi código QR
               </Link>
-              . No te lo enviamos por correo: lo descargas tú.
+              . No te lo enviamos por correo: es el mismo que ya tienes.
             </span>
           </p>
         ) : null}

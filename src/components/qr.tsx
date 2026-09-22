@@ -167,7 +167,24 @@ export function CodigoQR({
 // eslint-disable-next-line react-refresh/only-export-components
 export async function pngDelPase(
   valor: string,
-  datos: { nombre: string; evento: string },
+  datos: {
+    nombre: string;
+    evento: string;
+    /**
+     * ¿Este código ya abre la puerta?
+     *
+     * **La imagen tiene que responderlo sola**, y esa es la razón de que este
+     * parámetro exista. Antes salía siempre igual, así que quien descargaba
+     * desde las instrucciones de pago —sin haber pagado— se quedaba con un
+     * archivo llamado `pase-PRE-00847.png`, con su nombre y el escudo, idéntico
+     * al que descarga quien ya pagó. Dos archivos indistinguibles en la galería
+     * del teléfono, y uno de los dos no sirve para entrar.
+     *
+     * El símbolo NO cambia: sigue siendo el mismo folio y se lee igual en
+     * ventanilla. Lo que cambia es lo que la imagen dice de sí misma.
+     */
+    activo: boolean;
+  },
 ): Promise<Blob | null> {
   const qr = encode(valor, { ecc: "H", border: 4 });
   const n = qr.size;
@@ -175,7 +192,9 @@ export async function pngDelPase(
   const modulo = 16;
   const lado = n * modulo;
   const margen = 48;
-  const alturaTexto = 150;
+  // El renglón de estado solo ocupa sitio cuando hay estado que advertir: un
+  // pase activo no necesita que le pongan un sello encima diciendo que lo está.
+  const alturaTexto = datos.activo ? 150 : 200;
 
   const lienzo = document.createElement("canvas");
   lienzo.width = lado + margen * 2;
@@ -244,6 +263,30 @@ export async function pngDelPase(
   ctx.fillStyle = "#0047BB";
   ctx.font = "bold 22px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(recortar(ctx, datos.evento, lienzo.width - margen), centro, y);
+
+  /*
+   * El sello, en la propia imagen y no solo en la pantalla que la generó.
+   *
+   * Se dibuja sobre una banda gris y con el texto en mayúsculas porque esta
+   * imagen se mira meses después, en una galería, sin nada alrededor que la
+   * explique. Un pie de foto en la web no viaja con el archivo; esto sí.
+   *
+   * No lleva rojo ni tacha: el archivo no es inválido —es el folio, y en
+   * ventanilla es exactamente el que hay que leer—. Lo único que no hace
+   * todavía es abrir la puerta, y eso es lo que dice.
+   */
+  if (!datos.activo) {
+    y += 20;
+    const alto = 44;
+    const ancho = lienzo.width - margen * 2;
+    ctx.fillStyle = "#E2E8F0";
+    ctx.fillRect(margen, y, ancho, alto);
+    ctx.fillStyle = "#334155";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 22px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText("TODAVÍA NO ABRE LA PUERTA", centro, y + alto / 2);
+    ctx.textBaseline = "alphabetic";
+  }
 
   return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
 }

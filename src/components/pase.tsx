@@ -1,9 +1,77 @@
 import { useEffect, useState } from "react";
-import { Download, Loader2, Share2 } from "lucide-react";
+import { CircleCheck, Clock3, Download, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { pngDelPase } from "@/components/qr";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+/**
+ * Qué significa el código del folio ahora mismo.
+ *
+ * ---------------------------------------------------------------------------
+ * El alumno tiene UN código, no dos. El sistema le enseñaba dos.
+ * ---------------------------------------------------------------------------
+ *
+ * El comprobante del pre-registro pinta el folio en un QR, y el portal pinta
+ * otro QR en cuanto el pago se valida. Son **el mismo símbolo con el mismo
+ * contenido**: los dos codifican el folio y nada más. Lo único que los
+ * distinguía era el tamaño y la sigla del centro.
+ *
+ * Eso bastaba para hacer creer que existían dos códigos distintos, y el portal
+ * lo remataba diciéndole a quien todavía no había pagado que «esta pantalla es
+ * la única que lo tiene», que era falso: ya se lo habíamos dado en el
+ * comprobante. De ahí salía el miedo razonable de que el primero sirviera para
+ * colarse sin pagar —no sirve; la puerta consulta el pago en la base y devuelve
+ * rojo— y salía también algo que sí iba a pasar: gente llegando el día del
+ * evento con el comprobante guardado, convencida de que era su pase.
+ *
+ * El arreglo no es dibujarlos distintos. `qr.tsx` ya decidió lo contrario y por
+ * buenas razones: «dos códigos distintos para el mismo folio hacen dudar de si
+ * son el mismo, y esa duda en la fila de una entrada pesa más». El arreglo es
+ * dejar de fingir que son dos y decir en voz alta lo único que cambia entre un
+ * sitio y el otro, que es **si ya deja entrar**.
+ *
+ * Por eso esta pieza vive aquí y no escrita a mano en cada pantalla: son dos
+ * pantallas que tienen que contar la misma historia, y si cada una la redacta
+ * por su cuenta vuelven a divergir.
+ */
+export function SelloDelCodigo({
+  activo,
+  children,
+}: {
+  activo: boolean;
+  /** El siguiente paso, que sí es distinto en cada pantalla. */
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="mt-3 text-center">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold",
+          activo ? "bg-estado-pagado-bg text-estado-pagado" : "bg-estado-pre-bg text-estado-pre",
+        )}
+      >
+        {activo ? (
+          <CircleCheck className="size-3.5" aria-hidden />
+        ) : (
+          <Clock3 className="size-3.5" aria-hidden />
+        )}
+        {activo ? "Ya abre la puerta" : "Todavía no abre la puerta"}
+      </span>
+      {/*
+        La frase invariante, la que tiene que sonar igual en los dos sitios. No
+        se le pasa como prop a propósito: en cuanto una pantalla pueda decirlo
+        «a su manera», volvemos a tener dos versiones de un solo hecho.
+      */}
+      <p className="mx-auto mt-2 max-w-xs text-pretty text-xs text-muted-foreground">
+        Tu folio tiene un solo código. Este mismo te atiende en ventanilla y te abre la puerta en
+        cuanto Servicios Financieros valide tu pago.
+      </p>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Las dos acciones del pase.
@@ -21,17 +89,28 @@ export function AccionesDelPase({
   folio,
   nombre,
   evento,
+  activo,
 }: {
   folio: string;
   nombre: string;
   evento: string;
+  /**
+   * Si el código ya abre la puerta. Cambia el sello de la imagen, el nombre del
+   * archivo y cómo se llama la acción.
+   *
+   * El nombre del archivo importa tanto como el dibujo: `pase-PRE-00847.png` y
+   * `folio-PRE-00847.png` se distinguen en la lista de descargas, que es donde
+   * se busca meses después y donde no se ve ninguna imagen.
+   */
+  activo: boolean;
 }) {
   const [trabajando, setTrabajando] = useState<"descargar" | "compartir" | null>(null);
+  const que = activo ? "pase" : "folio";
 
   const generar = async () => {
-    const blob = await pngDelPase(folio, { nombre, evento });
+    const blob = await pngDelPase(folio, { nombre, evento, activo });
     if (!blob) throw new Error("El navegador no pudo generar la imagen");
-    return new File([blob], `pase-${folio}.png`, { type: "image/png" });
+    return new File([blob], `${que}-${folio}.png`, { type: "image/png" });
   };
 
   /*
@@ -67,7 +146,7 @@ export function AccionesDelPase({
       a.download = archivo.name;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Descargamos tu pase.");
+      toast.success(activo ? "Descargamos tu pase." : "Descargamos tu folio.");
     } catch {
       toast.error("No pudimos generar la imagen. Toma una captura de pantalla.");
     } finally {
@@ -79,7 +158,7 @@ export function AccionesDelPase({
     setTrabajando("compartir");
     try {
       const archivo = await generar();
-      await navigator.share({ files: [archivo], title: `Pase ${folio}` });
+      await navigator.share({ files: [archivo], title: `${activo ? "Pase" : "Folio"} ${folio}` });
     } catch (e) {
       // Cancelar el menú del sistema no es un fallo y no merece un aviso.
       if ((e as Error)?.name !== "AbortError")
@@ -97,7 +176,7 @@ export function AccionesDelPase({
         ) : (
           <Download className="size-4" aria-hidden />
         )}
-        Descargar pase
+        {activo ? "Descargar pase" : "Descargar mi folio"}
       </Button>
       {puedeCompartir ? (
         <Button

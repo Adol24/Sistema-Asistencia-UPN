@@ -6,7 +6,7 @@ import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
-import { AccionesDelPase } from "@/components/pase";
+import { AccionesDelPase, SelloDelCodigo } from "@/components/pase";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
 import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
@@ -52,10 +52,24 @@ function Pago() {
   const { borrador, participante } = usePrototipo();
   // Configuración y catálogo salen del contexto: lo que administración cambie se
   // ve aquí sin recargar.
-  const { configuracion: evento, getTaller } = useEstadoEvento();
+  const { configuracion: evento, getTaller, estadoDe } = useEstadoEvento();
   // El folio del pre-registro recién creado. `participante?.folio` es el del
   // contexto —otra persona— y enseñarlo aquí era el fallo más visible del flujo.
   const folio = borrador.folio ?? participante?.folio;
+
+  /*
+   * ¿El código que se está enseñando ya abre la puerta?
+   *
+   * Casi siempre no: esta pantalla explica CÓMO pagar, así que quien la lee
+   * todavía no ha pagado. Pero se puede volver a ella después, y entonces un
+   * sello que dijera «todavía no» sería tan falso como el que había antes.
+   *
+   * Se pregunta solo cuando el folio es el del participante del contexto. El
+   * del borrador acaba de nacer en el pre-registro y no tiene pago que
+   * consultar: ahí la respuesta es no, y lo es de verdad.
+   */
+  const paseActivo =
+    !borrador.folio && !!participante && estadoDe(participante).evento === "pagado";
   // El nombre va impreso en la imagen del pase, para que se reconozca de quién
   // es sin tener que abrirla y leer el folio.
   const nombre = borrador.nombre ?? participante?.nombre ?? "";
@@ -123,9 +137,20 @@ function Pago() {
             </Button>
           </div>
 
+          {/*
+            El mismo código del comprobante y del portal, con su sello.
+
+            Aquí salía pelado, sin una sola palabra que dijera qué era, y justo
+            debajo estaba el botón de descargar la imagen del pase: quien leía
+            estas instrucciones —o sea, quien todavía NO ha pagado— se bajaba un
+            archivo llamado `pase-PRE-00847.png` con su nombre y el escudo,
+            idéntico al que se lleva quien ya pagó. De las tres pantallas que
+            pintan este código, esta era la que más convencía de tener el boleto.
+          */}
           <div className="mt-4 flex justify-center">
             <CodigoQR valor={folio ?? ""} size={148} />
           </div>
+          <SelloDelCodigo activo={paseActivo} />
 
           <div className="mx-auto mt-4 max-w-md rounded-md border-2 border-primary/30 bg-primary/5 p-3 text-left">
             <p className="flex items-start gap-2 text-sm font-semibold">
@@ -137,14 +162,21 @@ function Pago() {
               <Link to="/portal" className="font-semibold text-primary underline">
                 tu portal
               </Link>
-              , donde ves si tu pago ya se registró, subes tus evidencias y obtienes tu código QR
+              , donde ves si tu pago ya se registró, subes tus evidencias y tu código queda activado
               para la entrada. Sin el folio no hay forma de entrar.
             </p>
           </div>
 
-          {/* La descarga es real: genera la imagen del pase y la guarda. */}
+          {/* La descarga es real: genera la imagen y la guarda. Lleva el sello
+              de la pantalla, así que antes de pagar sale un `folio-*.png` que
+              dice lo que es, y no un pase que no lo es todavía. */}
           <div className="print:hidden">
-            <AccionesDelPase folio={folio ?? ""} nombre={nombre} evento={evento.nombre} />
+            <AccionesDelPase
+              folio={folio ?? ""}
+              nombre={nombre}
+              evento={evento.nombre}
+              activo={paseActivo}
+            />
           </div>
         </aside>
 
@@ -241,19 +273,28 @@ function Pago() {
           <section className="mt-4 rounded-lg border-2 border-primary/25 bg-muted p-4">
             <h2 className="flex items-center gap-2 text-sm font-bold">
               <QrCode className="size-5 shrink-0 text-primary" aria-hidden />
-              Tu código QR lo descargas tú
+              Tu código se activa cuando validen tu pago
             </h2>
+            {/*
+              Decía «Tu código QR lo descargas tú», y con eso contaba la
+              historia equivocada: que el código llega DESPUÉS, como si fuera
+              otro. Es el mismo de arriba desde el primer minuto —el folio— y lo
+              que ocurre al validar el pago no es que nazca, sino que empiece a
+              abrir la puerta. Los cuatro pasos son los mismos; lo que cambia es
+              qué se está esperando.
+            */}
             <p className="mt-2 text-sm">
-              Nadie te lo va a enviar. Después de dejar tu voucher en ventanilla, espera{" "}
+              Ya lo tienes: es el de arriba, el mismo de tu comprobante, y nadie te va a mandar
+              otro. Después de dejar tu voucher en ventanilla, espera{" "}
               <span className="font-semibold">{evento.horasValidacion} horas</span> a que Servicios
-              Financieros valide tu pago, entra a tu portal y descárgalo.
+              Financieros valide tu pago; en cuanto lo haga, ese mismo código abre la puerta.
             </p>
             <ol className="mt-3 grid gap-2 text-sm">
               {[
                 "Deja tu voucher en ventanilla.",
                 `Espera ${evento.horasValidacion} horas.`,
                 "Entra a tu portal con tu folio y tu matrícula.",
-                "Descarga tu QR y tómale una captura de pantalla.",
+                "Cuando diga «ya abre la puerta», descárgalo y tómale una captura.",
               ].map((paso, i) => (
                 <li key={paso} className="flex items-start gap-2">
                   <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">

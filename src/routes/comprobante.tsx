@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Download, Info, LayoutList } from "lucide-react";
-import { toast } from "sonner";
+import { CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
-import { Button } from "@/components/ui/button";
 import { CodigoQR } from "@/components/qr";
+import { SelloDelCodigo } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechaLimiteTexto, isoAFecha, moneda } from "@/lib/formato";
@@ -160,29 +159,46 @@ function Comprobante() {
                   <dd className="text-lg font-bold tabular-nums">{moneda(total)}</dd>
                 </div>
               </dl>
+              {/*
+                El mismo código que enseña el portal, y se dice que lo es.
+
+                Aquí ponía «Folio para ventanilla» y nada más. La etiqueta era
+                correcta, pero tres palabras en gris no compiten con una imagen
+                que el ojo ya clasificó como «mi QR del evento»: quien se
+                llevaba este papel creía traer su pase. El sello lo dice con
+                todas las letras y con el mismo color de estado que usa el
+                resto del portal.
+              */}
               <div className="justify-self-center">
                 <CodigoQR valor={folio ?? ""} size={148} />
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Folio para ventanilla
-                </p>
+                <SelloDelCodigo activo={false} />
               </div>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <Button
-              className="h-12 md:h-11 text-base"
-              onClick={() => toast.success("Descargamos tu comprobante en PDF.")}
-            >
-              <Download className="size-4" /> Descargar comprobante
-            </Button>
-            <Link
-              to="/portal"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-base font-medium transition-colors hover:bg-accent"
-            >
-              <LayoutList className="size-4" aria-hidden /> Ver mi estado en el portal
-            </Link>
-          </div>
+          {/*
+            Aquí había un botón «Descargar comprobante» y ya no está.
+
+            No descargaba nada: llamaba a `toast.success("Descargamos tu
+            comprobante en PDF.")` y se quedaba tan ancho. Anunciar un archivo
+            que no existe es peor que no ofrecerlo, porque quien se fía cierra
+            la pestaña creyendo que lo tiene guardado.
+
+            No se sustituye por `window.print()`, que es lo que se pediría a
+            continuación: `pago.tsx` ya quitó ese botón por hacer lo que el
+            navegador hace solo con Ctrl+P. La hoja de impresión sigue en pie
+            —las clases `print:hidden` y `print:block` de esta pantalla no se
+            tocan— así que quien quiera el papel lo tiene igual.
+
+            Queda un solo destino, que además es el que hay que seguir: el
+            portal, donde este mismo código se activa cuando el pago se valide.
+          */}
+          <Link
+            to="/portal"
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <LayoutList className="size-4" aria-hidden /> Ver mi estado en el portal
+          </Link>
         </div>
 
         <div>

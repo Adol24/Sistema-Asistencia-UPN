@@ -4,7 +4,7 @@ import { Camera, Maximize2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
 import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
-import { AccionesDelPase } from "@/components/pase";
+import { AccionesDelPase, SelloDelCodigo } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/portal/qr")({
   head: () =>
     meta(
       "Mi código QR — XIV Encuentro Internacional de Educación",
-      "Descarga tu código QR de acceso al XIV Encuentro Internacional de Educación en cuanto Servicios Financieros valide tu pago.",
+      "El código de tu folio para el XIV Encuentro Internacional de Educación: el mismo de tu comprobante, y abre la puerta en cuanto Servicios Financieros valide tu pago.",
     ),
   component: MiQr,
 });
@@ -60,13 +60,31 @@ function MiQrContenido({ p }: { p: Participante }) {
   return (
     <PantallaPublica titulo="Mi código QR" ancho="lg">
       <PortalNav />
-      {pagado ? (
-        <section className="rounded-lg border border-border bg-card p-6 text-center">
-          {/*
+      {/*
+        Un solo código, en dos estados. No dos códigos.
+        ------------------------------------------------------------------
+        Esta pantalla enseñaba el QR solo al pagar y, mientras tanto, decía
+        «Todavía no podemos generar tu código QR» y «esta pantalla es la única
+        que lo tiene». Las dos frases eran falsas: el código es el folio, el
+        folio existe desde el pre-registro y el comprobante ya lo había
+        pintado. De ahí salían los dos QR que nadie sabía distinguir.
+
+        Ahora el código se enseña siempre —es suyo desde el primer día— y lo
+        que cambia es el sello de debajo y lo que se puede hacer con él. Las
+        acciones de pase (descargar, compartir, pantalla completa, mantener la
+        pantalla encendida) siguen siendo solo de quien ya pagó: son las que
+        tratan al código como un boleto, y antes de tiempo no lo es.
+
+        Enseñarlo sin pagar no abre ninguna puerta: quien decide es
+        `fn_evaluar_escaneo`, que consulta el pago en la base y devuelve rojo.
+      */}
+      <section className="rounded-lg border border-border bg-card p-6 text-center">
+        {pagado ? (
+          /*
            * Tocar el código lo abre a pantalla completa. Es el gesto que la
            * gente intenta por instinto con cualquier imagen, y aquí resulta ser
            * justo lo que conviene hacer en la puerta.
-           */}
+           */
           <button
             type="button"
             onClick={() => setAmpliado(true)}
@@ -79,39 +97,53 @@ function MiQrContenido({ p }: { p: Participante }) {
               Tócalo para mostrarlo en grande
             </span>
           </button>
-          <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
-          <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
-          <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} />
-          <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-left text-sm">
-            <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-            Toma una captura de pantalla: en la entrada no necesitas internet para mostrar tu
-            código.
-          </p>
-        </section>
-      ) : (
-        <section className="rounded-lg border border-border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">Todavía no podemos generar tu código QR.</p>
-          <div className="mt-3 flex justify-center">
-            <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />
+        ) : (
+          /*
+           * Atenuado, y sin envolver en un botón que no lleva a ninguna parte.
+           * `opacity` y no un color distinto: el símbolo tiene que seguir
+           * siendo reconociblemente el mismo que el del comprobante y el que
+           * verá cuando se active. Y sigue escaneando —en ventanilla es
+           * justamente el que hay que leer—.
+           */
+          <div className="mx-auto w-fit opacity-60">
+            <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
           </div>
-          <p className="mt-4 text-sm font-medium">
-            {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            El código no se envía por correo: se descarga aquí. Esta pantalla es la única que lo
-            tiene.
-          </p>
-          <Link
-            to="/portal/estado"
-            className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
-          >
-            Ver mi línea de tiempo
-          </Link>
-        </section>
-      )}
+        )}
+
+        <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+        <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
+
+        <SelloDelCodigo activo={pagado} />
+
+        {pagado ? (
+          <>
+            <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} activo />
+            <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-left text-sm">
+              <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+              Toma una captura de pantalla: en la entrada no necesitas internet para mostrar tu
+              código.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="mt-5 flex justify-center">
+              <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />
+            </div>
+            <p className="mt-3 text-sm font-medium">
+              {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
+            </p>
+            <Link
+              to="/portal/estado"
+              className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
+            >
+              Ver mi línea de tiempo
+            </Link>
+          </>
+        )}
+      </section>
       {ampliado && pagado ? (
         <PaseAPantallaCompleta
           valor={p.folio}
