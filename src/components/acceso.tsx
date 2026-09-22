@@ -142,13 +142,6 @@ function FormularioAcceso() {
           {enviando ? "Entrando…" : "Entrar"}
         </Button>
       </form>
-
-      <p className="mt-6 text-xs text-muted-foreground">
-        ¿Eres participante?{" "}
-        <Link to="/portal" className="font-semibold text-primary underline underline-offset-2">
-          Entra al portal con tu folio
-        </Link>
-      </p>
     </Centrado>
   );
 }
