@@ -342,13 +342,38 @@ export function PantallaPublica({
        * y es lo que hacía flotar la tarjeta en medio de la nada en una
        * computadora. De 1024 en adelante el contenido se ancla arriba y es
        * `lg:grow` —no el margen— lo que manda el pie hasta abajo.
+       *
+       * -----------------------------------------------------------------------
+       * Y anclarlo arriba dejaba media pantalla vacía debajo.
+       * -----------------------------------------------------------------------
+       * En un monitor grande, «Escribe tu matrícula» ocupaba el tercio superior
+       * y de ahí al pie no había nada: unos 400 píxeles de vacío. El arreglo de
+       * entonces cambió un defecto por el otro, porque los dos son el mismo
+       * hecho visto al derecho y al revés —el contenido no llena la ventana— y
+       * ni pegarlo arriba ni pegarlo al centro lo cambia.
+       *
+       * Lo que sí cambió desde aquella decisión es que el riel existe. La
+       * tarjeta «flotaba en medio de la nada» cuando era lo único que había;
+       * ahora a su lado hay una columna con el evento, los cuatro pasos y el
+       * enlace a soporte, y ese bloque pesa lo suficiente para sostener el
+       * centro de la pantalla en vez de perderse en él.
+       *
+       * `lg:content-center` y no volver a `my-auto`, que es lo que se retiró:
+       * `align-content` reparte el hueco SOBRANTE entre arriba y abajo sin tocar
+       * la caja, así que `lg:grow` sigue mandando el pie al fondo y el relleno
+       * de `lg:py-14` sigue donde estaba. Cuando el contenido es largo —el pago,
+       * el comprobante— no hay sobrante y esto no hace absolutamente nada.
+       *
+       * El riel además mantiene la altura del bloque casi constante entre un
+       * paso y el siguiente, así que centrar no hace saltar el contenido al
+       * avanzar por el flujo, que era el otro motivo para anclarlo arriba.
        */}
       <div
         className={cn(
           "mx-auto w-full px-4 py-8 max-lg:alto:my-auto sm:py-12 md:px-8 md:py-10 lg:py-14",
           // Anclado arriba en el flujo; centrado en la portada. `grow` es lo
           // que manda el pie hasta abajo cuando no hay margen que lo empuje.
-          riel ? "lg:grow" : "lg:my-auto",
+          riel ? "lg:grow lg:content-center" : "lg:my-auto",
           contenedor,
           riel && "lg:grid lg:grid-cols-[16rem_1fr] lg:items-start lg:gap-14",
         )}
