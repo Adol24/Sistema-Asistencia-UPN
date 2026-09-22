@@ -17,7 +17,12 @@ import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { descargarCsv } from "@/lib/exportar";
-import { analizarPadron, COLUMNAS_PADRON, type FilaPadron } from "@/lib/padron-importacion";
+import {
+  analizarPadron,
+  COLUMNA_DIA,
+  COLUMNAS_PADRON,
+  type FilaPadron,
+} from "@/lib/padron-importacion";
 import { avanceTexto, cuentaDeAvance } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -332,19 +337,65 @@ function ImportacionPadron() {
     ];
   }, [configuracion.catalogoAcademico, sedes]);
 
+  /**
+   * El padrón entero tal como está ahora, con su día, en un archivo.
+   *
+   * Sale con las mismas columnas que la plantilla y en el mismo orden, más el
+   * día al final, así que **se puede volver a subir aquí sin tocarlo**: es el
+   * documento de trabajo para revisar el padrón fuera del sistema, y el
+   * respaldo de lo que hay antes de aplicar un archivo nuevo.
+   *
+   * El avance va escrito como lo escribe el archivo oficial —«Semestre 3»,
+   * «Módulo 13»— y no como un número suelto, porque así se lee sin tener que
+   * saber de qué programa es cada fila. Al reimportarlo, `soloNumero` se queda
+   * con el número y la etiqueta sobra.
+   *
+   * La columna del día viaja para ser leída, no para editarse: la importación
+   * no mueve días, y cada fila cuyo día no coincida con el guardado lo dice.
+   */
+  const descargarPadronCompleto = () => {
+    if (!padron.length) {
+      toast.error("El padrón está vacío: no hay nada que descargar.");
+      return;
+    }
+    const n = descargarCsv(
+      "padron-completo.csv",
+      [...COLUMNAS_PADRON, COLUMNA_DIA],
+      padron.map((a) => [
+        a.matricula,
+        a.nombre,
+        a.programa,
+        avanceTexto(configuracion.catalogoAcademico, a.nivel, a.avance, a.programa) || a.avance,
+        a.grupo ?? "",
+        a.plantel,
+        a.dia ?? "",
+      ]),
+    );
+    registrarBitacora(
+      "Descargó el padrón completo",
+      `${n} alumnos · ${n - pendientes.length} con día asignado`,
+    );
+    toast.success(`Descargamos ${n} alumnos.`);
+  };
+
   return (
     <PantallaPanel
       area="admin"
       titulo="Importación del padrón"
       descripcion="Nada cambia hasta que confirmas. Primero revisas la vista previa, después aplicas."
       acciones={
-        <Button
-          variant="outline"
-          className="h-11"
-          onClick={() => descargarCsv("plantilla-padron.csv", [...COLUMNAS_PADRON], ejemplo)}
-        >
-          <Download className="size-4" /> Descargar plantilla
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="h-11" onClick={descargarPadronCompleto}>
+            <Download className="size-4" /> Descargar el padrón ({padron.length})
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11"
+            onClick={() => descargarCsv("plantilla-padron.csv", [...COLUMNAS_PADRON], ejemplo)}
+          >
+            <Download className="size-4" /> Descargar plantilla
+          </Button>
+        </div>
       }
     >
       {rechazados.length > 0 ? (

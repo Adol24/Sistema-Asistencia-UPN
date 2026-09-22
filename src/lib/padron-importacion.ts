@@ -50,7 +50,32 @@ const SINONIMOS: Record<string, string[]> = {
   // aceptan los dos y el genérico con el que llegan las hojas mixtas.
   avance: ["modulo", "módulo", "semestre", "cuatrimestre", "semestre/modulo", "semestre/módulo"],
   sede: ["plantel", "unidad", "subsede"],
+  // El día no es una de las columnas obligatorias. Aparece cuando lo que se
+  // sube es la exportación de esta misma pantalla. Ver `COLUMNA_DIA`.
+  dia: ["día", "dia asignado", "día asignado", "dia del evento", "día del evento"],
 };
+
+/**
+ * La columna del día se lee, pero no se aplica.
+ *
+ * Vive fuera de `COLUMNAS_PADRON` porque es **opcional**: el archivo de
+ * Servicios Escolares no la trae —el día no lo asigna la universidad, lo reparte
+ * la organización— y exigirla rechazaría el archivo con el que empieza todo.
+ *
+ * Se lee de todas formas, y esa es la razón de que exista esta constante. La
+ * exportación del padrón sí escribe el día, así que quien reimporte ese archivo
+ * lo traerá, y es previsible que lo haya editado esperando mover a alguien. Si
+ * la columna se ignorara en silencio, la pantalla diría «listo» sobre un cambio
+ * que no ocurrió: la fila avisa de que el día no se toca y de dónde sí se mueve.
+ *
+ * No se aplica porque el día vive en dos tablas —`padron_alumnos.dia` y
+ * `participantes.dia`— y moverlo exige la misma operación que usa el reparto,
+ * que además libera el taller de quien se quede con uno que su día nuevo no
+ * imparte. La importación escribe el padrón con un `upsert` directo: por ahí, un
+ * día nuevo dejaría al participante en el suyo viejo y la puerta le diría DÍA
+ * EQUIVOCADO.
+ */
+export const COLUMNA_DIA = "dia";
 
 /**
  * Los ordinales con los que el padrón escribe el avance.
@@ -208,6 +233,9 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     COLUMNAS_PADRON.map((c) => [c, columnaDe(encabezado, c) ?? c]),
   ) as Record<(typeof COLUMNAS_PADRON)[number], string>;
 
+  // Opcional, y por eso aparte de las obligatorias: puede no venir.
+  const columnaDia = columnaDe(encabezado, COLUMNA_DIA);
+
   return filas.map((base) => {
     const { n, crudo } = base;
     const celda = (columna: ColumnaPadron) => crudo[nombreDeColumna[columna]] ?? "";
@@ -294,6 +322,22 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
 
     const existente = porMatriculaActual.get(matricula);
     const participante = participantePorMatricula.get(matricula);
+
+    /*
+     * Qué día pide el archivo, si trae la columna.
+     *
+     * Se compara con el que ya está guardado para no dar la lata: reimportar la
+     * exportación sin tocarla es lo más normal del mundo, y ahí el día del
+     * archivo y el de la base coinciden, así que no hay nada que avisar.
+     */
+    const diaEnArchivo = columnaDia ? soloNumero(crudo[columnaDia]) : "";
+    const diaPide = diaEnArchivo ? Number(diaEnArchivo) : undefined;
+    const diaDiscrepa = diaPide !== undefined && diaPide !== existente?.dia;
+    const avisoDelDia = !diaDiscrepa
+      ? ""
+      : existente?.dia
+        ? ` El archivo pide el día ${diaPide} y aquí tiene el ${existente.dia}: la importación NO mueve días, conserva el ${existente.dia}. Para moverlo usa la pestaña «Reparto», que también cambia al participante y libera su taller si el día nuevo no lo imparte.`
+        : ` El archivo pide el día ${diaPide}, y la importación NO asigna días: sigue sin día. Se asignan desde la pestaña «Reparto».`;
     // El día no viaja en el archivo: quien ya lo tenía asignado lo conserva, y
     // el alta nueva entra sin día hasta que la organización lo reparta.
     const alumno: AlumnoPadron = {
@@ -314,9 +358,11 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
         ...base,
         datos,
         semaforo: "advertencia",
-        motivo: pagado
-          ? `Cambia el nombre de "${existente.nombre}" a "${nombre}" y YA PAGÓ: su constancia sale con el nombre nuevo, confírmalo antes de aplicar.`
-          : `Cambia el nombre de "${existente.nombre}" a "${nombre}". Revisa que no sea un error de captura.`,
+        motivo:
+          (pagado
+            ? `Cambia el nombre de "${existente.nombre}" a "${nombre}" y YA PAGÓ: su constancia sale con el nombre nuevo, confírmalo antes de aplicar.`
+            : `Cambia el nombre de "${existente.nombre}" a "${nombre}". Revisa que no sea un error de captura.`) +
+          avisoDelDia,
         alumno,
       };
     }
@@ -324,17 +370,21 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       return {
         ...base,
         datos,
-        semaforo: "listo",
-        motivo: existente.dia
-          ? `Actualiza un registro existente. Conserva su día ${existente.dia}.`
-          : "Actualiza un registro existente, que sigue sin día asignado.",
+        // Un día distinto al guardado sale en ámbar y no en verde: es un cambio
+        // que quien subió el archivo espera y que no va a ocurrir, y eso no se
+        // puede decir con la misma luz que «todo en orden».
+        semaforo: diaDiscrepa ? "advertencia" : "listo",
+        motivo:
+          (existente.dia
+            ? `Actualiza un registro existente. Conserva su día ${existente.dia}.`
+            : "Actualiza un registro existente, que sigue sin día asignado.") + avisoDelDia,
         alumno,
       };
     return {
       ...base,
       datos,
       semaforo: "advertencia",
-      motivo: "Alta nueva. Queda sin día asignado hasta que se reparta.",
+      motivo: "Alta nueva. Queda sin día asignado hasta que se reparta." + avisoDelDia,
       alumno,
     };
   });
