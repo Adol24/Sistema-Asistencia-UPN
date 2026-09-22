@@ -26,19 +26,38 @@ import { cn } from "@/lib/utils";
  * Dibujarlo solo de `md:` en adelante deja el teléfono exactamente como estaba
  * —ni un píxel de diferencia— y le da a la computadora lo que sí espera.
  */
-function BarraPublica({ contenedor }: { contenedor: string }) {
+
+/*
+ * El ancho del MARCO, que es uno solo para las quince pantallas públicas.
+ *
+ * Antes la barra y el pie recibían el mismo contenedor que dimensiona el
+ * contenido, o sea que el marco se deducía de la página. Y como cada pantalla
+ * trae el suyo, en un monitor de 1920 la barra medía 1344 en la portada, 1088
+ * en los formularios y 1408 en el pago: **el logotipo se desplazaba 128 px a la
+ * derecha al pulsar «Soy alumno» y 160 a la izquierda al llegar a talleres**, y
+ * «Consultar mi estado» hacía lo mismo en espejo. Tres anchos para la misma
+ * barra dentro de un solo recorrido.
+ *
+ * Esto se hizo para que la marca no quedara «a la izquierda de donde empieza el
+ * texto», y el defecto que evitaba es real. Pero cambió una desalineación
+ * QUIETA por un salto en MOVIMIENTO, y no cuestan lo mismo: un borde que no
+ * coincide se deja de ver a los dos segundos, y algo que se mueve al navegar se
+ * nota cada vez. El marco es lo único que la persona ve igual en las ocho
+ * pantallas del flujo; si se mueve, deja de ser marco.
+ *
+ * El valor es el de la pantalla más ancha —`ancho="xl"` con riel: el pago, el
+ * comprobante y los talleres—, nunca menos. Una barra más estrecha que su
+ * propio contenido sí se lee como un fallo, no como una decisión.
+ */
+const MARCO = "max-w-3xl lg:max-w-[78rem] 2xl:max-w-[88rem]";
+
+function BarraPublica() {
   const { configuracion: evento } = useEstadoEvento();
 
   return (
     <header className="hidden border-b border-border bg-card md:block print:hidden">
-      {/*
-       * La barra ocupa todo el ancho, pero lo de dentro se alinea con el
-       * contenido de la página, no con la ventana. Con un contenedor propio y
-       * más ancho, la marca quedaba a la izquierda de donde empieza el texto y
-       * el enlace a la derecha de donde acaba: dos bordes que no coinciden con
-       * nada, que es lo que hace que una página se vea armada a ojo.
-       */}
-      <div className={cn("mx-auto flex w-full items-center gap-4 px-8 py-3", contenedor)}>
+      {/* El ancho es `MARCO` y no el de la página. Ver por qué, ahí arriba. */}
+      <div className={cn("mx-auto flex w-full items-center gap-4 px-8 py-3", MARCO)}>
         <Link to="/bienvenida" className="flex min-w-0 items-center gap-3">
           {/*
            * El logotipo oficial, y la barra creció para que quepa.
@@ -93,7 +112,7 @@ function BarraPublica({ contenedor }: { contenedor: string }) {
   );
 }
 
-function PiePublico({ contenedor }: { contenedor: string }) {
+function PiePublico() {
   const { configuracion: evento } = useEstadoEvento();
   const wa = evento.whatsappSoporte
     ? `https://wa.me/${evento.whatsappSoporte}?text=${encodeURIComponent(
@@ -106,7 +125,8 @@ function PiePublico({ contenedor }: { contenedor: string }) {
       <div
         className={cn(
           "mx-auto flex w-full flex-wrap items-center gap-x-6 gap-y-2 px-8 py-5 text-xs text-muted-foreground",
-          contenedor,
+          // Mismo ancho que la barra: el pie es la otra mitad del marco.
+          MARCO,
         )}
       >
         {evento.nombre ? <span className="truncate">{evento.nombre}</span> : null}
@@ -253,8 +273,8 @@ export function PantallaPublica({
 }) {
   const riel = variante === "flujo";
   /*
-   * El contenedor lo comparten la barra, el contenido y el pie, para que los
-   * tres empiecen y acaben en la misma vertical.
+   * El ancho del CONTENIDO, que es solo eso: la barra y el pie ya no lo usan
+   * —ver `MARCO`—, porque un marco que cambia con la página no es un marco.
    */
   /*
    * -------------------------------------------------------------------------
@@ -348,7 +368,7 @@ export function PantallaPublica({
      * nada que desplazar y su botón se queda debajo del teclado.
      */
     <div className="flex min-h-svh flex-col bg-background pb-seguro [padding-bottom:calc(env(safe-area-inset-bottom)+var(--teclado,0px))]">
-      <BarraPublica contenedor={contenedor} />
+      <BarraPublica />
       {/*
        * El ancho del CONTENIDO no cambia; lo que crece es la composición.
        *
@@ -411,7 +431,7 @@ export function PantallaPublica({
           {children}
         </main>
       </div>
-      <PiePublico contenedor={contenedor} />
+      <PiePublico />
     </div>
   );
 }
