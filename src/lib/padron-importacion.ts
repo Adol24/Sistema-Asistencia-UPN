@@ -189,6 +189,22 @@ export interface FilaPadron {
   semaforo: SemaforoPadron;
   motivo: string;
   alumno?: AlumnoPadron | undefined;
+  /**
+   * Si esa matrícula ya estaba en el padrón.
+   *
+   * Lo decide quien analiza, no quien pinta. La pantalla lo deducía mirando si
+   * la fila traía día —`!f.alumno.dia`— y eso confundía dos cosas distintas: un
+   * alumno que YA estaba pero a quien nadie le ha repartido día todavía no es un
+   * alta nueva, y se contaba como tal. El aviso llegaba a decir «estas
+   * matrículas no estaban en el padrón» sobre matrículas que sí estaban.
+   *
+   * Va sin valor en las filas con error: para saber si alguien ya estaba hay que
+   * poder leer su matrícula, y esas mueren antes. Undefined es «no se sabe», que
+   * es la verdad, y no se cuenta ni de un lado ni del otro.
+   */
+  yaEstaba?: boolean | undefined;
+  /** Si el archivo pide un día distinto al guardado. Ver `COLUMNA_DIA`. */
+  diaDistinto?: boolean | undefined;
 }
 
 export interface EntradaAnalisisPadron {
@@ -364,6 +380,8 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
             : `Cambia el nombre de "${existente.nombre}" a "${nombre}". Revisa que no sea un error de captura.`) +
           avisoDelDia,
         alumno,
+        yaEstaba: true,
+        diaDistinto: diaDiscrepa,
       };
     }
     if (existente)
@@ -379,6 +397,8 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
             ? `Actualiza un registro existente. Conserva su día ${existente.dia}.`
             : "Actualiza un registro existente, que sigue sin día asignado.") + avisoDelDia,
         alumno,
+        yaEstaba: true,
+        diaDistinto: diaDiscrepa,
       };
     return {
       ...base,
@@ -386,6 +406,8 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
       semaforo: "advertencia",
       motivo: "Alta nueva. Queda sin día asignado hasta que se reparta." + avisoDelDia,
       alumno,
+      yaEstaba: false,
+      diaDistinto: diaDiscrepa,
     };
   });
 }

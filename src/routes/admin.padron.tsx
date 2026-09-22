@@ -113,10 +113,27 @@ function ImportacionPadron() {
   );
   const pendientes = sinDiaAsignado();
 
-  const altasNuevas = useMemo(
-    () => (filas ?? []).filter((f) => f.alumno && !f.alumno.dia),
-    [filas],
-  );
+  /**
+   * Qué le va a pasar al padrón, contado antes de aplicar.
+   *
+   * Es la cifra que faltaba. La vista previa decía cuántas filas venían en
+   * verde, en ámbar y en rojo —los colores del análisis— pero no lo único que
+   * quien sube un archivo quiere saber antes de pulsar: **a cuántos ya los
+   * tenemos y a cuántos les estamos dando de alta**. Se sabía por fila, en su
+   * motivo, pero la tabla no pinta el motivo y el resumen no lo sumaba, así que
+   * reimportar el padrón entero se veía igual que cargarlo por primera vez.
+   *
+   * Solo cuenta lo aplicable: una fila con error no se aplica, y no se sabe si
+   * su matrícula ya estaba porque murió antes de poder mirarla.
+   */
+  const desglose = useMemo(() => {
+    const aplicables = (filas ?? []).filter((f) => f.semaforo !== "error");
+    return {
+      actualizaciones: aplicables.filter((f) => f.yaEstaba).length,
+      altas: aplicables.filter((f) => f.yaEstaba === false).length,
+      diaDistinto: aplicables.filter((f) => f.diaDistinto).length,
+    };
+  }, [filas]);
 
   const aplicar = () =>
     imp.aplicar(async (filasAplicables) => {
@@ -852,14 +869,42 @@ function ImportacionPadron() {
             </AlertDescription>
           </Alert>
 
-          {altasNuevas.length > 0 ? (
+          {desglose.actualizaciones > 0 ? (
+            <Alert className="mb-4">
+              <CheckCircle2 className="size-4" />
+              <AlertTitle>
+                {desglose.actualizaciones} de estas matrículas ya están en el padrón
+              </AlertTitle>
+              <AlertDescription>
+                No se duplican: cada una actualiza su registro y conserva el día que ya tenía. Si
+                además le cambia el nombre, esa fila sale en ámbar y lo dice.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {desglose.altas > 0 ? (
             <Alert className="mb-4">
               <AlertTriangle className="size-4" />
-              <AlertTitle>{altasNuevas.length} altas quedarán sin día asignado</AlertTitle>
+              <AlertTitle>{desglose.altas} altas quedarán sin día asignado</AlertTitle>
               <AlertDescription>
-                El archivo no trae el día, y estas matrículas no estaban en el padrón, así que nadie
-                se lo ha asignado todavía. Al aplicar, repártelos desde el tablero de abajo. Si
-                alguno se pre-registra antes, el sistema le asigna el día que va más vacío.
+                Esas matrículas no estaban en el padrón, así que nadie les ha repartido día todavía.
+                Al aplicar, repártelos desde el tablero de abajo. Si alguno se pre-registra antes,
+                el sistema le asigna el día que va más vacío.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {desglose.diaDistinto > 0 ? (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="size-4" />
+              <AlertTitle>
+                {desglose.diaDistinto} filas traen un día distinto al guardado, y no se va a aplicar
+              </AlertTitle>
+              <AlertDescription>
+                La importación NO mueve días: el archivo actualiza los datos académicos y cada uno
+                conserva el día que tiene aquí. Los días se cambian desde la pestaña «Reparto»,
+                porque mover a alguien también mueve al participante y le libera el taller que su
+                día nuevo no imparte. Esas filas salen en ámbar en la tabla.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -921,7 +966,31 @@ function ImportacionPadron() {
               <Fila key={f.n}>
                 <td className="px-3 py-2 text-muted-foreground">{f.n}</td>
                 <td className="px-3 py-2 font-mono text-xs">{f.datos.matricula}</td>
-                <td className="px-3 py-2">{f.datos.nombre}</td>
+                <td className="px-3 py-2">
+                  {f.datos.nombre}
+                  {/*
+                    El motivo, debajo del nombre y solo cuando hay algo que
+                    decir.
+                    Antes no se pintaba en ninguna parte: vivía en la fila, se
+                    contaba por color arriba y viajaba en el CSV de errores,
+                    así que «ya está en el padrón» o «el archivo pide otro día»
+                    eran invisibles en pantalla. Se quitó como columna propia
+                    porque empujaba la tabla a 68rem y se leía de lado; aquí no
+                    cuesta ancho: va dentro de una celda que ya existe, con el
+                    texto acotado para que envuelva en vez de estirar, y solo
+                    en las filas que no están en verde.
+                  */}
+                  {f.semaforo !== "listo" ? (
+                    <span
+                      className={cn(
+                        "mt-1 block max-w-[28rem] text-pretty text-xs",
+                        f.semaforo === "error" ? "text-destructive" : "text-estado-discrepancia",
+                      )}
+                    >
+                      {f.motivo}
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{f.datos.programa}</td>
                 {/*
                   La palabra va en la celda y no en el encabezado.
@@ -965,13 +1034,35 @@ function ImportacionPadron() {
         abierto={confirmando}
         alCerrar={() => imp.setConfirmando(false)}
         titulo={`¿Aplicar ${resumen.aplicables} registros al padrón?`}
+        /*
+         * El último gate dice qué le pasa a quién, no solo cuántos.
+         * Decía «se darán de alta o se actualizarán N alumnos», con la «o»
+         * dejando sin contestar lo único que había que contestar. Aquí se
+         * separan las dos cifras, que es lo que distingue reimportar el padrón
+         * de cargarlo por primera vez.
+         */
         descripcion={
           <>
-            Se darán de alta o se actualizarán {resumen.aplicables} alumnos. Las {resumen.error}{" "}
-            filas con error se omiten.
-            {altasNuevas.length > 0
-              ? ` ${altasNuevas.length} altas quedarán esperando a que se les asigne día.`
-              : ""}{" "}
+            {desglose.actualizaciones > 0 ? (
+              <>
+                <strong>{desglose.actualizaciones}</strong> ya están en el padrón y se actualizan
+                conservando su día.{" "}
+              </>
+            ) : null}
+            {desglose.altas > 0 ? (
+              <>
+                <strong>{desglose.altas}</strong>{" "}
+                {desglose.altas === 1 ? "es un alta nueva" : "son altas nuevas"} y quedan esperando
+                a que se les asigne día.{" "}
+              </>
+            ) : null}
+            {desglose.diaDistinto > 0 ? (
+              <>
+                El día que piden <strong>{desglose.diaDistinto}</strong> filas NO se aplica: se
+                cambia desde la pestaña «Reparto».{" "}
+              </>
+            ) : null}
+            {resumen.error > 0 ? <>Las {resumen.error} filas con error se omiten. </> : null}
             La acción no se puede deshacer desde esta pantalla.
           </>
         }
