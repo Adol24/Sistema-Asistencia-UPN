@@ -12,6 +12,7 @@
  */
 
 import { leerOrigen, type OrigenTabla } from "@/lib/csv";
+import { LARGOS_MATRICULA_EN_TEXTO, esMatricula } from "@/lib/campos";
 import type { AlumnoPadron, Participante } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
 
@@ -229,9 +230,9 @@ export function analizarPadron(e: EntradaAnalisisPadron): FilaPadron[] {
     const grupo = sinEtiqueta(celda("grupo"), "grupo").toUpperCase();
     const plantel = celda("sede").trim();
 
-    if (!/^\d{11}$/.test(matricula))
+    if (!esMatricula(matricula))
       return error(
-        `Matrícula con formato inválido: "${celda("matricula")}". Se esperan 11 dígitos.`,
+        `Matrícula con formato inválido: "${celda("matricula")}". Se esperan ${LARGOS_MATRICULA_EN_TEXTO} dígitos, sin letras.`,
       );
     if (!nombre) return error("Falta el nombre.");
     if (nombre.trim().split(/\s+/).length < 2)

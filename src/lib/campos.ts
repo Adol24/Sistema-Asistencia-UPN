@@ -15,11 +15,48 @@
 export const soloDigitos = (valor: string, maximo: number): string =>
   valor.replace(/\D/g, "").slice(0, maximo);
 
-/** Largo de los campos numéricos del sistema, en un solo lugar. */
+/** Largo de los campos numéricos que tienen uno solo. */
 export const LARGO = {
-  matricula: 11,
   celular: 10,
 } as const;
+
+/**
+ * La matrícula tiene dos largos, y los dos son reales.
+ *
+ * Las de once dígitos son las que emite Servicios Escolares hoy; las de ocho
+ * vienen de la numeración anterior y siguen siendo la matrícula vigente de
+ * quien la tiene. Una regla de «son once» no rechaza un error de captura:
+ * rechaza alumnos que existen y están en el padrón.
+ *
+ * Se aceptan los dos largos y ningún otro. Nueve o diez dígitos no es una
+ * matrícula de once a medio escribir —el campo no puede saber cuál de los dos
+ * está intentando escribir quien teclea— así que se trata como lo que es: algo
+ * que todavía no es una matrícula.
+ */
+export const LARGOS_MATRICULA = [8, 11] as const;
+
+/**
+ * Cómo se nombran esos largos dentro de una frase.
+ *
+ * Va pegado a `LARGOS_MATRICULA` a propósito: la conjunción castellana cambia
+ * con la palabra que sigue —«8 u once», no «8 o once»— y eso no se deduce del
+ * número. Si algún día se admite un tercer largo, las dos líneas se editan de
+ * una sola mirada.
+ */
+export const LARGOS_MATRICULA_EN_TEXTO = "8 u 11";
+
+/** El tope del campo: el mayor de los largos válidos. */
+export const MAX_MATRICULA = Math.max(...LARGOS_MATRICULA);
+
+/**
+ * ¿Es una matrícula completa? Solo dígitos, y uno de los largos exactos.
+ *
+ * La usan el formulario del alumno y la importación del padrón, que es la razón
+ * de que viva aquí: la base tiene la misma regla en un `check`, y tres copias de
+ * la misma regla son tres oportunidades de que una se quede atrás.
+ */
+export const esMatricula = (valor: string): boolean =>
+  /^[0-9]+$/.test(valor) && (LARGOS_MATRICULA as readonly number[]).includes(valor.length);
 
 /**
  * «Te faltan 3 dígitos: el celular son 10.» Decir cuántos faltan es más útil

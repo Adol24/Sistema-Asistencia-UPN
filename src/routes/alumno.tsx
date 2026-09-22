@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
+import { LARGOS_MATRICULA_EN_TEXTO, MAX_MATRICULA, esMatricula, soloDigitos } from "@/lib/campos";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -31,10 +31,17 @@ function IdentificacionAlumno() {
 
   const buscar = async () => {
     if (!matricula) return setError("Escribe tu matrícula.");
-    // El campo ya impide las letras, así que lo único que puede faltar son
-    // dígitos. Decir cuántos es más útil que repetir el formato.
-    const falta = faltanDigitos(matricula, LARGO.matricula, "la matrícula");
-    if (falta) return setError(falta);
+    /*
+     * El campo ya impide las letras, así que lo único que puede estar mal es la
+     * cantidad de dígitos. No se dice cuántos «faltan» porque con dos largos
+     * válidos nadie puede saberlo: quien lleva nueve puede estar sobrando uno
+     * de ocho o faltándole dos de once. Se dice cuáles son los largos y cuántos
+     * escribió, y que él decida cuál de los dos es el suyo.
+     */
+    if (!esMatricula(matricula))
+      return setError(
+        `La matrícula son ${LARGOS_MATRICULA_EN_TEXTO} dígitos, y escribiste ${matricula.length}.`,
+      );
     setError("");
     setNoEncontrada(false);
     setCargando(true);
@@ -104,14 +111,14 @@ function IdentificacionAlumno() {
             // también al pegar. Un campo que acepta una letra y luego la reprocha
             // es un campo que hace perder el tiempo dos veces.
             onChange={(e) => {
-              setMatricula(soloDigitos(e.target.value, LARGO.matricula));
+              setMatricula(soloDigitos(e.target.value, MAX_MATRICULA));
               setError("");
             }}
             placeholder="20262122031"
             autoFocus
             inputMode="numeric"
             autoComplete="off"
-            maxLength={LARGO.matricula}
+            maxLength={MAX_MATRICULA}
             className="mt-1.5 h-14 text-center font-mono text-xl tracking-widest"
             aria-invalid={!!error}
           />
@@ -120,10 +127,10 @@ function IdentificacionAlumno() {
           ) : (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               {matricula.length === 0
-                ? `Son ${LARGO.matricula} dígitos. Ejemplo de la lista simulada: 20262122031`
-                : matricula.length < LARGO.matricula
-                  ? `${matricula.length} de ${LARGO.matricula} dígitos`
-                  : `Listo, son ${LARGO.matricula} dígitos`}
+                ? `Son ${LARGOS_MATRICULA_EN_TEXTO} dígitos. Ejemplo de la lista simulada: 20262122031`
+                : esMatricula(matricula)
+                  ? `Listo, son ${matricula.length} dígitos`
+                  : `${matricula.length} dígitos: la matrícula son ${LARGOS_MATRICULA_EN_TEXTO}`}
             </p>
           )}
         </div>
