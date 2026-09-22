@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, LogOut, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  LogOut,
+  ShieldAlert,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +41,7 @@ export function Protegido({ area, children }: { area: Area; children: ReactNode 
     );
   }
 
-  if (!persona) return <FormularioAcceso area={area} />;
+  if (!persona) return <FormularioAcceso />;
 
   if (!puedeEntrar(persona.rol, area)) {
     return (
@@ -53,10 +61,11 @@ export function Protegido({ area, children }: { area: Area; children: ReactNode 
   return <>{children}</>;
 }
 
-function FormularioAcceso({ area }: { area: Area }) {
+function FormularioAcceso() {
   const { entrar } = useSesion();
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
+  const [verContrasena, setVerContrasena] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -65,8 +74,7 @@ function FormularioAcceso({ area }: { area: Area }) {
       <ShieldCheck className="mx-auto size-8 text-primary" aria-hidden />
       <h1 className="mt-3 text-xl font-bold tracking-tight">Acceso del personal</h1>
       <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
-        {ETIQUETA_AREA[area]} es una pantalla interna. Entra con la cuenta que te dio
-        administración.
+        Entra con la cuenta que te dio administración.
       </p>
 
       <form
@@ -98,18 +106,33 @@ function FormularioAcceso({ area }: { area: Area }) {
         </div>
         <div>
           <Label htmlFor="contrasena">Contraseña</Label>
-          <Input
-            id="contrasena"
-            type="password"
-            autoComplete="current-password"
-            value={contrasena}
-            onChange={(e) => {
-              setContrasena(e.target.value);
-              setError("");
-            }}
-            className="mt-1.5 h-12 text-base"
-            aria-invalid={!!error}
-          />
+          <div className="relative mt-1.5">
+            <Input
+              id="contrasena"
+              type={verContrasena ? "text" : "password"}
+              autoComplete="current-password"
+              value={contrasena}
+              onChange={(e) => {
+                setContrasena(e.target.value);
+                setError("");
+              }}
+              className="h-12 pr-12 text-base"
+              aria-invalid={!!error}
+            />
+            <button
+              type="button"
+              onClick={() => setVerContrasena((visible) => !visible)}
+              aria-label={verContrasena ? "Ocultar contraseña" : "Mostrar contraseña"}
+              aria-pressed={verContrasena}
+              className="absolute inset-y-0 right-0 inline-flex w-12 items-center justify-center rounded-r-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {verContrasena ? (
+                <EyeOff className="size-5" aria-hidden />
+              ) : (
+                <Eye className="size-5" aria-hidden />
+              )}
+            </button>
+          </div>
         </div>
 
         {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
