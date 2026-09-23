@@ -338,6 +338,23 @@ for (const [fn, args] of [
   ["fn_repartir_dias_pendientes", {}],
   ["fn_cierre_automatico", { p_dia: 1, p_hora: new Date(0).toISOString() }],
   ["fn_alta_usuario_interno", { p_correo: "qa@prueba.invalid", p_nombre: "QA", p_rol: "admin" }],
+  [
+    "fn_guardar_taller",
+    {
+      p_clave: "T99",
+      p_nombre: "QA",
+      p_descripcion: "",
+      p_ponente: "QA",
+      p_costo: 0,
+      p_cupo_total: 1,
+      p_horario: "",
+      p_lugar: "",
+      p_activo: false,
+      p_dias: [1],
+      p_crear: true,
+      p_liberar: false,
+    },
+  ],
 ] as const) {
   const { error } = await sb.rpc(fn, args as Record<string, unknown>);
   /*
