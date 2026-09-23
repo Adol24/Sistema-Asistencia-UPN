@@ -560,7 +560,15 @@ export function EstadoEventoProvider({
        * memoria, así que la respuesta se perdía al recargar y el registro no
        * servía para lo único que se le pide.
        */
-      escribir("la bitácora", (d) => d.anotarEnBitacora(accion, detalle, usuario));
+      // No se revierte: la acción que se está anotando YA ocurrió, y borrar su
+      // renglón de la pantalla no la deshace. Lo que hace falta es que quien la
+      // hizo sepa que no quedó constancia de quién, que es para lo único que
+      // existe la bitácora.
+      escribir(
+        "la bitácora",
+        (d) => d.anotarEnBitacora(accion, detalle, usuario),
+        () => avisarFallo(`«${accion}» se hizo, pero no quedó registrada en la bitácora.`),
+      );
       // `usuarioActual` va en las dependencias porque ya no es una constante: sale
       // de la sesión. Sin él, el callback se quedaría con el valor del primer
       // render —cuando todavía no había nadie dentro— y la bitácora seguiría
@@ -589,7 +597,23 @@ export function EstadoEventoProvider({
       setAnuladas((prev) => ({ ...prev, [id]: motivo }));
       // Se marca anulada, no se borra: un registro que desaparece no deja ver
       // que hubo una corrección, que es justo lo que alguien querría revisar.
-      escribir("la anulación", (d) => d.anularAsistenciaRemota(id, motivo));
+      escribir(
+        "la anulación",
+        (d) => d.anularAsistenciaRemota(id, motivo),
+        () => {
+          // Se despinta: una asistencia que sigue contando para la constancia y
+          // para el aforo no puede verse tachada en la pantalla de quien creyó
+          // haberla corregido.
+          setAnuladas((prev) => {
+            const copia = { ...prev };
+            delete copia[id];
+            return copia;
+          });
+          avisarFallo(
+            `No se pudo anular la asistencia${a ? ` de ${a.nombre}` : ""}. Sigue contando: vuelve a intentarlo.`,
+          );
+        },
+      );
       registrarBitacora(
         "Anuló una asistencia",
         a
@@ -748,14 +772,41 @@ export function EstadoEventoProvider({
           // La asistencia se guarda sin esperar: en la puerta la respuesta tiene
           // que ser inmediata, y esperar a la red la volvería lenta justo donde
           // se forma la fila.
-          escribir("la asistencia", (d) =>
-            d.guardarAsistencia({
-              folio: asistencia!.folio,
-              dia: asistencia!.dia,
-              tipo: asistencia!.tipo,
-              punto: asistencia!.punto,
-              autorizacionMotivo: asistencia!.autorizacion?.nota,
-            }),
+          escribir(
+            "la asistencia",
+            (d) =>
+              d.guardarAsistencia({
+                folio: asistencia!.folio,
+                dia: asistencia!.dia,
+                tipo: asistencia!.tipo,
+                punto: asistencia!.punto,
+                autorizacionMotivo: asistencia!.autorizacion?.nota,
+              }),
+            () => {
+              /*
+               * El fallo más caro de todo el sistema, y era el más callado.
+               *
+               * La pantalla ya pintó VERDE y ya sonó el pitido de «correcto»
+               * cuando esto se entera. Si la base rechazó la fila —la red del
+               * recinto degradada sin llegar a desconectarse es el caso típico
+               * con setecientos teléfonos encima—, esa persona pasó y no tiene
+               * asistencia, y al cierre del día faltan doscientas sin que nadie
+               * pueda decir cuáles.
+               *
+               * NO se despinta: la persona ya entró, y borrarla de la pantalla
+               * le quitaría al capturista el único dato que le queda para
+               * rehacerlo. Se le nombra en voz alta, con folio, para que pueda
+               * volver a escanearla o apuntarla a mano.
+               *
+               * Reencolarla sería mejor, y no se hace todavía a propósito: la
+               * cola de `enCola` no tiene hoy quien la vacíe contra la base
+               * —está en la lista de correcciones—, así que meter ahí la fila
+               * sería devolverla al mismo silencio del que se la quiere sacar.
+               */
+              avisarFallo(
+                `NO se guardó la ${asistencia!.tipo} de ${asistencia!.nombre} (${asistencia!.folio}). Vuelve a escanearla.`,
+              );
+            },
           );
         } else {
           setEnCola((prev) => [...prev, asistencia!]);
@@ -921,7 +972,27 @@ export function EstadoEventoProvider({
     // Un disparador de la base pone el estado de la evidencia a partir de esta
     // fila, así que no hace falta actualizarla aparte: la decisión y su efecto
     // no pueden separarse.
-    escribir("la revisión", (d) => d.guardarRevision(id, estado, motivo));
+    escribir(
+      "la revisión",
+      (d) => d.guardarRevision(id, estado, motivo),
+      () => {
+        /*
+         * Se despinta la decisión, y aquí sí es lo correcto: un revisor al que
+         * se le venció el token puede pasar cuarenta minutos pulsando A y R
+         * viendo cómo todo se marca en verde, y al recargar encontrarse las
+         * cuatrocientas evidencias otra vez en «pendiente». Devolverla a la cola
+         * en el momento le cuesta un clic; descubrirlo al final le cuesta la
+         * tanda entera.
+         */
+        setRevisiones((prev) => {
+          const copia = { ...prev };
+          delete copia[id];
+          return copia;
+        });
+        setOrdenRevision((prev) => prev.filter((x) => x !== id));
+        avisarFallo("No se pudo guardar la revisión. Vuelve a decidir esa evidencia.");
+      },
+    );
   }, []);
 
   const deshacerRevision = useCallback<Ctx["deshacerRevision"]>(() => {
@@ -933,7 +1004,14 @@ export function EstadoEventoProvider({
       delete copia[id];
       return copia;
     });
-    escribir("el deshacer de la revisión", (d) => d.deshacerRevisionRemota(id));
+    escribir(
+      "el deshacer de la revisión",
+      (d) => d.deshacerRevisionRemota(id),
+      () =>
+        // No se rehace la decisión en pantalla: el revisor ya está mirando otra
+        // cosa y volver a marcarla sola sería más desconcertante que decírselo.
+        avisarFallo("No se pudo deshacer esa revisión: en la base sigue como estaba."),
+    );
     return id;
   }, [ordenRevision]);
 
@@ -942,8 +1020,23 @@ export function EstadoEventoProvider({
     setConfiguracion((prev) => ({ ...prev, ...patch }));
     const columnas = columnasDeConfiguracion(patch);
     if (Object.keys(columnas).length)
-      escribir("la configuración", (d) =>
-        d.guardarConfiguracion(columnas).then(() => d.olvidarPublico()),
+      escribir(
+        "la configuración",
+        (d) => d.guardarConfiguracion(columnas).then(() => d.olvidarPublico()),
+        () =>
+          /*
+           * Aquí viven la CLABE, la cuota y la fecha límite. La pantalla ya dijo
+           * «Configuración guardada. Las pantallas públicas ya la usan», así que
+           * quien corrigió la cuenta bancaria se va tranquilo mientras los
+           * depósitos siguen yendo a la vieja.
+           *
+           * No se revierte el borrador: quien acaba de teclear la CLABE buena no
+           * quiere verla desaparecer, quiere poder volver a darle a guardar. Se
+           * le nombran los campos para que sepa cuáles no llegaron.
+           */
+          avisarFallo(
+            `NO se guardó la configuración (${Object.keys(columnas).join(", ")}). Vuelve a guardar.`,
+          ),
       );
 
     // Los días tienen tabla propia y por eso no entran en `columnasDeConfiguracion`.
@@ -1069,19 +1162,58 @@ export function EstadoEventoProvider({
 
   // ------------------------------------------------------------ usuarios ---
   const guardarUsuario = useCallback<Ctx["guardarUsuario"]>((u) => {
+    // Se guarda lo que había para poder devolverlo si la base rechaza.
+    let previo: UsuarioInterno | undefined;
     setUsuarios((prev) => {
       const i = prev.findIndex((x) => x.id === u.id);
+      previo = prev[i];
       if (i === -1) return [...prev, u];
       return prev.map((x) => (x.id === u.id ? u : x));
     });
-    escribir("el usuario", (d) => d.guardarUsuarioRemoto({ ...u, rol: rolHaciaBase(u.rol) }));
+    escribir(
+      "el usuario",
+      (d) => d.guardarUsuarioRemoto({ ...u, rol: rolHaciaBase(u.rol) }),
+      () => {
+        /*
+         * Esta pantalla decide quién entra y con qué rol, así que una escritura
+         * que se pierde en silencio deja a alguien creyendo que dio de alta a un
+         * revisor que nunca podrá entrar, o que le cambió el rol a alguien que
+         * sigue con el anterior.
+         */
+        setUsuarios((prev) =>
+          previo
+            ? prev.map((x) => (x.id === u.id ? previo! : x))
+            : prev.filter((x) => x.id !== u.id),
+        );
+        avisarFallo(`NO se guardó ${u.nombre}. Quedó como estaba: vuelve a intentarlo.`);
+      },
+    );
   }, []);
 
   const eliminarUsuario = useCallback<Ctx["eliminarUsuario"]>((id) => {
-    setUsuarios((prev) => prev.filter((u) => u.id !== id));
+    let previo: UsuarioInterno | undefined;
+    setUsuarios((prev) => {
+      previo = prev.find((u) => u.id === id);
+      return prev.filter((u) => u.id !== id);
+    });
     // Desactiva, no borra: sin la fila, cada entrada de bitácora que esa persona
     // firmó se quedaría sin autor.
-    escribir("la baja del usuario", (d) => d.desactivarUsuarioRemoto(id));
+    escribir(
+      "la baja del usuario",
+      (d) => d.desactivarUsuarioRemoto(id),
+      () => {
+        /*
+         * El peor de los nueve silencios, porque es de seguridad: la fila
+         * desaparecía de la pantalla y `usuarios_internos.activo` seguía en
+         * `true`. Esa persona conservaba su sesión, su rol y su capacidad de
+         * registrar asistencias, y quien la dio de baja creía lo contrario.
+         */
+        if (previo) setUsuarios((prev) => [...prev, previo!]);
+        avisarFallo(
+          `NO se dio de baja a ${previo?.nombre ?? id}: SIGUE CON ACCESO. Vuelve a intentarlo.`,
+        );
+      },
+    );
   }, []);
 
   // ------------------------------------------------------------- soporte ---
@@ -1412,14 +1544,28 @@ export function EstadoEventoProvider({
           asignaciones.has(a.matricula) ? { ...a, dia: asignaciones.get(a.matricula)! } : a,
         ),
       );
-      escribir(`el reparto de ${asignaciones.size} días`, async (d) => {
-        // Se agrupa por día para no mandar una petición por alumno: son tres
-        // actualizaciones en vez de dos mil.
-        for (const dia of [1, 2, 3] as Dia[]) {
-          const suyas = [...asignaciones].filter(([, x]) => x === dia).map(([m]) => m);
-          if (suyas.length) await d.asignarDiaRemoto(suyas, dia);
-        }
-      });
+      escribir(
+        `el reparto de ${asignaciones.size} días`,
+        async (d) => {
+          // Se agrupa por día para no mandar una petición por alumno: son tres
+          // actualizaciones en vez de dos mil.
+          for (const dia of [1, 2, 3] as Dia[]) {
+            const suyas = [...asignaciones].filter(([, x]) => x === dia).map(([m]) => m);
+            if (suyas.length) await d.asignarDiaRemoto(suyas, dia);
+          }
+        },
+        () =>
+          /*
+           * Las tres escrituras van en secuencia, así que un fallo a mitad deja
+           * el día 1 repartido y los otros dos no. Revertir en pantalla sería
+           * mentir en la otra dirección —parte del reparto SÍ se aplicó— así
+           * que lo honesto es decir que quedó a medias y pedir que se recargue
+           * para ver lo que de verdad hay.
+           */
+          avisarFallo(
+            `El reparto de ${asignaciones.size} días quedó A MEDIAS. Recarga para ver cuáles se aplicaron.`,
+          ),
+      );
       registrarBitacora(
         "Repartió los días del padrón",
         `${asignaciones.size} alumnos sin día quedaron repartidos: ${([1, 2, 3] as Dia[])

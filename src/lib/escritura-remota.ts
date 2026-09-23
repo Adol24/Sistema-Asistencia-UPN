@@ -185,17 +185,39 @@ export function avisarFallo(mensaje: string): void {
  * pantalla ya se actualizó de manera optimista y la escritura no debe bloquear
  * a quien está atendiendo una fila.
  *
- * @param alFallar Se llama si la base rechazó la escritura, para poder deshacer
- *   lo que ya se había pintado.
+ * -----------------------------------------------------------------------------
+ * `alFallar` es OBLIGATORIO, y antes no lo era.
+ * -----------------------------------------------------------------------------
+ * Era opcional, y de diecinueve llamadas NUEVE lo omitían. En esas nueve, un
+ * rechazo de la base producía un `console.error` y nada más: ni aviso, ni
+ * revertido, ni rastro para quien estaba usando la pantalla.
+ *
+ * El resultado es el mismo defecto una y otra vez, con nombres distintos: **la
+ * pantalla dice que sí y la base dice que no.** La puerta pinta VERDE y la
+ * asistencia no existe. La evidencia se aprueba y el alumno no lo ve nunca. Se
+ * da de baja a un capturista y su sesión sigue viva. Se corrige la CLABE y los
+ * depósitos siguen yendo a la cuenta vieja. Nadie se entera hasta que se
+ * cuentan los resultados, que es cuando ya no se puede arreglar.
+ *
+ * Ponerlo obligatorio no arregla por sí solo ninguno de esos casos: los arregla
+ * el manejador que ahora hay que escribir en cada uno. Lo que hace es que
+ * OLVIDARLO no compile, que es la única forma de que no vuelva a pasar
+ * diecinueve veces.
+ *
+ * Cuando de verdad no haya nada que deshacer, el manejador sigue teniendo que
+ * decirlo: `avisarFallo` es el mínimo, y basta. Lo que no vale es el silencio.
+ *
+ * @param alFallar Se llama si la base rechazó la escritura: para deshacer lo que
+ *   ya se había pintado, para avisar a quien lo hizo, o para las dos cosas.
  */
 export function escribir(
   descripcion: string,
   accion: (datos: ModuloDatos) => Promise<unknown>,
-  alFallar?: (e: unknown) => void,
+  alFallar: (e: unknown) => void,
 ): void {
   if (!hayBaseDeDatos) return;
   void import("@/lib/datos").then(accion).catch((e: unknown) => {
     console.error(`No se pudo guardar ${descripcion}`, e);
-    alFallar?.(e);
+    alFallar(e);
   });
 }
