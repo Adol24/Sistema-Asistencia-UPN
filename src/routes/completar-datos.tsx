@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { RequiereBorrador } from "@/components/requiere-borrador";
 import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,21 @@ export const Route = createFileRoute("/completar-datos")({
       "Tus datos de contacto — XIV Encuentro Internacional de Educación",
       "Captura tu correo y tu celular para terminar el pre-registro al XIV Encuentro Internacional de Educación.",
     ),
-  component: DatosDeContacto,
+  component: DatosDeContactoProtegido,
 });
+
+/*
+ * El paso no se dibuja sin haber pasado por los anteriores. Ver
+ * `RequiereBorrador`: sin esto la ruta era alcanzable escribiendo la URL, y con
+ * el borrador vacío enseñaba un estado que no corresponde a nadie.
+ */
+function DatosDeContactoProtegido() {
+  return (
+    <RequiereBorrador>
+      <DatosDeContacto />
+    </RequiereBorrador>
+  );
+}
 
 type Errores = Partial<Record<"correo" | "celular", string>>;
 

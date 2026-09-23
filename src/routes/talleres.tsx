@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CalendarRange, Clock, Info, Loader2, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { RequiereBorrador } from "@/components/requiere-borrador";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,8 +21,21 @@ export const Route = createFileRoute("/talleres")({
       "Catálogo de talleres — XIV Encuentro Internacional de Educación",
       "Consulta los 11 talleres del XIV Encuentro Internacional de Educación, su cupo disponible, horario y costo adicional. Puedes elegir máximo uno.",
     ),
-  component: CatalogoTalleres,
+  component: CatalogoTalleresProtegido,
 });
+
+/*
+ * El paso no se dibuja sin haber pasado por los anteriores. Ver
+ * `RequiereBorrador`: sin esto la ruta era alcanzable escribiendo la URL, y con
+ * el borrador vacío enseñaba un estado que no corresponde a nadie.
+ */
+function CatalogoTalleresProtegido() {
+  return (
+    <RequiereBorrador>
+      <CatalogoTalleres />
+    </RequiereBorrador>
+  );
+}
 
 function CatalogoTalleres() {
   const navigate = useNavigate();

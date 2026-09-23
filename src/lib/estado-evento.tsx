@@ -1241,9 +1241,11 @@ export function EstadoEventoProvider({
     [talleres],
   );
 
-  const guardarTaller = useCallback<Ctx["guardarTaller"]>((t) => {
+  const guardarTaller = useCallback<Ctx["guardarTaller"]>((t, liberar = false) => {
+    let esAlta = false;
     setTalleresBase((prev) => {
       const i = prev.findIndex((x) => x.id === t.id);
+      esAlta = i === -1;
       if (i === -1) return [...prev, t];
       return prev.map((x) => (x.id === t.id ? t : x));
     });
@@ -1252,8 +1254,33 @@ export function EstadoEventoProvider({
     // que la frontera con la base no vuelva a confundir una cosa con la otra.
     escribir(
       "el taller",
-      (d) => d.guardarTallerRemoto({ ...t, clave: t.id }).then(() => d.olvidarPublico()),
-      () => avisarFallo(`No se pudo guardar el taller ${t.id}. Vuelve a intentarlo.`),
+      /*
+       * Una sola llamada, y la liberación va DENTRO.
+       *
+       * Antes eran tres peticiones y la liberación la hacía el cliente con un
+       * `setState` que no escribía nada. Ahora `fn_guardar_taller` libera y
+       * avisa a quien queda fuera de día antes de cambiar los días, que es el
+       * único orden que la llave foránea permite, y todo pasa o no pasa junto.
+       */
+      async (d) => {
+        const liberados = await d.guardarTallerRemoto({
+          ...t,
+          clave: t.id,
+          crear: esAlta,
+          liberar,
+        });
+        d.olvidarPublico();
+        if (liberados > 0)
+          avisarLogro(
+            `${liberados} ${liberados === 1 ? "inscripción liberada" : "inscripciones liberadas"} y avisadas en su portal.`,
+          );
+      },
+      () =>
+        avisarFallo(
+          esAlta
+            ? `NO se creó el taller ${t.id}. Puede que esa clave ya esté tomada.`
+            : `NO se guardó el taller ${t.id}. Quedó como estaba.`,
+        ),
     );
   }, []);
 

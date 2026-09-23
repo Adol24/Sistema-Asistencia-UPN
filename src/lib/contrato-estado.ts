@@ -178,7 +178,8 @@ export interface Ctx {
   /** Talleres con el cupo ocupado ya calculado; `cupoOcupado` nunca se edita a mano. */
   talleres: Taller[];
   getTaller: (id?: string) => Taller | undefined;
-  guardarTaller: (t: TallerBase) => void;
+  /** `liberar` suelta a quien quede fuera de los días nuevos, con su aviso. */
+  guardarTaller: (t: TallerBase, liberar?: boolean) => void;
   /** Libera la inscripción de quienes quedaron con un taller fuera de su día. */
   liberarInscripcionesFueraDeDia: (tallerId: string) => number;
   eliminarTaller: (id: string) => void;

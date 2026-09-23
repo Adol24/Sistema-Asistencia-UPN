@@ -1106,22 +1106,24 @@ export async function anotarEnBitacora(
 }
 
 /**
- * Guarda un taller identificándolo por su CLAVE, no por su uuid.
+ * Guarda un taller y sus días como UNA operación.
  *
- * Toda la aplicación llama a los talleres `T01`, `T02`… —es lo que el personal
- * dice de viva voz y lo que sale en los reportes—, así que `TallerBase.id` es
- * la clave corta y no la llave primaria. Esta función recibía ese valor y lo
- * usaba como uuid:
+ * Antes eran tres peticiones sueltas —`upsert` del taller, `delete` de todos
+ * sus días, `insert` de los nuevos— sin transacción que las uniera, y eso
+ * producía tres defectos:
  *
- *   .eq("id", "T01")  →  [22P02] invalid input syntax for type uuid: "T01"
+ * - Editar un taller CON INSCRITOS fallaba a medias: la llave foránea
+ *   `(taller_id, dia)` impide borrar un día que alguien está usando, pero el
+ *   `upsert` ya se había aplicado. Quien solo quería subir el cupo leía
+ *   «guardado» y después «no se pudo guardar», con el cupo nuevo ya escrito.
+ * - Liberar a quien quedaba fuera de día no escribía nada: vivía en un
+ *   `setState` y moría al recargar.
+ * - Un alta con clave repetida MACHACABA el taller que la tenía, porque
+ *   `onConflict: "clave"` no distingue crear de editar.
  *
- * PostgreSQL rechazaba la consulta, el error moría en la consola y el taller
- * no se guardaba nunca. En pantalla parecía guardado, porque la lista se
- * actualiza en memoria antes de escribir.
- *
- * Se resuelve con `upsert` sobre la clave, que es `unique`: sirve igual para el
- * taller nuevo y para el que ya existía, y devuelve el uuid que hace falta para
- * sus días.
+ * Ahora lo hace `fn_guardar_taller`, que además libera ANTES de tocar los días
+ * —el único orden que la llave foránea permite— y calcula la diferencia en vez
+ * de borrarlos todos. Devuelve cuántas inscripciones liberó.
  */
 export async function guardarTallerRemoto(t: {
   /** `T01`, `T02`… La usa el personal para referirse a un taller de viva voz. */
@@ -1135,38 +1137,25 @@ export async function guardarTallerRemoto(t: {
   horario: string;
   lugar: string;
   activo: boolean;
-}): Promise<void> {
-  const sb = exigirBase();
-  const creado = await datosDe<{ id: string }>(
-    sb
-      .from("talleres")
-      .upsert(
-        {
-          clave: t.clave,
-          nombre: t.nombre,
-          descripcion: t.descripcion,
-          ponente: t.ponente,
-          costo: t.costo,
-          cupo_total: t.cupoTotal,
-          horario: t.horario,
-          lugar: t.lugar,
-          activo: t.activo,
-        },
-        { onConflict: "clave" },
-      )
-      .select("id")
-      .single(),
-  );
-
-  // Los días viven en su propia tabla: se reemplazan enteros en vez de
-  // calcular la diferencia, que para tres filas no compensa.
-  const id = creado.id;
-  await exigir(sb.from("taller_dias").delete().eq("taller_id", id));
-  // El alta de los días se lanza en vez de callarse: un taller sin sus días no
-  // se imparte ningún día, y nadie podría inscribirse. Antes este error se
-  // perdía.
-  if (t.dias.length)
-    await exigir(sb.from("taller_dias").insert(t.dias.map((dia) => ({ taller_id: id, dia }))));
+  /** Alta o edición. Un alta con clave repetida tiene que rebotar, no machacar. */
+  crear: boolean;
+  /** Liberar a quien quede fuera de los días nuevos. Devuelve cuántos fueron. */
+  liberar: boolean;
+}): Promise<number> {
+  return llamar<number>("fn_guardar_taller", {
+    p_clave: t.clave,
+    p_nombre: t.nombre,
+    p_descripcion: t.descripcion,
+    p_ponente: t.ponente,
+    p_costo: t.costo,
+    p_cupo_total: t.cupoTotal,
+    p_horario: t.horario,
+    p_lugar: t.lugar,
+    p_activo: t.activo,
+    p_dias: t.dias,
+    p_crear: t.crear,
+    p_liberar: t.liberar,
+  });
 }
 
 /** También por clave, y por la misma razón que `guardarTallerRemoto`. */

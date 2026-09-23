@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Info, Loader2, MessageCircle } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { RequiereBorrador } from "@/components/requiere-borrador";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -22,8 +23,21 @@ export const Route = createFileRoute("/confirmar-nombre")({
       "Confirmación de nombre — XIV Encuentro Internacional de Educación",
       "Verifica que tu nombre sea correcto: es el nombre con el que quedas registrado en el XIV Encuentro Internacional de Educación.",
     ),
-  component: ConfirmarNombre,
+  component: ConfirmarNombreProtegido,
 });
+
+/*
+ * El paso no se dibuja sin haber pasado por los anteriores. Ver
+ * `RequiereBorrador`: sin esto la ruta era alcanzable escribiendo la URL, y con
+ * el borrador vacío enseñaba un estado que no corresponde a nadie.
+ */
+function ConfirmarNombreProtegido() {
+  return (
+    <RequiereBorrador>
+      <ConfirmarNombre />
+    </RequiereBorrador>
+  );
+}
 
 function ConfirmarNombre() {
   const navigate = useNavigate();

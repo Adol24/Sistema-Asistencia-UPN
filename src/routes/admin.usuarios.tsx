@@ -13,6 +13,7 @@ import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { ETIQUETA_ROL } from "@/lib/roles";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { useSesion } from "@/lib/sesion";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { RolInterno, UsuarioInterno } from "@/dominio/tipos";
@@ -67,6 +68,35 @@ const ROLES = Object.keys(PERMISOS) as RolInterno[];
 
 function AdminUsuarios() {
   const { usuarios, guardarUsuario, registrarBitacora } = useEstadoEvento();
+  const { persona } = useSesion();
+
+  /*
+   * Los dos candados que faltaban en esta pantalla.
+   *
+   * `usuarios_admin` es la ÚNICA política que permite escribir en
+   * `usuarios_internos`, y exige rol `admin`. Así que el único administrador
+   * activo podía cambiarse el rol a «Capturista» para ver qué se ve desde ahí,
+   * o darse de baja por error, y el cambio llegaba a la base sin problema —es
+   * un `update` sobre una fila que existe—. A partir de ese momento nadie podía
+   * entrar a `/admin`, nadie podía editar `usuarios_internos`, y no había forma
+   * de revertirlo sin abrir el editor SQL de Supabase.
+   *
+   * Se comprueban aquí, en la pantalla, porque la decisión es de la pantalla:
+   * la base no puede saber que un `update` legítimo es el que deja el sistema
+   * sin dueño. Lo ideal sería además un disparador; esto cierra el camino real.
+   */
+  const administradoresActivos = usuarios.filter(
+    (u) => u.rol === "administrador" && u.activo,
+  ).length;
+
+  /** Lo que impide tocar a este usuario, o cadena vacía si se puede. */
+  const bloqueo = (u: UsuarioInterno, quitandoleElMando: boolean): string => {
+    if (persona && u.id === persona.id)
+      return "No puedes cambiar tu propio rol ni darte de baja: pídeselo a otra persona de administración.";
+    if (quitandoleElMando && u.rol === "administrador" && u.activo && administradoresActivos <= 1)
+      return "Es el único administrador activo. Sin él nadie podría volver a entrar a esta pantalla.";
+    return "";
+  };
   const [editando, setEditando] = useState<UsuarioInterno | null>(null);
   const [borrando, setBorrando] = useState<UsuarioInterno | null>(null);
   const [rolMostrado, setRolMostrado] = useState<RolInterno>("administrador");
@@ -191,6 +221,23 @@ function AdminUsuarios() {
             // Se convierte al guardar, no al teclear: ver `CAMPO_MAYUSCULAS`.
             const u = { ...crudo, nombre: crudo.nombre.trim().toUpperCase() };
             const editado = usuarios.some((x) => x.id === u.id);
+            /*
+             * Quitarle el mando se comprueba sobre lo que había, no sobre lo
+             * que se acaba de teclear: lo que importa es si esta edición DEJA de
+             * haber administradores, y eso solo ocurre si el de antes lo era y
+             * el de ahora ya no —por cambio de rol o por desactivación—.
+             */
+            const antes = usuarios.find((x) => x.id === u.id);
+            const pierdeElMando =
+              !!antes &&
+              antes.rol === "administrador" &&
+              antes.activo &&
+              (u.rol !== "administrador" || !u.activo);
+            const motivo = editado ? bloqueo(antes ?? u, pierdeElMando) : "";
+            if (motivo && pierdeElMando) {
+              toast.error(motivo);
+              return;
+            }
             guardarUsuario(u);
             registrarBitacora(
               editado ? "Editó usuario interno" : "Dio de alta un usuario interno",
@@ -218,6 +265,14 @@ function AdminUsuarios() {
         confirmar={borrando?.activo ? "Sí, desactivar" : "Sí, reactivar"}
         alConfirmar={() => {
           const u = borrando!;
+          // Dar de baja al único administrador activo, o a uno mismo, deja el
+          // sistema sin quien pueda volver a entrar aquí.
+          const motivo = u.activo ? bloqueo(u, true) : "";
+          if (motivo) {
+            toast.error(motivo);
+            setBorrando(null);
+            return;
+          }
           // Desactivar, nunca borrar: un usuario eliminado deja huérfanas sus
           // entradas de bitácora, que es lo contrario de para lo que sirve una
           // bitácora.

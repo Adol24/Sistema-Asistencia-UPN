@@ -26,21 +26,36 @@ export const Route = createFileRoute("/admin/talleres")({
 });
 
 function AdminTalleres() {
-  const {
-    participantes,
-    talleres,
-    guardarTaller,
-    liberarInscripcionesFueraDeDia,
-    eliminarTaller,
-    registrarBitacora,
-  } = useEstadoEvento();
+  const { participantes, talleres, guardarTaller, eliminarTaller, registrarBitacora } =
+    useEstadoEvento();
   const [editando, setEditando] = useState<TallerBase | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
 
   const inscritos = (id: string) => participantes.filter((p) => p.tallerId === id).length;
 
+  /*
+   * La clave sale del MÁXIMO tomado, no de cuántos hay.
+   *
+   * Contando filas, en cuanto la numeración tiene un hueco —y aquí ya lo tuvo:
+   * la migración 45 documenta que T01 a T04 se borraron desde este mismo
+   * panel— la clave propuesta choca con una existente. Y con el `upsert` de
+   * antes, eso convertía un alta en una SOBREESCRITURA silenciosa: el T12 real,
+   * con sus setenta inscritos, se quedaba con el nombre, el ponente y el precio
+   * del taller nuevo.
+   *
+   * Desde la migración 57 un alta es un `insert` y la clave repetida rebota,
+   * así que esto ya no puede destruir nada. Pero proponer una clave que se sabe
+   * tomada es hacerle perder el tiempo a quien la va a teclear igual.
+   */
+  const siguienteClave = () => {
+    const usadas = talleres
+      .map((t) => Number(t.id.replace(/\D/g, "")))
+      .filter((n) => Number.isFinite(n));
+    return `T${String(Math.max(0, ...usadas) + 1).padStart(2, "0")}`;
+  };
+
   const nuevo = (): TallerBase => ({
-    id: `T${String(talleres.length + 1).padStart(2, "0")}`,
+    id: siguienteClave(),
     nombre: "",
     ponente: "",
     descripcion: "",
@@ -165,19 +180,25 @@ function AdminTalleres() {
           onCerrar={() => setEditando(null)}
           onGuardar={(t, liberar) => {
             const editado = talleres.some((x) => x.id === t.id);
-            guardarTaller(t);
-            // El guardado va primero: liberar mira los días ya nuevos.
-            const liberados = liberar ? liberarInscripcionesFueraDeDia(t.id) : 0;
+            /*
+             * La liberación va DENTRO del guardado, no después.
+             *
+             * Antes se guardaba y luego se llamaba a
+             * `liberarInscripcionesFueraDeDia`, que solo hacía `setState`: ni la
+             * liberación ni el aviso llegaban a la base. Y el orden era además
+             * imposible de sostener desde el cliente, porque la llave foránea
+             * `(taller_id, dia)` impide quitar un día que alguien sigue usando:
+             * hay que liberar ANTES, y eso solo se puede hacer en la misma
+             * transacción.
+             *
+             * `fn_guardar_taller` lo hace y avisa por su cuenta de cuántas
+             * liberó, así que aquí ya no se cuenta nada: contar sin escribir es
+             * lo que hacía que el mensaje dijera un número inventado.
+             */
+            guardarTaller(t, liberar);
             registrarBitacora(
               editado ? "Editó taller" : "Creó taller",
-              `${t.id} — ${t.nombre} · cupo ${t.cupoTotal} · ${moneda(t.costo)} · días ${t.dias.join(" y ")}${
-                liberados ? ` · ${liberados} inscripciones liberadas` : ""
-              }`,
-            );
-            toast.success(
-              liberados
-                ? `Taller ${t.id} guardado. Se liberaron ${liberados} inscripciones que quedaban fuera de sus días.`
-                : `Taller ${t.id} guardado.`,
+              `${t.id} — ${t.nombre} · cupo ${t.cupoTotal} · ${moneda(t.costo)} · días ${t.dias.join(" y ")}`,
             );
             setEditando(null);
           }}

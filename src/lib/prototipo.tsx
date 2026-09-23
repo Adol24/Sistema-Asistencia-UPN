@@ -54,6 +54,15 @@ interface Ctx {
   participante: Participante | null;
   setFolio: (folio: string) => void;
   borrador: Borrador;
+  /**
+   * ¿Ya se intentó recuperar el borrador de la pestaña?
+   *
+   * Lo necesita cualquier pantalla que quiera REDIRIGIR cuando el borrador está
+   * vacío: el primer dibujo siempre lo está —la recuperación ocurre en un
+   * efecto, ver abajo— así que decidir antes de esto echaría a quien sí venía
+   * con sus datos, solo por llegar un fotograma antes.
+   */
+  recuperado: boolean;
   setBorrador: (b: Borrador) => void;
   reset: () => void;
 }
@@ -86,6 +95,7 @@ export function PrototipoProvider({ children }: { children: ReactNode }) {
   const { participantes } = useEstadoEvento();
   const [folio, setFolio] = useState<string | null>(null);
   const [borrador, setBorradorState] = useState<Borrador>({});
+  const [recuperado, setRecuperado] = useState(false);
 
   /*
    * Se recupera en un efecto y no como estado inicial, aunque `portal.tsx` lo
@@ -97,13 +107,16 @@ export function PrototipoProvider({ children }: { children: ReactNode }) {
    * React tiraría la página para rehacerla. Recuperarlo después cuesta un
    * fotograma con el folio en blanco y no cuesta ningún parpadeo.
    *
-   * Se puede hacer así porque ninguna pantalla del flujo redirige cuando el
-   * borrador está vacío: todas esperan un clic. Si alguna llegara a hacerlo,
-   * esto tendría que esperar a la recuperación antes de decidir.
+   * Antes aquí decía que ninguna pantalla del flujo redirige con el borrador
+   * vacío, y que si alguna llegara a hacerlo esto tendría que esperar a la
+   * recuperación antes de decidir. Ya llegó: `RequiereBorrador` redirige, y por
+   * eso ahora se publica `recuperado`. Decidir antes de que esto corra echaría
+   * a quien sí venía con sus datos por llegar un fotograma antes.
    */
   useEffect(() => {
     const guardado = leerBorrador();
     if (Object.keys(guardado).length > 0) setBorradorState(guardado);
+    setRecuperado(true);
   }, []);
 
   /*
@@ -120,13 +133,14 @@ export function PrototipoProvider({ children }: { children: ReactNode }) {
       participante: participantes.find((p) => p.folio === folio) ?? null,
       setFolio,
       borrador,
+      recuperado,
       setBorrador: (b) => setBorradorState((prev) => ({ ...prev, ...b })),
       reset: () => {
         guardarJSON(CLAVE, null);
         setBorradorState({});
       },
     }),
-    [folio, borrador, participantes],
+    [folio, borrador, recuperado, participantes],
   );
 
   return <PrototipoCtx.Provider value={value}>{children}</PrototipoCtx.Provider>;

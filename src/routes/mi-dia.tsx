@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Clock, MapPin, Users } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
+import { RequiereBorrador } from "@/components/requiere-borrador";
 import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 
@@ -18,8 +19,21 @@ export const Route = createFileRoute("/mi-dia")({
       "Tu día y lugar — XIV Encuentro Internacional de Educación",
       "Consulta o elige el día, el lugar y el horario de registro de tu asistencia presencial al XIV Encuentro Internacional de Educación.",
     ),
-  component: MiDia,
+  component: MiDiaProtegido,
 });
+
+/*
+ * El paso no se dibuja sin haber pasado por los anteriores. Ver
+ * `RequiereBorrador`: sin esto la ruta era alcanzable escribiendo la URL, y con
+ * el borrador vacío enseñaba un estado que no corresponde a nadie.
+ */
+function MiDiaProtegido() {
+  return (
+    <RequiereBorrador>
+      <MiDia />
+    </RequiereBorrador>
+  );
+}
 
 /**
  * El día de la asistencia presencial.
