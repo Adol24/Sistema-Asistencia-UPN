@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "verificar-conexion": "bun run scripts/verificar-conexion.ts",
     "verificar-configuracion": "bun run scripts/verificar-configuracion.ts",
+    "probar-sistema": "bun run scripts/probar-sistema.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "generar-iconos": "bun run scripts/generar-iconos.ts"
