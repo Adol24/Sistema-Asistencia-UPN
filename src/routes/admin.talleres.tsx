@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CampoNumero } from "@/components/campo-numero";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -203,6 +204,16 @@ function AdminTalleres() {
               editado ? "Editó taller" : "Creó taller",
               `${t.id} — ${t.nombre} · cupo ${t.cupoTotal} · ${moneda(t.costo)} · días ${t.dias.join(" y ")}`,
             );
+            /*
+             * El acuse, que al mover la liberación a la base se quedó sin
+             * reponer: la pantalla cerraba el diálogo y no decía nada, así que
+             * no había forma de distinguir «guardado» de «no pasó nada».
+             *
+             * Dice el cupo, porque el cupo es justo lo que se viene a cambiar y
+             * lo que conviene poder contrastar con lo que quedó en la lista. Si
+             * la base rechaza, `guardarTaller` avisa aparte y con su motivo.
+             */
+            toast.success(`Taller ${t.id} guardado · cupo ${t.cupoTotal}.`);
             setEditando(null);
           }}
         />
@@ -335,24 +346,22 @@ function FormularioTaller({
             </div>
             <div>
               <Label htmlFor="t-cupo">Cupo total</Label>
-              <Input
+              <CampoNumero
                 id="t-cupo"
-                type="number"
                 min={1}
-                value={b.cupoTotal}
-                onChange={(e) => set({ cupoTotal: Number(e.target.value) })}
+                valor={b.cupoTotal}
+                alCambiar={(cupoTotal) => set({ cupoTotal })}
                 className="mt-1 h-11"
                 aria-invalid={cupoInsuficiente}
               />
             </div>
             <div>
               <Label htmlFor="t-costo">Costo</Label>
-              <Input
+              <CampoNumero
                 id="t-costo"
-                type="number"
                 min={0}
-                value={b.costo}
-                onChange={(e) => set({ costo: Number(e.target.value) })}
+                valor={b.costo}
+                alCambiar={(costo) => set({ costo })}
                 className="mt-1 h-11"
               />
             </div>

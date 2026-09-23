@@ -21,6 +21,7 @@ import { PantallaPanel } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { CampoNumero } from "@/components/campo-numero";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -375,17 +376,12 @@ function Configuracion() {
                 */}
                 <div className="sm:col-span-2">
                   <Label htmlFor={`cupo-${d.dia}`}>Aforo — cuánta gente cabe</Label>
-                  <Input
+                  <CampoNumero
                     id={`cupo-${d.dia}`}
-                    type="number"
                     min={1}
-                    value={d.cupo}
-                    onChange={(e) =>
-                      set({
-                        dias: b.dias.map((x, k) =>
-                          k === i ? { ...x, cupo: Number(e.target.value) } : x,
-                        ),
-                      })
+                    valor={d.cupo}
+                    alCambiar={(cupo) =>
+                      set({ dias: b.dias.map((x, k) => (k === i ? { ...x, cupo } : x)) })
                     }
                     className="mt-1 h-11"
                   />
@@ -449,12 +445,11 @@ function Configuracion() {
           >
             <div>
               <Label htmlFor="cuota">Cuota del evento (MXN)</Label>
-              <Input
+              <CampoNumero
                 id="cuota"
-                type="number"
                 min={0}
-                value={b.cuotaEvento}
-                onChange={(e) => set({ cuotaEvento: Number(e.target.value) })}
+                valor={b.cuotaEvento}
+                alCambiar={(cuotaEvento) => set({ cuotaEvento })}
                 className="mt-1 h-11"
               />
               <p className="mt-1 text-xs text-muted-foreground">
