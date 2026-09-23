@@ -64,6 +64,9 @@ function AdminTalleres() {
     lugar: "",
     cupoTotal: 25,
     ocupadosPrevios: 0,
+    // Un taller que todavía no existe no tiene a nadie dentro. El valor real
+    // lo trae `v_talleres` en cuanto se guarda.
+    cupoOcupado: 0,
     costo: 300,
     activo: true,
   });

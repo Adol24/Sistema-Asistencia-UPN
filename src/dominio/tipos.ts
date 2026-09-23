@@ -96,17 +96,31 @@ export interface TallerBase {
   horario: string;
   lugar: string;
   cupoTotal: number;
-  /** Inscritos que no forman parte del conjunto simulado de 60 participantes. */
+  /** Invitados y cortesías que no pasan por el sistema. No son participantes. */
   ocupadosPrevios: number;
+  /**
+   * Los lugares tomados, contados POR LA BASE.
+   *
+   * Antes esto lo calculaba el navegador sumando los participantes que tuviera
+   * cargados, y para el aspirante eso eran CERO: `participantes` le está
+   * cerrada, así que el catálogo anunciaba lugares que no existían y el botón
+   * «Seleccionar» no llegaba a desactivarse nunca.
+   *
+   * Ahora sale de `v_talleres`, que lo cuenta donde están los datos. La misma
+   * cifra que usa `fn_exigir_lugar_en_taller` para cerrar la puerta, así que la
+   * pantalla y la base no pueden discrepar.
+   */
+  cupoOcupado: number;
   costo: number;
   /** Un taller inactivo deja de ofrecerse en el catálogo público. */
   activo: boolean;
 }
 
-/** Taller con su cupo ocupado ya calculado. Es lo que consume la interfaz. */
-export interface Taller extends Omit<TallerBase, "ocupadosPrevios"> {
-  cupoOcupado: number;
-}
+/**
+ * Lo que consume la interfaz. Ya no añade nada: `TallerBase` trae el cupo
+ * ocupado contado por la base, así que no queda nada que derivar.
+ */
+export type Taller = TallerBase;
 
 export interface Asistencia {
   id: string;

@@ -192,7 +192,7 @@ export async function cargarPublico(): Promise<Publico | null> {
       .select(
         "id, nivel, etiqueta_avance, total_avance, orden, programas ( nombre, etiqueta_avance, total_avance )",
       ),
-    sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
+    sb.from("v_talleres").select("*").order("clave"),
     sb.from("planteles").select("nombre").order("nombre"),
   ]);
 
@@ -420,7 +420,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
      * taller inactivo, y nunca llegaba ninguno. Quien los apagó desde el panel
      * los perdió de vista en el mismo clic.
      */
-    sb.from("talleres").select("*, taller_dias ( dia )").order("clave"),
+    sb.from("v_talleres").select("*").order("clave"),
     /*
      * Lo ya anotado en la bitácora, de lo más reciente hacia atrás.
      *

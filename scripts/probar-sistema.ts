@@ -429,6 +429,92 @@ for (const perfil of ["docente", "externo"] as const) {
 }
 
 // ===========================================================================
+console.log("\n=== EL CUPO DEL TALLER ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Dos mitades, y la primera se puede probar entera desde aquí.
+ *
+ * **Que el aspirante VEA el cupo real.** El catálogo leía la tabla `talleres`, y
+ * como al anónimo le está cerrada `participantes`, el navegador sumaba cero
+ * inscritos: anunciaba «30 lugares disponibles» con doscientos dentro y el botón
+ * «Seleccionar» no se desactivaba nunca. Ahora lee `v_talleres`, que lo cuenta
+ * en la base. Si esto vuelve a romperse, el cupo ocupado saldrá cero para todos
+ * y esta comprobación lo dirá.
+ */
+{
+  const { data, error } = await sb
+    .from("v_talleres")
+    .select("clave, cupo_total, ocupados_previos, cupo_ocupado, lugares_libres, dias, activo");
+
+  if (error) {
+    falla("el anónimo no puede leer v_talleres: el catálogo público se quedaría vacío", error);
+  } else {
+    const filas = (data ?? []) as {
+      clave: string;
+      cupo_total: number;
+      ocupados_previos: number;
+      cupo_ocupado: number;
+      lugares_libres: number;
+      dias: number[];
+      activo: boolean;
+    }[];
+
+    ok(`el anónimo lee v_talleres: ${filas.length} talleres`);
+
+    if (filas.some((t) => t.ocupados_previos === undefined))
+      falla("v_talleres no publica `ocupados_previos`: falta la migración 59");
+    else ok("v_talleres publica `ocupados_previos`, que el panel necesita por separado");
+
+    // Lo decisivo de esta mitad: si alguien está inscrito, el anónimo TIENE que
+    // verlo. Antes veía cero siempre, porque lo contaba su propio navegador.
+    const conGente = filas.filter((t) => t.cupo_ocupado > 0);
+    if (conGente.length)
+      ok(
+        `el cupo ocupado le llega al anónimo: ${conGente
+          .map((t) => `${t.clave} ${t.cupo_ocupado}/${t.cupo_total}`)
+          .join(", ")}`,
+      );
+    else
+      nota(
+        "ningún taller tiene inscritos ahora mismo, así que no se puede demostrar que " +
+          "el conteo llega; inscribe a alguien y vuelve a correrlo.",
+      );
+
+    const descuadre = filas.find((t) => t.lugares_libres !== t.cupo_total - t.cupo_ocupado);
+    if (descuadre) falla(`las cifras de ${descuadre.clave} no cuadran`, descuadre);
+    else ok("lugares libres = cupo total − cupo ocupado, en todos");
+
+    /*
+     * **Que la BASE cierre la puerta.** Esta mitad solo se demuestra con un
+     * taller sin lugares, y llenarlo a la fuerza costaría treinta altas y
+     * treinta lugares del aforo real. Así que se aprovecha si hay uno lleno, y
+     * si no, se dice cómo crear la condición en un clic.
+     */
+    const lleno = filas.find((t) => t.activo && t.lugares_libres <= 0);
+    if (!lleno) {
+      salta("ningún taller está lleno: no se puede demostrar que la base rechace la sobreventa");
+      nota("Para comprobarlo en un clic: pon un taller a «cupo total 1» en /admin/talleres");
+      nota("—si ya tiene un inscrito queda lleno— y vuelve a correr esto con --escribe.");
+    } else if (!escribe) {
+      salta(`${lleno.clave} está lleno, pero probar la sobreventa exige --escribe`);
+    } else {
+      const id = await tallerPorClave(lleno.clave);
+      const { error: e } = await altaExterna({
+        perfil: "externo",
+        nombre: "QA PRUEBA SOBREVENTA",
+        correo: correoDe("sobreventa"),
+        dia: lleno.dias[0] ?? 1,
+        taller: id,
+      });
+      if (/no tiene lugares disponibles/i.test(mensaje(e)))
+        ok(`la base rechaza inscribir en ${lleno.clave}, que está lleno`);
+      else if (e) falla(`rechaza ${lleno.clave}, pero por otro motivo`, e);
+      else falla(`SOBREVENTA: la base aceptó inscribir en ${lleno.clave}, que no tenía lugares`);
+    }
+  }
+}
+
+// ===========================================================================
 if (!escribe) {
   console.log("\n=== LAS ALTAS DE VERDAD ===\n");
   salta("no se pidió `--escribe`, así que no se dio de alta a nadie.");
@@ -780,48 +866,6 @@ console.log("\n=== EL CAMBIO DE TALLER, POR EL CAMINO DE LA APLICACIÓN ===\n");
         else falla(`DEJÓ cambiar a ${soloDia1.clave}, que no se imparte el día 2`);
       }
     }
-  }
-}
-
-console.log("\n=== EL CUPO DEL TALLER (el defecto conocido) ===\n");
-// ---------------------------------------------------------------------------
-/*
- * Ya está confirmado leyendo el SQL: ninguna de las tres funciones de alta
- * compara contra `talleres.cupo_total`, y no hay disparador que lo haga. La
- * única barrera es el botón desactivado de la pantalla.
- *
- * Demostrarlo aquí a la fuerza costaría llenar un taller entero —treinta
- * altas, treinta lugares de aforo— y eso no lo hace este comprobante. Lo que sí
- * puede es DECIRLO y dejar preparada la comprobación barata: basta con poner
- * un taller a cupo total 1 desde `/admin/talleres` y volver a correr esto.
- */
-{
-  const { data } = await sb
-    .from("v_talleres")
-    .select("clave, cupo_total, cupo_ocupado, lugares_libres, dias")
-    .eq("activo", true);
-  const lleno = ((data ?? []) as { clave: string; lugares_libres: number; dias: number[] }[]).find(
-    (t) => t.lugares_libres <= 0,
-  );
-
-  if (!lleno) {
-    salta("no hay ningún taller sin lugares: no se puede probar la sobreventa sin llenar uno");
-    nota("para comprobarlo barato: pon un taller a «cupo total 1» en /admin/talleres,");
-    nota("inscribe a alguien, y vuelve a correr esto. Si el segundo entra, está confirmado.");
-  } else {
-    const id = await tallerPorClave(lleno.clave);
-    const { error } = await altaExterna({
-      perfil: "externo",
-      nombre: "QA PRUEBA SOBREVENTA",
-      correo: correoDe("sobreventa"),
-      dia: lleno.dias[0] ?? 1,
-      taller: id,
-    });
-    if (error) ok(`la base rechaza inscribir en ${lleno.clave}, que está lleno: ${error.message}`);
-    else
-      falla(
-        `SOBREVENTA CONFIRMADA: la base aceptó inscribir en ${lleno.clave}, que no tenía lugares`,
-      );
   }
 }
 

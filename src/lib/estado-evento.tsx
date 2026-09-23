@@ -27,7 +27,6 @@ import type {
   Dia,
   Evidencia,
   Participante,
-  Taller,
   TallerBase,
   UsuarioInterno,
 } from "@/dominio/tipos";
@@ -1219,22 +1218,20 @@ export function EstadoEventoProvider({
 
   // ------------------------------------------------------------ talleres ---
   /*
-   * `cupoOcupado` es derivado: nunca se escribe a mano.
+   * El cupo ocupado ya no se cuenta aquí: llega contado desde `v_talleres`.
    *
-   * Se cuenta en UNA pasada por los participantes, no una por taller. Antes
-   * cada taller filtraba la lista completa, así que el coste era el producto de
-   * los dos: con diez talleres y quinientos participantes, cinco mil
-   * comparaciones cada vez que alguien se registra o cambia de día.
+   * Aquí había un memo que recorría los participantes para sumarlos por taller,
+   * y ese cálculo era el problema, no su coste. Para el ASPIRANTE —que es quien
+   * mira el catálogo antes de elegir— `participantes` está cerrada por las
+   * políticas, así que la lista llegaba vacía y la suma daba siempre cero: el
+   * catálogo anunciaba «30 lugares disponibles» con doscientos inscritos y el
+   * botón «Seleccionar» no se desactivaba nunca.
+   *
+   * Contarlo en la base lo arregla para los dos lados a la vez, y de paso quita
+   * el riesgo de que las dos cuentas discrepen: es la MISMA cifra que usa
+   * `fn_exigir_lugar_en_taller` para cerrar la puerta.
    */
-  const talleres = useMemo<Taller[]>(() => {
-    const inscritos = new Map<string, number>();
-    for (const p of participantes)
-      if (p.tallerId) inscritos.set(p.tallerId, (inscritos.get(p.tallerId) ?? 0) + 1);
-    return talleresBase.map(({ ocupadosPrevios, ...t }) => ({
-      ...t,
-      cupoOcupado: ocupadosPrevios + (inscritos.get(t.id) ?? 0),
-    }));
-  }, [talleresBase, participantes]);
+  const talleres = talleresBase;
 
   const getTaller = useCallback<Ctx["getTaller"]>(
     (id) => talleres.find((t) => t.id === id),

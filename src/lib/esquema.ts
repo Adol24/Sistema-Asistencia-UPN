@@ -90,6 +90,17 @@ export interface FilaNivel {
   programas: { nombre: string; etiqueta_avance: string | null; total_avance: number | null }[];
 }
 
+/**
+ * Una fila de `v_talleres`, NO de la tabla.
+ *
+ * El catálogo leía la tabla `talleres`, y eso dejaba el cupo ocupado en manos
+ * del navegador: `participantes` está cerrada al anónimo, así que para el
+ * aspirante la cuenta se quedaba en `ocupados_previos` y el catálogo anunciaba
+ * lugares que no existían. La vista lo cuenta en la base, donde sí se puede.
+ *
+ * `dias` llega como arreglo de la vista; la tabla lo daba anidado en
+ * `taller_dias`.
+ */
 export interface FilaTaller {
   id: string;
   clave: string;
@@ -100,9 +111,11 @@ export interface FilaTaller {
   lugar: string;
   cupo_total: number;
   ocupados_previos: number;
+  /** Ya contado por la vista: `ocupados_previos` más los inscritos. */
+  cupo_ocupado: number;
   costo: number;
   activo: boolean;
-  taller_dias: { dia: Dia }[];
+  dias: Dia[];
 }
 
 /**
@@ -407,11 +420,13 @@ export const aTallerBase = (f: FilaTaller): TallerBase => ({
   nombre: f.nombre,
   ponente: f.ponente,
   descripcion: f.descripcion,
-  dias: f.taller_dias.map((d) => d.dia).sort(),
+  dias: [...f.dias].sort(),
   horario: f.horario,
   lugar: f.lugar,
   cupoTotal: f.cupo_total,
   ocupadosPrevios: f.ocupados_previos,
+  // Contado por la vista, no por el navegador. Ver `TallerBase.cupoOcupado`.
+  cupoOcupado: Number(f.cupo_ocupado),
   costo: Number(f.costo),
   activo: f.activo,
 });
