@@ -1272,12 +1272,27 @@ export function EstadoEventoProvider({
             `${liberados} ${liberados === 1 ? "inscripción liberada" : "inscripciones liberadas"} y avisadas en su portal.`,
           );
       },
-      () =>
-        avisarFallo(
-          esAlta
-            ? `NO se creó el taller ${t.id}. Puede que esa clave ya esté tomada.`
-            : `NO se guardó el taller ${t.id}. Quedó como estaba.`,
-        ),
+      (e) => {
+        /*
+         * El MOTIVO de la base, en pantalla y no solo en la consola.
+         *
+         * Aquí se decía «NO se guardó el taller T01. Quedó como estaba», y eso
+         * es cierto y no sirve de nada: quien lo lee no sabe si le falta un
+         * permiso, si la clave está tomada, si el cupo quedó por debajo de los
+         * inscritos o si se cayó la red. El motivo bueno lo da la base —«Solo
+         * administración puede editar los talleres», «No existe ningún taller
+         * con la clave T01», «Un taller sin días no se imparte ningún día»— y
+         * se estaba tirando.
+         *
+         * `mensajeDeError` traduce además los códigos que no son texto: una
+         * violación de unicidad o un permiso que falta salían en crudo.
+         */
+        void import("@/lib/supabase").then(({ mensajeDeError }) =>
+          avisarFallo(
+            `${esAlta ? "NO se creó" : "NO se guardó"} el taller ${t.id}: ${mensajeDeError(e)}`,
+          ),
+        );
+      },
     );
   }, []);
 
