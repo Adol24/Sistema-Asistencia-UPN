@@ -33,6 +33,7 @@ import {
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
 import { asistenciaDe } from "@/lib/escaneo";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
+import { referenciaValida, resultadoDe } from "@/lib/pagos-logica";
 import {
   estadoDeVentana,
   perfilesSinVentana,
@@ -454,6 +455,48 @@ console.log("\n=== LA REGLA DE ELEGIBILIDAD, QUE LLEGÓ A SER TRES ===\n");
     elegibilidadEvento(entorno([{ dia: 2 }, { dia: 3 }], false), alumno).elegible,
     false,
   );
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LA FRONTERA DEL DINERO ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * La pantalla y la columna tienen que admitir exactamente las mismas
+ * referencias. Divergían en UN carácter —el guion, que los bancos usan— y eso
+ * bastaba para que el archivo del corte saliera entero en verde en la vista
+ * previa y la base rechazara ciento veinte filas por formato. Nadie revisa un
+ * archivo que salió todo en verde.
+ *
+ * Esto fija el lado del cliente. El de la columna lo puso la migración 54 con el
+ * mismo patrón, y el comentario de esa migración explica por qué se amplió la
+ * base en vez de estrechar el cliente: el guion aparece en cortes reales, así
+ * que rechazarlo no evita un error, pierde un depósito que existe.
+ */
+{
+  igual(
+    "una referencia con guion es válida: los bancos los usan",
+    referenciaValida("REF-900123"),
+    true,
+  );
+  igual("una sin guion también", referenciaValida("REF900123"), true);
+  igual("seis caracteres es el mínimo", referenciaValida("ABC12"), false);
+  igual("veinte el máximo", referenciaValida("A".repeat(21)), false);
+  // Si esto pasara a `true`, la columna las seguiría rechazando en silencio.
+  igual("un espacio en medio NO vale", referenciaValida("REF 900123"), false);
+  igual("una barra tampoco", referenciaValida("REF/900123"), false);
+}
+
+/*
+ * Y la regla de la que depende que una discrepancia se pueda guardar: si el
+ * monto no cuadra, `resultado` es `discrepancia`, y entonces
+ * `chk_discrepancia_con_nota` exige nota. `guardarPago` la garantiza aunque
+ * quien llame no la ponga, porque sin ella la base rechazaba el depósito entero
+ * y la persona se quedaba en `pre_registrado` con su dinero ya en el banco.
+ */
+{
+  igual("lo que cuadra es un pago", resultadoDe(500, 500), "pagado");
+  igual("de menos es discrepancia", resultadoDe(450, 500), "discrepancia");
+  igual("de MÁS también: sobra dinero y hay que devolverlo", resultadoDe(600, 500), "discrepancia");
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);

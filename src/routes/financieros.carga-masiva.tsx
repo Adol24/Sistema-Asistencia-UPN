@@ -41,15 +41,33 @@ function CargaMasiva() {
   const { filas, leyendo, archivo, confirmando, aplicando, resumen, visibles } = imp;
 
   const aplicar = () =>
-    imp.aplicar((filasAplicables) => {
+    imp.aplicar(async (filasAplicables) => {
       const aAplicar = filasAplicables.filter((f) => f.pago).map((f) => f.pago!);
-      registrarLote(aAplicar);
+      /*
+       * Se espera el resultado real antes de decir nada.
+       *
+       * Aquí se anunciaba «Se aplicaron N pagos» con N = filas INTENTADAS, sin
+       * esperar a ninguna escritura. Con un archivo de trescientas y cuarenta
+       * rechazadas, el cartel verde decía trescientas, los cuarenta fallos
+       * llegaban como avisos rojos sueltos que se apilaban y caducaban, y quien
+       * cerraba la pantalla se iba creyendo que estaba todo cobrado.
+       *
+       * Ahora se cuenta lo que la base aceptó, y lo que no se nombra con su
+       * folio: son los que hay que volver a mirar contra el estado de cuenta.
+       */
+      const { guardados, fallidos } = await registrarLote(aAplicar);
       registrarBitacora(
         "Aplicó una carga masiva de pagos",
-        `${archivo ?? "archivo"} · ${aAplicar.length} pagos aplicados`,
+        `${archivo ?? "archivo"} · ${guardados.length} de ${aAplicar.length} pagos aplicados` +
+          (fallidos.length ? ` · rechazados: ${fallidos.join(", ")}` : ""),
       );
-      setAplicado(aAplicar.length);
-      toast.success(`Se aplicaron ${aAplicar.length} pagos.`);
+      setAplicado(guardados.length);
+      if (fallidos.length)
+        toast.error(
+          `Se aplicaron ${guardados.length} de ${aAplicar.length}. La base rechazó ${fallidos.length}: ${fallidos.slice(0, 5).join(", ")}${fallidos.length > 5 ? "…" : ""}`,
+          { duration: 12000 },
+        );
+      else toast.success(`Se aplicaron ${guardados.length} pagos.`);
     });
 
   const descargarTexto = (nombre: string, contenido: string) => {

@@ -151,12 +151,22 @@ export function analizarArchivo(
       };
     if (monto !== esperado) {
       const dif = monto - esperado;
+      const motivo = `Monto ${dif > 0 ? "mayor" : "menor"} al esperado por ${moneda(Math.abs(dif))}. Entrará como discrepancia.`;
       return {
         ...base,
         semaforo: "advertencia",
-        motivo: `Monto ${dif > 0 ? "mayor" : "menor"} al esperado por ${moneda(Math.abs(dif))}. Entrará como discrepancia.`,
+        motivo,
         nombre: p.nombre,
-        pago,
+        /*
+         * El motivo viaja también como NOTA del pago, y no es cosmético:
+         * `chk_discrepancia_con_nota` la exige, y sin ella la base rechazaba la
+         * fila entera. El archivo del banco perdía justo lo que no cuadraba.
+         *
+         * Se manda el texto que ya se calculó para la vista previa, que es el
+         * que lleva las cifras: quien abra esa discrepancia tres semanas después
+         * lee lo mismo que vio quien la aplicó.
+         */
+        pago: { ...pago, nota: motivo },
       };
     }
     return { ...base, semaforo: "listo", motivo: "Listo para aplicar.", nombre: p.nombre, pago };

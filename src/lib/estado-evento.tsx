@@ -459,7 +459,7 @@ export function EstadoEventoProvider({
   );
 
   const registrarLote = useCallback<Ctx["registrarLote"]>(
-    (entradas) => {
+    async (entradas) => {
       const base = contadorPagos;
       setContadorPagos(base + entradas.length);
       const nuevos = entradas.map((e, k) => ({
@@ -477,26 +477,48 @@ export function EstadoEventoProvider({
        * resolver su participante por folio, y porque una referencia duplicada
        * debe rechazar esa fila sin tumbar el resto del lote.
        */
-      nuevos.forEach((pago) =>
-        escribir(
-          `el pago de ${pago.folio}`,
-          (d) =>
-            d.guardarPago({
-              folio: pago.folio,
-              concepto: pago.concepto,
-              monto: pago.monto,
-              montoEsperado: pago.montoEsperado,
-              referencia: pago.referencia,
-              fechaDeposito: pago.fechaDeposito,
-              nota: pago.nota,
-            }),
-          () => {
-            setPagosSesion((prev) => prev.filter((g) => g.id !== pago.id));
-            avisarFallo(`No se pudo guardar el pago de ${pago.folio}.`);
-          },
-        ),
-      );
-      return nuevos;
+      /*
+       * Se ESPERA a que terminen, y ese es el cambio.
+       *
+       * Antes se lanzaban sin esperar y la pantalla anunciaba «Se aplicaron 300
+       * pagos» con el número de filas INTENTADAS. Los rechazos llegaban después,
+       * uno a uno, como avisos rojos que se apilaban y caducaban. Quien cerraba
+       * la pantalla creía tener trescientos cobros; la base tenía doscientos
+       * sesenta, y la diferencia eran justo los casos que había que revisar.
+       *
+       * Trescientas peticiones en paralelo tampoco: se mandan de veinte en
+       * veinte. El lote entero de golpe satura la conexión y hace que empiecen a
+       * expirar peticiones que habrían entrado, que es convertir un problema de
+       * red en pagos perdidos.
+       */
+      const fallidos: string[] = [];
+      const LOTE = 20;
+      for (let i = 0; i < nuevos.length; i += LOTE) {
+        await Promise.all(
+          nuevos.slice(i, i + LOTE).map(async (pago) => {
+            if (!hayBaseDeDatos) return;
+            try {
+              const d = await import("@/lib/datos");
+              await d.guardarPago({
+                folio: pago.folio,
+                concepto: pago.concepto,
+                monto: pago.monto,
+                montoEsperado: pago.montoEsperado,
+                referencia: pago.referencia,
+                fechaDeposito: pago.fechaDeposito,
+                nota: pago.nota,
+              });
+            } catch (e) {
+              console.error(`No se pudo guardar el pago de ${pago.folio}`, e);
+              // Se retira de la sesión: un pago que la base rechazó no puede
+              // seguir contando en los totales de la pantalla.
+              setPagosSesion((prev) => prev.filter((g) => g.id !== pago.id));
+              fallidos.push(pago.folio);
+            }
+          }),
+        );
+      }
+      return { guardados: nuevos.filter((p) => !fallidos.includes(p.folio)), fallidos };
     },
     [contadorPagos],
   );

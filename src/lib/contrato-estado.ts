@@ -65,7 +65,18 @@ export interface Ctx {
   /** Estado de pago efectivo, con los pagos de la sesión aplicados. */
   estadoDe: (p: Participante) => { evento: EstadoPago; taller: EstadoPago | undefined };
   registrarPago: (p: Omit<PagoRegistrado, "id" | "registradoEn">) => PagoRegistrado;
-  registrarLote: (ps: Omit<PagoRegistrado, "id" | "registradoEn">[]) => PagoRegistrado[];
+  /**
+   * Aplica una carga masiva y ESPERA a que la base conteste por cada fila.
+   *
+   * Devuelve lo que de verdad quedó guardado y lo que no. Antes devolvía las
+   * filas optimistas al instante y la pantalla anunciaba «Se aplicaron 300
+   * pagos» con el número de filas intentadas: los rechazos llegaban después
+   * como avisos sueltos que se apilaban y caducaban, así que quien cerraba la
+   * pantalla creía tener trescientos cobros y la base tenía doscientos sesenta.
+   */
+  registrarLote: (
+    ps: Omit<PagoRegistrado, "id" | "registradoEn">[],
+  ) => Promise<{ guardados: PagoRegistrado[]; fallidos: string[] }>;
 
   // --- Asistencias ---
   /**

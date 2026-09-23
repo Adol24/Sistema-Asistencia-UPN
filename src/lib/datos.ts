@@ -623,7 +623,25 @@ export async function guardarPago(p: {
       // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
       fecha_deposito: fechaAIso(p.fechaDeposito),
       resultado: resultadoDe(p.monto, p.montoEsperado),
-      nota: p.nota ?? null,
+      /*
+       * Una discrepancia SIEMPRE lleva nota, aunque quien llame no la ponga.
+       *
+       * `chk_discrepancia_con_nota` la exige, y hasta aquí no la ponía ningún
+       * camino: ni ventanilla ni la carga masiva. O sea que **todo pago que no
+       * cuadraba lo rechazaba la base entera**. El corte del banco perdía justo
+       * las filas que había que revisar —las que no cuadran— y la persona se
+       * quedaba en `pre_registrado` hasta expirar, con su dinero ya depositado.
+       *
+       * La nota de quien llama es mejor y se respeta si viene: la carga masiva
+       * ya calcula el motivo con sus cifras. Este texto es el suelo, para que
+       * la restricción no pueda volver a tragarse un depósito por un campo
+       * vacío.
+       */
+      nota:
+        p.nota?.trim() ||
+        (resultadoDe(p.monto, p.montoEsperado) === "discrepancia"
+          ? `Depositó ${p.monto.toFixed(2)} contra ${p.montoEsperado.toFixed(2)} esperados.`
+          : null),
     }),
   );
 }
