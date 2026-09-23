@@ -835,7 +835,11 @@ console.log("\n=== EL AFORO DE CADA DÍA, AHORA MISMO ===\n");
 
 // ===========================================================================
 console.log("\n=== PARA BORRAR LO QUE ESTE COMPROBANTE CREÓ ===\n");
-console.log("En el editor SQL de Supabase, con permisos de administración:\n");
+console.log("Pega `supabase/utilidades/limpiar-datos-de-prueba.sql` en el editor SQL de");
+console.log("Supabase. Lleva el orden correcto —las cuatro tablas de `restrict` antes que");
+console.log("el participante—, borra también los archivos del bucket mientras todavía se");
+console.log("sabe de quién eran, y empieza por un `select` para mirar antes de borrar.\n");
+console.log("El resumen, por si lo prefieres a mano:\n");
 console.log("  -- Primero las evidencias, que referencian al participante:");
 console.log("  delete from evidencias where participante_id in (");
 console.log("    select id from participantes where correo like 'qa-%@prueba.invalid');");
