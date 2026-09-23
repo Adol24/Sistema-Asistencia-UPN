@@ -155,11 +155,29 @@ export function PortalProvider({ children }: { children: ReactNode }) {
    * comprueba folio y credencial en cada llamada, así que aquí «tiempo real»
    * significa volver a llamarla.
    *
-   * Cada 20 segundos y solo con la pestaña al frente. Lo que este alumno espera
-   * ver aparecer es su pago confirmado en ventanilla —está de pie delante de la
-   * caja— y 20 segundos es más rápido que sacar el tema. Con la pestaña oculta
+   * Cada TRES MINUTOS, y solo con la pestaña al frente. Con la pestaña oculta
    * no se pregunta: sería gastar batería y llamadas por una pantalla que nadie
-   * mira, y al volver se refresca de inmediato.
+   * mira, y al volver se refresca de inmediato, que es lo que cubre el caso de
+   * quien deja el portal abierto mientras hace la fila.
+   *
+   * -------------------------------------------------------------------------
+   * Eran 20 segundos, y ese número impedía proteger la puerta.
+   * -------------------------------------------------------------------------
+   * El argumento de entonces era bueno: lo que este alumno espera ver aparecer
+   * es su pago confirmado en ventanilla, está de pie delante de la caja, y 20
+   * segundos es más rápido que sacar el tema. Lo que no se vio es lo que ese
+   * número costaba del otro lado.
+   *
+   * `fn_autenticar_portal` está concedida al anónimo y los folios son una
+   * secuencia, así que sin tope por IP se recorren enteros hasta dar con el par
+   * folio + matrícula de otra persona. Pero a tres llamadas por minuto, ningún
+   * tope capaz de estorbar a un barrido dejaba pasar a quien simplemente mira
+   * su propio estado: la protección era imposible mientras el refresco fuera
+   * este.
+   *
+   * A tres minutos, una persona gasta quince llamadas largas en diez minutos y
+   * el tope de la migración 51 —cuarenta— le queda holgado. Y sigue siendo más
+   * rápido que preguntar en la mesa de incidencias, que es la vara real.
    */
   useEffect(() => {
     if (!sesion || !hayBaseDeDatos) return;
@@ -167,7 +185,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     const alFrente = () => document.visibilityState === "visible";
     const t = setInterval(() => {
       if (alFrente()) void cargar();
-    }, 20_000);
+    }, 3 * 60_000);
 
     const alVolver = () => {
       if (alFrente()) void cargar();
