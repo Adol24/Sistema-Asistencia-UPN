@@ -20,7 +20,7 @@ import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { hora, isoAFecha, simularLatencia } from "@/lib/formato";
+import { hora, isoAFecha } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
 
@@ -188,6 +188,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
                           Motivo: {t.motivo ?? "Imagen ilegible o muy oscura"}
                         </p>
                         <SubirEvidencia
+                          dia={dia}
                           restantes={restantes}
                           onSubida={(estado) => {
                             setIntentos((prev) => ({ ...prev, [dia]: usados + 1 }));
@@ -207,6 +208,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
 
                 {t.tipo === "disponible" ? (
                   <SubirEvidencia
+                    dia={dia}
                     restantes={restantes}
                     onSubida={(estado) => {
                       setIntentos((prev) => ({ ...prev, [dia]: usados + 1 }));
@@ -225,28 +227,58 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
 }
 
 function SubirEvidencia({
+  dia,
   restantes,
   onSubida,
   etiqueta,
 }: {
+  dia: number;
   restantes: number;
   onSubida: (estado: EstadoEvidencia) => void;
   etiqueta: string;
 }) {
+  const { sesion, refrescar } = usePortal();
+  const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [progreso, setProgreso] = useState(0);
   const [subiendo, setSubiendo] = useState(false);
 
+  /*
+   * Esto no subía nada, y lo decía en verde.
+   *
+   * Era una barra de progreso animada, `simularLatencia()` —un `setTimeout`— y
+   * un «Tu evidencia quedó en revisión». No se enviaba ningún archivo, no se
+   * calculaba ninguna huella y no se escribía ninguna fila: recargar la página
+   * devolvía la tarjeta a «Subir evidencia». Y como de la evidencia aprobada
+   * depende la constancia, el alumno se iba creyendo que había entregado y al
+   * cierre del evento no era elegible.
+   *
+   * Ahora sube de verdad, en los tres pasos de la migración 52, y el progreso
+   * marca dónde va: pedir sitio, subir, confirmar. Lo que no se puede es
+   * inventar un porcentaje intermedio —`supabase-js` no informa del avance de
+   * la subida— así que se mueve por pasos y no por bytes, que es lo honesto.
+   */
   const subir = async () => {
+    if (!archivo || !sesion) return;
     setSubiendo(true);
-    setProgreso(15);
-    const t = setInterval(() => setProgreso((p) => Math.min(p + 20, 95)), 150);
-    await simularLatencia();
-    clearInterval(t);
-    setProgreso(100);
-    setSubiendo(false);
-    onSubida("pendiente");
-    toast.success("Tu evidencia quedó en revisión.");
+    setProgreso(10);
+    try {
+      const { subirEvidenciaRemota } = await import("@/lib/datos");
+      setProgreso(40);
+      await subirEvidenciaRemota(sesion.folio, sesion.credencial, dia, archivo);
+      setProgreso(100);
+      onSubida("pendiente");
+      toast.success("Tu evidencia quedó en revisión.");
+      // Los intentos y el estado los lleva la base: se vuelven a pedir en vez
+      // de suponerlos aquí, que es como el contador acabó viviendo en memoria.
+      refrescar();
+    } catch (e) {
+      setProgreso(0);
+      const { mensajeDeError } = await import("@/lib/supabase");
+      toast.error(mensajeDeError(e));
+    } finally {
+      setSubiendo(false);
+    }
   };
 
   if (restantes <= 0)
@@ -267,9 +299,12 @@ function SubirEvidencia({
           accept="image/*"
           className="sr-only"
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) setPreview(URL.createObjectURL(f));
-            else setPreview("https://placehold.co/600x800/334155/f8fafc?text=EVIDENCIA");
+            // Sin archivo no hay nada que subir. Antes, no elegir ninguno
+            // ponía una imagen de relleno y dejaba «subir» igualmente, que es
+            // coherente con que la subida fuera simulada y no con que suba.
+            const f = e.target.files?.[0] ?? null;
+            setArchivo(f);
+            setPreview(f ? URL.createObjectURL(f) : null);
           }}
         />
       </label>

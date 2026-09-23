@@ -53,6 +53,7 @@ import {
   type MotivoRechazo,
 } from "@/lib/revision";
 import { meta } from "@/lib/seo";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { cn } from "@/lib/utils";
 import type { Evidencia } from "@/dominio/tipos";
 
@@ -335,8 +336,8 @@ function PanelRevision() {
                 <ComparacionDuplicados actual={actual} gemelas={gemelas} />
               ) : (
                 <div className="relative flex flex-1 items-center justify-center overflow-auto rounded-lg bg-foreground/95 p-4">
-                  <img
-                    src={actual.imagen}
+                  <ImagenEvidencia
+                    ruta={actual.imagen}
                     alt={`Evidencia de ${actual.nombre}, día ${actual.dia}`}
                     style={{ transform: `scale(${zoom})` }}
                     className="max-h-[70vh] origin-center rounded-md transition-transform"
@@ -578,6 +579,77 @@ function Tecla({ children }: { children: React.ReactNode }) {
 }
 
 /** Alerta de hash duplicado: las dos imágenes lado a lado con los datos de ambos. */
+
+/**
+ * La imagen de una evidencia, firmada al vuelo.
+ *
+ * El bucket es privado, así que `evidencia.imagen` es una RUTA y no sirve como
+ * `src`. La firma la emite la sesión del revisor —cuyo rol comprueba la política
+ * de Storage— y dura una hora, que es más que una tanda de revisión.
+ *
+ * Se firma SOLO lo que se está mirando y no las cinco mil de la carga: firmar
+ * todo al arrancar sería cinco mil peticiones para ver una.
+ */
+function ImagenEvidencia({
+  ruta,
+  alt,
+  className,
+  style,
+}: {
+  ruta: string;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [fallo, setFallo] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    setUrl(null);
+    setFallo(false);
+    if (!ruta || !hayBaseDeDatos) return;
+    void (async () => {
+      const { urlDeEvidencia } = await import("@/lib/datos");
+      const u = await urlDeEvidencia(ruta);
+      if (!vivo) return;
+      if (u) setUrl(u);
+      else setFallo(true);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [ruta]);
+
+  if (fallo || (!ruta && !hayBaseDeDatos))
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-md bg-muted p-6 text-center text-sm text-muted-foreground",
+          className,
+        )}
+      >
+        No se pudo abrir la imagen de esta evidencia.
+      </div>
+    );
+
+  // Sin base —modo prototipo— la ruta ya es una URL de relleno y se usa tal cual.
+  const src = hayBaseDeDatos ? url : ruta;
+  if (!src)
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-md bg-muted p-6 text-sm text-muted-foreground",
+          className,
+        )}
+      >
+        Abriendo la imagen…
+      </div>
+    );
+
+  return <img src={src} alt={alt} className={className} {...(style ? { style } : {})} />;
+}
+
 function ComparacionDuplicados({ actual, gemelas }: { actual: Evidencia; gemelas: Evidencia[] }) {
   return (
     <div className="flex flex-1 flex-col rounded-lg border-2 border-estado-cancelado/50 bg-estado-cancelado-bg p-3">
@@ -601,8 +673,8 @@ function ComparacionDuplicados({ actual, gemelas }: { actual: Evidencia; gemelas
                 {i === 0 ? "En revisión" : "Ya subida"}
               </span>
             </figcaption>
-            <img
-              src={e.imagen}
+            <ImagenEvidencia
+              ruta={e.imagen}
               alt={`Evidencia de ${e.nombre}`}
               className="max-h-[46vh] w-full rounded-md bg-foreground/90 object-contain"
             />

@@ -1573,6 +1573,93 @@ export async function estadoDelPortal(folio: string, credencial: string) {
   });
 }
 
+/**
+ * La huella del archivo, SHA-256 en hexadecimal.
+ *
+ * Se calcula sobre los BYTES que se van a subir, no sobre el archivo elegido:
+ * si dos personas mandan la misma foto, lo que tiene que coincidir es lo que
+ * llegó al bucket. Es lo que hace funcionar la detección de duplicados del panel
+ * de revisión, que hasta ahora comparaba una columna que nadie escribía.
+ *
+ * `crypto.subtle` necesita contexto seguro —HTTPS o localhost—. Sin él no hay
+ * huella, y sin huella la base rechaza la confirmación: es preferible a subir
+ * cinco mil imágenes que nadie puede comparar entre sí.
+ */
+async function huellaDe(datos: ArrayBuffer): Promise<string> {
+  const sub = globalThis.crypto?.subtle;
+  if (!sub)
+    throw new Error(
+      "Tu navegador no permite calcular la huella del archivo. Abre el portal con https.",
+    );
+  const resumen = await sub.digest("SHA-256", datos);
+  return [...new Uint8Array(resumen)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Sube la evidencia de un día, en los tres pasos que exige la migración 52.
+ *
+ * El participante no tiene sesión, así que la credencial viaja en el paso 1 y en
+ * el 3, y la política de Storage solo le deja DEPOSITAR en el bucket. El paso 3
+ * no acepta más ruta que la que emitió el paso 1 para esa persona y ese día.
+ *
+ * Si la subida falla entre medias, la fila queda en `no_entregada` con una ruta
+ * reservada: volver a empezar emite otra y la anterior queda como objeto
+ * huérfano, que no referencia nadie. Se prefiere eso a pisar el archivo bueno
+ * cuando la confirmación es lo que se pierde.
+ */
+export async function subirEvidenciaRemota(
+  folio: string,
+  credencial: string,
+  dia: number,
+  archivo: File,
+): Promise<void> {
+  const sb = exigirBase();
+
+  // El tope lo aplica también el bucket, pero decirlo aquí evita gastar la
+  // subida entera de alguien con datos móviles para que la rechacen al final.
+  if (archivo.size > 5 * 1024 * 1024)
+    throw new Error("La imagen pesa más de 5 MB. Haz una foto con menos resolución.");
+
+  const ruta = await llamar<string>("fn_evidencia_preparar", {
+    p_folio: folio,
+    p_credencial: credencial,
+    p_dia: dia,
+  });
+
+  const bytes = await archivo.arrayBuffer();
+  const hash = await huellaDe(bytes);
+
+  const { error } = await sb.storage.from("evidencias").upload(ruta, bytes, {
+    contentType: archivo.type || "image/jpeg",
+    upsert: false,
+  });
+  if (error) throw error;
+
+  await llamar<null>("fn_evidencia_confirmar", {
+    p_folio: folio,
+    p_credencial: credencial,
+    p_dia: dia,
+    p_ruta: ruta,
+    p_hash: hash,
+  });
+}
+
+/**
+ * Una URL firmada para que el personal de revisión vea la imagen.
+ *
+ * El bucket es privado, así que `archivo_url` es una RUTA y no sirve como `src`
+ * de una etiqueta `img`. La firma dura lo que una sesión de revisión y la emite
+ * la sesión del revisor, cuyo rol comprueba la política de Storage.
+ */
+export async function urlDeEvidencia(ruta: string): Promise<string | null> {
+  if (!ruta) return null;
+  const { data, error } = await exigirBase()
+    .storage.from("evidencias")
+    .createSignedUrl(ruta, 60 * 60);
+  if (error) return null;
+  return data?.signedUrl ?? null;
+}
+
 export async function abrirCasoNombreRemoto(participanteId: string, nombreCorrecto: string) {
   return llamar<string>("fn_abrir_caso_nombre", {
     p_participante: participanteId,
