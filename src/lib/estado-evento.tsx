@@ -1300,15 +1300,40 @@ export function EstadoEventoProvider({
   const guardarUsuario = useCallback<Ctx["guardarUsuario"]>((u) => {
     // Se guarda lo que había para poder devolverlo si la base rechaza.
     let previo: UsuarioInterno | undefined;
+    let esAlta = false;
     setUsuarios((prev) => {
       const i = prev.findIndex((x) => x.id === u.id);
       previo = prev[i];
+      esAlta = i === -1;
       if (i === -1) return [...prev, u];
       return prev.map((x) => (x.id === u.id ? u : x));
     });
     escribir(
       "el usuario",
-      (d) => d.guardarUsuarioRemoto({ ...u, rol: rolHaciaBase(u.rol) }),
+      /*
+       * Alta y edición son dos operaciones distintas, y confundirlas era el
+       * defecto: el alta hacía un `update` sobre un identificador inventado
+       * —`U01` sobre una columna `uuid`— que no podía encontrar ninguna fila.
+       *
+       * El alta busca a la persona por su CORREO entre las cuentas de Auth que
+       * ya existen, porque `usuarios_internos.id` las referencia y una cuenta no
+       * se crea desde el navegador. La edición sigue yendo por identificador,
+       * que para alguien que ya está es lo correcto.
+       */
+      async (d) => {
+        if (esAlta) {
+          const id = await d.altaUsuarioRemota({
+            correo: u.correo,
+            nombre: u.nombre,
+            rol: rolHaciaBase(u.rol),
+          });
+          // El identificador bueno es el de su cuenta, no el que inventó la
+          // pantalla: sin esto, editarla después volvería a no encontrar nada.
+          setUsuarios((prev) => prev.map((x) => (x.id === u.id ? { ...x, id } : x)));
+          return;
+        }
+        await d.guardarUsuarioRemoto({ ...u, rol: rolHaciaBase(u.rol) });
+      },
       () => {
         /*
          * Esta pantalla decide quién entra y con qué rol, así que una escritura
@@ -1321,7 +1346,18 @@ export function EstadoEventoProvider({
             ? prev.map((x) => (x.id === u.id ? previo! : x))
             : prev.filter((x) => x.id !== u.id),
         );
-        avisarFallo(`NO se guardó ${u.nombre}. Quedó como estaba: vuelve a intentarlo.`);
+        /*
+         * El motivo más probable de un alta fallida es que esa persona todavía
+         * no tenga cuenta de acceso, y eso tiene un paso concreto que dar. Se
+         * nombra aquí en vez de dejar un «vuelve a intentarlo» que invita a
+         * repetir lo mismo con el mismo resultado; el mensaje exacto de la base
+         * llega igual por el aviso de `escribir`.
+         */
+        avisarFallo(
+          esAlta
+            ? `NO se dio de alta a ${u.nombre}. Si no tiene cuenta, invítala antes por correo desde Supabase Auth.`
+            : `NO se guardó ${u.nombre}. Quedó como estaba: vuelve a intentarlo.`,
+        );
       },
     );
   }, []);

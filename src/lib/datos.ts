@@ -1184,6 +1184,14 @@ export async function eliminarTallerRemoto(clave: string): Promise<void> {
  * exige la clave de servicio, que nunca debe llegar al navegador. Se hace desde
  * el panel de Supabase y aquí se completan su nombre y su rol.
  */
+/**
+ * Edita a alguien que YA está en el personal.
+ *
+ * No da de alta: para eso está `altaUsuarioRemota`, porque una fila de
+ * `usuarios_internos` no existe sin su cuenta de `auth.users` y esa no se crea
+ * desde el navegador. Aquí se decía «guardar» y solo se hacía `update`, así que
+ * el alta no insertaba nada y la pantalla lo celebraba igual.
+ */
 export async function guardarUsuarioRemoto(u: {
   id: string;
   nombre: string;
@@ -1191,12 +1199,41 @@ export async function guardarUsuarioRemoto(u: {
   rol: string;
   activo: boolean;
 }): Promise<void> {
-  await exigir(
+  /*
+   * `select()` no es decorativo: un `update` que no encuentra ninguna fila
+   * devuelve ÉXITO con cero filas, así que sin pedir de vuelta lo actualizado no
+   * había forma de distinguir «se guardó» de «no existía». Es la otra mitad del
+   * defecto del alta, y la que lo dejaba invisible.
+   */
+  const filas = await datosDe<{ id: string }[]>(
     exigirBase()
       .from("usuarios_internos")
       .update({ nombre: u.nombre, correo: u.correo, rol: u.rol, activo: u.activo })
-      .eq("id", u.id),
+      .eq("id", u.id)
+      .select("id"),
   );
+  if (!filas.length)
+    throw new Error(`No existe ningún usuario interno con ese identificador (${u.id}).`);
+}
+
+/**
+ * Le da rol a alguien que ya tiene cuenta de acceso.
+ *
+ * La cuenta se crea invitando por correo desde Supabase Auth, y eso no pasa por
+ * aquí: `usuarios_internos.id` referencia `auth.users`, y crear una cuenta exige
+ * la clave de servicio. Si el correo no tiene cuenta, la base lo dice con esas
+ * palabras y nombra el paso que falta.
+ */
+export async function altaUsuarioRemota(datos: {
+  correo: string;
+  nombre: string;
+  rol: string;
+}): Promise<string> {
+  return llamar<string>("fn_alta_usuario_interno", {
+    p_correo: datos.correo,
+    p_nombre: datos.nombre,
+    p_rol: datos.rol,
+  });
 }
 
 /**

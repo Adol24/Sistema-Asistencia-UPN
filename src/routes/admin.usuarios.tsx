@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Pencil, Plus, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
+import { Info, Pencil, Plus, ShieldCheck, UserCheck, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Tabla } from "@/components/tabla";
@@ -261,6 +261,27 @@ function FormularioUsuario({
           </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4">
+          {/*
+            La condición previa, dicha ANTES y no al fallar.
+
+            Una fila del personal no existe sin su cuenta de acceso
+            —`usuarios_internos.id` referencia `auth.users`— y crear una cuenta
+            exige la clave de servicio, que un navegador no tiene ni debe tener.
+            Así que esta pantalla no crea cuentas: les da su rol.
+
+            Esto antes no se decía porque el alta no daba de alta a nadie: hacía
+            un `update` sobre un identificador inventado, no encontraba ninguna
+            fila, y anunciaba que había guardado.
+          */}
+          {!existe ? (
+            <p className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                Esta persona necesita <strong>tener ya su cuenta de acceso</strong>. Si todavía no
+                la tiene, invítala por correo desde Supabase Auth y vuelve aquí a darle su rol.
+              </span>
+            </p>
+          ) : null}
           <div>
             <Label htmlFor="u-nombre">Nombre completo</Label>
             <Input

@@ -10,6 +10,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 
 import { fechaLimiteTexto, moneda } from "@/lib/formato";
+import { descargarCsv } from "@/lib/exportar";
 import { folioDeEjemplo } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { porVencer as vencible } from "@/lib/pagos-logica";
@@ -98,30 +99,51 @@ function Conciliacion() {
       });
   }, [participantes, q, filtro, pagos, estadoDe]);
 
+  /*
+   * El archivo que Servicios Financieros cuadra contra el estado de cuenta.
+   *
+   * Esto armaba el CSV a mano y tenía dos defectos, uno de ellos catastrófico:
+   *
+   * 1. La primera celda de cada fila era `participantes` —el ARREGLO ENTERO, no
+   *    un campo—. Al unir con comas se serializaba como setecientos
+   *    `[object Object]` delante de cada renglón: el encabezado declaraba ocho
+   *    columnas y cada fila traía más de setecientas. Con 700 participantes eran
+   *    490.000 celdas basura y decenas de megas de archivo ilegible, y el toast
+   *    seguía diciendo «Exportamos 700 registros».
+   *
+   * 2. Se escapaba el nombre metiéndolo entre comillas a mano y nada más, así
+   *    que un apellido con comilla partía la fila; y sin BOM, Excel en Windows
+   *    abría el archivo como ANSI y convertía la Ñ de MUÑOZ en basura — justo el
+   *    dato que el sistema se cuida de conservar en todo el recorrido.
+   *
+   * Las dos cosas las resuelve `exportar.ts`, que existe para esto y ya lo usan
+   * las demás exportaciones. Aquí no se había usado.
+   */
   const exportar = () => {
-    const csv = [
-      "folio,nombre,perfil,dia,estado_evento,estado_taller,pagos_registrados,total_pagado",
-      ...filas.map((f) =>
-        [
-          participantes,
-          f.p.folio,
-          `"${f.p.nombre}"`,
-          f.p.perfil,
-          f.p.dia,
-          f.estado.evento,
-          f.estado.taller ?? "",
-          f.n,
-          f.pagado.toFixed(2),
-        ].join(","),
-      ),
-    ].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "conciliacion.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exportamos ${filas.length} registros.`);
+    const n = descargarCsv(
+      "conciliacion",
+      [
+        "folio",
+        "nombre",
+        "perfil",
+        "dia",
+        "estado_evento",
+        "estado_taller",
+        "pagos_registrados",
+        "total_pagado",
+      ],
+      filas.map((f) => [
+        f.p.folio,
+        f.p.nombre,
+        f.p.perfil,
+        f.p.dia,
+        f.estado.evento,
+        f.estado.taller ?? "",
+        f.n,
+        f.pagado.toFixed(2),
+      ]),
+    );
+    toast.success(`Exportamos ${n} registros.`);
   };
 
   return (
