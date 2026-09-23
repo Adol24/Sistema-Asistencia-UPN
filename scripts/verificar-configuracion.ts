@@ -31,6 +31,7 @@ import {
   DESTINO_DE_CAMPO,
 } from "@/lib/escritura-remota";
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
+import { asistenciaDe } from "@/lib/escaneo";
 import {
   estadoDeVentana,
   perfilesSinVentana,
@@ -349,6 +350,44 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
     perfilesSinVentana([{ ...base, perfiles: ["docente", "externo"] }]).map((p) => p.perfil),
     [],
   );
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LA LLAVE QUE HACE SEGURA LA COLA SIN CONEXIÓN ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * `idRemoto` es el uuid con el que una asistencia se va a guardar, generado por
+ * el NAVEGADOR al capturar y no por la base al insertar. Es lo único que permite
+ * reintentar la cola sin duplicar: si la fila entró pero la respuesta se perdió
+ * de vuelta, el reintento choca contra la llave primaria, y eso significa «ya
+ * estaba», no «falló».
+ *
+ * Si `asistenciaDe` dejara de ponerlo, o lo repitiera, vaciar la cola volvería a
+ * poder duplicar asistencias. Y un duplicado no es un renglón de más: invierte
+ * el torniquete, así que el siguiente escaneo de esa persona se registra al
+ * revés. Por eso se comprueba aquí y no se deja a la vista.
+ */
+{
+  const sesion = { dia: 1, modo: "puerta", punto: "Puerta 1", capturista: "QA" } as const;
+  const resultado = {
+    tipo: "entrada",
+    participante: { folio: "PRE-00801", nombre: "QA PRUEBA" },
+  } as unknown as Parameters<typeof asistenciaDe>[0];
+
+  const a = asistenciaDe(resultado, sesion, 1_760_000_000_000, "09:10", 1);
+  const b = asistenciaDe(resultado, sesion, 1_760_000_000_000, "09:10", 2);
+
+  if (a.idRemoto) ok("una asistencia nueva trae su propio uuid para la base");
+  else falla("asistenciaDe ya no pone `idRemoto`: la cola volvería a poder duplicar");
+
+  if (a.idRemoto && b.idRemoto && a.idRemoto !== b.idRemoto)
+    ok("dos escaneos seguidos no comparten uuid");
+  else falla("dos escaneos comparten `idRemoto`", "distintos", [a.idRemoto, b.idRemoto]);
+
+  const formaUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (a.idRemoto && formaUuid.test(a.idRemoto))
+    ok("tiene forma de uuid, que es lo que la columna `id` admite");
+  else falla("`idRemoto` no tiene forma de uuid: el insert lo rechazaría", "uuid", a.idRemoto);
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);

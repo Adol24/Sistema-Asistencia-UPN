@@ -4,11 +4,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
-import { avisarFallo, columnasDeConfiguracion, escribir } from "@/lib/escritura-remota";
+import {
+  avisarFallo,
+  avisarLogro,
+  columnasDeConfiguracion,
+  escribir,
+} from "@/lib/escritura-remota";
 import { useRelojEvento } from "@/lib/reloj";
 import { useSesion } from "@/lib/sesion";
 import { rolHaciaBase } from "@/lib/roles";
@@ -591,6 +597,97 @@ export function EstadoEventoProvider({
     guardarCola(enCola);
   }, [enCola]);
 
+  /*
+   * Vaciar la cola contra la base, que es lo que la cola nunca hizo.
+   *
+   * ---------------------------------------------------------------------------
+   * Lo que pasaba antes
+   * ---------------------------------------------------------------------------
+   * `guardarAsistencia` solo se llamaba dentro de `if (enLinea)`. Lo capturado
+   * sin red iba a `enCola`, se persistía en `localStorage` y **ningún camino lo
+   * enviaba después**. El oyente de `online` solo hacía `setEnLinea(true)`, y
+   * «Reconectar» movía la cola a «sincronizadas» y la borraba del
+   * almacenamiento sin escribir una sola fila.
+   *
+   * O sea: se caía el wifi, se escaneaban ochenta personas, volvía la red, el
+   * contador de pendientes desaparecía —solo se pinta con `!enLinea`— y esas
+   * ochenta asistencias no existían en ningún sitio. La pantalla decía lo
+   * contrario en los dos momentos: primero «23 pendientes, se sincronizan al
+   * volver la red» y después nada, como si ya estuvieran.
+   *
+   * ---------------------------------------------------------------------------
+   * Cómo se vacía
+   * ---------------------------------------------------------------------------
+   * Una por una y en orden, y cada una sale de la cola **solo cuando la base lo
+   * confirma**. Si una falla se para el vaciado y el resto se queda: casi
+   * siempre el motivo es que la red volvió a irse, y seguir intentando las
+   * otras setenta y nueve solo alarga la espera para el mismo resultado.
+   *
+   * El cerrojo es un `ref` y no un estado porque tiene que cerrarse en el acto:
+   * entre el `online` del navegador, el botón de «Reconectar» y el efecto de
+   * montaje puede haber tres llamadas en el mismo instante, y dos vaciados a la
+   * vez mandarían cada fila dos veces. Que además sea idempotente —ver
+   * `idRemoto`— es el segundo cinturón, no el primero.
+   */
+  const vaciando = useRef(false);
+  const colaRef = useRef(enCola);
+  colaRef.current = enCola;
+
+  const vaciarCola = useCallback(async (): Promise<void> => {
+    if (!hayBaseDeDatos || vaciando.current) return;
+    const pendientes = colaRef.current;
+    if (pendientes.length === 0) return;
+
+    vaciando.current = true;
+    let guardadas = 0;
+    try {
+      const d = await import("@/lib/datos");
+      for (const a of pendientes) {
+        try {
+          await d.guardarAsistencia({
+            folio: a.folio,
+            dia: a.dia,
+            tipo: a.tipo,
+            punto: a.punto,
+            autorizacionMotivo: a.autorizacion?.nota,
+            idRemoto: a.idRemoto,
+          });
+        } catch (e) {
+          console.error("No se pudo sincronizar una asistencia de la cola", e);
+          avisarFallo(
+            `Quedan ${pendientes.length - guardadas} asistencias sin sincronizar. NO cierres la pestaña: se reintentan solas al volver la red.`,
+          );
+          break;
+        }
+        // Solo después del acuse: la fila sale de la cola y pasa a capturada.
+        guardadas++;
+        setEnCola((prev) => prev.filter((x) => x.id !== a.id));
+        setCapturadas((prev) => [...prev, a]);
+        setHistorial((prev) =>
+          prev.map((h) => (h.asistencia?.id === a.id ? { ...h, pendiente: false } : h)),
+        );
+      }
+    } finally {
+      vaciando.current = false;
+    }
+
+    if (guardadas > 0)
+      avisarLogro(
+        `${guardadas} ${guardadas === 1 ? "asistencia sincronizada" : "asistencias sincronizadas"}.`,
+      );
+  }, []);
+
+  /*
+   * Se dispara al recuperar la red y también al montar: si la pestaña se cerró
+   * con la cola llena, al abrirla otra vez `enLinea` arranca en `true` y nadie
+   * volvería a mirarla. Ese era el camino por el que una cola guardada podía
+   * quedarse en `localStorage` para siempre, invisible, porque el contador de
+   * pendientes solo se pinta sin conexión.
+   */
+  useEffect(() => {
+    if (enLinea) void vaciarCola();
+  }, [enLinea, vaciarCola]);
+
   const anularAsistencia = useCallback<Ctx["anularAsistencia"]>(
     (id, motivo, usuario) => {
       const a = [...asistenciasBase, ...capturadas].find((x) => x.id === id);
@@ -788,30 +885,40 @@ export function EstadoEventoProvider({
                 tipo: asistencia!.tipo,
                 punto: asistencia!.punto,
                 autorizacionMotivo: asistencia!.autorizacion?.nota,
+                idRemoto: asistencia!.idRemoto,
               }),
             () => {
               /*
                * El fallo más caro de todo el sistema, y era el más callado.
                *
                * La pantalla ya pintó VERDE y ya sonó el pitido de «correcto»
-               * cuando esto se entera. Si la base rechazó la fila —la red del
-               * recinto degradada sin llegar a desconectarse es el caso típico
-               * con setecientos teléfonos encima—, esa persona pasó y no tiene
-               * asistencia, y al cierre del día faltan doscientas sin que nadie
-               * pueda decir cuáles.
+               * cuando esto se entera. El caso típico no es quedarse sin red
+               * —eso lo detecta `navigator.onLine` y la captura se va a la
+               * cola— sino la red del recinto degradada sin llegar a caerse,
+               * con setecientos teléfonos encima: las peticiones expiran y el
+               * capturista sigue viendo verde en cada persona.
                *
-               * NO se despinta: la persona ya entró, y borrarla de la pantalla
-               * le quitaría al capturista el único dato que le queda para
-               * rehacerlo. Se le nombra en voz alta, con folio, para que pueda
-               * volver a escanearla o apuntarla a mano.
+               * Ahora SÍ se reencola, que es lo que no se podía hacer mientras
+               * la cola no tenía quien la vaciara: la fila vuelve a lo
+               * pendiente, se reintenta sola, y como lleva su propio `idRemoto`
+               * el reintento no puede duplicarla aunque la primera hubiera
+               * entrado sin que llegara la respuesta.
                *
-               * Reencolarla sería mejor, y no se hace todavía a propósito: la
-               * cola de `enCola` no tiene hoy quien la vacíe contra la base
-               * —está en la lista de correcciones—, así que meter ahí la fila
-               * sería devolverla al mismo silencio del que se la quiere sacar.
+               * NO se despinta del historial: la persona ya entró, y borrarla
+               * le quitaría al capturista el único dato que le queda. Queda
+               * marcada como pendiente, que es lo que de verdad es.
                */
+              setEnCola((prev) =>
+                prev.some((x) => x.id === asistencia!.id) ? prev : [...prev, asistencia!],
+              );
+              setCapturadas((prev) => prev.filter((x) => x.id !== asistencia!.id));
+              setHistorial((prev) =>
+                prev.map((h) =>
+                  h.asistencia?.id === asistencia!.id ? { ...h, pendiente: true } : h,
+                ),
+              );
               avisarFallo(
-                `NO se guardó la ${asistencia!.tipo} de ${asistencia!.nombre} (${asistencia!.folio}). Vuelve a escanearla.`,
+                `La ${asistencia!.tipo} de ${asistencia!.nombre} (${asistencia!.folio}) quedó PENDIENTE. Se reintenta sola.`,
               );
             },
           );
@@ -1664,16 +1771,18 @@ export function EstadoEventoProvider({
   const alternarConexion = useCallback(() => {
     const volviendo = !enLinea;
     setEnLinea(volviendo);
-    if (!volviendo || enCola.length === 0) return;
-
-    // Al recuperar la red, lo pendiente se sincroniza.
-    const ids = new Set(enCola.map((a) => a.id));
-    setCapturadas((prev) => [...prev, ...enCola]);
-    setHistorial((prev) =>
-      prev.map((h) => (h.asistencia && ids.has(h.asistencia.id) ? { ...h, pendiente: false } : h)),
-    );
-    setEnCola([]);
-  }, [enLinea, enCola]);
+    /*
+     * Aquí estaba el peor de los dos caminos: esto movía la cola a «capturadas»,
+     * marcaba el historial como sincronizado y la vaciaba —borrándola también de
+     * `localStorage`, por el efecto de persistencia— SIN escribir nada. Pulsar
+     * «Reconectar» destruía lo pendiente y dejaba la pantalla afirmando que se
+     * había guardado.
+     *
+     * Ahora solo cambia el interruptor. Quien sincroniza es `vaciarCola`, que ya
+     * corre con el efecto de `enLinea` y saca cada fila de la cola únicamente
+     * cuando la base acusa recibo.
+     */
+  }, [enLinea]);
 
   const setSesion = useCallback<Ctx["setSesion"]>(
     (s) =>

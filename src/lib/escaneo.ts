@@ -425,6 +425,32 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
 }
 
 /** Construye la asistencia que corresponde a un resultado que sí se registra. */
+/**
+ * Un uuid para la fila que se va a escribir, generado aquí y no por la base.
+ *
+ * `crypto.randomUUID` necesita contexto seguro: existe en HTTPS y en
+ * `localhost`, y no en una IP por HTTP plano, que es exactamente como se sirve
+ * una demostración en la red del recinto. El respaldo no tiene que ser
+ * criptográfico —solo irrepetible entre los escaneos de un día— así que
+ * `getRandomValues` basta, y si tampoco está, el reloj más azar.
+ */
+function uuid(): string {
+  const c = globalThis.crypto as Crypto | undefined;
+  if (c?.randomUUID) return c.randomUUID();
+  if (c?.getRandomValues) {
+    const b = c.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6]! & 0x0f) | 0x40;
+    b[8] = (b[8]! & 0x3f) | 0x80;
+    const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  const r = () =>
+    Math.floor(Math.random() * 0xffffffff)
+      .toString(16)
+      .padStart(8, "0");
+  return `${r().slice(0, 8)}-${r().slice(0, 4)}-4${r().slice(0, 3)}-a${r().slice(0, 3)}-${r()}${r().slice(0, 4)}`;
+}
+
 export function asistenciaDe(
   r: ResultadoEscaneo,
   sesion: SesionCaptura,
@@ -435,6 +461,7 @@ export function asistenciaDe(
   const p = r.participante!;
   return {
     id: `AS-S${String(secuencia).padStart(4, "0")}-${p.folio}`,
+    idRemoto: uuid(),
     folio: p.folio,
     nombre: p.nombre,
     dia: sesion.dia,

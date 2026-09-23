@@ -178,6 +178,19 @@ export function avisarFallo(mensaje: string): void {
 }
 
 /**
+ * Lo contrario, y hace falta por una sola razón: la cola.
+ *
+ * Todo lo demás en esta aplicación se pinta antes de guardarse, así que no hay
+ * nada que celebrar después —la pantalla ya lo dio por hecho—. Vaciar la cola
+ * sin conexión es la excepción: lo que se sincroniza ocurrió hace rato, puede
+ * ser en otra pantalla, y sin decirlo el capturista no tiene forma de saber que
+ * sus ochenta escaneos por fin están a salvo.
+ */
+export function avisarLogro(mensaje: string): void {
+  void import("sonner").then(({ toast }) => toast.success(mensaje));
+}
+
+/**
  * Escribe en la base sin que nadie espere el resultado.
  *
  * Reúne en un sitio el patrón que estaba copiado cuatro veces —escribir sin

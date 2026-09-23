@@ -634,6 +634,11 @@ export async function guardarAsistencia(a: {
   tipo: Asistencia["tipo"];
   punto: string;
   autorizacionMotivo?: string | undefined;
+  /**
+   * El uuid que trae la asistencia desde el navegador. Ver `Asistencia.idRemoto`:
+   * es lo que hace que reintentar no duplique.
+   */
+  idRemoto?: string | undefined;
 }): Promise<void> {
   const sb = exigirBase();
   const participanteId = await idDelFolio(sb, a.folio);
@@ -675,17 +680,33 @@ export async function guardarAsistencia(a: {
       throw new Error(`${a.folio} no está inscrito en ningún taller: no se puede pasar su lista.`);
   }
 
-  await exigir(
-    sb.from("asistencias").insert({
-      participante_id: participanteId,
-      dia: a.dia,
-      tipo: a.tipo,
-      punto: a.punto,
-      taller_id: tallerId,
-      capturista_id: sesion.user?.id ?? null,
-      autorizacion_motivo: a.autorizacionMotivo ?? null,
-    }),
-  );
+  const { error } = await sb.from("asistencias").insert({
+    // Sin `idRemoto` lo numera la base, como siempre: una cola guardada antes
+    // de esta versión no lo trae.
+    ...(a.idRemoto ? { id: a.idRemoto } : {}),
+    participante_id: participanteId,
+    dia: a.dia,
+    tipo: a.tipo,
+    punto: a.punto,
+    taller_id: tallerId,
+    capturista_id: sesion.user?.id ?? null,
+    autorizacion_motivo: a.autorizacionMotivo ?? null,
+  });
+
+  /*
+   * Chocar contra la llave primaria significa «ya estaba», no «falló».
+   *
+   * Es el caso que hace segura la cola: la fila entró y la respuesta se perdió
+   * de vuelta —la red del recinto cayéndose a mitad de la petición—, así que al
+   * recuperar la conexión se reintenta con el MISMO uuid. Tratar eso como error
+   * dejaría la asistencia atascada en la cola para siempre; tratarlo como éxito
+   * es lo correcto, porque en la base está exactamente lo que se quería poner.
+   *
+   * `23505` es `unique_violation`, y aquí solo puede venir de la clave primaria:
+   * es el único índice único que le queda a la tabla desde que la migración 25
+   * retiró `uq_asistencia_por_dia`.
+   */
+  if (error && error.code !== "23505") throw error;
 }
 
 export async function guardarRevision(

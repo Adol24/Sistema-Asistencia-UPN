@@ -34,7 +34,14 @@ export function BarraConexion() {
          * franja del sistema se suma encima cuando existe.
          */
         "flex items-center justify-between gap-2 px-4 py-2 pt-seguro text-sm font-semibold [--espacio-seguro:0.5rem]",
-        enLinea ? "bg-estado-pagado text-white" : "bg-estado-discrepancia text-white",
+        /*
+         * Verde solo cuando hay red Y no queda nada por sincronizar. Con red y
+         * cola pendiente va en ámbar, que es la verdad: la captura funciona,
+         * pero hay asistencias que todavía no están en la base.
+         */
+        !enLinea || pendientes > 0
+          ? "bg-estado-discrepancia text-white"
+          : "bg-estado-pagado text-white",
       )}
     >
       <span className="flex items-center gap-2">
@@ -43,9 +50,18 @@ export function BarraConexion() {
         ) : (
           <CloudOff className="size-4" aria-hidden />
         )}
-        {enLinea
-          ? "EN LÍNEA"
-          : `SIN CONEXIÓN — ${pendientes} ${pendientes === 1 ? "pendiente" : "pendientes"}`}
+        {/*
+          El contador se pintaba SOLO sin conexión, y eso escondía justo el caso
+          peligroso: al volver la red el rótulo pasaba a «EN LÍNEA» y los
+          pendientes desaparecían de la vista aunque siguieran sin guardarse.
+          Recargando la pestaña era peor todavía —`enLinea` arranca en `true`—
+          así que una cola atascada se volvía invisible para siempre.
+        */}
+        {!enLinea
+          ? `SIN CONEXIÓN — ${pendientes} ${pendientes === 1 ? "pendiente" : "pendientes"}`
+          : pendientes > 0
+            ? `SINCRONIZANDO — ${pendientes} ${pendientes === 1 ? "pendiente" : "pendientes"}`
+            : "EN LÍNEA"}
         {/*
           En línea y en vivo no son lo mismo, y en la puerta la diferencia
           decide. Con red pero sin escucha, esta pantalla no se entera de que

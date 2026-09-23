@@ -121,6 +121,23 @@ export interface Asistencia {
   /** Momento del escaneo en ms. Solo lo traen las asistencias capturadas en la sesión. */
   ts?: number | undefined;
   /**
+   * El uuid con el que esta fila se va a guardar —o ya se guardó— en la base.
+   *
+   * Lo genera el navegador al capturar, NO la base al insertar, y esa es toda
+   * la diferencia: permite reintentar sin duplicar. Si la fila entró pero la
+   * respuesta se perdió —la red del recinto cayéndose a mitad de la petición es
+   * el caso de todos los días—, el reintento choca contra la llave primaria y
+   * eso significa «ya estaba», no «falló».
+   *
+   * Sin esto, vaciar la cola al recuperar la red podía duplicar asistencias, y
+   * un duplicado no es un renglón de más: invierte el torniquete, así que el
+   * siguiente escaneo de esa persona se registra al revés.
+   *
+   * Opcional porque una cola guardada antes de esta versión no lo trae; esas
+   * filas se envían sin id y las numera la base, como antes.
+   */
+  idRemoto?: string | undefined;
+  /**
    * Excepción autorizada por un supervisor, típicamente un pase en día
    * equivocado. Es registro de auditoría: viaja con la asistencia, no solo con
    * el historial de la sesión de captura.
