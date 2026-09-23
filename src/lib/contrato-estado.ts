@@ -1,5 +1,5 @@
 import type { ConfiguracionEvento } from "@/lib/configuracion";
-import type { ResultadoEscaneo, SesionCaptura } from "@/lib/escaneo";
+import type { Modo, ResultadoEscaneo, SesionCaptura } from "@/lib/escaneo";
 import type { PagoRegistrado } from "@/lib/pagos-logica";
 import type { RelojEvento } from "@/lib/reloj";
 import type {
@@ -314,4 +314,21 @@ export interface OpcionesEscaneo {
   autorizado?: boolean;
   nota?: string;
   autorizadoPor?: string;
+  /**
+   * Para este escaneo, manda este modo y no el de la sesión.
+   *
+   * Lo usa el pase de lista de taller, que hasta ahora llamaba a `escanear` sin
+   * decir nada: el modo seguía siendo `"puerta"` —el valor por omisión de la
+   * sesión— y esa pantalla no ofrece dónde cambiarlo. Marcar a los treinta
+   * inscritos de un taller les registraba a todos una SALIDA del recinto, y el
+   * segundo toque una entrada. Cero asistencias de taller y sesenta movimientos
+   * de puerta inventados.
+   *
+   * Va como opción del escaneo y no cambiando `sesion.modo` a propósito: la
+   * sesión la comparten todas las pantallas de captura, y dejarla en «taller»
+   * al salir de esta invertiría el registro de todos los que pasaran después
+   * por la puerta. Es justo el defecto contra el que avisa el encabezado de
+   * `escaneo.ts`.
+   */
+  modo?: Modo;
 }

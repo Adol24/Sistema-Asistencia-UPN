@@ -650,12 +650,38 @@ export async function guardarAsistencia(a: {
    */
   const { data: sesion } = await sb.auth.getUser();
 
+  /*
+   * En qué taller, cuando la asistencia es de taller.
+   *
+   * `chk_taller_solo_en_taller` exige que una fila de `tipo = 'taller'` traiga
+   * `taller_id`, y este insert no lo mandaba: **TODA asistencia de taller la
+   * rechazaba la base**. Como `escribir` solo dejaba el fallo en la consola, el
+   * pase de lista marcaba las treinta casillas en verde y al terminar el taller
+   * no había ni una fila. Nadie de ese grupo acreditaba.
+   *
+   * Sale de la base y no de la pantalla a propósito: quién está inscrito en qué
+   * taller lo sabe `participantes`, y pedirlo aquí evita que el capturista
+   * pueda registrar a alguien en un taller que no es el suyo.
+   */
+  let tallerId: string | null = null;
+  if (a.tipo === "taller") {
+    const fila = await datosDe<{ taller_id: string | null }>(
+      sb.from("participantes").select("taller_id").eq("id", participanteId).single(),
+    );
+    tallerId = fila.taller_id;
+    // Sin taller no hay asistencia de taller que registrar, y la restricción lo
+    // rechazaría con un mensaje que no dice esto. Se dice aquí.
+    if (!tallerId)
+      throw new Error(`${a.folio} no está inscrito en ningún taller: no se puede pasar su lista.`);
+  }
+
   await exigir(
     sb.from("asistencias").insert({
       participante_id: participanteId,
       dia: a.dia,
       tipo: a.tipo,
       punto: a.punto,
+      taller_id: tallerId,
       capturista_id: sesion.user?.id ?? null,
       autorizacion_motivo: a.autorizacionMotivo ?? null,
     }),

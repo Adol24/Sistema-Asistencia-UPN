@@ -57,9 +57,19 @@ function ModoTaller() {
   }, [inscritos, q]);
 
   const marcar = async (folio: string) => {
-    // Reutiliza el mismo motor del escáner: pase de lista y escaneo aplican las
-    // mismas reglas de negocio, solo cambia cómo se dispara.
-    const r = await escanear(folio);
+    /*
+     * Reutiliza el mismo motor del escáner: pase de lista y escaneo aplican las
+     * mismas reglas de negocio, solo cambia cómo se dispara.
+     *
+     * El modo va EXPLÍCITO, y es lo que faltaba. Sin él se usaba el de la
+     * sesión, que por omisión es `"puerta"` y esta pantalla no ofrece dónde
+     * cambiarlo: marcar a los inscritos de un taller les registraba a todos una
+     * SALIDA del recinto —ya tenían su entrada de la mañana—, ninguna casilla se
+     * encendía, el capturista volvía a tocar, y el segundo toque les registraba
+     * una entrada. Cero asistencias de taller y el doble de movimientos de
+     * puerta inventados.
+     */
+    const r = await escanear(folio, { modo: "taller" });
     retroalimentar(r);
   };
 

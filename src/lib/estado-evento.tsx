@@ -679,9 +679,13 @@ export function EstadoEventoProvider({
       const ahora = Date.now();
       // Lo que ya está en cola también cuenta para no duplicar registros.
       const conocidas = [...asistencias, ...enCola];
+      // El modo de ESTE escaneo, que puede no ser el de la sesión: ver
+      // `OpcionesEscaneo.modo`. Se arma una sesión efectiva en vez de tocar la
+      // compartida, para no dejar el modo cambiado al salir de la pantalla.
+      const suSesion = opciones?.modo ? { ...sesion, modo: opciones.modo } : sesion;
       let resultado = evaluarEscaneo({
         entrada,
-        sesion,
+        sesion: suSesion,
         participantes,
         asistencias: conocidas,
         estadoDe,
@@ -712,7 +716,7 @@ export function EstadoEventoProvider({
       if (hayBaseDeDatos && enLinea && !enVivo && !opciones?.autorizado) {
         try {
           const { evaluarEscaneoRemoto } = await import("@/lib/datos");
-          const remoto = await evaluarEscaneoRemoto(entrada.trim(), sesion.dia, sesion.modo);
+          const remoto = await evaluarEscaneoRemoto(entrada.trim(), suSesion.dia, suSesion.modo);
           if (remoto)
             resultado = {
               ...resultado,
@@ -755,7 +759,10 @@ export function EstadoEventoProvider({
 
       let asistencia: Asistencia | undefined;
       if (resultado.registra) {
-        asistencia = asistenciaDe(resultado, sesion, ahora, h, n);
+        // Mismo modo efectivo que en `evaluar`: si aquí se leyera el de la
+        // sesión, el pase de lista evaluaría como taller y registraría puerta.
+        const suSesion = opciones?.modo ? { ...sesion, modo: opciones.modo } : sesion;
+        asistencia = asistenciaDe(resultado, suSesion, ahora, h, n);
         // La excepción autorizada viaja con la asistencia, no solo con el
         // historial de la sesión: es registro de auditoría.
         if (opciones?.autorizado && opciones.nota)
