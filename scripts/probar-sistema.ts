@@ -538,99 +538,154 @@ console.log("\n=== LA ENTREGA DE UNA EVIDENCIA, DE PUNTA A PUNTA ===\n");
  * esa persona le toca asistir, que solo acepte la ruta que ella misma emitió, y
  * que el anónimo NO pueda leer lo que acaba de subir.
  */
+/*
+ * Primero, la regla que añadió la migración 58: SOLO los alumnos entregan.
+ *
+ * Esto salió al probar la 52 de punta a punta. El recorrido se hizo con un
+ * DOCENTE y funcionó entero — y que la prueba pasara era, en realidad, el
+ * hallazgo: la pantalla decía «las evidencias solo aplican para alumnos» y la
+ * base no lo comprobaba.
+ */
 if (!elDocente) {
-  salta("sin docente de prueba no hay a quién entregarle una evidencia");
+  salta("sin docente de prueba no se puede comprobar quién NO entrega evidencia");
 } else {
   const { folio, dia, correo } = elDocente;
-  // La evidencia es de un día DISTINTO al suyo, que es de lo que es prueba.
-  const diaEvidencia = dia === 1 ? 2 : 1;
-
-  const prep = await sb.rpc("fn_evidencia_preparar", {
+  const { error } = await sb.rpc("fn_evidencia_preparar", {
     p_folio: folio,
     p_credencial: correo,
-    p_dia: diaEvidencia,
+    p_dia: dia === 1 ? 2 : 1,
+  });
+  if (/solo para alumnos/i.test(mensaje(error)))
+    ok("un docente NO puede entregar evidencia: su perfil no la necesita");
+  else if (error) falla("rechaza al docente, pero por otro motivo", error);
+  else falla("un DOCENTE pudo reservar una entrega de evidencia");
+}
+
+/*
+ * Y el recorrido completo, que ahora necesita un alumno de verdad.
+ *
+ * Un alumno solo existe si su matrícula está en el padrón, y este comprobante no
+ * puede —ni debe— inventarse una: usar la de una persona real ocuparía SU
+ * pre-registro, con el correo y el celular de esta prueba dentro. Así que la
+ * matrícula se pide por fuera:
+ *
+ *     QA_MATRICULA=20262100001 bun run probar-sistema --escribe
+ *
+ * Reserva una en el padrón para esto, con su programa y su avance dentro de
+ * alguna ventana abierta. Sin ella se salta y se DICE qué queda sin ejercer,
+ * que es mejor que fingir cobertura: la subida al bucket, la confirmación y que
+ * el portal la enseñe.
+ */
+const matriculaQA = process.env["QA_MATRICULA"];
+if (!matriculaQA) {
+  salta("sin QA_MATRICULA no se recorre la entrega completa de una evidencia.");
+  nota("Reserva una matrícula en el padrón para pruebas y córrelo así:");
+  nota("  QA_MATRICULA=<matricula> bun run probar-sistema --escribe");
+  nota("Queda sin ejercer: la subida al bucket, la confirmación y el portal.");
+} else {
+  const alta = await sb.rpc("fn_preregistrar_alumno", {
+    p_matricula: matriculaQA,
+    p_correo: correoDe("alumno"),
+    p_celular: "8112345678",
+    p_acepto_aviso: true,
+    p_taller: null,
   });
 
-  if (prep.error) {
-    falla("fn_evidencia_preparar no reservó la entrega", prep.error);
+  if (alta.error) {
+    falla(`no se pudo dar de alta al alumno ${matriculaQA}`, alta.error);
+    nota("¿Está esa matrícula en el padrón, y su programa dentro de una ventana abierta?");
   } else {
-    const ruta = prep.data as string;
-    ok(`reserva la ruta de subida del día ${diaEvidencia}`);
+    const { folio, dia } = alta.data as { folio: string; dia: number };
+    const credencial = matriculaQA;
+    const diaEvidencia = dia === 1 ? 2 : 1;
+    ok(`alta del alumno de prueba: folio ${folio}, día ${dia}`);
 
-    const suDia = await sb.rpc("fn_evidencia_preparar", {
+    const prep = await sb.rpc("fn_evidencia_preparar", {
       p_folio: folio,
-      p_credencial: correo,
-      p_dia: dia,
-    });
-    if (/es el que te toca asistir/i.test(mensaje(suDia.error)))
-      ok(`rechaza la evidencia del día ${dia}, que es el que le toca asistir`);
-    else falla(`ACEPTÓ la evidencia del día ${dia}`, suDia.error ?? suDia.data);
-
-    const credencialMala = await sb.rpc("fn_evidencia_preparar", {
-      p_folio: folio,
-      p_credencial: "no-es-su-correo@prueba.invalid",
+      p_credencial: credencial,
       p_dia: diaEvidencia,
     });
-    if (/folio o credencial/i.test(mensaje(credencialMala.error)))
-      ok("rechaza una credencial que no es la suya");
-    else falla("ACEPTÓ una credencial equivocada", credencialMala.error);
 
-    // Un PNG de 1x1: lo que se prueba es el camino, no la foto.
-    const png = Uint8Array.from(
-      atob(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-      ),
-      (c) => c.charCodeAt(0),
-    );
-    const subida = await sb.storage
-      .from("evidencias")
-      .upload(ruta, png, { contentType: "image/png", upsert: false });
-
-    if (subida.error) {
-      falla("no se pudo subir el archivo al bucket", subida.error);
+    if (prep.error) {
+      falla("fn_evidencia_preparar no reservó la entrega", prep.error);
     } else {
-      ok("el archivo sube al bucket con la clave anónima");
-      const resumen = await crypto.subtle.digest("SHA-256", png);
-      const hash = [...new Uint8Array(resumen)]
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const ruta = prep.data as string;
+      ok(`reserva la ruta de subida del día ${diaEvidencia}`);
 
-      // Solo la ruta que emitió el paso 1: sin esto, cualquiera podría apuntar
-      // la fila de otro a un objeto suyo.
-      const rutaAjena = await sb.rpc("fn_evidencia_confirmar", {
+      const suDia = await sb.rpc("fn_evidencia_preparar", {
         p_folio: folio,
-        p_credencial: correo,
-        p_dia: diaEvidencia,
-        p_ruta: "otra/ruta/inventada",
-        p_hash: hash,
+        p_credencial: credencial,
+        p_dia: dia,
       });
-      if (/no corresponde a tu entrega/i.test(mensaje(rutaAjena.error)))
-        ok("rechaza confirmar una ruta que no emitió");
-      else falla("ACEPTÓ una ruta que no emitió", rutaAjena.error ?? rutaAjena.data);
+      if (/es el que te toca asistir/i.test(mensaje(suDia.error)))
+        ok(`rechaza la evidencia del día ${dia}, que es el que le toca asistir`);
+      else falla(`ACEPTÓ la evidencia del día ${dia}`, suDia.error ?? suDia.data);
 
-      const conf = await sb.rpc("fn_evidencia_confirmar", {
+      const credencialMala = await sb.rpc("fn_evidencia_preparar", {
         p_folio: folio,
-        p_credencial: correo,
+        p_credencial: "00000000000",
         p_dia: diaEvidencia,
-        p_ruta: ruta,
-        p_hash: hash,
       });
-      if (conf.error) falla("no se pudo confirmar la entrega", conf.error);
-      else ok("la entrega queda confirmada");
+      if (/folio o credencial/i.test(mensaje(credencialMala.error)))
+        ok("rechaza una credencial que no es la suya");
+      else falla("ACEPTÓ una credencial equivocada", credencialMala.error);
 
-      // Y lo que de verdad importa: que la persona lo VEA en su portal.
-      const estado = await sb.rpc("fn_portal_estado", { p_folio: folio, p_credencial: correo });
-      const evidencias = (estado.data as Record<string, unknown> | null)?.["evidencias"] as
-        { dia: number; estado: string }[] | undefined;
-      const suya = (evidencias ?? []).find((e) => e.dia === diaEvidencia);
-      if (suya?.estado === "pendiente")
-        ok(`su portal la enseña como «pendiente» el día ${diaEvidencia}`);
-      else falla("el portal NO enseña la evidencia recién entregada", evidencias);
+      // Un PNG de 1x1: lo que se prueba es el camino, no la foto.
+      const png = Uint8Array.from(
+        atob(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        ),
+        (c) => c.charCodeAt(0),
+      );
+      const subida = await sb.storage
+        .from("evidencias")
+        .upload(ruta, png, { contentType: "image/png", upsert: false });
 
-      // El bucket es privado: quien la subió tampoco puede volver a leerla.
-      const baja = await sb.storage.from("evidencias").download(ruta);
-      if (baja.error) ok("el anónimo NO puede descargar la evidencia que subió");
-      else falla("EL ANÓNIMO PUEDE DESCARGAR LAS EVIDENCIAS DEL BUCKET");
+      if (subida.error) {
+        falla("no se pudo subir el archivo al bucket", subida.error);
+      } else {
+        ok("el archivo sube al bucket con la clave anónima");
+        const resumen = await crypto.subtle.digest("SHA-256", png);
+        const hash = [...new Uint8Array(resumen)]
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+
+        const rutaAjena = await sb.rpc("fn_evidencia_confirmar", {
+          p_folio: folio,
+          p_credencial: credencial,
+          p_dia: diaEvidencia,
+          p_ruta: "otra/ruta/inventada",
+          p_hash: hash,
+        });
+        if (/no corresponde a tu entrega/i.test(mensaje(rutaAjena.error)))
+          ok("rechaza confirmar una ruta que no emitió");
+        else falla("ACEPTÓ una ruta que no emitió", rutaAjena.error ?? rutaAjena.data);
+
+        const conf = await sb.rpc("fn_evidencia_confirmar", {
+          p_folio: folio,
+          p_credencial: credencial,
+          p_dia: diaEvidencia,
+          p_ruta: ruta,
+          p_hash: hash,
+        });
+        if (conf.error) falla("no se pudo confirmar la entrega", conf.error);
+        else ok("la entrega queda confirmada");
+
+        const estado = await sb.rpc("fn_portal_estado", {
+          p_folio: folio,
+          p_credencial: credencial,
+        });
+        const evidencias = (estado.data as Record<string, unknown> | null)?.["evidencias"] as
+          { dia: number; estado: string }[] | undefined;
+        const suya = (evidencias ?? []).find((e) => e.dia === diaEvidencia);
+        if (suya?.estado === "pendiente")
+          ok(`su portal la enseña como «pendiente» el día ${diaEvidencia}`);
+        else falla("el portal NO enseña la evidencia recién entregada", evidencias);
+
+        const baja = await sb.storage.from("evidencias").download(ruta);
+        if (baja.error) ok("el anónimo NO puede descargar la evidencia que subió");
+        else falla("EL ANÓNIMO PUEDE DESCARGAR LAS EVIDENCIAS DEL BUCKET");
+      }
     }
   }
 }
