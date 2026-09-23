@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Loader2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { CAMPO_MAYUSCULAS, LARGO, faltanDigitos, soloDigitos } from "@/lib/campo
 import { simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { meta } from "@/lib/seo";
 import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,37 @@ function RegistroExterno() {
   // Revisar antes de continuar. Sustituye a la verificación por código: atrapa el
   // error de dedo, que es lo común, sin depender de que un correo llegue.
   const [porConfirmar, setPorConfirmar] = useState<{ nombre: string; correo: string } | null>(null);
+
+  /*
+   * La ventana de su perfil, preguntada al elegirlo y no al enviar.
+   *
+   * Es el mismo trato que recibe el alumno en `confirmar-nombre`: enterarse de
+   * que su registro abre el 3 de octubre DESPUÉS de teclear nombre, apellidos,
+   * correo, celular e institución es la diferencia entre una fecha y un portazo.
+   *
+   * Esto **no es la puerta**. La puerta es `trg_ventana_preregistro`, que vuelve
+   * a comprobarlo justo antes de insertar; esto es el aviso. Por eso un fallo
+   * aquí se calla y deja continuar: si la consulta no responde, quien decide es
+   * la base, y bloquear el formulario por no haber podido preguntar dejaría
+   * fuera a gente que sí puede pasar.
+   */
+  const [fueraDeVentana, setFueraDeVentana] = useState("");
+  useEffect(() => {
+    if (!hayBaseDeDatos) return;
+    let vivo = true;
+    void (async () => {
+      try {
+        const { ventanaDePerfilRemota } = await import("@/lib/datos");
+        const motivo = await ventanaDePerfilRemota(perfil);
+        if (vivo) setFueraDeVentana(motivo ?? "");
+      } catch {
+        if (vivo) setFueraDeVentana("");
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [perfil]);
 
   // El celular es el único campo numérico del formulario: filtra los dígitos al
   // escribirlos, en vez de aceptar una letra y reprocharla al enviar.
@@ -227,6 +259,23 @@ function RegistroExterno() {
         </div>
 
         {/*
+         * Va justo debajo del selector de perfil porque es lo que acaba de
+         * cambiar: la ventana depende de ese botón, y el aviso tiene que
+         * aparecer donde estaba mirando quien lo pulsó. Debajo del formulario
+         * —o arriba del todo, con el otro aviso— se leería como una advertencia
+         * general y no como la respuesta a «soy docente».
+         */}
+        {fueraDeVentana ? (
+          <Alert className="mt-4 border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg">
+            <CalendarClock className="size-4" />
+            <AlertTitle>Todavía no es tu turno</AlertTitle>
+            <AlertDescription>
+              {fueraDeVentana} Mientras tanto no se puede completar este registro.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {/*
          * Seis campos cortos, en dos columnas a partir de 768.
          *
          * Apilados eran seis renglones y el formulario medía más que la
@@ -310,7 +359,16 @@ function RegistroExterno() {
           error={errorAviso || undefined}
         />
 
-        <Button type="submit" className="mt-5 h-12 md:h-11 w-full text-base" disabled={cargando}>
+        {/*
+         * Bloquea el envío, pero no es lo que cierra la puerta: quien la cierra
+         * es el disparador de la base. Esto le ahorra a la persona llenarlo
+         * entero para que se lo rechacen al final.
+         */}
+        <Button
+          type="submit"
+          className="mt-5 h-12 md:h-11 w-full text-base"
+          disabled={cargando || !!fueraDeVentana}
+        >
           {cargando ? (
             <>
               <Loader2 className="size-5 animate-spin" /> Enviando código de verificación…

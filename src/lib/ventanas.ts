@@ -40,6 +40,22 @@ export interface CohorteVentana {
   avance: number | null;
 }
 
+/**
+ * Los perfiles que no salen de ningún padrón.
+ *
+ * `alumno` no está, y es a propósito: la base lo prohíbe con
+ * `check (perfil <> 'alumno')` en `ventana_perfiles`. Al alumno se le invita por
+ * generación —programa más avance— y admitirlo también en bloque daría dos
+ * formas de decir lo mismo con reglas distintas.
+ */
+export type PerfilSinPadron = "docente" | "externo";
+
+/** Cómo se nombra cada perfil en la pantalla y en los avisos. */
+export const PERFILES_SIN_PADRON: { perfil: PerfilSinPadron; nombre: string }[] = [
+  { perfil: "docente", nombre: "Docentes" },
+  { perfil: "externo", nombre: "Participantes externos" },
+];
+
 /** Un tramo de tiempo y la lista de a quién deja pasar. */
 export interface VentanaPreregistro {
   /** El uuid de la base. Vacío en una ventana que todavía no se ha guardado. */
@@ -55,6 +71,15 @@ export interface VentanaPreregistro {
   abre: string;
   cierra: string;
   cohortes: CohorteVentana[];
+  /**
+   * Docentes y externos, que entran por lo que son y no por una generación.
+   *
+   * Va aparte de `cohortes` porque **cada audiencia se mide con las ventanas que
+   * hablan de ella**: una ventana solo de docentes no debe cerrarle la puerta a
+   * ningún alumno, ni al revés. Ver el interruptor por audiencia en la
+   * migración 49.
+   */
+  perfiles: PerfilSinPadron[];
 }
 
 /**
@@ -89,6 +114,7 @@ export const ventanaNueva = (): VentanaPreregistro => ({
   abre: "",
   cierra: "",
   cohortes: [],
+  perfiles: [],
 });
 
 /**
@@ -119,9 +145,12 @@ export function problemasDeVentana(
   if (!Number.isNaN(abre) && !Number.isNaN(cierra) && cierra <= abre)
     problemas.push(`«${nombre}» cierra antes de abrir.`);
 
-  if (!v.cohortes.length)
+  // Ni programas ni perfiles: la ventana se ve cargada y no deja pasar a nadie.
+  // Basta con uno de los dos, porque una ventana puede ser solo de docentes o
+  // solo de una generación de alumnos; lo que no puede es estar vacía.
+  if (!v.cohortes.length && !v.perfiles.length)
     problemas.push(
-      `«${nombre}» no admite a nadie: sin programas declarados rechaza a todo el mundo.`,
+      `«${nombre}» no admite a nadie: sin programas ni perfiles declarados rechaza a todo el mundo.`,
     );
 
   const porId = new Map(programas.map((p) => [p.id, p]));
@@ -154,6 +183,27 @@ export function programasSinVentana(
 ): ProgramaDeVentana[] {
   const mencionados = new Set(ventanas.flatMap((v) => v.cohortes.map((c) => c.programaId)));
   return programas.filter((p) => !mencionados.has(p.id));
+}
+
+/**
+ * Los perfiles sin padrón a los que ninguna ventana deja entrar todavía.
+ *
+ * **Lista vacía mientras ninguna ventana mencione perfil alguno**, y esa
+ * excepción es la regla entera, no un caso borde. El interruptor de la
+ * migración 49 va por audiencia: mientras `ventana_perfiles` esté vacía,
+ * docentes y externos entran cuando quieran, igual que hasta la migración 48.
+ * Avisar ahí de que «se quedan fuera» sería decir lo contrario de lo que pasa.
+ *
+ * En cuanto UNA ventana nombra a un perfil, la puerta se cierra para el otro si
+ * nadie lo nombró, y entonces sí hay que poder verlo antes de salir de la
+ * pantalla: que sea una decisión y no un olvido.
+ */
+export function perfilesSinVentana(
+  ventanas: VentanaPreregistro[],
+): { perfil: PerfilSinPadron; nombre: string }[] {
+  const mencionados = new Set(ventanas.flatMap((v) => v.perfiles));
+  if (!mencionados.size) return [];
+  return PERFILES_SIN_PADRON.filter((p) => !mencionados.has(p.perfil));
 }
 
 /** Lo que carga el hook, y en qué estado está. */

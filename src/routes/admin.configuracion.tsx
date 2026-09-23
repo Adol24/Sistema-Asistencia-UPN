@@ -35,10 +35,13 @@ import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import {
   estadoDeVentana,
+  perfilesSinVentana,
   problemasDeVentana,
   programasSinVentana,
   useVentanas,
   ventanaNueva,
+  PERFILES_SIN_PADRON,
+  type PerfilSinPadron,
   type ProgramaDeVentana,
   type VentanaPreregistro,
 } from "@/lib/ventanas";
@@ -785,6 +788,7 @@ function SeccionVentanas({
   cambiar: (v: VentanaPreregistro[]) => void;
 }) {
   const sinVentana = programasSinVentana(ventanas, programas);
+  const sinVentanaPerfil = perfilesSinVentana(ventanas);
 
   const setVentana = (i: number, patch: Partial<VentanaPreregistro>) =>
     cambiar(ventanas.map((v, k) => (k === i ? { ...v, ...patch } : v)));
@@ -810,6 +814,15 @@ function SeccionVentanas({
       ),
     });
 
+  const alternarPerfil = (i: number, perfil: PerfilSinPadron) => {
+    const v = ventanas[i]!;
+    setVentana(i, {
+      perfiles: v.perfiles.includes(perfil)
+        ? v.perfiles.filter((p) => p !== perfil)
+        : [...v.perfiles, perfil],
+    });
+  };
+
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <h2 className="flex items-center gap-2 text-sm font-bold">
@@ -817,8 +830,9 @@ function SeccionVentanas({
         Ventanas de pre-registro
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">
-        Qué grupo puede registrarse y en qué días. El texto de cada ventana es el que lee quien
-        llega fuera de plazo, con la fecha detrás: «… abre el 25/09/2026».
+        Qué grupo puede registrarse y en qué días —alumnos por generación, docentes y externos por
+        perfil—. El texto de cada ventana es el que lee quien llega fuera de plazo, con la fecha
+        detrás: «… abre el 25/09/2026».
       </p>
 
       {sinBase ? (
@@ -846,8 +860,8 @@ function SeccionVentanas({
               <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
               <span>
                 Sin ninguna ventana, el pre-registro está <strong>abierto para todos</strong>:
-                cualquier alumno del padrón puede registrarse hoy. Agrega una para limitarlo por
-                fechas.
+                cualquier alumno del padrón, docente o externo puede registrarse hoy. Agrega una
+                para limitarlo por fechas.
               </span>
             </p>
           )}
@@ -914,17 +928,59 @@ function SeccionVentanas({
                           : "Ya cerró"}
                     </span>{" "}
                     <span className="text-muted-foreground">
-                      {v.cohortes.length} programa{v.cohortes.length === 1 ? "" : "s"} declarado
-                      {v.cohortes.length === 1 ? "" : "s"}.
+                      {v.cohortes.length} programa{v.cohortes.length === 1 ? "" : "s"} y{" "}
+                      {v.perfiles.length} perfil{v.perfiles.length === 1 ? "" : "es"} declarado
+                      {v.cohortes.length + v.perfiles.length === 1 ? "" : "s"}.
                     </span>
                   </p>
 
+                  {/*
+                    Docentes y externos van ARRIBA de los programas, y no al
+                    final como un añadido. Son dos casillas contra nueve, y
+                    puestas debajo se perdían: quien entra a esta pantalla a
+                    poner las fechas de los docentes tiene que encontrarlas sin
+                    recorrer el catálogo académico entero.
+                  */}
                   <div className="mt-3">
                     <Label>Quiénes entran</Label>
                     <p className="mb-2 mt-1 text-xs text-muted-foreground">
-                      Se marca programa por programa y se escribe el avance exacto: la invitación es
-                      a una generación, no a «del 7 en adelante». Sin avance, la ventana no se
-                      guarda.
+                      Una ventana puede ser de programas, de perfiles o de los dos. Lo que no puede
+                      es quedarse vacía: así no admite a nadie.
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {PERFILES_SIN_PADRON.map((p) => {
+                        const dentro = v.perfiles.includes(p.perfil);
+                        return (
+                          <div
+                            key={p.perfil}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md border p-2",
+                              dentro ? "border-primary/50 bg-primary/5" : "border-border",
+                            )}
+                          >
+                            <Checkbox
+                              id={`v${i}-perfil-${p.perfil}`}
+                              checked={dentro}
+                              onCheckedChange={() => alternarPerfil(i, p.perfil)}
+                            />
+                            <label
+                              htmlFor={`v${i}-perfil-${p.perfil}`}
+                              className="min-w-0 flex-1 cursor-pointer text-xs leading-tight"
+                            >
+                              <span className="block font-medium">{p.nombre}</span>
+                              <span className="text-muted-foreground">
+                                Sin padrón: entran por perfil, no por generación
+                              </span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <p className="mb-2 mt-3 text-xs text-muted-foreground">
+                      Los alumnos se marcan programa por programa y con el avance exacto: la
+                      invitación es a una generación, no a «del 7 en adelante». Sin avance, la
+                      ventana no se guarda.
                     </p>
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {programas.map((p) => {
@@ -1017,6 +1073,21 @@ function SeccionVentanas({
             <p className="mt-3 text-xs text-muted-foreground">
               Sin ventana todavía: {sinVentana.map((p) => p.nombre).join(", ")}. A sus alumnos se
               les dirá que la fecha de su grupo aún no se anuncia.
+            </p>
+          )}
+
+          {/*
+            Los perfiles se avisan aparte y con otras palabras, porque su
+            interruptor es otro: mientras NINGUNA ventana nombre un perfil,
+            docentes y externos entran cuando quieran —`perfilesSinVentana`
+            devuelve una lista vacía y esto no aparece—. En cuanto una ventana
+            nombra a uno, el que nadie nombró se queda fuera, y eso sí hay que
+            verlo antes de salir de la pantalla.
+          */}
+          {sinVentanaPerfil.length > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Sin ventana todavía: {sinVentanaPerfil.map((p) => p.nombre).join(", ")}. Como alguna
+              ventana ya nombra un perfil, a estos se les dirá que su fecha aún no se anuncia.
             </p>
           )}
         </>

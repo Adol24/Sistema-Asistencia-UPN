@@ -57,7 +57,7 @@ import type { ConfiguracionEvento, DiaEvento } from "@/lib/configuracion";
 import type { NivelAcademico } from "@/dominio/catalogos";
 // Solo los tipos: `@/lib/ventanas` arrastra React, y este módulo lo carga
 // también el servidor para pintar lo público antes de que haya navegador.
-import type { ProgramaDeVentana, VentanaPreregistro } from "@/lib/ventanas";
+import type { PerfilSinPadron, ProgramaDeVentana, VentanaPreregistro } from "@/lib/ventanas";
 import type { Modo } from "@/lib/escaneo";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
@@ -905,11 +905,14 @@ export async function cargarVentanas(): Promise<VentanaPreregistro[]> {
       abre: string;
       cierra: string;
       ventana_cohortes: { programa_id: string; avance: number }[];
+      ventana_perfiles: { perfil: PerfilSinPadron }[];
     }[]
   >(
     exigirBase()
       .from("ventanas_preregistro")
-      .select("id, etiqueta, abre, cierra, ventana_cohortes ( programa_id, avance )")
+      .select(
+        "id, etiqueta, abre, cierra, ventana_cohortes ( programa_id, avance ), ventana_perfiles ( perfil )",
+      )
       .order("abre"),
   );
 
@@ -919,6 +922,9 @@ export async function cargarVentanas(): Promise<VentanaPreregistro[]> {
     abre: v.abre,
     cierra: v.cierra,
     cohortes: v.ventana_cohortes.map((c) => ({ programaId: c.programa_id, avance: c.avance })),
+    // `check (perfil <> 'alumno')` en la base garantiza que aquí solo llegan
+    // los dos que `PerfilSinPadron` admite.
+    perfiles: v.ventana_perfiles.map((p) => p.perfil),
   }));
 }
 
@@ -965,6 +971,17 @@ export async function guardarVentanas(ventanas: VentanaPreregistro[]): Promise<v
             avance: c.avance,
           })),
         ),
+      );
+
+    // Los perfiles se reemplazan igual que los cohortes y por lo mismo: la
+    // tabla no tiene más columnas que su propia clave, así que no hay nada que
+    // conservar en una fila que se vuelve a insertar idéntica.
+    await exigir(sb.from("ventana_perfiles").delete().eq("ventana_id", guardada.id));
+    if (v.perfiles.length)
+      await exigir(
+        sb
+          .from("ventana_perfiles")
+          .insert(v.perfiles.map((perfil) => ({ ventana_id: guardada.id, perfil }))),
       );
   }
 
@@ -1369,6 +1386,21 @@ export async function confirmarEnPadronRemoto(
  */
 export async function ventanaDeMatriculaRemota(matricula: string): Promise<string | null> {
   return llamar<string | null>("fn_ventana_de_matricula", { p_matricula: matricula });
+}
+
+/**
+ * Lo mismo para quien no está en ningún padrón.
+ *
+ * El docente y el externo no tienen matrícula que preguntar: lo único que los
+ * identifica antes de llenar nada es el perfil que acaban de elegir en el
+ * formulario, y basta, porque la ventana los invita por eso.
+ *
+ * Devuelve `null` cuando pueden pasar. Esto tampoco es la puerta —la puerta es
+ * `trg_ventana_preregistro`— sino el aviso que evita que alguien teclee nombre,
+ * apellidos, correo, celular e institución para encontrarse un portazo al final.
+ */
+export async function ventanaDePerfilRemota(perfil: PerfilSinPadron): Promise<string | null> {
+  return llamar<string | null>("fn_motivo_fuera_de_ventana_perfil", { p_perfil: perfil });
 }
 
 /**

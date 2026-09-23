@@ -33,6 +33,7 @@ import {
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
 import {
   estadoDeVentana,
+  perfilesSinVentana,
   problemasDeVentana,
   programasSinVentana,
   type ProgramaDeVentana,
@@ -233,9 +234,19 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
       { programaId: "p-pedagogia", avance: 7 },
       { programaId: "p-leip", avance: 13 },
     ],
+    perfiles: [],
   };
 
   igual("una ventana completa se puede guardar", problemasDeVentana(base, PROGRAMAS), []);
+
+  // Una ventana solo de docentes es legítima: es el caso para el que se hizo la
+  // migración 49 —darle a la organización un turno aparte para quien no sale
+  // del padrón— y no lleva ningún programa marcado.
+  igual(
+    "una ventana solo de perfiles, sin programas, también se guarda",
+    problemasDeVentana({ ...base, cohortes: [], perfiles: ["docente", "externo"] }, PROGRAMAS),
+    [],
+  );
 
   // El error que ninguna restricción detecta, y el más fácil de cometer: se
   // crea la ventana, se ponen las fechas y se guarda sin marcar a nadie.
@@ -304,6 +315,39 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
     "sin ninguna ventana, ningún programa tiene la suya",
     programasSinVentana([], PROGRAMAS).length,
     PROGRAMAS.length,
+  );
+
+  // ------------------------------------------- los perfiles, que van al revés ---
+  /*
+   * El interruptor de los perfiles es POR AUDIENCIA, y esto es lo que lo
+   * comprueba. Mientras ninguna ventana nombre un perfil, docentes y externos
+   * entran cuando quieran: la lista sale vacía y la pantalla no avisa de nada,
+   * porque avisar diría lo contrario de lo que pasa.
+   *
+   * Es justo la trampa que la migración 49 tuvo que esquivar en la base: si el
+   * interruptor mirase «¿hay alguna ventana?» en vez de «¿hay alguna que hable
+   * de esta audiencia?», la ventana de los alumnos cerraría la puerta a los
+   * docentes sin que nadie tocase sus fechas.
+   */
+  igual(
+    "con una ventana que solo habla de alumnos, ningún perfil queda fuera",
+    perfilesSinVentana([base]).map((p) => p.perfil),
+    [],
+  );
+  igual(
+    "sin ninguna ventana tampoco: es que están abiertos, no cerrados",
+    perfilesSinVentana([]).map((p) => p.perfil),
+    [],
+  );
+  igual(
+    "en cuanto una ventana nombra a los docentes, el externo se queda fuera",
+    perfilesSinVentana([{ ...base, perfiles: ["docente"] }]).map((p) => p.perfil),
+    ["externo"],
+  );
+  igual(
+    "y con los dos nombrados no queda nadie fuera",
+    perfilesSinVentana([{ ...base, perfiles: ["docente", "externo"] }]).map((p) => p.perfil),
+    [],
   );
 }
 

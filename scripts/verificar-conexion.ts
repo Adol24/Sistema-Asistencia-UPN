@@ -622,6 +622,53 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
   }
 }
 
+// --------------------------------- la ventana de docentes y externos (49) ---
+/*
+ * Va en su propio bloque y no dentro de la consulta de arriba a propósito: si
+ * la 49 todavía no está aplicada, pedir `ventana_perfiles` en el mismo `select`
+ * haría fallar TAMBIÉN la comprobación de las cohortes, y el comprobante diría
+ * que falta la 44 —que sí está— en vez de la que falta de verdad.
+ */
+{
+  const { data, error } = await sb.from("ventana_perfiles").select("perfil");
+
+  if (error?.code === "42P01" || error?.code === "PGRST205")
+    falla("no existe `ventana_perfiles`: falta la migración 20260922120000 (la 49)", error);
+  else if (error) falla("no se pudieron leer los perfiles con ventana", error);
+  else {
+    const perfiles = (data ?? []) as { perfil: string }[];
+    if (!perfiles.length)
+      /*
+       * Cero filas no es una falla, igual que cero ventanas: es el interruptor
+       * por audiencia de la 49. Mientras nadie nombre un perfil, docentes y
+       * externos se registran cuando quieran, como antes de la 49. Pero SÍ se
+       * dice, porque es justo el hueco que la 49 vino a poder cerrar y dejarlo
+       * abierto tiene que ser una decisión.
+       */
+      console.log(
+        "       ninguna ventana nombra a docentes ni externos: se registran cuando quieran\n" +
+          "       (la 49 está aplicada; falta que la organización cargue su ventana en /admin/configuracion)",
+      );
+    else ok(`con ventana propia: ${[...new Set(perfiles.map((p) => p.perfil))].join(", ")}`);
+  }
+}
+
+/*
+ * Y lo que de verdad importa: qué contesta la puerta ahora mismo.
+ *
+ * Es la misma función que consulta el formulario público antes de dejar
+ * escribir nada, así que esto enseña literalmente lo que va a ver un docente
+ * que entre en este momento. `null` es «puede pasar».
+ */
+for (const perfil of ["docente", "externo"] as const) {
+  const { data, error } = await sb.rpc("fn_motivo_fuera_de_ventana_perfil", { p_perfil: perfil });
+  if (error?.code === "PGRST202")
+    falla(`fn_motivo_fuera_de_ventana_perfil no existe: falta la migración 20260922120000 (la 49)`);
+  else if (error) falla(`fn_motivo_fuera_de_ventana_perfil(${perfil})`, error);
+  else if (data === null) ok(`un ${perfil} puede pre-registrarse AHORA`);
+  else ok(`un ${perfil} lee: «${data}»`);
+}
+
 // ------------------------------------- un solo pre-registro por persona ---
 console.log("\n=== UN SOLO PRE-REGISTRO POR PERSONA ===\n");
 
