@@ -375,9 +375,9 @@ function ConfirmarNombre() {
         className="mt-6 h-12 md:h-11 w-full text-base"
         disabled={!opcion}
         onClick={() => {
+          // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
+          const limpio = correccion.trim().replace(/\s+/g, " ").toUpperCase();
           if (opcion === "incorrecto") {
-            // Se convierte aquí, no al teclear: ver `CAMPO_MAYUSCULAS`.
-            const limpio = correccion.trim().replace(/\s+/g, " ").toUpperCase();
             if (limpio.split(" ").length < 2)
               return setErrorCorreccion("Escribe tu nombre completo, con apellidos.");
             if (limpio === nombre)
@@ -390,7 +390,18 @@ function ConfirmarNombre() {
           setBorrador({
             nombre,
             nombreEnRevision: opcion === "incorrecto",
-            ...(opcion === "incorrecto" ? { nombreCorrecto: correccion.trim().toUpperCase() } : {}),
+            /*
+             * `limpio`, el MISMO valor que se validó y que ya se le enseñó a
+             * soporte. Aquí se guardaba `correccion.trim().toUpperCase()` sin
+             * colapsar los espacios, y ese es el que viaja a
+             * `fn_abrir_caso_nombre` desde `/talleres`.
+             *
+             * Con «JUAN  PEREZ» —dos espacios, que es lo normal al corregir
+             * sobre lo ya tecleado— la lista de soporte de esta pestaña decía
+             * «JUAN PEREZ» y la fila de `casos_soporte` decía «JUAN  PEREZ». Dos
+             * textos distintos para el mismo caso.
+             */
+            ...(opcion === "incorrecto" ? { nombreCorrecto: limpio } : {}),
           });
           navigate({ to: "/completar-datos" });
         }}

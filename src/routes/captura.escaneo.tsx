@@ -14,6 +14,7 @@ import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { estaSilenciado, probar, retroalimentar, silenciar, type Aviso } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
+import type { OpcionesEscaneo } from "@/lib/contrato-estado";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -83,7 +84,22 @@ function PantallaEscaneo() {
    * que quien captura los compare con la credencial que tiene en la mano. No
    * hay ninguna asistencia escrita todavía.
    */
-  const [porVerificar, setPorVerificar] = useState<ResultadoEscaneo | null>(null);
+  /*
+   * Lo que espera a que el capturista coteje la credencial, CON sus opciones.
+   *
+   * Antes solo se guardaba el resultado y las opciones se descartaban, así que
+   * una excepción autorizada por un supervisor —día equivocado, nota escrita,
+   * credencial confirmada— se aparcaba aquí y al confirmar se llamaba a
+   * `registrar(porVerificar)` sin nada: no se construía `asistencia.autorizacion`
+   * y la entrada quedaba indistinguible de las demás. Sin nota, sin autor, y sin
+   * mención en la bitácora, que depende de ese campo.
+   *
+   * O sea que la autorización desaparecía justo en el caso para el que existe.
+   */
+  const [porVerificar, setPorVerificar] = useState<{
+    r: ResultadoEscaneo;
+    extra?: OpcionesEscaneo | undefined;
+  } | null>(null);
   const [mudo, setMudo] = useState(false);
 
   // El ajuste se lee después de montar y no al crear el estado: en el servidor
@@ -127,7 +143,7 @@ function PantallaEscaneo() {
      * porque su trabajo en este segundo es comparar un nombre.
      */
     if (r.verificar) {
-      setPorVerificar(r);
+      setPorVerificar({ r, extra });
       setEntrada("");
       return;
     }
@@ -371,16 +387,18 @@ function PantallaEscaneo() {
 
       {porVerificar ? (
         <Verificacion
-          r={porVerificar}
+          r={porVerificar.r}
           onConfirmar={() => {
-            registrar(porVerificar);
-            retroalimentar(porVerificar);
-            setResultado(porVerificar);
+            // Con sus opciones: es lo que hace que la autorización del
+            // supervisor llegue a la asistencia y a la bitácora.
+            registrar(porVerificar.r, porVerificar.extra);
+            retroalimentar(porVerificar.r);
+            setResultado(porVerificar.r);
             setRetenido(false);
             setPorVerificar(null);
           }}
           onDescartar={() => {
-            descartarEscaneo(porVerificar, "Los datos no coinciden con la credencial");
+            descartarEscaneo(porVerificar.r, "Los datos no coinciden con la credencial");
             setPorVerificar(null);
           }}
         />

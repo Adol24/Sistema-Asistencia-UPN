@@ -110,9 +110,30 @@ function CatalogoTalleres() {
               tallerId,
             });
         setBorrador({ tallerId, folio: alta.folio, dia: alta.dia });
-        // Ahora sí existe a quién colgarle la corrección de nombre.
+        /*
+         * El caso de nombre se abre APARTE, y su fallo no puede detener nada.
+         *
+         * Esto iba dentro del mismo `try` y antes del `navigate`, así que si la
+         * llamada fallaba —el teléfono perdiendo la red justo ahí es el caso
+         * típico— el `catch` mostraba «algo salió mal» y NO navegaba. Pero el
+         * participante ya existía y ya tenía folio: esa persona cerraba la
+         * pestaña creyendo que no había quedado registrada, y con la pestaña se
+         * iba el `sessionStorage` y su única forma de volver a ver su folio.
+         *
+         * Quedaba inscrita y sin saberlo, que es peor que no quedar inscrita.
+         *
+         * La corrección del nombre es accesoria: se puede reabrir desde soporte,
+         * y `fn_abrir_caso_nombre` es idempotente —actualiza el caso abierto en
+         * vez de duplicarlo—, así que reintentarla es seguro. El folio no es
+         * accesorio.
+         */
         if (borrador.nombreCorrecto)
-          await d.abrirCasoNombreRemoto(alta.id, borrador.nombreCorrecto);
+          void d.abrirCasoNombreRemoto(alta.id, borrador.nombreCorrecto).catch((e: unknown) => {
+            console.error("No se pudo abrir el caso de corrección de nombre", e);
+            toast.warning(
+              "Tu registro quedó hecho. La corrección de tu nombre no se pudo enviar: escríbenos a soporte.",
+            );
+          });
       } else {
         setBorrador({ tallerId });
       }

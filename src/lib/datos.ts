@@ -601,9 +601,24 @@ export async function guardarPago(p: {
   referencia?: string | undefined;
   fechaDeposito: string;
   nota?: string | undefined;
+  /**
+   * De dónde vino el cobro. La columna tiene `default 'ventanilla'` y NUNCA se
+   * enviaba, así que al recargar la pantalla los doscientos sesenta pagos de un
+   * corte del banco decían «Origen: Ventanilla». Al cuadrar contra el estado de
+   * cuenta no había forma de separar lo cobrado en mostrador de lo que vino por
+   * transferencia.
+   */
+  origen?: "ventanilla" | "carga_masiva" | undefined;
 }): Promise<void> {
   const sb = exigirBase();
   const participanteId = await idDelFolio(sb, p.folio);
+
+  /*
+   * Y quién lo registró. `registrado_por` existe desde el principio y se
+   * quedaba en NULL siempre, a diferencia de `guardarAsistencia`, que sí firma.
+   * Un cobro discutido sin cajero es un caso sin responsable.
+   */
+  const { data: sesion } = await sb.auth.getUser();
 
   // `resultado` no se manda: lo decide un disparador comparando el monto contra
   // lo esperado. Enviarlo desde aquí permitiría marcar como pagada una
@@ -622,6 +637,8 @@ export async function guardarPago(p: {
       // A ISO antes de escribir: la columna es `date` y PostgreSQL la lee con
       // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
       fecha_deposito: fechaAIso(p.fechaDeposito),
+      origen: p.origen ?? "ventanilla",
+      registrado_por: sesion.user?.id ?? null,
       resultado: resultadoDe(p.monto, p.montoEsperado),
       /*
        * Una discrepancia SIEMPRE lleva nota, aunque quien llame no la ponga.

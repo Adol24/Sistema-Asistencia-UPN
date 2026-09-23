@@ -68,14 +68,29 @@ export const revisoresDe = (usuarios: UsuarioInterno[]) =>
   usuarios.filter((u) => u.rol === "revisor_evidencias").map((u) => u.nombre);
 
 /** Agrupa por hash y devuelve solo los grupos con más de una evidencia. */
+/*
+ * Sin huella no hay duplicado que detectar, y eso NO es lo mismo que compartirla.
+ *
+ * `aEvidencia` convierte `hash_archivo` nulo en cadena vacía, y en la base es
+ * nulo en toda fila `no_entregada` —no hay archivo del que sacar huella—. Al
+ * agrupar por igualdad de texto, esas filas caían todas en el mismo grupo: con
+ * trescientas sin entregar, el panel anunciaba «Imagen duplicada: este archivo
+ * ya fue subido por otros 299 alumnos» y enseñaba dos rectángulos vacíos lado a
+ * lado. El revisor rechazaba por duplicada a gente que simplemente no había
+ * subido nada.
+ */
+const conHuella = (e: Evidencia) => e.hash.trim().length > 0;
+
 export function gruposDuplicados(evidencias: Evidencia[]): Map<string, Evidencia[]> {
   const porHash = new Map<string, Evidencia[]>();
-  for (const e of evidencias) porHash.set(e.hash, [...(porHash.get(e.hash) ?? []), e]);
+  for (const e of evidencias.filter(conHuella))
+    porHash.set(e.hash, [...(porHash.get(e.hash) ?? []), e]);
   return new Map([...porHash].filter(([, g]) => g.length > 1));
 }
 
 /** Las demás evidencias que comparten hash con esta. */
 export function gemelasDe(evidencias: Evidencia[], e: Evidencia): Evidencia[] {
+  if (!conHuella(e)) return [];
   return evidencias.filter((x) => x.hash === e.hash && x.id !== e.id);
 }
 

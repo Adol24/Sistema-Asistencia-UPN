@@ -446,6 +446,7 @@ export function EstadoEventoProvider({
             referencia: pago.referencia,
             fechaDeposito: pago.fechaDeposito,
             nota: pago.nota,
+            origen: pago.origen,
           }),
         () => {
           setPagosSesion((prev) => prev.filter((g) => g.id !== pago.id));
@@ -507,6 +508,9 @@ export function EstadoEventoProvider({
                 referencia: pago.referencia,
                 fechaDeposito: pago.fechaDeposito,
                 nota: pago.nota,
+                // La carga masiva se identifica como tal: sin esto, al recargar
+                // los doscientos sesenta pagos del banco decían «ventanilla».
+                origen: pago.origen,
               });
             } catch (e) {
               console.error(`No se pudo guardar el pago de ${pago.folio}`, e);

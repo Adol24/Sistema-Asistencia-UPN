@@ -35,6 +35,7 @@ import { asistenciaDe, estaDentro, movimientosDe } from "@/lib/escaneo";
 import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { referenciaValida, resultadoDe } from "@/lib/pagos-logica";
+import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
   estadoDeVentana,
   perfilesSinVentana,
@@ -557,6 +558,39 @@ console.log("\n=== EL TORNIQUETE ORDENA BIEN ANTES DE LAS DIEZ ===\n");
     estaDentro([aAsistencia(fila(nueveDiez, "entrada"))], "PRE-00801", 1),
     true,
   );
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== SIN HUELLA NO HAY DUPLICADO ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * `aEvidencia` convierte `hash_archivo` nulo en cadena vacía, y en la base es
+ * nulo en toda fila `no_entregada`: no hay archivo del que sacar huella. Al
+ * agrupar por igualdad de texto, esas filas caían todas en el mismo grupo.
+ *
+ * Con trescientas sin entregar, el panel anunciaba «Imagen duplicada: este
+ * archivo ya fue subido por otros 299 alumnos» y enseñaba dos rectángulos
+ * vacíos lado a lado. El revisor rechazaba por duplicada a gente que
+ * simplemente no había subido nada — y el rechazo le consume un intento.
+ */
+{
+  const ev = (id: string, hash: string) =>
+    ({ id, hash, dia: 2, estado: "pendiente" }) as unknown as Parameters<
+      typeof gemelasDe
+    >[0][number];
+
+  const sinHuella = [ev("a", ""), ev("b", ""), ev("c", "")];
+  igual(
+    "tres evidencias sin entregar NO son duplicadas entre sí",
+    gruposDuplicados(sinHuella).size,
+    0,
+  );
+  igual("y ninguna tiene gemelas", gemelasDe(sinHuella, sinHuella[0]!).length, 0);
+
+  const h = "a".repeat(64);
+  const conHuella = [ev("d", h), ev("e", h), ev("f", "")];
+  igual("dos que comparten huella SÍ se agrupan", gruposDuplicados(conHuella).size, 1);
+  igual("y se ven la una a la otra", gemelasDe(conHuella, conHuella[0]!).length, 1);
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);
