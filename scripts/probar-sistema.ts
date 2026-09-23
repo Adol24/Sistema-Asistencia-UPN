@@ -443,6 +443,14 @@ if (!escribe) {
 
 console.log("\n=== EL RECORRIDO DE UN DOCENTE, DE VERDAD ===\n");
 // ---------------------------------------------------------------------------
+/**
+ * Folio, día y credencial del docente de prueba.
+ *
+ * Se expone fuera del bloque para que la entrega de evidencia lo reutilice en
+ * vez de dar de alta a otra persona: cada alta cuesta un lugar del aforo, y la
+ * entrega necesita exactamente lo mismo que ya hay aquí.
+ */
+let elDocente: { folio: string; dia: number; correo: string } | null = null;
 {
   const correo = correoDe("docente");
   const primera = await altaExterna({
@@ -455,6 +463,7 @@ console.log("\n=== EL RECORRIDO DE UN DOCENTE, DE VERDAD ===\n");
     falla("no se pudo dar de alta al docente de prueba", primera.error);
   } else {
     const uno = primera.data as { id: string; folio: string; dia: number };
+    elDocente = { folio: uno.folio, dia: uno.dia, correo };
     ok(`alta del docente: folio ${uno.folio}, día ${uno.dia}`);
 
     /*
@@ -510,6 +519,119 @@ console.log("\n=== EL RECORRIDO DE UN DOCENTE, DE VERDAD ===\n");
           credencialMala: mala.error?.message ?? mala.data,
         },
       );
+  }
+}
+
+console.log("\n=== LA ENTREGA DE UNA EVIDENCIA, DE PUNTA A PUNTA ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * El recorrido completo de la migración 52, con la clave anónima.
+ *
+ * Se dio por hecho que esto no se podía probar desde aquí, y sí se puede: el
+ * paso que necesita una sesión de revisor es VER la imagen firmada, no subirla.
+ * Las dos funciones de la entrega están concedidas al anónimo —tienen que
+ * estarlo, el participante no tiene sesión— y la política de Storage le permite
+ * depositar.
+ *
+ * Lo que se ejerce aquí son las cuatro reglas que sostienen la entrega, y cada
+ * una se caería en silencio: que pida credencial, que rechace el día en que a
+ * esa persona le toca asistir, que solo acepte la ruta que ella misma emitió, y
+ * que el anónimo NO pueda leer lo que acaba de subir.
+ */
+if (!elDocente) {
+  salta("sin docente de prueba no hay a quién entregarle una evidencia");
+} else {
+  const { folio, dia, correo } = elDocente;
+  // La evidencia es de un día DISTINTO al suyo, que es de lo que es prueba.
+  const diaEvidencia = dia === 1 ? 2 : 1;
+
+  const prep = await sb.rpc("fn_evidencia_preparar", {
+    p_folio: folio,
+    p_credencial: correo,
+    p_dia: diaEvidencia,
+  });
+
+  if (prep.error) {
+    falla("fn_evidencia_preparar no reservó la entrega", prep.error);
+  } else {
+    const ruta = prep.data as string;
+    ok(`reserva la ruta de subida del día ${diaEvidencia}`);
+
+    const suDia = await sb.rpc("fn_evidencia_preparar", {
+      p_folio: folio,
+      p_credencial: correo,
+      p_dia: dia,
+    });
+    if (/es el que te toca asistir/i.test(mensaje(suDia.error)))
+      ok(`rechaza la evidencia del día ${dia}, que es el que le toca asistir`);
+    else falla(`ACEPTÓ la evidencia del día ${dia}`, suDia.error ?? suDia.data);
+
+    const credencialMala = await sb.rpc("fn_evidencia_preparar", {
+      p_folio: folio,
+      p_credencial: "no-es-su-correo@prueba.invalid",
+      p_dia: diaEvidencia,
+    });
+    if (/folio o credencial/i.test(mensaje(credencialMala.error)))
+      ok("rechaza una credencial que no es la suya");
+    else falla("ACEPTÓ una credencial equivocada", credencialMala.error);
+
+    // Un PNG de 1x1: lo que se prueba es el camino, no la foto.
+    const png = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      ),
+      (c) => c.charCodeAt(0),
+    );
+    const subida = await sb.storage
+      .from("evidencias")
+      .upload(ruta, png, { contentType: "image/png", upsert: false });
+
+    if (subida.error) {
+      falla("no se pudo subir el archivo al bucket", subida.error);
+    } else {
+      ok("el archivo sube al bucket con la clave anónima");
+      const resumen = await crypto.subtle.digest("SHA-256", png);
+      const hash = [...new Uint8Array(resumen)]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      // Solo la ruta que emitió el paso 1: sin esto, cualquiera podría apuntar
+      // la fila de otro a un objeto suyo.
+      const rutaAjena = await sb.rpc("fn_evidencia_confirmar", {
+        p_folio: folio,
+        p_credencial: correo,
+        p_dia: diaEvidencia,
+        p_ruta: "otra/ruta/inventada",
+        p_hash: hash,
+      });
+      if (/no corresponde a tu entrega/i.test(mensaje(rutaAjena.error)))
+        ok("rechaza confirmar una ruta que no emitió");
+      else falla("ACEPTÓ una ruta que no emitió", rutaAjena.error ?? rutaAjena.data);
+
+      const conf = await sb.rpc("fn_evidencia_confirmar", {
+        p_folio: folio,
+        p_credencial: correo,
+        p_dia: diaEvidencia,
+        p_ruta: ruta,
+        p_hash: hash,
+      });
+      if (conf.error) falla("no se pudo confirmar la entrega", conf.error);
+      else ok("la entrega queda confirmada");
+
+      // Y lo que de verdad importa: que la persona lo VEA en su portal.
+      const estado = await sb.rpc("fn_portal_estado", { p_folio: folio, p_credencial: correo });
+      const evidencias = (estado.data as Record<string, unknown> | null)?.["evidencias"] as
+        { dia: number; estado: string }[] | undefined;
+      const suya = (evidencias ?? []).find((e) => e.dia === diaEvidencia);
+      if (suya?.estado === "pendiente")
+        ok(`su portal la enseña como «pendiente» el día ${diaEvidencia}`);
+      else falla("el portal NO enseña la evidencia recién entregada", evidencias);
+
+      // El bucket es privado: quien la subió tampoco puede volver a leerla.
+      const baja = await sb.storage.from("evidencias").download(ruta);
+      if (baja.error) ok("el anónimo NO puede descargar la evidencia que subió");
+      else falla("EL ANÓNIMO PUEDE DESCARGAR LAS EVIDENCIAS DEL BUCKET");
+    }
   }
 }
 
@@ -659,6 +781,10 @@ console.log("\n=== EL AFORO DE CADA DÍA, AHORA MISMO ===\n");
 // ===========================================================================
 console.log("\n=== PARA BORRAR LO QUE ESTE COMPROBANTE CREÓ ===\n");
 console.log("En el editor SQL de Supabase, con permisos de administración:\n");
+console.log("  -- Primero las evidencias, que referencian al participante:");
+console.log("  delete from evidencias where participante_id in (");
+console.log("    select id from participantes where correo like 'qa-%@prueba.invalid');");
+console.log("");
 console.log("  delete from participantes");
 console.log("   where correo like 'qa-%@prueba.invalid'");
 console.log(`      or institucion = '${MARCA}';\n`);
