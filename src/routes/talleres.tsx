@@ -43,22 +43,25 @@ function CatalogoTalleres() {
   const { talleres: catalogo, configuracion } = useEstadoEvento();
 
   /*
-   * El catálogo se acota al día de quien está eligiendo.
+   * El catálogo entero, para todo el mundo.
    *
-   * No es cosmético: la tabla `participantes` tiene una llave foránea
-   * `(taller_id, dia) -> taller_dias`, así que inscribirse a un taller que no
-   * se imparte tu día es imposible en la base. Ofrecerlo igualmente solo
-   * consigue que el alta falle al final del recorrido, con la persona ya
-   * decidida, y con un mensaje sobre una restricción que no le dice nada.
+   * Antes se acotaba al día de quien elegía, y tenía que ser así: la llave
+   * foránea `(taller_id, dia) -> taller_dias` hacía imposible en la base
+   * inscribirse a un taller de otro día, así que ofrecerlo solo conseguía que
+   * el alta muriera al final del recorrido. El resultado era que a los del día
+   * 3 —seiscientas personas— no se les ofrecía NINGUNO, y a los del día 2 se
+   * les escondían los seis del día 1.
    *
-   * Sin día conocido —el prototipo sin base— se enseñan todos: es preferible a
-   * una lista vacía para quien está revisando pantallas.
+   * La migración 60 quitó esa llave. Los talleres se imparten en la UPN U-212,
+   * que no es la sede del Encuentro: tu día dice a qué sede vas, no a qué
+   * taller entras. Quien va el día 3 al Teatro Victoria puede tomar un taller
+   * la tarde del día 1 en la UPN.
+   *
+   * Lo único que se sigue filtrando es `activo`: un taller dado de baja deja de
+   * ofrecerse, y conserva a sus inscritos.
    */
   const dia = borrador.dia;
-  const talleres = catalogo.filter(
-    // Un taller inactivo deja de ofrecerse en el catálogo público.
-    (t) => t.activo && (!dia || t.dias.includes(dia)),
-  );
+  const talleres = catalogo.filter((t) => t.activo);
   const [seleccion, setSeleccion] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
   /*
@@ -170,26 +173,21 @@ function CatalogoTalleres() {
   /*
    * No hay taller que ofrecerle, y eso no es un fallo.
    *
-   * Los talleres se imparten el día 1 y el 2; el día 3 es en el Teatro Victoria
-   * y su programa es otro. Quien caiga en ese día llega aquí y no hay nada que
-   * elegir, y pueden ser hasta seiscientas personas.
-   *
-   * Por eso la pantalla cambia de título en vez de invitar a elegir de algo
-   * vacío: pedir que se elija y no ofrecer nada se lee como un error del sistema,
-   * y quien lo lee así se detiene a averiguar qué hizo mal en lugar de seguir.
+   * Ya no depende del día de nadie: ahora solo ocurre si la organización tiene
+   * todos los talleres dados de baja, o si la base no respondió. Pedir que se
+   * elija y no ofrecer nada se lee como un error del sistema, y quien lo lee
+   * así se detiene a averiguar qué hizo mal en lugar de seguir.
    */
   const sinTalleres = talleres.length === 0;
 
   return (
     <PantallaPublica
       ancho="xl"
-      titulo={sinTalleres ? "Tu día no lleva talleres" : "Elige un taller (opcional)"}
+      titulo={sinTalleres ? "Por ahora no hay talleres" : "Elige un taller (opcional)"}
       descripcion={
         sinTalleres
-          ? "Los talleres se imparten los otros días del Encuentro. Continúa: tu registro al evento no depende de esto."
-          : dia
-            ? `Estos son los talleres del día ${dia}. Puedes elegir máximo uno, con costo adicional que se paga por separado.`
-            : "Puedes elegir máximo uno. Como todavía no tienes día asignado, se te dará uno en el que se imparta el taller que elijas."
+          ? "Continúa: tu registro al Encuentro no depende de esto."
+          : "Puedes elegir máximo uno, de cualquier día, con costo adicional que se paga por separado. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
       }
     >
       {seleccion ? (
@@ -205,13 +203,9 @@ function CatalogoTalleres() {
       {sinTalleres ? (
         <EstadoVacio
           icono={<Info className="size-8" aria-hidden />}
-          titulo={
-            dia ? `Ningún taller se imparte el día ${dia}` : "Por ahora no hay talleres disponibles"
-          }
+          titulo="Por ahora no hay talleres disponibles"
         >
-          {dia
-            ? "No tienes que hacer nada al respecto. Pulsa continuar y termina tu registro."
-            : "Puedes continuar sin taller; tu registro al evento no depende de esto."}
+          No tienes que hacer nada al respecto. Pulsa continuar y termina tu registro.
         </EstadoVacio>
       ) : null}
 
@@ -229,6 +223,15 @@ function CatalogoTalleres() {
           const pocos = libres > 0 && libres < 5;
           const elegido = seleccion === t.id;
           const atenuado = !!seleccion && !elegido;
+          /*
+           * Este taller cae un día que no es el suyo, y hay que decírselo.
+           *
+           * Es legítimo elegirlo —para eso se quitó el filtro— pero significa
+           * venir una tarde de más, a otra sede. Enterarse al llegar al
+           * Encuentro sería enterarse tarde, así que la ficha lo dice antes de
+           * que pulse. No lo desactiva: es información, no un impedimento.
+           */
+          const otroDia = !!dia && !t.dias.includes(dia);
 
           return (
             <li key={t.id}>
@@ -276,6 +279,16 @@ function CatalogoTalleres() {
                     <MapPin className="size-4" aria-hidden /> {t.lugar}
                   </div>
                 </dl>
+
+                {otroDia ? (
+                  <p className="mt-3 flex items-start gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-xs text-muted-foreground">
+                    <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span>
+                      Se imparte el día {t.dias.join(" y ")} y a ti te toca el día {dia} en el
+                      Encuentro. Puedes tomarlo: vendrás también esa tarde a {t.lugar}.
+                    </span>
+                  </p>
+                ) : null}
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 lg:mt-auto lg:pt-4">
                   <div className="text-sm">

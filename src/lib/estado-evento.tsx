@@ -138,10 +138,21 @@ export function EstadoEventoProvider({
 
   const { reloj, setReloj } = useRelojEvento(configuracion);
 
+  /*
+   * Los avisos que le esperan a alguien en su portal, y una advertencia.
+   *
+   * `agregarAviso` estaba aquí y se fue con la migración 60: su ÚNICO productor
+   * era la liberación del taller al cambiar de día, que ya no ocurre. Así que
+   * este mapa no lo llena nadie y la sección de avisos de `/portal/estado` sale
+   * siempre vacía.
+   *
+   * Y eso destapa algo que ya estaba: la tabla `avisos_participante` de la base
+   * SÍ tiene filas —las que dejaron las liberaciones hasta hoy— y nunca se han
+   * leído a este estado. `tiempo-real` escucha esa tabla, pero `cargarTodo` no
+   * la trae. O sea que los avisos guardados no se han enseñado nunca, y eso es
+   * anterior a este cambio y sigue pendiente.
+   */
   const [avisos, setAvisos] = useState<Record<string, string[]>>({});
-  const agregarAviso = useCallback((folio: string, texto: string) => {
-    setAvisos((prev) => ({ ...prev, [folio]: [...(prev[folio] ?? []), texto] }));
-  }, []);
   const avisosDe = useCallback<Ctx["avisosDe"]>((folio) => avisos[folio] ?? [], [avisos]);
   const descartarAvisos = useCallback<Ctx["descartarAvisos"]>((folio) => {
     setAvisos((prev) => {
@@ -1238,7 +1249,7 @@ export function EstadoEventoProvider({
     [talleres],
   );
 
-  const guardarTaller = useCallback<Ctx["guardarTaller"]>((t, liberar = false) => {
+  const guardarTaller = useCallback<Ctx["guardarTaller"]>((t) => {
     let esAlta = false;
     setTalleresBase((prev) => {
       const i = prev.findIndex((x) => x.id === t.id);
@@ -1252,25 +1263,18 @@ export function EstadoEventoProvider({
     escribir(
       "el taller",
       /*
-       * Una sola llamada, y la liberación va DENTRO.
+       * Una sola llamada: el taller y sus días pasan o no pasan juntos.
        *
-       * Antes eran tres peticiones y la liberación la hacía el cliente con un
-       * `setState` que no escribía nada. Ahora `fn_guardar_taller` libera y
-       * avisa a quien queda fuera de día antes de cambiar los días, que es el
-       * único orden que la llave foránea permite, y todo pasa o no pasa junto.
+       * Antes eran tres peticiones, y la del medio liberaba a quien quedaba
+       * fuera de los días nuevos. Eso existía por la llave foránea
+       * `(taller_id, dia)`, que impedía borrar una fila de `taller_dias`
+       * mientras alguien siguiera inscrito con ese día. La migración 60 quitó
+       * la llave, así que no hay a quién liberar ni orden que respetar: los días
+       * se reescriben y las inscripciones se quedan donde están.
        */
       async (d) => {
-        const liberados = await d.guardarTallerRemoto({
-          ...t,
-          clave: t.id,
-          crear: esAlta,
-          liberar,
-        });
+        await d.guardarTallerRemoto({ ...t, clave: t.id, crear: esAlta });
         d.olvidarPublico();
-        if (liberados > 0)
-          avisarLogro(
-            `${liberados} ${liberados === 1 ? "inscripción liberada" : "inscripciones liberadas"} y avisadas en su portal.`,
-          );
       },
       (e) => {
         /*
@@ -1296,39 +1300,18 @@ export function EstadoEventoProvider({
     );
   }, []);
 
-  /**
-   * Cambiar los días de un taller puede dejar inscritos en días que ya no se
-   * imparten, lo que rompería `taller-vs-dia`. Esto los libera y devuelve
-   * cuántos, para poder decírselo a quien edita.
+  /*
+   * `liberarInscripcionesFueraDeDia` vivía aquí, y se fue con la migración 60.
+   *
+   * Liberaba la inscripción de quien quedaba con un taller fuera de su día,
+   * porque la llave foránea `(taller_id, dia)` hacía que esa combinación fuera
+   * imposible de guardar. Sin la llave no hay nada que liberar: un inscrito
+   * cuyo taller cae otro día es un caso legítimo —va al Encuentro su día y al
+   * taller la tarde en que se imparta—, no una fila que haya que arreglar.
+   *
+   * Quitarla no es limpieza: dejarla haría lo contrario de la regla nueva,
+   * arrancándole el taller a quien acaba de elegirlo a propósito.
    */
-  const liberarInscripcionesFueraDeDia = useCallback<Ctx["liberarInscripcionesFueraDeDia"]>(
-    (tallerId) => {
-      const t = talleresBase.find((x) => x.id === tallerId);
-      if (!t) return 0;
-      const afectados = participantes.filter(
-        (p) => p.tallerId === tallerId && !t.dias.includes(p.dia),
-      );
-      if (afectados.length === 0) return 0;
-      for (const p of afectados)
-        agregarAviso(
-          p.folio,
-          `Tu inscripción al taller «${t.nombre}» se liberó porque ese taller ya no se imparte el día ${p.dia}. Si pagaste el taller, acude a Servicios Financieros.`,
-        );
-      setAjustesParticipante((prev) => {
-        const copia = { ...prev };
-        for (const p of afectados)
-          copia[p.folio] = {
-            ...(copia[p.folio] ?? {}),
-            tallerId: undefined,
-            estadoPagoTaller: undefined,
-            montoEsperadoTaller: undefined,
-          };
-        return copia;
-      });
-      return afectados.length;
-    },
-    [talleresBase, participantes, agregarAviso],
-  );
 
   const eliminarTaller = useCallback<Ctx["eliminarTaller"]>((id) => {
     setTalleresBase((prev) => prev.filter((t) => t.id !== id));
@@ -1600,9 +1583,15 @@ export function EstadoEventoProvider({
    * Asigna un día a un conjunto de alumnos, con todo lo que eso arrastra.
    *
    * Es la función de fondo: mover a alguien de día no es cambiar un número,
-   * cambia el lugar al que tiene que ir y puede dejarlo inscrito en un taller
-   * que ese día no se imparte. Esa cadena vive en un solo sitio para que la
-   * usen igual el cambio de una persona y el de una sede entera.
+   * cambia el lugar al que tiene que ir. Esa cadena vive en un solo sitio para
+   * que la usen igual el cambio de una persona y el de una sede entera.
+   *
+   * Lo que ya NO arrastra es el taller. Hasta la migración 60 le arrancaba la
+   * inscripción a quien cambiaba a un día en que su taller no se impartía,
+   * porque la llave foránea `(taller_id, dia)` no admitía esa fila. Ahora el
+   * taller es independiente del día del evento, así que mover a alguien del día
+   * 1 al 3 le conserva su taller: irá al Encuentro el 3 y al taller la tarde
+   * del 1, en la UPN.
    *
    * Trabaja sobre el conjunto completo en una sola pasada en vez de llamarse a
    * sí misma por alumno: con dos mil matrículas, una actualización de estado
@@ -1611,34 +1600,19 @@ export function EstadoEventoProvider({
   const asignarDiaAVarios = useCallback<Ctx["asignarDiaAVarios"]>(
     (matriculas, dia) => {
       const conjunto = new Set(matriculas);
-      if (!conjunto.size) return { movidos: 0, talleresLiberados: 0 };
+      if (!conjunto.size) return { movidos: 0 };
 
       setPadron((prev) => prev.map((a) => (conjunto.has(a.matricula) ? { ...a, dia } : a)));
 
       const lugar = infoDia(dia).lugar;
       const ajustes: Record<string, Partial<Participante>> = {};
-      let talleresLiberados = 0;
       let movidos = 0;
 
       for (const p of participantes) {
         if (!p.matricula || !conjunto.has(p.matricula) || p.dia === dia) continue;
         movidos += 1;
-        const ajuste: Partial<Participante> = { dia, lugar };
-        const t = talleres.find((x) => x.id === p.tallerId);
-        // Si su taller no se imparte el día nuevo, la inscripción se libera:
-        // mantenerla rompería `taller-vs-dia` y lo dejaría con un pago sin a
-        // qué corresponder.
-        if (t && !t.dias.includes(dia)) {
-          ajuste.tallerId = undefined;
-          ajuste.estadoPagoTaller = undefined;
-          ajuste.montoEsperadoTaller = undefined;
-          talleresLiberados += 1;
-          agregarAviso(
-            p.folio,
-            `Cambiaste al día ${dia} y el taller «${t.nombre}» no se imparte ese día, así que tu inscripción se liberó. Puedes elegir otro taller; si ya lo habías pagado, acude a Servicios Financieros.`,
-          );
-        }
-        ajustes[p.folio] = ajuste;
+        // El día y la sede del Encuentro, y nada más. El taller se queda.
+        ajustes[p.folio] = { dia, lugar };
       }
 
       if (Object.keys(ajustes).length)
@@ -1666,24 +1640,20 @@ export function EstadoEventoProvider({
             `No se pudo guardar el cambio de día. Recarga para ver cómo quedó de verdad.`,
           ),
       );
-      return { movidos, talleresLiberados };
+      return { movidos };
     },
-    [participantes, talleres, infoDia, agregarAviso],
+    [participantes, infoDia],
   );
 
   const reasignarDia = useCallback<Ctx["reasignarDia"]>(
     (matricula, dia) => {
       const p = participantes.find((x) => x.matricula === matricula);
-      const t = talleres.find((x) => x.id === p?.tallerId);
-      const r = asignarDiaAVarios([matricula], dia);
+      asignarDiaAVarios([matricula], dia);
       // `movido` dice si esa persona tenía registro de participante, no si el
-      // día cambió: sin registro no hay a quién avisar ni taller que liberar.
-      return {
-        movido: !!p,
-        tallerLiberado: r.talleresLiberados > 0 ? t?.id : undefined,
-      };
+      // día cambió: sin registro no hay a quién avisar.
+      return { movido: !!p };
     },
-    [participantes, talleres, asignarDiaAVarios],
+    [participantes, asignarDiaAVarios],
   );
 
   const repartoPorDia = useCallback<Ctx["repartoPorDia"]>(
@@ -1939,7 +1909,6 @@ export function EstadoEventoProvider({
       talleres,
       getTaller,
       guardarTaller,
-      liberarInscripcionesFueraDeDia,
       eliminarTaller,
       usuarios,
       guardarUsuario,
@@ -2018,7 +1987,6 @@ export function EstadoEventoProvider({
       talleres,
       getTaller,
       guardarTaller,
-      liberarInscripcionesFueraDeDia,
       eliminarTaller,
       usuarios,
       guardarUsuario,

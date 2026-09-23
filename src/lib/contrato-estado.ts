@@ -178,10 +178,12 @@ export interface Ctx {
   /** Talleres con el cupo ocupado ya calculado; `cupoOcupado` nunca se edita a mano. */
   talleres: Taller[];
   getTaller: (id?: string) => Taller | undefined;
-  /** `liberar` suelta a quien quede fuera de los días nuevos, con su aviso. */
-  guardarTaller: (t: TallerBase, liberar?: boolean) => void;
-  /** Libera la inscripción de quienes quedaron con un taller fuera de su día. */
-  liberarInscripcionesFueraDeDia: (tallerId: string) => number;
+  /**
+   * Guarda el taller y sus días. Ya no recibe `liberar`: desde la migración 60
+   * cambiarle los días a un taller no invalida ninguna inscripción, porque el
+   * taller no depende del día del evento de quien se inscribió.
+   */
+  guardarTaller: (t: TallerBase) => void;
   eliminarTaller: (id: string) => void;
 
   // --- Usuarios internos ---
@@ -267,23 +269,17 @@ export interface Ctx {
     porDia: { dia: Dia; total: number; cupo: number; libres: number }[];
   };
   /**
-   * Mueve a alguien a otro día con todo lo que eso arrastra: su sede, y su
-   * inscripción al taller si ese taller no se imparte el día nuevo.
+   * Mueve a alguien a otro día: cambia su día y su sede del Encuentro. Su
+   * taller NO se toca —desde la migración 60 es independiente del día—, así que
+   * ya no devuelve nada que se le haya liberado.
    */
-  reasignarDia: (
-    matricula: string,
-    dia: Dia,
-  ) => { movido: boolean; tallerLiberado?: string | undefined };
+  reasignarDia: (matricula: string, dia: Dia) => { movido: boolean };
   /**
    * Asigna un día a un conjunto entero: la sede de Huehuetla, un grupo, los que
    * queden de un programa. Es como se reparte de verdad —una sede viaja junta,
-   * no se parte en tres días— y devuelve a cuántos movió y a cuántos les liberó
-   * el taller.
+   * no se parte en tres días— y devuelve a cuántos movió.
    */
-  asignarDiaAVarios: (
-    matriculas: string[],
-    dia: Dia,
-  ) => { movidos: number; talleresLiberados: number };
+  asignarDiaAVarios: (matriculas: string[], dia: Dia) => { movidos: number };
 
   /**
    * Guarda el padrón en la base y dice qué aceptó y qué no.

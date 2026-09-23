@@ -510,8 +510,7 @@ export function aParticipante(
    * siempre `ocupadosPrevios`, `/admin/talleres` enseñaba «0 pre-registrados»
    * con cualquier número de inscritos, el catálogo público anunciaba lugares
    * libres inventados, `/captura/taller` decía «Nadie inscrito» el día del
-   * evento, la ficha de Financieros no cobraba el taller, y
-   * `liberarInscripcionesFueraDeDia` no encontraba nunca a quién liberar.
+   * evento, y la ficha de Financieros no cobraba el taller.
    *
    * Va como parámetro OBLIGATORIO y no con un valor por omisión precisamente
    * para que no se pueda volver a omitir: el compilador obliga a que cada sitio

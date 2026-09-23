@@ -15,10 +15,8 @@ import { usePrototipo } from "@/lib/prototipo";
  * El caso que hace daño no es el de quien juega con la barra de direcciones: es
  * el de quien recarga la página a mitad del recorrido, o abre el enlace que le
  * pasaron por WhatsApp. En `/talleres` con el borrador vacío el catálogo se
- * enseña ENTERO —el filtro es `(!dia || t.dias.includes(dia))`, y sin día pasa
- * todo—, así que se le ofrecen talleres de días que no son el suyo; elige uno,
- * pulsa continuar, y el alta muere al final del recorrido con «Ese taller no se
- * imparte el día 2, que es el que te toca».
+ * enseña igual —desde la migración 60 se enseña entero a todo el mundo—, así
+ * que esa persona llega a elegir un taller sin que el sistema sepa quién es.
  *
  * Y si pulsa «Continuar sin taller», el alta sale con matrícula vacía y la base
  * contesta «Hay que aceptar el aviso de privacidad», que no significa nada para

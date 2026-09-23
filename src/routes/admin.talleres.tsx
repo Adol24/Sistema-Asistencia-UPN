@@ -177,29 +177,21 @@ function AdminTalleres() {
           key={editando.id}
           inicial={editando}
           inscritos={inscritos(editando.id)}
-          inscritosDetalle={participantes
-            .filter((p) => p.tallerId === editando.id)
-            .map((p) => ({ folio: p.folio, nombre: p.nombre, dia: p.dia }))}
           existe={talleres.some((x) => x.id === editando.id)}
           onCerrar={() => setEditando(null)}
-          onGuardar={(t, liberar) => {
+          onGuardar={(t) => {
             const editado = talleres.some((x) => x.id === t.id);
             /*
-             * La liberación va DENTRO del guardado, no después.
+             * Ya no hay nada que liberar al cambiarle los días a un taller.
              *
-             * Antes se guardaba y luego se llamaba a
-             * `liberarInscripcionesFueraDeDia`, que solo hacía `setState`: ni la
-             * liberación ni el aviso llegaban a la base. Y el orden era además
-             * imposible de sostener desde el cliente, porque la llave foránea
-             * `(taller_id, dia)` impide quitar un día que alguien sigue usando:
-             * hay que liberar ANTES, y eso solo se puede hacer en la misma
-             * transacción.
-             *
-             * `fn_guardar_taller` lo hace y avisa por su cuenta de cuántas
-             * liberó, así que aquí ya no se cuenta nada: contar sin escribir es
-             * lo que hacía que el mensaje dijera un número inventado.
+             * Hubo dos versiones de esto: una que contaba sin escribir —el
+             * mensaje decía un número inventado— y otra que liberaba dentro de
+             * `fn_guardar_taller`, porque la llave foránea `(taller_id, dia)`
+             * impedía quitar un día que alguien seguía usando. La migración 60
+             * quitó la llave: quitarle el día 2 a un taller ya no invalida a
+             * nadie, porque sus inscritos no dependían de ese día.
              */
-            guardarTaller(t, liberar);
+            guardarTaller(t);
             registrarBitacora(
               editado ? "Editó taller" : "Creó taller",
               `${t.id} — ${t.nombre} · cupo ${t.cupoTotal} · ${moneda(t.costo)} · días ${t.dias.join(" y ")}`,
@@ -247,27 +239,22 @@ function AdminTalleres() {
 function FormularioTaller({
   inicial,
   inscritos,
-  inscritosDetalle,
   existe,
   onCerrar,
   onGuardar,
 }: {
   inicial: TallerBase;
   inscritos: number;
-  inscritosDetalle: { folio: string; nombre: string; dia: Dia }[];
   existe: boolean;
   onCerrar: () => void;
-  onGuardar: (t: TallerBase, liberar: boolean) => void;
+  onGuardar: (t: TallerBase) => void;
 }) {
   const [b, setB] = useState<TallerBase>(inicial);
-  const [liberar, setLiberar] = useState(true);
   const set = (patch: Partial<TallerBase>) => setB({ ...b, ...patch });
 
   const ocupado = b.ocupadosPrevios + inscritos;
   // Reducir el cupo por debajo del ocupado deja fuera a gente que ya pagó.
   const cupoInsuficiente = b.cupoTotal < ocupado;
-  // Quitar un día puede dejar inscritos en días que ya no se imparten.
-  const fueraDeDia = inscritosDetalle.filter((p) => !b.dias.includes(p.dia));
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
@@ -375,37 +362,6 @@ function FormularioTaller({
             </p>
           </div>
 
-          {fueraDeDia.length > 0 ? (
-            <div className="rounded-md border-2 border-estado-cancelado/40 bg-estado-cancelado-bg p-3">
-              <p className="flex items-start gap-2 text-sm font-bold text-estado-cancelado">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {fueraDeDia.length}{" "}
-                {fueraDeDia.length === 1 ? "inscrito quedaría" : "inscritos quedarían"} en un día
-                que este taller ya no se imparte
-              </p>
-              <ul className="mt-2 grid gap-0.5 text-xs text-estado-cancelado">
-                {fueraDeDia.slice(0, 5).map((p) => (
-                  <li key={p.folio}>
-                    {p.folio} · {p.nombre} · asiste el día {p.dia}
-                  </li>
-                ))}
-                {fueraDeDia.length > 5 ? <li>… y {fueraDeDia.length - 5} más</li> : null}
-              </ul>
-              <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md bg-card p-2 text-sm">
-                <Checkbox
-                  checked={liberar}
-                  onCheckedChange={(v) => setLiberar(!!v)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-semibold">Liberar esas inscripciones al guardar.</span> Si
-                  no lo haces, quedarán apuntando a un taller que no se imparte su día. Quien ya
-                  pagó el taller necesitará devolución o reinscripción en uno de su día.
-                </span>
-              </label>
-            </div>
-          ) : null}
-
           {cupoInsuficiente ? (
             <p className="flex items-start gap-2 rounded-md border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-sm text-estado-discrepancia">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -431,7 +387,7 @@ function FormularioTaller({
             <Button
               className="h-11"
               disabled={cupoInsuficiente || !b.nombre.trim() || b.dias.length === 0}
-              onClick={() => onGuardar(b, liberar && fueraDeDia.length > 0)}
+              onClick={() => onGuardar(b)}
             >
               Guardar taller
             </Button>

@@ -189,36 +189,19 @@ console.log("=== LO QUE EL ALTA TIENE QUE RECHAZAR ===\n");
   }
 
   /*
-   * Taller que no se imparte el día elegido.
+   * Aquí se comprobaba que un taller de otro día se RECHAZARA, y ya no es un
+   * rechazo: es lo normal.
    *
-   * Es la regla que sostiene la llave foránea compuesta `(taller_id, dia) ->
-   * taller_dias`. Se busca un taller que NO se imparta el día 1 para pedirlo
-   * ese día; si el catálogo cambiara y todos se impartieran todos los días,
-   * el caso se salta en vez de fallar: no habría nada que probar.
+   * La migración 60 quitó la llave foránea `(taller_id, dia) -> taller_dias`
+   * porque los talleres se imparten en la UPN U-212, que no es la sede del
+   * Encuentro: el día que te toca dice a qué sede vas, no a qué taller entras.
+   *
+   * El caso no se invierte aquí. Esta batería solo prueba altas que DEBEN
+   * fallar, y por eso es barata: ninguna crea un participante ni gasta un lugar
+   * del aforo. Comprobar que ahora se acepta exige crear uno, así que vive en
+   * «EL CAMBIO DE TALLER, POR EL CAMINO DE LA APLICACIÓN», bajo `--escribe`,
+   * reutilizando el externo que ya se da de alta ahí.
    */
-  const { data: soloDia2 } = await sb
-    .from("v_talleres")
-    .select("clave, dias")
-    .eq("activo", true)
-    .limit(50);
-  const ajeno = ((soloDia2 ?? []) as { clave: string; dias: number[] }[]).find(
-    (t) => !t.dias.includes(1),
-  );
-  if (!ajeno) salta("no hay ningún taller que se libre del día 1: nada que probar");
-  else {
-    const id = await tallerPorClave(ajeno.clave);
-    const { error } = await altaExterna({
-      perfil: "docente",
-      nombre: "QA RECHAZO",
-      correo: correoDe("taller-dia"),
-      dia: 1,
-      taller: id,
-    });
-    if (/no se imparte el día/i.test(mensaje(error)))
-      ok(`rechaza ${ajeno.clave} el día 1, que no se imparte`);
-    else if (error) falla(`rechaza ${ajeno.clave} el día 1, pero por otro motivo`, error);
-    else falla(`ACEPTÓ inscribir en ${ajeno.clave} un día que no se imparte`);
-  }
 }
 
 // ===========================================================================
@@ -846,24 +829,49 @@ console.log("\n=== EL CAMBIO DE TALLER, POR EL CAMINO DE LA APLICACIÓN ===\n");
           });
       }
 
-      // Y un taller que no se imparte su día tiene que rebotar también aquí.
-      const soloDia1 = ((activos ?? []) as { clave: string; dias: number[] }[]).find(
-        (t) => !t.dias.includes(2),
-      );
-      if (!soloDia1) salta("no hay taller ajeno al día 2 para probar el cambio inválido");
+      /*
+       * Y LA REGLA NUEVA: un taller de otro día tiene que ACEPTARSE.
+       *
+       * Esta comprobación afirmaba lo contrario hasta la migración 60 —exigía
+       * el rechazo— y era correcta entonces: la llave foránea
+       * `(taller_id, dia) -> taller_dias` hacía imposible la fila. Quitada la
+       * llave, es al revés: quien asiste el día 2 puede tomar un taller de la
+       * tarde del día 1 en la UPN, que es otra sede.
+       *
+       * Es la mitad que de verdad prueba el desacople, y solo se puede probar
+       * escribiendo: la llave vive en la base y su ausencia no se ve desde el
+       * lado anónimo. Si alguien la repone, esto lo dice.
+       */
+      const deOtroDia = (
+        (activos ?? []) as { clave: string; dias: number[]; lugares_libres: number }[]
+      ).find((t) => !t.dias.includes(2) && t.lugares_libres > 0);
+      if (!deOtroDia)
+        salta("no hay taller con cupo ajeno al día 2 para probar que ya no se limita por día");
       else {
-        const idMalo = await tallerPorClave(soloDia1.clave);
+        const idOtro = await tallerPorClave(deOtroDia.clave);
+        const antesOtro = await ocupado(deOtroDia.clave);
         const { error } = await altaExterna({
           perfil: "externo",
           nombre: "QA PRUEBA EXTERNO",
           correo,
           dia: 2,
-          taller: idMalo,
+          taller: idOtro,
         });
         if (/no se imparte el día/i.test(mensaje(error)))
-          ok(`cambiar a ${soloDia1.clave}, que no se imparte el día 2, se rechaza`);
-        else if (error) falla(`el cambio a ${soloDia1.clave} falló por otro motivo`, error);
-        else falla(`DEJÓ cambiar a ${soloDia1.clave}, que no se imparte el día 2`);
+          falla(
+            `RECHAZÓ ${deOtroDia.clave} por ser de otro día: la llave (taller_id, dia) volvió a ` +
+              "estar puesta, o falta la migración 60",
+            error,
+          );
+        else if (error)
+          falla(`el alta en ${deOtroDia.clave}, de otro día, falló por otro motivo`, error);
+        else {
+          const finalOtro = await ocupado(deOtroDia.clave);
+          ok(
+            `quien asiste el día 2 puede tomar ${deOtroDia.clave}, que se imparte el día ` +
+              `${deOtroDia.dias.join(" y ")} (cupo ${antesOtro}→${finalOtro})`,
+          );
+        }
       }
     }
   }

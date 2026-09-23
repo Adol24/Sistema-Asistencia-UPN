@@ -1121,9 +1121,13 @@ export async function anotarEnBitacora(
  * - Un alta con clave repetida MACHACABA el taller que la tenía, porque
  *   `onConflict: "clave"` no distingue crear de editar.
  *
- * Ahora lo hace `fn_guardar_taller`, que además libera ANTES de tocar los días
- * —el único orden que la llave foránea permite— y calcula la diferencia en vez
- * de borrarlos todos. Devuelve cuántas inscripciones liberó.
+ * Ahora lo hace `fn_guardar_taller`, que calcula la diferencia de días en vez
+ * de borrarlos todos.
+ *
+ * Ya no libera inscripciones: eso existía por la llave foránea
+ * `(taller_id, dia)`, que impedía quitarle un día a un taller mientras alguien
+ * siguiera inscrito con ese día. La migración 60 la quitó, así que el valor que
+ * devuelve la función es siempre 0 y aquí no se usa.
  */
 export async function guardarTallerRemoto(t: {
   /** `T01`, `T02`… La usa el personal para referirse a un taller de viva voz. */
@@ -1139,8 +1143,6 @@ export async function guardarTallerRemoto(t: {
   activo: boolean;
   /** Alta o edición. Un alta con clave repetida tiene que rebotar, no machacar. */
   crear: boolean;
-  /** Liberar a quien quede fuera de los días nuevos. Devuelve cuántos fueron. */
-  liberar: boolean;
 }): Promise<number> {
   return llamar<number>("fn_guardar_taller", {
     p_clave: t.clave,
@@ -1154,7 +1156,10 @@ export async function guardarTallerRemoto(t: {
     p_activo: t.activo,
     p_dias: t.dias,
     p_crear: t.crear,
-    p_liberar: t.liberar,
+    // La función sigue aceptando el parámetro para no romper a un cliente
+    // desplegado a mitad del despliegue, y lo ignora. Se manda `false` fijo
+    // hasta que se pueda retirar de la firma.
+    p_liberar: false,
   });
 }
 

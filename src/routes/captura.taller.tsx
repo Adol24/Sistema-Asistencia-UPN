@@ -33,9 +33,21 @@ function ModoTaller() {
 
   const taller = talleres.find((t) => t.id === tallerId);
 
+  /*
+   * Los inscritos al taller, sin mirar a qué día del Encuentro van.
+   *
+   * Llevaba `&& p.dia === sesion.dia`, y desde la migración 60 eso deja fuera a
+   * quien de verdad va a aparecer: el taller ya no depende del día del evento,
+   * así que a la tarde del día 1 en la UPN llega gente cuyo día en el Encuentro
+   * es el 2 o el 3. Con el filtro puesto, el pase de lista no los encontraba y
+   * el capturista concluía que no estaban inscritos.
+   *
+   * El día ya lo acota el selector de arriba: `delDia` solo ofrece talleres que
+   * se imparten hoy, así que el taller elegido es de hoy por construcción.
+   */
   const inscritos = useMemo(
-    () => participantes.filter((p) => p.tallerId === tallerId && p.dia === sesion.dia),
-    [participantes, tallerId, sesion.dia],
+    () => participantes.filter((p) => p.tallerId === tallerId),
+    [participantes, tallerId],
   );
 
   const marcados = useMemo(() => {
@@ -178,12 +190,12 @@ function ModoTaller() {
               <li className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
                 <p className="text-sm font-semibold">
                   {inscritos.length === 0
-                    ? `Nadie inscrito en ${tallerId} el día ${sesion.dia}`
+                    ? `Nadie inscrito en ${tallerId}`
                     : `Sin coincidencias para «${q}»`}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {inscritos.length === 0
-                    ? "Elige otro taller o cambia el día de la sesión."
+                    ? "Elige otro taller de los que se imparten hoy."
                     : "Busca por apellido o por los últimos dígitos del folio."}
                 </p>
               </li>

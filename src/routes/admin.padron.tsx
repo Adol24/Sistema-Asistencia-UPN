@@ -287,7 +287,7 @@ function ImportacionPadron() {
   );
 
   const asignarASeleccion = (dia: 1 | 2 | 3) => {
-    const r = asignarDiaAVarios(
+    asignarDiaAVarios(
       seleccion.map((a) => a.matricula),
       dia,
     );
@@ -296,12 +296,10 @@ function ImportacionPadron() {
       `${seleccion.length} alumnos al día ${dia}` +
         ` (sede ${fSede}, programa ${fPrograma}, grupo ${fGrupo})`,
     );
-    toast.success(
-      `${seleccion.length} alumnos quedaron en el día ${dia}.` +
-        (r.talleresLiberados
-          ? ` A ${r.talleresLiberados} se les liberó el taller porque no se imparte ese día.`
-          : ""),
-    );
+    // Ya no se avisa de talleres liberados: desde la migración 60 mover a
+    // alguien de día le conserva su taller, porque el taller se imparte en otra
+    // sede y no depende del día que le toque en el Encuentro.
+    toast.success(`${seleccion.length} alumnos quedaron en el día ${dia}.`);
 
     /*
      * Sobrepasar el aforo al repartir se PERMITE, y por eso hay que decirlo.
@@ -817,9 +815,9 @@ function ImportacionPadron() {
                   </span>
                   {seleccion.some((a) => a.dia) ? (
                     <span className="block text-xs text-estado-discrepancia">
-                      {seleccion.filter((a) => a.dia).length} ya tenían día. Se les cambia, y a
-                      quien tuviera un taller que no se imparte el día nuevo se le libera la
-                      inscripción.
+                      {seleccion.filter((a) => a.dia).length} ya tenían día. Se les cambia el día y
+                      la sede del Encuentro; su taller no se toca, porque se imparte en la UPN y no
+                      depende del día que les toque.
                     </span>
                   ) : null}
                 </p>
