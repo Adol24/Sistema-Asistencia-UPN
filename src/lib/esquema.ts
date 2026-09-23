@@ -443,6 +443,8 @@ export const aPago = (f: FilaPago): PagoRegistrado => ({
 export function aParticipanteDeVista(
   f: FilaVistaParticipante,
   lugarPorDia: (d: Dia) => string,
+  /** Ver `aParticipante`: la vista también trae el uuid, no la clave. */
+  clavePorId: (uuid: string) => string | undefined,
 ): Participante {
   return aParticipante(
     {
@@ -453,6 +455,7 @@ export function aParticipanteDeVista(
       planteles: f.plantel ? { nombre: f.plantel } : null,
     },
     lugarPorDia,
+    clavePorId,
     (_id, concepto) =>
       concepto === "evento" ? f.estado_pago_evento : (f.estado_pago_taller ?? undefined),
   );
@@ -461,6 +464,27 @@ export function aParticipanteDeVista(
 export function aParticipante(
   f: FilaParticipante,
   lugarPorDia: (d: Dia) => string,
+  /**
+   * El uuid del taller a su CLAVE corta (`T01`). Obligatorio a propósito.
+   *
+   * `participantes.taller_id` es un uuid y `Taller.id` es la clave, porque así
+   * lo arma `aTallerBase`. Aquí se guardaba el uuid tal cual, de modo que
+   * **ninguna** comparación del tipo `p.tallerId === t.id` acertaba nunca. Los
+   * dos son `string`, así que TypeScript no veía nada, y en modo prototipo no
+   * se notaba porque ahí el borrador ya guarda la clave.
+   *
+   * Lo que eso producía, todo a la vez y en silencio: `cupoOcupado` valía
+   * siempre `ocupadosPrevios`, `/admin/talleres` enseñaba «0 pre-registrados»
+   * con cualquier número de inscritos, el catálogo público anunciaba lugares
+   * libres inventados, `/captura/taller` decía «Nadie inscrito» el día del
+   * evento, la ficha de Financieros no cobraba el taller, y
+   * `liberarInscripcionesFueraDeDia` no encontraba nunca a quién liberar.
+   *
+   * Va como parámetro OBLIGATORIO y no con un valor por omisión precisamente
+   * para que no se pueda volver a omitir: el compilador obliga a que cada sitio
+   * que mapee una fila diga de dónde saca la traducción.
+   */
+  clavePorId: (uuid: string) => string | undefined,
   /** Estado derivado por `v_estado_pago`. Ausente cuando quien pregunta no puede leerla. */
   estado?: (participanteId: string, concepto: "evento" | "taller") => EstadoPago | undefined,
 ): Participante {
@@ -485,7 +509,14 @@ export function aParticipante(
     // más, así que quien había pagado ayer aparecía hoy como si no, y el
     // escáner de la puerta lo detenía en rojo.
     estadoPagoEvento: estado?.(f.id, "evento") ?? "pre_registrado",
-    tallerId: f.taller_id ?? undefined,
+    /*
+     * `undefined` si la traducción no encuentra la clave, y NO el uuid crudo:
+     * devolverlo sería reponer el defecto en silencio. En la práctica no puede
+     * fallar —las dos consultas que alimentan esto traen los talleres enteros,
+     * activos e inactivos— y si un día fallara significaría que el taller ya no
+     * existe, en cuyo caso `on delete set null` habría dejado la columna nula.
+     */
+    tallerId: f.taller_id ? clavePorId(f.taller_id) : undefined,
     estadoPagoTaller: f.taller_id ? (estado?.(f.id, "taller") ?? "pre_registrado") : undefined,
     nombreEnRevision: f.nombre_en_revision,
     montoEsperadoEvento: Number(f.monto_esperado_evento),

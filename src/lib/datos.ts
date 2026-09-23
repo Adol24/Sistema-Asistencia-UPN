@@ -480,13 +480,23 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     ? Object.fromEntries(filasTaller.map((t) => [t.clave, t.id]))
     : publico.idPorClave;
 
+  /*
+   * El camino de vuelta del identificador del taller.
+   *
+   * `idPorClave` existía desde que `uuidDelTaller` lo necesitó para ESCRIBIR, y
+   * nadie había construido el inverso para LEER: por eso los participantes
+   * llegaban con el uuid en un campo que todo el mundo lee como si fuera la
+   * clave. Se arma aquí, donde las dos formas están a la vista.
+   */
+  const clavePorId = new Map(Object.entries(idPorClave).map(([clave, id]) => [id, clave]));
+
   return {
     configuracion,
     sedes: publico.sedes,
     talleresBase,
     idPorClave,
     participantes: ((participantes.data ?? []) as unknown as FilaParticipante[]).map((p) =>
-      aParticipante(p, lugarPorDia, estadoDeriva),
+      aParticipante(p, lugarPorDia, (uuid) => clavePorId.get(uuid), estadoDeriva),
     ),
     pagos: ((pagos.data ?? []) as unknown as FilaPago[]).map(aPago),
     padron: ((padron.data ?? []) as unknown as FilaPadron[]).map(aAlumnoPadron),

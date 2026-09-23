@@ -90,7 +90,24 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setCargando(true);
     setError("");
     try {
-      const { estadoDelPortal } = await import("@/lib/datos");
+      const { estadoDelPortal, cargarPublico } = await import("@/lib/datos");
+      /*
+       * El catálogo público trae `idPorClave`, y de ahí sale la traducción del
+       * uuid del taller a su clave. Se pide aquí porque `fn_portal_estado`
+       * devuelve una fila de `v_participantes`, que trae el uuid: sin traducir,
+       * `/portal/estado` buscaba el taller por uuid en una lista indexada por
+       * clave y le decía «sin taller» a quien sí tenía uno.
+       *
+       * No cuesta una llamada de más: `cargarPublico` tiene media hora de caché
+       * y las pantallas públicas ya la tienen pedida cuando se llega aquí.
+       */
+      // `cargarPublico` devuelve `null` sin base configurada. Aquí no puede
+      // pasar —`cargar` sale antes si `!hayBaseDeDatos`— pero el tipo lo admite
+      // y un mapa vacío es la respuesta correcta a «no hay catálogo».
+      const publico = await cargarPublico();
+      const clavePorId = new Map(
+        Object.entries(publico?.idPorClave ?? {}).map(([clave, id]) => [id, clave]),
+      );
       const crudo = await estadoDelPortal(sesion.folio, sesion.credencial);
       if (!crudo) {
         // Se borra lo guardado: una credencial que la base ya rechaza no debe
@@ -112,6 +129,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         participante: aParticipanteDeVista(
           { ...fila, correo: contacto?.correo ?? "", celular: contacto?.celular ?? "" },
           (d) => infoDia(d).lugar,
+          (uuid) => clavePorId.get(uuid),
         ),
         asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
         evidencias: (crudo["evidencias"] ?? []) as DatosPortal["evidencias"],
