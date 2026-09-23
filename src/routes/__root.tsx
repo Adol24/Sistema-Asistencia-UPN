@@ -17,6 +17,7 @@ import { SesionProvider } from "../lib/sesion";
 import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
 import { useTrabajadorDeServicio } from "../lib/trabajador-de-servicio";
+import { useSelloDeVersion } from "../lib/sello-de-version";
 import { Toaster } from "../components/ui/sonner";
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
@@ -204,6 +205,7 @@ function RootComponent() {
   // Publica `--teclado` para que las pantallas con formulario dejen sitio.
   useAltoTeclado();
   useTrabajadorDeServicio();
+  useSelloDeVersion();
 
   return (
     <QueryClientProvider client={queryClient}>
