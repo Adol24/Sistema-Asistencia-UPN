@@ -32,6 +32,7 @@ import {
 } from "@/lib/escritura-remota";
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
 import { asistenciaDe } from "@/lib/escaneo";
+import { elegibilidadEvento } from "@/lib/elegibilidad";
 import {
   estadoDeVentana,
   perfilesSinVentana,
@@ -388,6 +389,71 @@ console.log("\n=== LA LLAVE QUE HACE SEGURA LA COLA SIN CONEXIÓN ===\n");
   if (a.idRemoto && formaUuid.test(a.idRemoto))
     ok("tiene forma de uuid, que es lo que la columna `id` admite");
   else falla("`idRemoto` no tiene forma de uuid: el insert lo rechazaría", "uuid", a.idRemoto);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LA REGLA DE ELEGIBILIDAD, QUE LLEGÓ A SER TRES ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Hubo tres reglas y se contradecían en tres ejes: la salida, el umbral de
+ * evidencias y a qué perfiles se les piden. Nada las comparaba, así que fueron
+ * separándose commit a commit hasta que el portal le prometía constancia a
+ * gente que no salía en el listado que se manda a imprimir.
+ *
+ * Esto fija los tres ejes sobre `elegibilidadEvento`, que es la que alimenta el
+ * panel y la exportación. Lo que decide de verdad quién recibe el documento es
+ * `v_elegibles`; esta comprobación existe para que las dos no puedan volver a
+ * decir cosas distintas sin que nadie se entere.
+ */
+{
+  const persona = (perfil: string, dia: number) =>
+    ({ folio: "PRE-00801", nombre: "QA", perfil, dia }) as unknown as Parameters<
+      typeof elegibilidadEvento
+    >[1];
+
+  const entorno = (aprobadas: { dia: number }[], conEntrada = true) =>
+    ({
+      estadoDe: () => ({ evento: "pagado", taller: undefined }),
+      // Solo la entrada: la salida NO condiciona la constancia. Ver la 25.
+      asistenciasDe: () => (conEntrada ? [{ tipo: "entrada" }] : []),
+      evidenciasDe: () => aprobadas.map((e) => ({ ...e, estado: "aprobada" })),
+      diasTallerDe: () => [],
+    }) as unknown as Parameters<typeof elegibilidadEvento>[0];
+
+  const alumno = persona("alumno", 1);
+
+  igual(
+    "alumno con pago, entrada y dos evidencias de otros días: elegible",
+    elegibilidadEvento(entorno([{ dia: 2 }, { dia: 3 }]), alumno).elegible,
+    true,
+  );
+
+  // El eje que el cliente no tenía: la evidencia del día propio no cuenta.
+  igual(
+    "una de las dos es de su propio día: NO elegible",
+    elegibilidadEvento(entorno([{ dia: 1 }, { dia: 2 }]), alumno).elegible,
+    false,
+  );
+
+  igual(
+    "alumno con una sola evidencia: NO elegible (el umbral son dos, no una)",
+    elegibilidadEvento(entorno([{ dia: 2 }]), alumno).elegible,
+    false,
+  );
+
+  // A docentes y externos no se les piden: su portal no les ofrece subirlas en
+  // ninguna pantalla, así que exigírselas era condenarlos a no serlo nunca.
+  igual(
+    "docente con pago y entrada, sin evidencias: elegible",
+    elegibilidadEvento(entorno([]), persona("docente", 2)).elegible,
+    true,
+  );
+
+  igual(
+    "sin entrada registrada no hay constancia, tenga lo que tenga",
+    elegibilidadEvento(entorno([{ dia: 2 }, { dia: 3 }], false), alumno).elegible,
+    false,
+  );
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);

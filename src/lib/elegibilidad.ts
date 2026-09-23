@@ -79,7 +79,20 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
   // dos, para el mismo dato.
   const delDia = entorno.asistenciasDe(p.folio, p.dia);
   const asistio = asistioElDia(delDia);
-  const aprobadas = entorno.evidenciasDe(p.folio).filter((e) => e.estado === "aprobada").length;
+  /*
+   * Solo cuentan las evidencias de los días en que NO le tocó asistir, que es
+   * de lo que la evidencia es prueba. `v_elegibles` lo hace desde siempre
+   * (`e.dia <> p.dia`) y aquí se contaban todas, así que las dos reglas daban
+   * distinto para el mismo alumno: el que tuviera aprobadas la de su propio día
+   * y una más salía elegible en el panel y no en la vista, y acababa en el
+   * listado que se manda a imprimir sin corresponderle.
+   *
+   * Desde la migración 52 la base ya no deja entregar la del día propio, pero
+   * las que se entregaron antes siguen en la tabla y hay que seguir contándolas
+   * bien.
+   */
+  const suyasDeOtrosDias = entorno.evidenciasDe(p.folio).filter((e) => e.dia !== p.dia);
+  const aprobadas = suyasDeOtrosDias.filter((e) => e.estado === "aprobada").length;
 
   // El detalle tiene que alcanzar para responder sin abrir otra pantalla: es la
   // pregunta que va a llegar cientos de veces cuando se entreguen los documentos.
@@ -106,8 +119,9 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
   if (p.perfil === "alumno") {
     // Se enumera evidencia por evidencia, con su día y su estado, para no obligar
     // a nadie a ir al panel de revisión a averiguar cuál falta.
-    const suyas = entorno.evidenciasDe(p.folio);
-    const problemas = suyas
+    // Las mismas que se cuentan arriba: enumerar aquí la de su propio día
+    // señalaría como problema algo que no cuenta ni para bien ni para mal.
+    const problemas = suyasDeOtrosDias
       .filter((e) => e.estado !== "aprobada")
       .map((e) => {
         if (e.estado === "rechazada")

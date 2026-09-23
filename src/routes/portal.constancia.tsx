@@ -5,7 +5,6 @@ import { PortalNav } from "@/components/portal-nav";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
-import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -32,28 +31,49 @@ function MiConstancia() {
 }
 
 function MiConstanciaContenido({ p }: { p: Participante }) {
-  const { estadoDe, asistenciasDe, evidencias } = useEstadoEvento();
-  const estado = estadoDe(p);
-  const delDia = asistenciasDe(p.folio, p.dia);
-  const mias = evidencias.filter((e) => e.folio === p.folio);
-  const aprobadas = mias.filter((e) => e.estado === "aprobada").length;
+  /*
+   * El veredicto lo da la base, no esta pantalla.
+   *
+   * Aquí vivía una TERCERA regla de elegibilidad escrita a mano —pago, entrada,
+   * UNA evidencia y nombre sin observaciones— que no coincidía ni con
+   * `v_elegibles` ni con `elegibilidad.ts`. Con una sola evidencia aprobada le
+   * decía «Cumples los requisitos de constancia» a alguien que el listado de
+   * administración, que pide dos, no incluía: esa persona llegaba a recoger un
+   * documento que no se había impreso.
+   *
+   * Y no se puede arreglar recalculando mejor: el participante es anónimo y las
+   * políticas le cierran `evidencias`, `asistencias` y `pagos`, así que
+   * `useEstadoEvento()` le devuelve listas vacías. Cualquier cuenta hecha aquí
+   * parte de cero y da lo mismo cuántos requisitos tenga.
+   *
+   * `fn_portal_estado` ya devolvía `v_elegibles` desde el principio; lo que
+   * faltaba era leerlo.
+   */
+  const { datos } = usePortal();
+  const e = datos?.elegibilidad ?? null;
 
   const requisitos = [
-    { texto: "Pago del evento registrado", ok: estado.evento === "pagado" },
-    {
-      texto: "Registro de entrada del día asignado",
-      ok: delDia.some((a) => a.tipo === "entrada"),
-    },
+    { texto: "Pago del evento registrado", ok: e?.estado_pago_evento === "pagado" },
+    { texto: `Registro de entrada del día ${p.dia}`, ok: e?.tiene_entrada === true },
     {
       texto:
         p.perfil === "alumno"
-          ? "Evidencias aprobadas de los días en línea"
-          : "No aplica para tu perfil",
-      ok: p.perfil === "alumno" ? aprobadas >= 1 : true,
+          ? "2 evidencias aprobadas de los días en línea"
+          : "Evidencias: no aplican a tu perfil",
+      ok: p.perfil !== "alumno" || (e?.evidencias_aprobadas ?? 0) >= 2,
     },
-    { texto: "Nombre confirmado sin observaciones", ok: !p.nombreEnRevision },
   ];
-  const elegible = requisitos.every((r) => r.ok);
+  /*
+   * El elegible es el de la vista, no `requisitos.every(...)`. Si algún día las
+   * dos cosas dejaran de coincidir, lo que se entrega sale de la vista, así que
+   * es lo que esta pantalla tiene que decir. Los requisitos están para explicar
+   * el porqué, no para calcularlo.
+   *
+   * El nombre en revisión se enseña aparte y NO como requisito: no impide la
+   * constancia —`v_elegibles` no lo mira— pero sí conviene resolverlo antes de
+   * que se imprima con una errata.
+   */
+  const elegible = e?.elegible === true;
 
   return (
     <PantallaPublica ancho="lg">

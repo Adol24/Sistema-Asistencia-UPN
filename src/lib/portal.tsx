@@ -8,11 +8,35 @@ import { usePrototipo } from "@/lib/prototipo";
 import { guardarJSON, leerJSON } from "@/lib/almacen-sesion";
 import type { Participante } from "@/dominio/tipos";
 
+/**
+ * El veredicto de `v_elegibles`, tal como lo manda `fn_portal_estado`.
+ *
+ * Es la ÚNICA regla de elegibilidad del sistema, y el portal tiene que leerla en
+ * vez de rehacerla. `/portal/constancia` escribía la suya a mano —pago, entrada,
+ * UNA evidencia y nombre sin observaciones— y con eso le decía «Cumples los
+ * requisitos» a gente que el listado de administración, que pide dos, no
+ * incluía. Esa persona llegaba a recoger una constancia que no existía.
+ *
+ * Y recalcularla aquí tampoco valía: el participante es anónimo y las políticas
+ * le cierran `evidencias`, `asistencias` y `pagos`, así que cualquier cuenta
+ * hecha en su navegador parte de listas vacías.
+ */
+export interface ElegibilidadPortal {
+  elegible: boolean;
+  tiene_entrada: boolean;
+  tiene_salida: boolean;
+  evidencias_aprobadas: number;
+  estado_pago_evento: string;
+  nombre_en_revision: boolean;
+}
+
 /** Lo que el portal necesita de una persona, en una sola llamada. */
 export interface DatosPortal {
   participante: Participante;
   asistencias: { dia: number; tipo: string; hora: string }[];
   evidencias: { dia: number; estado: string; motivo_rechazo?: string | null }[];
+  /** `null` mientras la vista no tenga fila para esa persona. */
+  elegibilidad: ElegibilidadPortal | null;
 }
 
 interface Ctx {
@@ -133,6 +157,10 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         ),
         asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
         evidencias: (crudo["evidencias"] ?? []) as DatosPortal["evidencias"],
+        // `fn_portal_estado` lo devuelve desde el principio y aquí se tiraba
+        // sin mapear, que es lo que obligó a `/portal/constancia` a inventarse
+        // su propia regla. Ver `ElegibilidadPortal`.
+        elegibilidad: (crudo["elegibilidad"] ?? null) as DatosPortal["elegibilidad"],
       });
     } catch {
       setError("No pudimos cargar tus datos. Inténtalo de nuevo en un momento.");
