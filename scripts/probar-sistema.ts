@@ -4,6 +4,7 @@
  *
  *     bun run probar-sistema             # solo lo que NO escribe
  *     bun run probar-sistema --escribe   # también las altas de verdad
+ *     bun run probar-sistema --limites   # además agota un tope por IP (ver abajo)
  *
  * Por qué dos modos
  * -----------------
@@ -45,6 +46,17 @@ if (!url || !clave) {
 
 const sb = createClient(url, clave);
 const escribe = process.argv.includes("--escribe");
+
+/*
+ * Los topes por IP van detrás de SU PROPIA bandera, y no de `--escribe`.
+ *
+ * Comprobar un limitador exige agotarlo, y agotarlo deja esa puerta cerrada
+ * diez minutos **para esta IP**. Si se corre desde la red de la universidad
+ * durante el pre-registro, quien esté detrás del mismo NAT se lleva el portazo.
+ * Por eso no basta con que sea opt-in: tiene que ser una decisión aparte de
+ * «quiero probar las altas».
+ */
+const limites = process.argv.includes("--limites");
 
 /*
  * La marca. Todo lo que este comprobante crea la lleva, y por eso la limpieza
@@ -237,6 +249,71 @@ console.log("\n=== EL PADRÓN NO SE DEJA ENUMERAR ===\n");
     if (e) ok(`\`${t}\` está cerrada al anónimo`);
     else falla(`\`${t}\` SE PUEDE LEER desde la clave anónima`);
   }
+}
+
+// ===========================================================================
+console.log("\n=== EL TOPE POR IP DE LAS PUERTAS PÚBLICAS ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * La regresión que esto vigila ya ocurrió una vez, y es la razón de que exista
+ * esta comprobación.
+ *
+ * La migración 13 le puso tope a `fn_padron_confirmar`. La 20260910200000, cuyo
+ * único objeto era añadir un campo al JSON de respuesta, reescribió la función
+ * copiando el cuerpo SIN la llamada al limitador y devolviéndola a `stable`.
+ * Nada falló: la función siguió contestando bien y el comentario del cliente
+ * siguió afirmando que el tope estaba puesto. Se descubrió año y medio de
+ * commits después, leyendo el SQL.
+ *
+ * Un tope no se puede comprobar leyendo: hay que agotarlo. Por eso esto vive
+ * aquí, contra la base real, y no en `verificar-configuracion`.
+ */
+if (!limites) {
+  salta("no se pidió `--limites`: no se comprobó que los topes por IP estén puestos.");
+  nota("Agotarlos cierra esa puerta DIEZ MINUTOS para esta IP. Si lo corres desde");
+  nota("la red de la universidad durante el pre-registro, se lo cierras a quien");
+  nota("esté detrás del mismo NAT. Córrelo desde otra red, o fuera de horario.");
+} else {
+  /*
+   * Se ataca `ventana_matricula`, que es el tope MENOS dañino de agotar: su
+   * puerta solo se consulta para anunciar una fecha, y si falla la pantalla
+   * enseña «inténtalo en un momento» y deja seguir. Agotar `padron_confirmar`
+   * dejaría a esta IP sin poder confirmar identidad, que sí corta el recorrido.
+   */
+  const TOPE = 30;
+  let respuesta429 = 0;
+  let enQueLlamada = 0;
+
+  for (let i = 1; i <= TOPE + 2; i++) {
+    const { error } = await sb.rpc("fn_ventana_de_matricula", { p_matricula: "00000000000" });
+    if (error?.code === "PGRST202") {
+      falla("fn_ventana_de_matricula no existe: falta alguna migración");
+      break;
+    }
+    // PostgREST traduce el `raise sqlstate 'PGRST'` del limitador a un 429 con
+    // el mensaje que arma `privado.limitar`.
+    if (/demasiados intentos/i.test(mensaje(error))) {
+      respuesta429++;
+      if (!enQueLlamada) enQueLlamada = i;
+      break;
+    }
+    if (error) {
+      falla(`fn_ventana_de_matricula falló por otro motivo en la llamada ${i}`, error);
+      break;
+    }
+  }
+
+  if (respuesta429 && enQueLlamada === TOPE + 1)
+    ok(`el tope de ventana_matricula corta en la llamada ${enQueLlamada}, como está declarado`);
+  else if (respuesta429)
+    ok(
+      `el tope corta en la llamada ${enQueLlamada} (declarado ${TOPE + 1}): hay tope, con otro valor`,
+    );
+  else
+    falla(
+      `${TOPE + 2} llamadas seguidas y ninguna se cortó: fn_ventana_de_matricula NO tiene tope por IP`,
+    );
+  nota("esa puerta queda cerrada ~10 minutos para esta IP; se suelta sola.");
 }
 
 // ===========================================================================
