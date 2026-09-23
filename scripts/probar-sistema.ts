@@ -317,6 +317,56 @@ if (!limites) {
 }
 
 // ===========================================================================
+console.log("\n=== LA ENTREGA DE EVIDENCIAS Y LA REGLA DE CONSTANCIA ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Las dos puertas de la entrega existen y piden credencial. No se puede probar
+ * la subida entera desde aquí —haría falta un folio real y un archivo— pero sí
+ * que las funciones estén y que no dejen pasar a quien no se identifica, que es
+ * lo que distingue «la migración está aplicada» de «la migración falta».
+ */
+{
+  const { error } = await sb.rpc("fn_evidencia_preparar", {
+    p_folio: "XX-000000",
+    p_credencial: "nadie@prueba.invalid",
+    p_dia: 1,
+  });
+  if (error?.code === "PGRST202")
+    falla("fn_evidencia_preparar no existe: falta la migración 20260922220000 (la 52)");
+  else if (/folio o credencial/i.test(mensaje(error)))
+    ok("la entrega de evidencias pide credencial antes de reservar nada");
+  else if (error) falla("fn_evidencia_preparar respondió otra cosa", error);
+  else falla("fn_evidencia_preparar RESERVÓ una entrega sin credencial válida");
+
+  /*
+   * Lo único que esto puede afirmar es que el anónimo no VE contenido.
+   *
+   * Y conviene dejar dicho lo que NO prueba, porque la primera versión de esta
+   * comprobación daba una falla que no existía: `list()` devuelve
+   * `{error: null, data: []}` tanto con un bucket protegido por RLS como con
+   * uno que NO EXISTE. Storage filtra filas en vez de contestar error, así que
+   * por este camino las dos situaciones son indistinguibles.
+   *
+   * Que el bucket exista se comprueba en el recorrido a mano —subir una
+   * evidencia desde el portal— o mirándolo en el panel de Supabase.
+   */
+  const { data: contenido } = await sb.storage.from("evidencias").list();
+  if ((contenido ?? []).length === 0)
+    ok("el bucket de evidencias no le enseña contenido al anónimo");
+  else falla(`el anónimo VE ${contenido!.length} objetos del bucket de evidencias`);
+}
+
+{
+  // `v_elegibles` es `security_invoker` y sus tablas están cerradas al anónimo.
+  // Si contestara filas, la regla de constancia sería pública.
+  const { error } = await sb.from("v_elegibles").select("folio").limit(1);
+  if (error?.code === "42P01" || error?.code === "PGRST205")
+    falla("no existe `v_elegibles`: falta alguna migración");
+  else if (error) ok("v_elegibles existe y está cerrada al anónimo");
+  else falla("v_elegibles SE PUEDE LEER desde la clave anónima");
+}
+
+// ===========================================================================
 console.log("\n=== LAS VENTANAS, TAL COMO LAS VE QUIEN LLEGA ===\n");
 // ---------------------------------------------------------------------------
 for (const perfil of ["docente", "externo"] as const) {
