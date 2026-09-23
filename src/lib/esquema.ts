@@ -298,10 +298,28 @@ export const aFechaHora = (iso: string): string => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
-/** Solo la hora, que es lo que se ve en la puerta. */
+/**
+ * Solo la hora, que es lo que se ve en la puerta.
+ *
+ * **Las dos cifras con cero a la izquierda, y no es cosmético.** Esto devolvía
+ * `"9:10"` mientras `formato.hora` devuelve `"09:10"`, y el torniquete ordena
+ * los movimientos de cada persona comparando esas cadenas
+ * (`movimientosDe`, en `escaneo.ts`). Como `"9:10".localeCompare("11:30")` vale
+ * 1 —compara `"9"` contra `"1"`— **cualquier movimiento anterior a las 10:00
+ * leído de la base se ordenaba como el más reciente del día**.
+ *
+ * Lo que eso hacía en la puerta: alguien entra a las 09:10 y sale a las 11:30;
+ * a las 15:00 vuelve y lo escanean. El orden queda `["11:30", "9:10"]`, el
+ * último es la entrada, `estaDentro` dice que está dentro, y la pantalla
+ * responde «SALIDA REGISTRADA» a alguien que está entrando. Con la escucha en
+ * vivo activa ese es el único camino que corre, porque la consulta remota se
+ * salta.
+ *
+ * Un solo `padStart` y el orden vuelve a ser el correcto para todo el día.
+ */
 export const aHora = (iso: string): string => {
   const d = new Date(iso);
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
 export function aConfiguracion(
@@ -536,6 +554,20 @@ export const aAsistencia = (f: FilaAsistencia): Asistencia => ({
   dia: f.dia,
   tipo: f.tipo,
   hora: aHora(f.registrada_en),
+  /*
+   * El instante real, que la fila SIEMPRE trae y aquí se tiraba.
+   *
+   * `ts` es el desempate del torniquete cuando dos movimientos caen en el mismo
+   * minuto —dos puntos de captura leyendo a la misma persona—, y solo lo traían
+   * las asistencias capturadas en esta pestaña. Las que venían de la base
+   * llegaban sin él, así que ahí el desempate no existía y el orden entre dos
+   * del mismo minuto quedaba al azar.
+   *
+   * Es también lo que hace que `instante()` no tenga que reconstruirlo pegando
+   * la hora al día de hoy, que es una aproximación que falla en cuanto se mira
+   * un día que no es el de hoy.
+   */
+  ts: new Date(f.registrada_en).getTime(),
   punto: f.punto,
   // Sin capturista es un cierre automático: la base deja el campo vacío porque
   // no lo hizo nadie, y las pantallas ya distinguen ese caso.

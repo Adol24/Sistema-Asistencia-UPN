@@ -139,7 +139,20 @@ function instante(a: Asistencia, ahora: number): number {
   return d.getTime();
 }
 
-/** Las entradas y salidas de una persona ese día, de la más vieja a la más nueva. */
+/**
+ * Las entradas y salidas de una persona ese día, de la más vieja a la más nueva.
+ *
+ * **El orden depende de que `hora` venga con cero a la izquierda**, y conviene
+ * que eso esté dicho aquí y no solo donde se produce. `"9:10"` comparado como
+ * cadena es MAYOR que `"11:30"`, así que mientras `aHora` devolvió la hora sin
+ * rellenar, cualquier movimiento anterior a las 10:00 leído de la base se
+ * ordenaba como el último del día y el torniquete respondía al revés: le
+ * registraba una salida a quien estaba entrando.
+ *
+ * `ts` desempata los que caen en el mismo minuto —dos puntos de captura leyendo
+ * a la misma persona—, y por eso `aAsistencia` lo rellena desde `registrada_en`
+ * en vez de dejarlo solo a lo capturado en esta pestaña.
+ */
 export function movimientosDe(asistencias: Asistencia[], folio: string, dia: Dia): Asistencia[] {
   return asistencias
     .filter(

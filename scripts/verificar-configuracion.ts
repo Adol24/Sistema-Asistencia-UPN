@@ -31,7 +31,8 @@ import {
   DESTINO_DE_CAMPO,
 } from "@/lib/escritura-remota";
 import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
-import { asistenciaDe } from "@/lib/escaneo";
+import { asistenciaDe, estaDentro, movimientosDe } from "@/lib/escaneo";
+import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { referenciaValida, resultadoDe } from "@/lib/pagos-logica";
 import {
@@ -497,6 +498,65 @@ console.log("\n=== LA FRONTERA DEL DINERO ===\n");
   igual("lo que cuadra es un pago", resultadoDe(500, 500), "pagado");
   igual("de menos es discrepancia", resultadoDe(450, 500), "discrepancia");
   igual("de MÁS también: sobra dinero y hay que devolverlo", resultadoDe(600, 500), "discrepancia");
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== EL TORNIQUETE ORDENA BIEN ANTES DE LAS DIEZ ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * El defecto: `aHora` devolvía la hora SIN cero a la izquierda mientras el
+ * torniquete ordena los movimientos comparando esas cadenas. Y `"9:10"` es
+ * mayor que `"11:30"` como texto, porque compara `"9"` contra `"1"`.
+ *
+ * Así que cualquier movimiento anterior a las 10:00 leído de la base se ordenaba
+ * como el MÁS RECIENTE del día. Alguien que entró a las 09:10 y salió a las
+ * 11:30 constaba como dentro, y al volver a las 15:00 la puerta le registraba
+ * otra salida en vez de una entrada.
+ *
+ * Esto lo fija por los dos extremos: que la hora venga rellenada, y que con esas
+ * horas el torniquete diga que esa persona está FUERA. Si alguien vuelve a
+ * quitar el `padStart`, la segunda comprobación cae sola.
+ */
+{
+  // 2026-10-15, 09:10 y 11:30 en hora local, que es la que pinta `aHora`.
+  const nueveDiez = new Date(2026, 9, 15, 9, 10).toISOString();
+  const onceTreinta = new Date(2026, 9, 15, 11, 30).toISOString();
+
+  igual("la hora lleva cero a la izquierda", aHora(nueveDiez), "09:10");
+
+  const fila = (registrada_en: string, tipo: string) =>
+    ({
+      id: `a-${tipo}`,
+      dia: 1,
+      tipo,
+      registrada_en,
+      punto: "Puerta 1",
+      autorizacion_motivo: null,
+      autorizada_por: null,
+      participantes: { folio: "PRE-00801", nombre: "QA" },
+      capturista: { nombre: "QA" },
+      supervisor: null,
+    }) as unknown as Parameters<typeof aAsistencia>[0];
+
+  const movimientos = [
+    aAsistencia(fila(nueveDiez, "entrada")),
+    aAsistencia(fila(onceTreinta, "salida")),
+  ];
+
+  igual(
+    "entró a las 09:10 y salió a las 11:30: el orden respeta el reloj",
+    movimientosDe(movimientos, "PRE-00801", 1).map((m) => m.hora),
+    ["09:10", "11:30"],
+  );
+
+  igual("y por tanto está FUERA, no dentro", estaDentro(movimientos, "PRE-00801", 1), false);
+
+  // El caso inverso, para que la comprobación no pase por no mirar nada.
+  igual(
+    "si solo entró, sí está dentro",
+    estaDentro([aAsistencia(fila(nueveDiez, "entrada"))], "PRE-00801", 1),
+    true,
+  );
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);
