@@ -317,6 +317,33 @@ if (!limites) {
 }
 
 // ===========================================================================
+console.log("\n=== LAS FUNCIONES DEL PERSONAL, CERRADAS AL ANÓNIMO ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Lo que esto vigila, y lo que NO.
+ *
+ * NO puede comprobar el arreglo de la migración 55. Ese consiste en que un
+ * token de `authenticated` SIN rol de personal deje de poder llamarlas, y este
+ * comprobante corre con la clave anónima: no tiene forma de fabricarse un token
+ * así, y tampoco debería.
+ *
+ * Lo que sí vigila es la otra mitad, y no es poco: que ninguna de estas llegue
+ * nunca a concederse a `anon`. Son `security definer` —se saltan las políticas—
+ * y entre ellas hay tres que ESCRIBEN el día de la gente. Un `grant ... to anon`
+ * puesto por descuido en una migración futura aparecería aquí el mismo día.
+ */
+for (const [fn, args] of [
+  ["fn_evaluar_escaneo", { p_entrada: "PRE-00801", p_dia: 1, p_modo: "puerta" }],
+  ["fn_reasignar_dia", { p_matricula: "00000000000", p_dia: 1 }],
+  ["fn_repartir_dias_pendientes", {}],
+  ["fn_cierre_automatico", { p_dia: 1, p_hasta: new Date(0).toISOString() }],
+] as const) {
+  const { error } = await sb.rpc(fn, args as Record<string, unknown>);
+  if (error) ok(`\`${fn}\` está cerrada a la clave anónima`);
+  else falla(`\`${fn}\` SE PUEDE LLAMAR desde la clave anónima`);
+}
+
+// ===========================================================================
 console.log("\n=== LA ENTREGA DE EVIDENCIAS Y LA REGLA DE CONSTANCIA ===\n");
 // ---------------------------------------------------------------------------
 /*
