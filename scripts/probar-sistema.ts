@@ -336,10 +336,17 @@ for (const [fn, args] of [
   ["fn_evaluar_escaneo", { p_entrada: "PRE-00801", p_dia: 1, p_modo: "puerta" }],
   ["fn_reasignar_dia", { p_matricula: "00000000000", p_dia: 1 }],
   ["fn_repartir_dias_pendientes", {}],
-  ["fn_cierre_automatico", { p_dia: 1, p_hasta: new Date(0).toISOString() }],
+  ["fn_cierre_automatico", { p_dia: 1, p_hora: new Date(0).toISOString() }],
+  ["fn_alta_usuario_interno", { p_correo: "qa@prueba.invalid", p_nombre: "QA", p_rol: "admin" }],
 ] as const) {
   const { error } = await sb.rpc(fn, args as Record<string, unknown>);
-  if (error) ok(`\`${fn}\` está cerrada a la clave anónima`);
+  /*
+   * PGRST202 es «esa función no existe» y cualquier otro error es «existe pero
+   * no puedes». Distinguirlos importa: una función que falta y una cerrada dan
+   * las dos un error, y solo una de las dos es lo que se quería comprobar.
+   */
+  if (error?.code === "PGRST202") falla(`\`${fn}\` NO EXISTE: falta alguna migración`);
+  else if (error) ok(`\`${fn}\` está cerrada a la clave anónima`);
   else falla(`\`${fn}\` SE PUEDE LLAMAR desde la clave anónima`);
 }
 
