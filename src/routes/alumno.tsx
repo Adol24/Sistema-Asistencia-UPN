@@ -56,6 +56,18 @@ function IdentificacionAlumno() {
      * página. Ahora el expediente lo entrega el servidor solo después del reto,
      * en `/confirmar-nombre`.
      */
+    /*
+     * `existeEnPadronRemoto` devuelve también `ya_registrado`, y aquí se
+     * DESCARTA a propósito.
+     *
+     * A esta pantalla llega cualquiera con cualquier matrícula, y todavía no ha
+     * demostrado que sea la suya. Contestarle «esa ya se registró» entrega un
+     * dato de otra persona a quien no es ella: el mismo buscador del padrón que
+     * el reto de `/confirmar-nombre` viene a cerrar.
+     *
+     * El aviso de «ya tienes tu pre-registro» se da allí, después del reto, con
+     * la misma bandera que trae la ficha. No se suba aquí.
+     */
     let existe: boolean;
     try {
       const { existeEnPadronRemoto } = await import("@/lib/datos");

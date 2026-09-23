@@ -65,6 +65,22 @@ function CatalogoTalleres() {
   const [seleccion, setSeleccion] = useState<string | null>(null);
   const [registrando, setRegistrando] = useState(false);
   /*
+   * «Continuar sin taller» deja de ser inocuo para quien ya está registrado.
+   *
+   * El alta es reentrante —devuelve su folio de siempre, no duplica—, pero de
+   * camino llama a `fn_cambiar_taller` con lo que se elija AHORA. Y con nada
+   * elegido eso es `fn_cambiar_taller(id, null)`, que le quita el taller que
+   * tuviera y libera su lugar. Quien volvió solo a mirar perdía su inscripción
+   * al taller por pulsar el botón que parecía el de salir.
+   *
+   * No se puede saber desde aquí si tenía uno: la ficha del padrón no trae el
+   * taller. Así que en vez de afirmarlo se pide confirmar, y el aviso está
+   * redactado en condicional porque esa es la verdad de lo que se sabe.
+   *
+   * Lo único que lo frena en la base es tener ya un pago del taller.
+   */
+  const [confirmarSinTaller, setConfirmarSinTaller] = useState(false);
+  /*
    * El cerrojo del doble clic, y hace falta uno aparte del estado.
    *
    * `disabled={registrando}` no llega a tiempo: entre la pulsación y el
@@ -313,7 +329,10 @@ function CatalogoTalleres() {
                     variant={elegido ? "secondary" : "default"}
                     disabled={lleno}
                     className="h-11"
-                    onClick={() => setSeleccion(elegido ? null : t.id)}
+                    onClick={() => {
+                      setSeleccion(elegido ? null : t.id);
+                      setConfirmarSinTaller(false);
+                    }}
                   >
                     {lleno ? "Sin cupo" : elegido ? "Cambiar taller" : "Seleccionar"}
                   </Button>
@@ -323,6 +342,18 @@ function CatalogoTalleres() {
           );
         })}
       </ul>
+
+      {confirmarSinTaller ? (
+        <Alert variant="destructive" className="mt-6">
+          <Info className="size-4" />
+          <AlertTitle>Si ya tenías un taller, esto lo cancela</AlertTitle>
+          <AlertDescription>
+            Tu pre-registro al Encuentro no se toca y tu folio es el mismo. Pero seguir sin elegir
+            taller deja tu inscripción sin ninguno y libera el lugar que tuvieras apartado. Si solo
+            venías a mirar, vuelve al inicio: nada cambia hasta que pulses.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {/*
        * Sin talleres queda un solo botón, y deja de llamarse «continuar SIN
@@ -340,9 +371,20 @@ function CatalogoTalleres() {
           variant={sinTalleres ? "default" : "outline"}
           className="h-12 md:h-11 text-base"
           disabled={registrando}
-          onClick={() => void cerrarPreregistro(undefined)}
+          onClick={() => {
+            // Un paso de confirmación, y solo para quien tiene algo que perder.
+            if (borrador.yaRegistrado && !sinTalleres && !confirmarSinTaller) {
+              setConfirmarSinTaller(true);
+              return;
+            }
+            void cerrarPreregistro(undefined);
+          }}
         >
-          {sinTalleres ? "Continuar" : "Continuar sin taller"}
+          {sinTalleres
+            ? "Continuar"
+            : confirmarSinTaller
+              ? "Sí, quiero quedarme sin taller"
+              : "Continuar sin taller"}
         </Button>
         {sinTalleres ? null : (
           <Button

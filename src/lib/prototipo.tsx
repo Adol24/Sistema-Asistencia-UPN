@@ -39,6 +39,19 @@ interface Borrador {
    *  las pantallas de pago y comprobante enseñaban el del participante de
    *  contexto, o sea el de otra persona. */
   folio?: string | undefined;
+  /**
+   * Esta persona ya tenía un pre-registro ANTES de empezar esta vuelta.
+   *
+   * Lo dice `fn_padron_confirmar` en la misma ficha que entrega el expediente,
+   * o sea DESPUÉS del reto de identidad. `fn_padron_existe` también lo
+   * devuelve, desde `/alumno`, y ahí se ignora a propósito: ver el comentario
+   * de esa pantalla.
+   *
+   * Viaja en el borrador porque quien lo necesita está dos pantallas más
+   * adelante. `/talleres` tiene que dejar de tratar «continuar sin taller»
+   * como algo inocuo cuando esta persona quizá ya tenga uno apartado.
+   */
+  yaRegistrado?: boolean | undefined;
 }
 
 interface Ctx {

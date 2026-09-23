@@ -89,6 +89,15 @@ function ConfirmarNombre() {
    * fecha y un portazo.
    */
   const [fueraDeVentana, setFueraDeVentana] = useState("");
+  /**
+   * Ya tiene pre-registro, y hasta ahora nadie se lo decía.
+   *
+   * `seguirAunAsi` es su respuesta al aviso: quien viene a cambiar de taller
+   * sigue teniendo por dónde, pero pasando por delante del aviso en vez de
+   * recorrer el alta entera creyendo que se está registrando.
+   */
+  const [yaRegistrado, setYaRegistrado] = useState(false);
+  const [seguirAunAsi, setSeguirAunAsi] = useState(false);
   const bloqueado = intentos >= INTENTOS;
 
   const programas = useMemo(
@@ -127,9 +136,20 @@ function ConfirmarNombre() {
       const ficha = await confirmarEnPadronRemoto(matricula, nombresPila, programa);
       if (ficha) {
         ok = true;
-        // Su turno. Si no es ahora, se dice aquí y no se sigue.
-        const { ventanaDeMatriculaRemota } = await import("@/lib/datos");
-        setFueraDeVentana((await ventanaDeMatriculaRemota(matricula)) ?? "");
+        /*
+         * La bandera que la base ya mandaba y nadie leía.
+         *
+         * Con ella puesta, la ventana ni se pregunta: quien ya está dentro
+         * entró en su momento, y si las fechas se movieron después, contestarle
+         * «todavía no te toca» sería mentirle sobre un registro que existe.
+         */
+        const ya = ficha.ya_registrado === true;
+        setYaRegistrado(ya);
+        if (!ya) {
+          // Su turno. Si no es ahora, se dice aquí y no se sigue.
+          const { ventanaDeMatriculaRemota } = await import("@/lib/datos");
+          setFueraDeVentana((await ventanaDeMatriculaRemota(matricula)) ?? "");
+        }
         // El expediente llega ahora, no antes. Se guarda para los pasos
         // siguientes del pre-registro.
         setBorrador({
@@ -156,6 +176,8 @@ function ConfirmarNombre() {
            * «día 1» y las pantallas lo tratan distinto.
            */
           dia: (ficha.dia as Dia | null) ?? undefined,
+          // Lo que `/talleres` necesitará saber dos pantallas más adelante.
+          yaRegistrado: ya,
         });
       }
     } catch {
@@ -258,6 +280,73 @@ function ConfirmarNombre() {
           ¿Te equivocaste de matrícula?{" "}
           <Link to="/alumno" className="underline">
             Escríbela de nuevo
+          </Link>
+        </p>
+      </PantallaPublica>
+    );
+  }
+
+  /*
+   * Confirmó que es él, y ya tenía un pre-registro hecho.
+   *
+   * Por qué aquí y no en `/alumno`
+   * ------------------------------
+   * La bandera llega desde `fn_padron_existe`, o sea desde la primera pantalla.
+   * Atenderla allí sería contestar «esa persona ya se registró» a cualquiera
+   * que escriba una matrícula ajena: un dato de alguien entregado sin que nadie
+   * haya demostrado ser él. Es el mismo criterio por el que
+   * `fn_padron_confirmar` devuelve nulo tanto para el reto fallido como para la
+   * matrícula inexistente. Aquí el reto ya está superado, así que el dato es
+   * suyo y se le puede dar.
+   *
+   * Por qué no es solo un aviso encima del formulario
+   * -------------------------------------------------
+   * Seguir adelante no duplica nada: `fn_preregistrar_alumno` lo reconoce por
+   * su matrícula y devuelve SU folio. Pero de camino llama a
+   * `fn_cambiar_taller` con lo que elija en ESTA vuelta, así que continuar no
+   * es un paseo: es cambiar de taller. Se ofrece nombrado como lo que de verdad
+   * hace, y no como volver a registrarse.
+   */
+  if (yaRegistrado && !seguirAunAsi) {
+    return (
+      <PantallaPublica
+        titulo="Ya tienes tu pre-registro"
+        descripcion="Lo hiciste antes y sigue en pie. No hace falta que lo repitas."
+      >
+        <Alert className="border-primary/30">
+          <Info className="size-4" />
+          <AlertTitle>{nombre}</AlertTitle>
+          <AlertDescription>
+            Tu registro al Encuentro ya está hecho, con tu folio de siempre. Aunque volvieras a
+            recorrer estos pasos no se crearía uno nuevo.
+          </AlertDescription>
+        </Alert>
+
+        <div className="mt-6 grid gap-2 sm:grid-cols-2">
+          <Link
+            to="/portal"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-semibold text-primary-foreground"
+          >
+            Ver mi registro
+          </Link>
+          <Button
+            variant="outline"
+            className="h-12 md:h-11 text-base"
+            onClick={() => setSeguirAunAsi(true)}
+          >
+            Cambiar mi taller
+          </Button>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          Para entrar al portal necesitas tu folio. ¿No lo tienes a mano?{" "}
+          <a href={wa} className="underline" target="_blank" rel="noreferrer">
+            Escríbenos por WhatsApp
+          </a>
+        </p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          <Link to="/bienvenida" className="underline">
+            Volver al inicio
           </Link>
         </p>
       </PantallaPublica>
