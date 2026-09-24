@@ -296,7 +296,7 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### Los datos de pago reales (`20260924000000`) — sin aplicar
+### Los datos de pago reales (`20260924000000`) — aplicada
 
 La cuenta que `/pago` le enseña al alumno era la inventada de la migración de
 datos iniciales: BBVA México, cuenta `0123456789`, CLABE `012320001234567897`.
@@ -319,16 +319,33 @@ quien la copiara junto a una cuenta de Santander mandaría el depósito a una
 cuenta ajena. En el cliente desaparecen la fila de `/pago`, el campo de
 `/admin/configuracion` y `banco.clabe` del tipo `ConfiguracionEvento`.
 
-Comprobable sin permisos —la configuración se lee con la clave anónima—:
+**Aplicada el 2026-09-24 y comprobada contra el proyecto real** con la clave
+anónima, que es con la que se lee la configuración:
 
 ```sql
 select banco_nombre, banco_cuenta, banco_beneficiario
   from configuracion_evento where id = 1;
 ```
 
-El bloque final de la migración ya lo comprueba solo: si la fila no quedó con
-esos valores, si no existe, o si `banco_clabe` sigue en la tabla, levanta
-excepción en vez de dejar un «UPDATE 0» que nadie lee en el editor SQL.
+```
+banco_nombre       : "Santander"
+banco_cuenta       : "65501202802"
+banco_beneficiario : "Universidad Pedagógica Nacional"
+banco_clabe        : no existe la columna
+```
+
+Esa última línea es la que importa y no se lee del archivo: se preguntó si
+`banco_clabe` venía en la fila —`"banco_clabe" in fila`— y no viene. La columna
+se fue de verdad.
+
+`bun run verificar-conexion` sigue dando «configuracion_evento tiene las
+columnas que el puente espera», que es lo que comprueba el otro lado: el cliente
+ya no la pide.
+
+El bloque final de la migración comprueba lo mismo al aplicarse: si la fila no
+quedó con esos valores, si no existe, o si `banco_clabe` sigue en la tabla,
+levanta excepción en vez de dejar un «UPDATE 0» que nadie lee en el editor
+SQL.
 
 Si algún día vuelve a hacer falta, vuelve en una migración de una línea
 (`alter table … add column banco_clabe text not null default ''`) y el campo
