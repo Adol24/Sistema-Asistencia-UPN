@@ -304,6 +304,31 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Los módulos de LEIP van todos corridos (`20260924160000`) — SIN APLICAR
+
+`20260924120000` tradujo los módulos del calendario oficial a los números del
+padrón y acertó en uno de cuatro. Su cabecera marcaba justo eso como lo único
+sin comprobar, y no se comprobó: las listas corren **todos** los módulos una
+posición, no solo el XIV.
+
+| calendario | II | VI | X | XIV |
+| --- | --- | --- | --- | --- |
+| padrón | 1 | 5 | 9 | 13 |
+
+Al aplicarla se corrigieron a mano `ventana_cohortes` y las dos etiquetas.
+`cita_cohortes` no, y ahí muerde: las tres cohortes bajas de LEIP tienen ventana
+—se pueden registrar— y su comprobante **no les dice qué día ir a pagar**,
+porque la cita está declarada con el número equivocado. Del otro lado quedan
+tres filas de cita que nadie alcanza.
+
+Esta migración vuelve a declarar las cuatro cohortes de LEIP en las dos tablas,
+fija las etiquetas como quedaron en producción, y termina comprobando lo que de
+verdad importa: que ninguna cohorte tenga ventana sin cita ni cita sin ventana.
+
+**Se reescribe también lo que ya estaba bien**, a propósito. Un entorno nuevo
+aplica los archivos en orden, y sin esto acabaría con lo que `20260924120000`
+escribió en vez de con lo que hay en producción.
+
 ### Los módulos bajos de LEIP (`20260924180000`) — sin aplicar
 
 Contesta la pregunta que dejó abierta la anterior: en la ventana del 27 y 28,
