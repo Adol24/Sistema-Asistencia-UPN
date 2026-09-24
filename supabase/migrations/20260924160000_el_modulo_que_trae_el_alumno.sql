@@ -35,6 +35,9 @@
 -- entere hasta el día 27. **No se cambia aquí porque nadie lo ha confirmado**:
 -- de la organización vino la corrección del 9 y el 13, no la de estos dos. Se
 -- deja enunciado para que sea una pregunta abierta y no un descuido enterrado.
+--
+-- **Contestado el mismo día: son el 1 y el 5.** Lo hace la migración siguiente,
+-- `20260924180000_los_modulos_bajos_de_leip`, que se aplica detrás de esta.
 -- =============================================================================
 
 update ventanas_preregistro

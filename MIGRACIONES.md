@@ -296,6 +296,25 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Los módulos bajos de LEIP (`20260924180000`) — sin aplicar
+
+Contesta la pregunta que dejó abierta la anterior: en la ventana del 27 y 28,
+los módulos de LEIP son el **1 y el 5**, no el 2 y el 6. Confirmado por la
+organización el 2026-09-24. El desfase de uno vale para todo LEIP.
+
+Sin esto, los módulos 1 y 5 llegan el 27 y leen «Todavía no se anuncia la fecha
+de registro para tu grupo» el día que sí les toca, y los módulos 2 y 6 se
+registran un día que no es el suyo.
+
+**Las maestrías no se tocan**: sus módulos I y IV siguen guardados como 1 y 4.
+El desfase es de LEIP —esa generación pasa a un módulo nuevo y el calendario ya
+la nombra por el siguiente—; aplicárselo a la maestría de módulo I la dejaría en
+cero, que no es un módulo que exista. El bloque del final lo comprueba, porque
+es justo lo que un `update` mal acotado se llevaría por delante.
+
+El rótulo pasa a «…y de los módulos 1, 4 y 5»: los números que de verdad entran,
+que son los que el alumno puede comparar contra el suyo.
+
 ### El módulo que trae el alumno (`20260924160000`) — sin aplicar
 
 Una alumna de LEIP leía «El registro de séptimo semestre y de los módulos **X y
