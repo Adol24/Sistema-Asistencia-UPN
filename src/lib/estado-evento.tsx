@@ -1764,6 +1764,31 @@ export function EstadoEventoProvider({
     return guardarPadronRemoto(filas);
   }, []);
 
+  /*
+   * El alta de uno, en mesa. NO usa `escribir`, y esa es la diferencia.
+   *
+   * `escribir` es optimista: pinta primero y avisa si la base rechaza. Sirve
+   * para la ventanilla, donde la fila no puede pararse. Aquí es al revés: quien
+   * captura tiene al alumno delante y necesita saber si quedó ANTES de decirle
+   * que ya está. Un alta pintada que la base rechazó haría que esa persona se
+   * fuera creyéndose en el padrón, y volviera el 27 a encontrarse con que no.
+   *
+   * Así que se espera, y el estado se actualiza con lo que la base devolvió
+   * —nombre en mayúsculas y sin acentos incluido—, no con lo que se tecleó.
+   */
+  const altaAsistidaPadron = useCallback<Ctx["altaAsistidaPadron"]>(async (datos) => {
+    if (!hayBaseDeDatos)
+      throw new Error("Sin base de datos configurada no se puede dar de alta a nadie.");
+    const d = await import("@/lib/datos");
+    const fila = await d.altaAsistidaPadron(datos);
+    setPadron((prev) => [...prev, fila]);
+    // La bitácora NO se escribe aquí: `fn_padron_alta_asistida` ya anota la
+    // entrada con `auth.uid()` dentro de la misma transacción que crea la fila.
+    // Anotarla también desde el cliente dejaría dos renglones del mismo hecho, y
+    // el de aquí podría existir sin el alta si la petición se perdiera.
+    return fila;
+  }, []);
+
   const aplicarPadron = useCallback<Ctx["aplicarPadron"]>((filas) => {
     if (filas.length === 0) return { registros: 0, altas: 0, actualizaciones: 0, sinDia: 0 };
 
@@ -1894,6 +1919,7 @@ export function EstadoEventoProvider({
       padron,
       aplicarPadron,
       guardarPadron,
+      altaAsistidaPadron,
       sedes,
       repartoPorDia,
       sinDiaAsignado,
@@ -1971,6 +1997,7 @@ export function EstadoEventoProvider({
       padron,
       aplicarPadron,
       guardarPadron,
+      altaAsistidaPadron,
       sedes,
       repartoPorDia,
       sinDiaAsignado,

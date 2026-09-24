@@ -126,4 +126,28 @@ select
       join ventanas_preregistro v on v.id = c.ventana_id
      where v.etiqueta = 'El registro de primer semestre'
        and c.avance = 1
-  ) as "20260923180000_la_ventana_de_primer_semestre";
+  ) as "20260923180000_la_ventana_de_primer_semestre",
+
+  /*
+   * El alta en mesa.
+   *
+   * Se piden las DOS mitades porque cada una sirve para algo distinto y una sin
+   * la otra deja el trabajo a medias: la función es la puerta —sin ella no se
+   * puede dar de alta a nadie— y la columna `autodeclarado` es lo que permite
+   * encontrar esas filas cuando llegue el padrón real. Con la función y sin la
+   * columna se crearían alumnos imposibles de contrastar.
+   */
+  (
+    exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_padron_alta_asistida'
+    )
+    and exists (
+      select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'padron_alumnos'
+         and column_name = 'autodeclarado'
+    )
+  ) as "20260923200000_dar_de_alta_a_un_alumno_en_mesa";

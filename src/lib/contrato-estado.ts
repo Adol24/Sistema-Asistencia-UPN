@@ -291,6 +291,29 @@ export interface Ctx {
     guardados: number;
     rechazados: { matricula: string; motivo: string }[];
   }>;
+  /**
+   * Da de alta a UN alumno en el padrón con lo que declara en la mesa.
+   *
+   * Para los de nuevo ingreso, cuyo padrón la unidad todavía no tiene y que se
+   * pre-registran el 27 y el 28. Sin fila en el padrón no hay pre-registro
+   * posible: `participantes.matricula` apunta ahí con una llave foránea.
+   *
+   * Es `async` y devuelve la fila TAL COMO LA GUARDÓ LA BASE, no lo que se
+   * mandó: el nombre vuelve en mayúsculas y sin acentos, y esa es la versión
+   * que hay que enseñar porque es la que se va a imprimir. Y por eso propaga el
+   * error en vez de tragárselo: quien está en la mesa, con el alumno delante,
+   * necesita saber si quedó o no.
+   *
+   * `avance` no se recibe —va fijo en 1, que es el único dato seguro de esta
+   * población— ni `nivel`, que la base deriva del programa.
+   */
+  altaAsistidaPadron: (datos: {
+    matricula: string;
+    nombre: string;
+    programa: string;
+    plantel: string;
+    grupo?: string | undefined;
+  }) => Promise<AlumnoPadron>;
   sedes: string[];
   aplicarPadron: (filas: AlumnoPadron[]) => {
     registros: number;

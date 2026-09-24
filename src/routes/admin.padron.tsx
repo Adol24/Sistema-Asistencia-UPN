@@ -4,7 +4,15 @@ import { FiltroSemaforo, ZonaDeArchivo } from "@/components/zona-archivo";
 import { Campo } from "@/components/tipografia";
 import { useImportador } from "@/lib/importador";
 import type { OrigenTabla } from "@/lib/csv";
-import { AlertTriangle, CheckCircle2, Download, CalendarDays, Loader2, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  Download,
+  Loader2,
+  Upload,
+  UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -14,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
+import { AltaDeUnAlumno } from "@/components/alta-de-un-alumno";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { simularLatencia } from "@/lib/formato";
 import { descargarCsv } from "@/lib/exportar";
@@ -57,6 +66,7 @@ function ImportacionPadron() {
     padron,
     aplicarPadron,
     guardarPadron,
+    altaAsistidaPadron,
     sedes,
     estadoDe,
     registrarBitacora,
@@ -68,6 +78,23 @@ function ImportacionPadron() {
     infoDia,
     configuracion,
   } = useEstadoEvento();
+  const [altaAbierta, setAltaAbierta] = useState(false);
+  /*
+   * Solo las licenciaturas, y solo sus nombres.
+   *
+   * El alta en mesa es para nuevo ingreso, y `fn_padron_alta_asistida` rechaza
+   * cualquier otro nivel con un mensaje explícito. Ofrecer las maestrías en la
+   * lista sería dejar que quien captura eligiera algo que la base va a devolver:
+   * el filtro se hace aquí para que no llegue a pasar.
+   */
+  const licenciaturas = useMemo(
+    () =>
+      configuracion.catalogoAcademico
+        .filter((n) => n.nivel === "Licenciatura")
+        .flatMap((n) => n.programas.map((p) => p.nombre))
+        .sort((a, b) => a.localeCompare(b, "es")),
+    [configuracion.catalogoAcademico],
+  );
   // Lo que la base rechazó: se enseña, no se esconde en la consola.
   const [rechazados, setRechazados] = useState<{ matricula: string; motivo: string }[]>([]);
   const [aplicado, setAplicado] = useState<{
@@ -400,6 +427,21 @@ function ImportacionPadron() {
       descripcion="Nada cambia hasta que confirmas. Primero revisas la vista previa, después aplicas."
       acciones={
         <div className="flex flex-wrap gap-2">
+          {/*
+            El alta de uno, para la mesa del 27 y 28.
+            ----------------------------------------------------------------
+            Esta pantalla importa archivos, y eso cubre lo normal: Servicios
+            Escolares entrega la lista y entra de una vez. Lo que no cubría es
+            el caso de los de nuevo ingreso, cuyo padrón la unidad todavía no
+            tiene: sin fila en el padrón no hay pre-registro posible, porque
+            `participantes.matricula` apunta ahí con una llave foránea.
+
+            Va aquí y no en una ruta aparte porque es el mismo padrón, y quien
+            lo captura es quien ya vive en esta pantalla.
+          */}
+          <Button className="h-11" onClick={() => setAltaAbierta(true)}>
+            <UserPlus className="size-4" /> Alta de un alumno
+          </Button>
           <Button variant="outline" className="h-11" onClick={descargarPadronCompleto}>
             <Download className="size-4" /> Descargar el padrón ({padron.length})
           </Button>
@@ -1067,6 +1109,15 @@ function ImportacionPadron() {
         confirmar={`Sí, aplicar ${resumen.aplicables}`}
         alConfirmar={() => void aplicar()}
       />
+
+      {altaAbierta ? (
+        <AltaDeUnAlumno
+          licenciaturas={licenciaturas}
+          sedes={sedes}
+          onCerrar={() => setAltaAbierta(false)}
+          onAlta={altaAsistidaPadron}
+        />
+      ) : null}
     </PantallaPanel>
   );
 }

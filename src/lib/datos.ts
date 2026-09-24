@@ -1917,3 +1917,85 @@ export async function asignarDiaRemoto(
   }
   return liberados;
 }
+
+/**
+ * Da de alta a UN alumno en el padrón con lo que declara en la mesa de registro.
+ *
+ * Para los de nuevo ingreso, que se pre-registran el 27 y el 28 y cuyo padrón la
+ * unidad todavía no tiene. Sin fila en `padron_alumnos` no hay alta posible: la
+ * llave foránea de `participantes.matricula` apunta ahí.
+ *
+ * La resolución de nombre a uuid se hace AQUÍ y no en la base, por lo mismo que
+ * la hace `guardarPadronRemoto`: quien está en la mesa elige «Licenciatura en
+ * Pedagogía» de una lista, no teclea un uuid. Se compara sin acentos ni
+ * mayúsculas —la misma `clave` que el importador— porque los catálogos y lo que
+ * la pantalla enseña vienen del mismo sitio pero pasan por el navegador.
+ *
+ * Lo que NO se manda: `avance`, que va fijo en 1 dentro de la función porque es
+ * el único dato seguro de esta población, y `nivel`, que se deriva del programa.
+ * Mandarlos permitiría una combinación que la llave compuesta rechazaría después
+ * con un error sobre una restricción.
+ */
+export async function altaAsistidaPadron(datos: {
+  matricula: string;
+  nombre: string;
+  /** Nombre de la licenciatura, tal como la enseña el catálogo. */
+  programa: string;
+  /** Nombre de la sede donde estudia. */
+  plantel: string;
+  grupo?: string | undefined;
+}): Promise<AlumnoPadron> {
+  const sb = exigirBase();
+
+  const clave = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+
+  const [programas, planteles] = await Promise.all([
+    sb.from("programas").select("id, nombre"),
+    sb.from("planteles").select("id, nombre"),
+  ]);
+
+  const idPrograma = ((programas.data ?? []) as { id: string; nombre: string }[]).find(
+    (p) => clave(p.nombre) === clave(datos.programa),
+  )?.id;
+  const idPlantel = ((planteles.data ?? []) as { id: string; nombre: string }[]).find(
+    (p) => clave(p.nombre) === clave(datos.plantel),
+  )?.id;
+
+  // Se avisa antes de llamar: el mensaje de la función hablaría del catálogo,
+  // y el problema aquí es que la pantalla mandó un nombre que no está en él.
+  if (!idPrograma) throw new Error(`La licenciatura «${datos.programa}» no está en el catálogo.`);
+  if (!idPlantel) throw new Error(`La sede «${datos.plantel}» no está en el catálogo.`);
+
+  const fila = await llamar<{
+    matricula: string;
+    nombre: string;
+    nivel: string;
+    programa: string;
+    plantel: string;
+    avance: number;
+  }>("fn_padron_alta_asistida", {
+    p_matricula: datos.matricula,
+    p_nombre: datos.nombre,
+    p_programa: idPrograma,
+    p_plantel: idPlantel,
+    p_grupo: datos.grupo ?? null,
+  });
+
+  // Se devuelve lo que la BASE guardó, no lo que la pantalla mandó: el nombre
+  // vuelve normalizado —mayúsculas y sin acentos— y esa es la versión que hay
+  // que enseñar, porque es la que se va a imprimir.
+  return {
+    matricula: fila.matricula,
+    nombre: fila.nombre,
+    nivel: fila.nivel,
+    programa: fila.programa,
+    avance: fila.avance,
+    plantel: fila.plantel,
+    ...(datos.grupo?.trim() ? { grupo: datos.grupo.trim() } : {}),
+  };
+}
