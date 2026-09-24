@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Camera, Maximize2 } from "lucide-react";
+import { AlertTriangle, Camera, Maximize2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
 import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
-import { AccionesDelPase, SelloDelCodigo } from "@/components/pase";
+import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
@@ -13,12 +13,13 @@ import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { fechaLimiteTexto } from "@/lib/formato";
+import { abreLaPuerta } from "@/lib/pagos-logica";
 
 export const Route = createFileRoute("/portal/qr")({
   head: () =>
     meta(
       "Mi código QR — XIV Encuentro Internacional de Educación",
-      "El código de tu folio para el XIV Encuentro Internacional de Educación: el mismo de tu comprobante, y abre la puerta en cuanto Servicios Financieros valide tu pago.",
+      "Tu código de entrada al XIV Encuentro Internacional de Educación. Aparece aquí en cuanto Servicios Financieros confirme tu pago.",
     ),
   component: MiQr,
 });
@@ -26,8 +27,9 @@ export const Route = createFileRoute("/portal/qr")({
 const faltantesDe = (horas: number): Record<string, string> => ({
   pre_registrado: "Falta que hagas tu depósito y entregues el voucher en Servicios Financieros.",
   comprobante_recibido: `Ya recibimos tu comprobante. Servicios Financieros tarda unas ${horas} horas en validarlo; vuelve a esta pantalla y tu código estará aquí.`,
-  discrepancia:
-    "El monto depositado no coincide con el esperado. Acude a ventanilla para aclararlo.",
+  // `discrepancia` ya NO está en este mapa: esa persona tiene código —la puerta
+  // la admite— así que nunca llega a esta rama. Su aviso se da junto al código,
+  // que es donde le sirve. Ver `abreLaPuerta`.
   expirado: "Tu pre-registro venció porque no se recibió el comprobante a tiempo.",
   cancelado: "Tu registro fue cancelado. Contacta a soporte si crees que es un error.",
 });
@@ -50,74 +52,88 @@ function MiQrContenido({ p }: { p: Participante }) {
   // plazo o la fecha límite, esta pantalla lo refleja sin recargar.
   const { estadoDe, configuracion: evento } = useEstadoEvento();
   const estado = estadoDe(p);
-  const pagado = estado.evento === "pagado";
+  /*
+   * Quién tiene código, y no se decide aquí.
+   *
+   * Era `estado.evento === "pagado"`, escrito a mano, y esta pantalla no era la
+   * única: `/pago` tenía su propia versión y `/comprobante` daba por hecho que
+   * nunca. Ahora las tres preguntan a `abreLaPuerta`, que es la misma línea que
+   * `fn_evaluar_escaneo` traza en la base.
+   *
+   * El cambio de fondo es que `discrepancia` entra aquí. Antes caía en la rama
+   * de «todavía no» y se le enseñaba el código atenuado; pero a esa persona el
+   * torniquete SÍ la admite —depositó, por un importe que no cuadra— así que
+   * dejarla sin código que escanear la mandaba a mesa de incidencias por una
+   * puerta que le estaba abierta.
+   */
+  const tieneCodigo = abreLaPuerta(estado.evento);
   const faltantes = faltantesDe(evento.horasValidacion);
   const [ampliado, setAmpliado] = useState(false);
 
   // También en la vista normal: alguien puede enseñar el pase sin ampliarlo.
-  usePantallaEncendida(pagado);
+  usePantallaEncendida(tieneCodigo);
 
   return (
     <PantallaPublica titulo="Mi código QR" ancho="lg">
       <PortalNav />
       {/*
-        Un solo código, en dos estados. No dos códigos.
+        Sin pago confirmado no hay código, y no se dibuja uno atenuado.
         ------------------------------------------------------------------
-        Esta pantalla enseñaba el QR solo al pagar y, mientras tanto, decía
-        «Todavía no podemos generar tu código QR» y «esta pantalla es la única
-        que lo tiene». Las dos frases eran falsas: el código es el folio, el
-        folio existe desde el pre-registro y el comprobante ya lo había
-        pintado. De ahí salían los dos QR que nadie sabía distinguir.
+        Esta pantalla pasó por las dos versiones equivocadas. Primero enseñaba
+        el QR solo al pagar pero decía «esta pantalla es la única que lo tiene»,
+        cuando el comprobante ya lo había pintado: de ahí salían los dos
+        códigos que nadie sabía distinguir. Luego lo enseñó siempre, atenuado y
+        con un sello, para dejar de fingir que eran dos.
 
-        Ahora el código se enseña siempre —es suyo desde el primer día— y lo
-        que cambia es el sello de debajo y lo que se puede hacer con él. Las
-        acciones de pase (descargar, compartir, pantalla completa, mantener la
-        pantalla encendida) siguen siendo solo de quien ya pagó: son las que
-        tratan al código como un boleto, y antes de tiempo no lo es.
+        Las dos dejaban en pie el mismo riesgo: una imagen que el ojo clasifica
+        como «mi QR del evento», en manos de quien no ha pagado, termina en la
+        puerta el día del evento. El sello gris no compite con la imagen.
 
-        Enseñarlo sin pagar no abre ninguna puerta: quien decide es
-        `fn_evaluar_escaneo`, que consulta el pago en la base y devuelve rojo.
+        Ahora el código existe cuando el pago está confirmado y antes no. Lo que
+        se enseña mientras tanto es el folio, que es lo que de verdad sirve
+        antes: abre el portal y es lo que se dice en ventanilla.
       */}
       <section className="rounded-lg border border-border bg-card p-6 text-center">
-        {pagado ? (
-          /*
-           * Tocar el código lo abre a pantalla completa. Es el gesto que la
-           * gente intenta por instinto con cualquier imagen, y aquí resulta ser
-           * justo lo que conviene hacer en la puerta.
-           */
-          <button
-            type="button"
-            onClick={() => setAmpliado(true)}
-            className="mx-auto flex flex-col items-center gap-2 rounded-lg"
-            aria-label="Ver el código a pantalla completa"
-          >
-            <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <Maximize2 className="size-3.5" aria-hidden />
-              Tócalo para mostrarlo en grande
-            </span>
-          </button>
-        ) : (
-          /*
-           * Atenuado, y sin envolver en un botón que no lleva a ninguna parte.
-           * `opacity` y no un color distinto: el símbolo tiene que seguir
-           * siendo reconociblemente el mismo que el del comprobante y el que
-           * verá cuando se active. Y sigue escaneando —en ventanilla es
-           * justamente el que hay que leer—.
-           */
-          <div className="mx-auto w-fit opacity-60">
-            <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
-          </div>
-        )}
-
-        <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
-        <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
-
-        <SelloDelCodigo activo={pagado} />
-
-        {pagado ? (
+        {tieneCodigo ? (
           <>
-            <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} activo />
+            {/*
+             * Tocar el código lo abre a pantalla completa. Es el gesto que la
+             * gente intenta por instinto con cualquier imagen, y aquí resulta
+             * ser justo lo que conviene hacer en la puerta.
+             */}
+            <button
+              type="button"
+              onClick={() => setAmpliado(true)}
+              className="mx-auto flex flex-col items-center gap-2 rounded-lg"
+              aria-label="Ver el código a pantalla completa"
+            >
+              <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Maximize2 className="size-3.5" aria-hidden />
+                Tócalo para mostrarlo en grande
+              </span>
+            </button>
+
+            <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+            <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
+
+            {/*
+             * La discrepancia se dice AQUÍ, junto al código que sí funciona.
+             *
+             * Antes esta persona caía en la otra rama y leía «acude a ventanilla
+             * para aclararlo» en lugar de un pase. Ahora tiene su código —la
+             * puerta la admite— y lo que necesita saber es que aun así le falta
+             * un trámite. Callarlo aquí sería dejar que se enterara en la fila.
+             */}
+            {estado.evento === "discrepancia" ? (
+              <p className="mt-4 flex items-start gap-2 rounded-md border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-left text-sm text-estado-discrepancia">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                Tu código ya abre la puerta, pero el monto depositado no coincide con el esperado.
+                Pasa a Servicios Financieros a aclararlo.
+              </p>
+            ) : null}
+
+            <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} />
             <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-left text-sm">
               <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
               Toma una captura de pantalla: en la entrada no necesitas internet para mostrar tu
@@ -126,6 +142,10 @@ function MiQrContenido({ p }: { p: Participante }) {
           </>
         ) : (
           <>
+            <p className="text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+
+            <CodigoPendiente folio={p.folio} />
+
             <div className="mt-5 flex justify-center">
               <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />
             </div>
@@ -144,7 +164,7 @@ function MiQrContenido({ p }: { p: Participante }) {
           </>
         )}
       </section>
-      {ampliado && pagado ? (
+      {ampliado && tieneCodigo ? (
         <PaseAPantallaCompleta
           valor={p.folio}
           nombre={p.nombre}

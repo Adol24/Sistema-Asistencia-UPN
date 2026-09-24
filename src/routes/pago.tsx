@@ -6,11 +6,12 @@ import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
-import { AccionesDelPase, SelloDelCodigo } from "@/components/pase";
+import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
 import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
 import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { abreLaPuerta } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 
 export const Route = createFileRoute("/pago")({
@@ -58,18 +59,21 @@ function Pago() {
   const folio = borrador.folio ?? participante?.folio;
 
   /*
-   * ¿El código que se está enseñando ya abre la puerta?
+   * ¿Esta persona ya tiene código, o todavía no?
    *
-   * Casi siempre no: esta pantalla explica CÓMO pagar, así que quien la lee
-   * todavía no ha pagado. Pero se puede volver a ella después, y entonces un
-   * sello que dijera «todavía no» sería tan falso como el que había antes.
+   * Casi siempre todavía no: esta pantalla explica CÓMO pagar, así que quien la
+   * lee no ha pagado. Pero se puede volver a ella después, y entonces negarle
+   * su código sería tan falso como enseñárselo antes.
    *
    * Se pregunta solo cuando el folio es el del participante del contexto. El
    * del borrador acaba de nacer en el pre-registro y no tiene pago que
    * consultar: ahí la respuesta es no, y lo es de verdad.
+   *
+   * `abreLaPuerta` y no `=== "pagado"` escrito a mano: es la misma regla que
+   * `/portal/qr` y que `fn_evaluar_escaneo`, y vivía copiada en cada pantalla.
    */
-  const paseActivo =
-    !borrador.folio && !!participante && estadoDe(participante).evento === "pagado";
+  const tieneCodigo =
+    !borrador.folio && !!participante && abreLaPuerta(estadoDe(participante).evento);
   // El nombre va impreso en la imagen del pase, para que se reconozca de quién
   // es sin tener que abrirla y leer el folio.
   const nombre = borrador.nombre ?? participante?.nombre ?? "";
@@ -138,19 +142,27 @@ function Pago() {
           </div>
 
           {/*
-            El mismo código del comprobante y del portal, con su sello.
+            De las tres pantallas que pintaban el código, esta era la peor.
 
-            Aquí salía pelado, sin una sola palabra que dijera qué era, y justo
-            debajo estaba el botón de descargar la imagen del pase: quien leía
-            estas instrucciones —o sea, quien todavía NO ha pagado— se bajaba un
-            archivo llamado `pase-PRE-00847.png` con su nombre y el escudo,
-            idéntico al que se lleva quien ya pagó. De las tres pantallas que
-            pintan este código, esta era la que más convencía de tener el boleto.
+            Salía pelado, sin una palabra que dijera qué era, y justo debajo
+            estaba el botón de descargar la imagen del pase: quien leía estas
+            instrucciones —o sea, quien todavía NO ha pagado— se bajaba un
+            `pase-PRE-00847.png` con su nombre y el escudo, idéntico al que se
+            lleva quien ya pagó. Ponerle un sello ayudó, pero seguía siendo una
+            imagen descargable en manos de quien no ha depositado.
+
+            Ahora aquí no hay código hasta que el pago se confirme. Lo que esta
+            pantalla necesita enseñar es el folio, y ya lo enseña arriba en
+            grande con su botón de copiar: es lo que va en el concepto del
+            depósito y lo que abre el portal.
           */}
-          <div className="mt-4 flex justify-center">
-            <CodigoQR valor={folio ?? ""} size={148} />
-          </div>
-          <SelloDelCodigo activo={paseActivo} />
+          {tieneCodigo ? (
+            <div className="mt-4 flex justify-center">
+              <CodigoQR valor={folio ?? ""} size={148} />
+            </div>
+          ) : (
+            <CodigoPendiente folio={folio ?? ""} />
+          )}
 
           <div className="mx-auto mt-4 max-w-md rounded-md border-2 border-primary/30 bg-primary/5 p-3 text-left">
             <p className="flex items-start gap-2 text-sm font-semibold">
@@ -162,22 +174,20 @@ function Pago() {
               <Link to="/portal" className="font-semibold text-primary underline">
                 tu portal
               </Link>
-              , donde ves si tu pago ya se registró, subes tus evidencias y tu código queda activado
-              para la entrada. Sin el folio no hay forma de entrar.
+              , donde ves si tu pago ya se registró, subes tus evidencias y aparece tu código para
+              la entrada. Sin el folio no hay forma de entrar.
             </p>
           </div>
 
-          {/* La descarga es real: genera la imagen y la guarda. Lleva el sello
-              de la pantalla, así que antes de pagar sale un `folio-*.png` que
-              dice lo que es, y no un pase que no lo es todavía. */}
-          <div className="print:hidden">
-            <AccionesDelPase
-              folio={folio ?? ""}
-              nombre={nombre}
-              evento={evento.nombre}
-              activo={paseActivo}
-            />
-          </div>
+          {/* La descarga es real: genera la imagen y la guarda. Solo se ofrece
+              cuando hay pase que descargar; antes de confirmarse el pago, el
+              archivo con el nombre y el escudo era justo lo que terminaba en la
+              puerta el día del evento. */}
+          {tieneCodigo ? (
+            <div className="print:hidden">
+              <AccionesDelPase folio={folio ?? ""} nombre={nombre} evento={evento.nombre} />
+            </div>
+          ) : null}
         </aside>
 
         {/* La columna larga: todo lo que hay que hacer con ese folio. */}

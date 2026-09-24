@@ -67,6 +67,29 @@ export const porCobrar = (e: EstadoPago): boolean => !resuelto(e);
 export const sinAcreditar = (e: EstadoPago): boolean =>
   e === "pre_registrado" || e === "comprobante_recibido" || e === "expirado" || e === "cancelado";
 
+/**
+ * Servicios Financieros ya reconoció su depósito, así que la puerta lo admite.
+ *
+ * Es `sinAcreditar` del revés, y tiene nombre propio porque gobierna algo
+ * distinto: **si se le enseña su código QR**. Hasta ahora las tres pantallas
+ * que lo pintan —`/comprobante`, `/pago` y `/portal/qr`— lo enseñaban siempre,
+ * atenuado y con un sello de «todavía no abre la puerta». La idea era no
+ * fingir que hay dos códigos; el efecto era que quien no había pagado se
+ * llevaba una imagen con su nombre y el escudo, y llegaba el día del evento
+ * convencido de traer su boleto.
+ *
+ * Ahora el código no existe para él hasta que el pago se confirma. No se
+ * atenúa: no se dibuja.
+ *
+ * `discrepancia` cuenta como confirmado, y esto NO es una concesión: es la
+ * misma línea que traza `fn_evaluar_escaneo` en la base —«si no es `pagado` ni
+ * `discrepancia`, SIN PAGO REGISTRADO»— y la que traza `escaneo.ts` en el
+ * motor local. Esa persona depositó, solo que por un importe que no cuadra, y
+ * el torniquete la deja pasar avisando. Ocultarle el código la dejaría sin
+ * nada que escanear en una puerta que sí la habría admitido.
+ */
+export const abreLaPuerta = (e: EstadoPago): boolean => !sinAcreditar(e);
+
 /** Su lugar sigue apartado pero puede perderlo si no entrega a tiempo. */
 export const porVencer = (e: EstadoPago): boolean =>
   e === "pre_registrado" || e === "comprobante_recibido";

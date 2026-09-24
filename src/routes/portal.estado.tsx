@@ -11,6 +11,7 @@ import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { abreLaPuerta } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago } from "@/dominio/tipos";
@@ -26,8 +27,19 @@ export const Route = createFileRoute("/portal/estado")({
 
 const nodos = ["Pre-registrado", "Comprobante recibido", "Pagado", "QR disponible"];
 
+/**
+ * En qué nodo de la línea de tiempo está.
+ *
+ * `discrepancia` caía en el 0 —«Pre-registrado»— y eso ya era discutible; con
+ * el código escondido hasta confirmar el pago pasa a ser una contradicción a la
+ * vista: esta pantalla le diría que no ha hecho nada mientras «Mi código QR» le
+ * enseña un código que sí abre la puerta.
+ *
+ * Se pregunta por `abreLaPuerta`, que es la misma regla que decide si tiene
+ * código, para que las dos pantallas no puedan volver a discrepar.
+ */
 const indiceDe = (estado: EstadoPago) =>
-  estado === "pagado" ? 3 : estado === "comprobante_recibido" ? 1 : 0;
+  abreLaPuerta(estado) ? 3 : estado === "comprobante_recibido" ? 1 : 0;
 
 /*
  * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los
@@ -167,14 +179,19 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         {estado.evento === "comprobante_recibido" ? (
           <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-sm">
             <Clock3 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            {/*
+              Decía «es el mismo que ya tienes», y eso dejó de ser cierto: el
+              código no se le enseña hasta que el pago esté confirmado, así que
+              todavía no tiene ninguno. Ahora dice cuándo aparece y dónde.
+            */}
             <span>
               Servicios Financieros tarda unas{" "}
               <span className="font-semibold">{evento.horasValidacion} horas</span> en validar tu
-              voucher. Cuando termine, tu código empieza a abrir la puerta y lo ves así en{" "}
+              voucher. Cuando termine, tu código aparece en{" "}
               <Link to="/portal/qr" className="font-semibold text-primary underline">
                 Mi código QR
               </Link>
-              . No te lo enviamos por correo: es el mismo que ya tienes.
+              . No te lo enviamos por correo: lo consultas ahí con tu folio.
             </span>
           </p>
         ) : null}

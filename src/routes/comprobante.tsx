@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
-import { CodigoQR } from "@/components/qr";
-import { SelloDelCodigo } from "@/components/pase";
+import { CodigoPendiente } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechaLimiteTexto, isoAFecha, moneda } from "@/lib/formato";
@@ -160,18 +159,26 @@ function Comprobante() {
                 </div>
               </dl>
               {/*
-                El mismo código que enseña el portal, y se dice que lo es.
+                Aquí ya no hay QR, y esta pantalla es la razón de la regla.
 
-                Aquí ponía «Folio para ventanilla» y nada más. La etiqueta era
-                correcta, pero tres palabras en gris no compiten con una imagen
-                que el ojo ya clasificó como «mi QR del evento»: quien se
-                llevaba este papel creía traer su pase. El sello lo dice con
-                todas las letras y con el mismo color de estado que usa el
-                resto del portal.
+                Pasó por dos intentos. Primero ponía «Folio para ventanilla» en
+                gris junto al código: tres palabras que no compiten con una
+                imagen que el ojo ya clasificó como «mi QR del evento». Luego se
+                le puso un sello que decía «todavía no abre la puerta», que era
+                honesto y seguía perdiendo contra la imagen.
+
+                Este papel es el que la gente guarda y el que trae consigo el
+                día del evento —lo dice el propio encabezado: «descárgalo o
+                guarda esta pantalla»—. Un comprobante de pre-registro con un
+                QR encima ES un boleto para cualquiera que lo mire. Y no lo es:
+                el pago todavía no está confirmado, y cuando lo esté el código
+                aparecerá en el portal.
+
+                Lo que sí tiene que llevarse de aquí es el folio, que es lo que
+                le piden en ventanilla y lo que abre su portal.
               */}
               <div className="justify-self-center">
-                <CodigoQR valor={folio ?? ""} size={148} />
-                <SelloDelCodigo activo={false} />
+                <CodigoPendiente folio={folio ?? ""} />
               </div>
             </div>
           </div>

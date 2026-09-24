@@ -171,19 +171,19 @@ export async function pngDelPase(
     nombre: string;
     evento: string;
     /**
-     * ¿Este código ya abre la puerta?
+     * Se conserva y vale siempre `true`.
      *
-     * **La imagen tiene que responderlo sola**, y esa es la razón de que este
-     * parámetro exista. Antes salía siempre igual, así que quien descargaba
-     * desde las instrucciones de pago —sin haber pagado— se quedaba con un
-     * archivo llamado `pase-PRE-00847.png`, con su nombre y el escudo, idéntico
-     * al que descarga quien ya pagó. Dos archivos indistinguibles en la galería
-     * del teléfono, y uno de los dos no sirve para entrar.
+     * Existía para que la imagen respondiera sola si el código abría la puerta:
+     * quien descargaba desde las instrucciones de pago —sin haber pagado— se
+     * llevaba un `pase-PRE-00847.png` idéntico al de quien ya pagó, y el
+     * parámetro le estampaba «TODAVÍA NO ABRE LA PUERTA».
      *
-     * El símbolo NO cambia: sigue siendo el mismo folio y se lee igual en
-     * ventanilla. Lo que cambia es lo que la imagen dice de sí misma.
+     * Ese caso ya no existe: sin pago confirmado no se enseña el código ni se
+     * ofrece descargarlo, así que toda imagen que salga de aquí es de un pase
+     * de verdad. Se deja el campo —y no el sello— para que la llamada siga
+     * diciendo en voz alta qué está generando.
      */
-    activo: boolean;
+    activo: true;
   },
 ): Promise<Blob | null> {
   const qr = encode(valor, { ecc: "H", border: 4 });
@@ -192,9 +192,9 @@ export async function pngDelPase(
   const modulo = 16;
   const lado = n * modulo;
   const margen = 48;
-  // El renglón de estado solo ocupa sitio cuando hay estado que advertir: un
-  // pase activo no necesita que le pongan un sello encima diciendo que lo está.
-  const alturaTexto = datos.activo ? 150 : 200;
+  // Sin renglón de sello: un pase activo no necesita que le pongan encima un
+  // aviso diciendo que lo está.
+  const alturaTexto = 150;
 
   const lienzo = document.createElement("canvas");
   lienzo.width = lado + margen * 2;
@@ -265,28 +265,15 @@ export async function pngDelPase(
   ctx.fillText(recortar(ctx, datos.evento, lienzo.width - margen), centro, y);
 
   /*
-   * El sello, en la propia imagen y no solo en la pantalla que la generó.
+   * Aquí se estampaba «TODAVÍA NO ABRE LA PUERTA» sobre una banda gris, para
+   * que la advertencia viajara con el archivo y no solo en la pantalla que lo
+   * generó —un pie de foto en la web no se ve meses después en una galería—.
    *
-   * Se dibuja sobre una banda gris y con el texto en mayúsculas porque esta
-   * imagen se mira meses después, en una galería, sin nada alrededor que la
-   * explique. Un pie de foto en la web no viaja con el archivo; esto sí.
-   *
-   * No lleva rojo ni tacha: el archivo no es inválido —es el folio, y en
-   * ventanilla es exactamente el que hay que leer—. Lo único que no hace
-   * todavía es abrir la puerta, y eso es lo que dice.
+   * Se va porque el archivo que advertía ya no se produce: sin pago confirmado
+   * no se enseña el código ni se ofrece descargarlo. Un sello que nunca se
+   * dibuja es peor que ninguno, porque hace creer que la salvaguarda sigue
+   * puesta. La salvaguarda ahora es no generar la imagen.
    */
-  if (!datos.activo) {
-    y += 20;
-    const alto = 44;
-    const ancho = lienzo.width - margen * 2;
-    ctx.fillStyle = "#E2E8F0";
-    ctx.fillRect(margen, y, ancho, alto);
-    ctx.fillStyle = "#334155";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 22px ui-sans-serif, system-ui, sans-serif";
-    ctx.fillText("TODAVÍA NO ABRE LA PUERTA", centro, y + alto / 2);
-    ctx.textBaseline = "alphabetic";
-  }
 
   return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
 }
