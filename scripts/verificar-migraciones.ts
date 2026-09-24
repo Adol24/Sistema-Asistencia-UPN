@@ -35,7 +35,20 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const CARPETA = "supabase/migrations";
+/*
+ * Las dos carpetas, no solo una.
+ *
+ * `utilidades/` no lleva migraciones —son datos y consultas— pero se pega en el
+ * MISMO editor SQL y trae las mismas construcciones: `raise` con marcadores y
+ * bloques `do $$ … $$`. El fallo que dio origen a este comprobante fue un
+ * `raise` mal contado, y ahí puede ocurrir igual sin que nadie lo revise.
+ *
+ * La diferencia es cuánto duele, y va al revés de lo que sugiere el nombre de
+ * la carpeta: una migración se aplica una vez, con cuidado y con el archivo
+ * delante. Un archivo de utilidades se pega deprisa, y `abrir-ventana-…` abre o
+ * cierra el pre-registro de una audiencia entera.
+ */
+const CARPETAS = ["supabase/migrations", "supabase/utilidades"];
 
 let fallas = 0;
 const falla = (archivo: string, linea: number, m: string) => {
@@ -221,16 +234,25 @@ function sinComentarios(sql: string): string {
   return fuera;
 }
 
-const archivos = readdirSync(CARPETA)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+const archivos = CARPETAS.flatMap((carpeta) =>
+  readdirSync(carpeta)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    // Se conserva la carpeta para poder abrir el archivo y, sobre todo, para
+    // que el nombre de una falla diga en cuál de las dos está.
+    .map((nombre) => ({ carpeta, nombre, ruta: join(carpeta, nombre) })),
+);
 
-console.log(`Revisando ${archivos.length} migraciones en ${CARPETA}\n`);
+for (const carpeta of CARPETAS)
+  console.log(
+    `Revisando ${archivos.filter((a) => a.carpeta === carpeta).length} archivos en ${carpeta}`,
+  );
+console.log();
 
 let raises = 0;
 
-for (const archivo of archivos) {
-  const bruto = readFileSync(join(CARPETA, archivo), "utf8");
+for (const { ruta, nombre: archivo } of archivos) {
+  const bruto = readFileSync(ruta, "utf8");
   const sql = sinComentarios(bruto);
 
   // --- Los argumentos de cada `raise` ---------------------------------------

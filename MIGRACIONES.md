@@ -803,8 +803,9 @@ de Supabase, ni Docker. Salen revisadas leyéndolas, no probadas — y ya se vio
 que eso cuesta: la 31 parecía correcta en el archivo y dejó dos funciones
 abiertas al público.
 
-**Antes de pegarlas, `bun run verificar-migraciones`.** Revisa las 64 sin base de
-datos y caza lo que solo se descubre al aplicarlas:
+**Antes de pegarlas, `bun run verificar-migraciones`.** Revisa sin base de datos
+las de `migrations/` **y las de `utilidades/`**, y caza lo que solo se descubre
+al aplicarlas:
 
 - **Los argumentos de cada `raise`**, contra sus marcadores. Es de donde salió:
   `20260923200000` llevaba un `%%` —que en PL/pgSQL es un porcentaje LITERAL, no
@@ -813,6 +814,13 @@ datos y caza lo que solo se descubre al aplicarlas:
   días.
 - **El equilibrio de las comillas de dólar.** Un `$fn$` sin cerrar no da un
   error legible: Postgres se come el resto del archivo como texto.
+
+`utilidades/` entra aunque no sean migraciones, porque se pegan en el MISMO
+editor y traen las mismas construcciones: `raise` con marcadores y bloques
+`do $$ … $$`. Y la urgencia va al revés de lo que sugiere el nombre de la
+carpeta: una migración se aplica una vez, con cuidado y con el archivo delante;
+un archivo de utilidades se pega deprisa, y `abrir-ventana-docentes-y-externos`
+abre o cierra el pre-registro de una audiencia entera.
 
 Revisarlo a ojo no funciona, y hay prueba de las dos formas: auditar a mano las
 tres migraciones de ese día no lo encontró, y el primer comprobante escrito para
