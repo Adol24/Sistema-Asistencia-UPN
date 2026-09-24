@@ -5,7 +5,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { CodigoPendiente } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
-import { fechaLimiteTexto, isoAFecha, moneda } from "@/lib/formato";
+import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -35,6 +35,17 @@ function Comprobante() {
   const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
   const nombre = borrador.nombre ?? participante?.nombre;
   const total = evento.cuotaEvento + (taller?.costo ?? 0);
+  /*
+   * Los días del taller, en fechas.
+   *
+   * Se buscan en `evento.dias` y NO con `infoDia`: esa función se cae al día 1
+   * cuando no encuentra el que le piden, que para pintar un rótulo está bien y
+   * para datar un taller sería mentir con aplomo. Sin fecha, `fechasEnTexto`
+   * devuelve vacío y el renglón no se dibuja.
+   */
+  const fechasTaller = taller
+    ? fechasEnTexto(taller.dias.map((d) => evento.dias.find((c) => c.dia === d)?.fecha ?? ""))
+    : "";
 
   /*
    * El día que le toca ir a pagar, que es lo que la persona pregunta aquí.
@@ -176,15 +187,23 @@ function Comprobante() {
                   <dd className="font-medium">
                     {taller ? taller.nombre : "Sin taller"}
                     {/*
-                     * La hora y el lugar del taller van aquí y no se dan por sabidos.
-                     * El renglón de arriba dice dónde son las ponencias, que es otro
-                     * edificio: quien lleva taller se mueve por la tarde, y este papel
-                     * es lo único que trae consigo ese día.
+                     * La fecha, la hora y el lugar del taller van aquí y no se dan
+                     * por sabidos. El renglón de arriba dice cuándo y dónde son las
+                     * ponencias, y el taller puede caer otro día y es otro edificio:
+                     * quien lleva taller se mueve por la tarde, y este papel es lo
+                     * único que trae consigo.
                      */}
                     {taller ? (
-                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                        {taller.horario} · {taller.lugar}
-                      </span>
+                      <>
+                        {fechasTaller ? (
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {fechasTaller}
+                          </span>
+                        ) : null}
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          {taller.horario} · {taller.lugar}
+                        </span>
+                      </>
                     ) : null}
                   </dd>
                 </div>

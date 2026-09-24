@@ -7,7 +7,7 @@ import { PortalNav } from "@/components/portal-nav";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
-import { isoAFecha } from "@/lib/formato";
+import { fechasEnTexto, isoAFecha } from "@/lib/formato";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
@@ -62,6 +62,17 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const dia = infoDia(p.dia);
   const taller = getTaller(p.tallerId);
   const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance, p.programa);
+  /*
+   * Los días del taller, en fechas.
+   *
+   * Se buscan en `evento.dias` y NO con `infoDia`: esa función se cae al día 1
+   * cuando no encuentra el que le piden, que para pintar un rótulo está bien y
+   * para datar un taller sería mentir con aplomo. Sin fecha, `fechasEnTexto`
+   * devuelve vacío y el renglón no se dibuja.
+   */
+  const fechasTaller = taller
+    ? fechasEnTexto(taller.dias.map((d) => evento.dias.find((c) => c.dia === d)?.fecha ?? ""))
+    : "";
   const actual = indiceDe(estado.evento);
 
   /*
@@ -232,14 +243,16 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             )}
           </div>
           {/*
-           * Con la hora y el lugar, porque el recuadro de abajo —«Tu asistencia
-           * presencial»— dice dónde son las ponencias y el taller es por la
-           * tarde en otro edificio. Sin esto, el portal manda a media tarde al
-           * sitio equivocado a quien confió en el único lugar que le enseñó.
+           * Con la fecha, la hora y el lugar, porque el recuadro de abajo —«Tu
+           * asistencia presencial»— dice cuándo y dónde son las ponencias, y el
+           * taller es por la tarde, en otro edificio y puede que otro día. Sin
+           * esto, el portal manda a media tarde al sitio equivocado a quien
+           * confió en el único lugar que le enseñó.
            */}
           {taller ? (
             <div className="mt-2 text-xs text-muted-foreground">
               <p>{taller.nombre}</p>
+              {fechasTaller ? <p className="mt-0.5 font-medium">{fechasTaller}</p> : null}
               <p className="mt-0.5">
                 {taller.horario} · {taller.lugar}
               </p>
