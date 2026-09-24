@@ -44,7 +44,7 @@ El sistema de diseño quedó centralizado y medido, no supuesto: los 18 tokens d
 | Datos simulados (`/src/mocks/`)    | 🟢     | 100 %    | 8 archivos conformes; 46 comprobaciones en 18 familias, clasificadas y verificables sobre el estado de la sesión           |
 | Pre-registro público (8 pantallas) | 🟢     | 100 %    | Identificación con la matrícula de 11 dígitos, datos de contacto confirmados, nombre no editable             |
 | Catálogo de talleres               | 🟢     | 100 %    | Los 4 estados de tarjeta; oculta los talleres marcados como inactivos en administración                                    |
-| Instrucciones de pago              | 🟢     | 100 %    | Folio grande, QR, dos depósitos, copiar, vouchers de ejemplo; cuota y fecha límite salen de la configuración               |
+| Instrucciones de pago              | 🟢     | 100 %    | Folio grande, QR, dos depósitos, copiar, voucher de ejemplo; cuota y fecha límite salen de la configuración                |
 | Portal del participante            | 🟢     | 100 %    | Refleja pagos, asistencias y decisiones de revisión de la sesión sin recargar                                              |
 | Servicios Financieros              | 🟢     | 100 %    | Búsqueda con atajos reales, ficha, las 4 validaciones de pago, carga masiva con vista previa y conciliación                |
 | App de captura de asistencia       | 🟢     | 100 %    | Semáforo a pantalla completa con sonido y vibración, reingreso, cierre automático, sin conexión persistido, y a bitácora   |
@@ -343,7 +343,7 @@ La normalización se aplica **solo donde corresponde**: la derivación de correo
 - **Aviso destacado de dos depósitos separados** con el texto exigido, en bloque con color de advertencia — líneas 88-93
 - Desglose en dos bloques: evento con concepto `ENCUENTRO-{folio}` (línea 100) y taller con `TALLER-{folio}` (línea 108). Cuando no hay taller se muestra un bloque explicativo en lugar de omitirlo — líneas 112-121
 - **Datos bancarios** (banco, cuenta, beneficiario — la CLABE se retiró el 2026-09-24), **cada uno con botón de copiar que confirma al pulsarse** cambiando a "Copiado" durante 1,8 s — componente `CampoCopiable`, líneas 25-48; instancias en 127-130
-- **Las dos imágenes de ejemplo de voucher** (correcta e incorrecta), en posición prominente y **ampliables al tocar** mediante diálogo modal — líneas 134-151, modal en 186-191. Marcadores de posición claramente etiquetados
+- **La imagen de ejemplo de voucher**, en posición prominente y **ampliable al tocar** mediante diálogo modal. Marcador de posición claramente etiquetado. La especificación pedía dos —correcta e incorrecta—; la del voucher borroso se quitó el 2026-09-24
 - Ubicación y horario de Servicios Financieros — líneas 153-158
 - **Fecha límite con día y hora exactos**, destacada en bloque con borde de color — líneas 159-162 (valor en `src/mocks/evento.ts:7`: "viernes 10 de octubre, 18:00 hrs")
 - Qué llevar: credencial, voucher original, folio — líneas 165-172

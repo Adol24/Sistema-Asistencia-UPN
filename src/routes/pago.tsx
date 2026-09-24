@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
-import { IMAGEN_VOUCHER_MAL, IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
+import { IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
 import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -233,29 +233,32 @@ function Pago() {
 
           <section className="mt-6">
             <h2 className="text-base font-semibold">Cómo presentar tu voucher</h2>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              {[
-                { src: IMAGEN_VOUCHER_OK, txt: "Así SÍ: voucher completo, legible y sin dobleces" },
-                {
-                  src: IMAGEN_VOUCHER_MAL,
-                  txt: "Así NO: voucher cortado, borroso o con datos tapados",
-                },
-              ].map((img) => (
-                <button
-                  key={img.txt}
-                  onClick={() => setAmpliada(img.src)}
-                  className="overflow-hidden rounded-lg border border-border bg-card text-left"
-                >
-                  <img
-                    src={img.src}
-                    alt={img.txt}
-                    className="h-56 w-full object-cover"
-                    loading="lazy"
-                  />
-                  <p className="p-3 text-xs font-medium">{img.txt} — toca para ampliar</p>
-                </button>
-              ))}
-            </div>
+            {/*
+             * Un solo ejemplo, el bueno.
+             *
+             * Eran dos, y el segundo era un voucher borroso rotulado «Así NO».
+             * Enseñar el error junto al acierto obliga a leer cuál es cuál, y
+             * quien va deprisa se queda con la imagen, no con el rótulo.
+             *
+             * El requisito no se pierde al quitarla: iba en el rótulo del
+             * ejemplo malo —cortado, borroso, con datos tapados— y va ahora en
+             * el del bueno, en positivo: completo, legible y sin dobleces. Es
+             * la misma exigencia dicha una vez en vez de dos.
+             */}
+            <button
+              onClick={() => setAmpliada(IMAGEN_VOUCHER_OK)}
+              className="mt-2 block w-full overflow-hidden rounded-lg border border-border bg-card text-left sm:max-w-sm"
+            >
+              <img
+                src={IMAGEN_VOUCHER_OK}
+                alt="Así debe verse tu voucher: completo, legible y sin dobleces"
+                className="h-56 w-full object-cover"
+                loading="lazy"
+              />
+              <p className="p-3 text-xs font-medium">
+                Así debe verse: completo, legible y sin dobleces — toca para ampliar
+              </p>
+            </button>
           </section>
 
           <section className="mt-6 grid gap-3 sm:grid-cols-2">

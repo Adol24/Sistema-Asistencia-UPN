@@ -15,6 +15,13 @@ Fuera de alcance, y por tanto ausentes del prototipo a propósito: generación o
 vista previa de PDF, folio de constancia, QR de verificación, página pública
 `/verificar/{folio}`, emisión individual o masiva, y anulación de constancias.
 
+CAMBIO — EJEMPLO DE VOUCHER
+
+Se enseña **una** imagen de ejemplo, la del voucher correcto, no dos. La del
+voucher borroso rotulada «Así NO» se quitó el 2026-09-24: enseñar el error junto
+al acierto obliga a leer cuál es cuál, y quien va deprisa se queda con la imagen
+y no con el rótulo. Lo que no hay que llevar lo dice el texto.
+
 CAMBIO — DATOS BANCARIOS
 
 La cuenta del Encuentro es de Santander, 65501202802, a nombre de la Universidad
