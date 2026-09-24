@@ -1,9 +1,18 @@
 -- =============================================================================
--- ¿Cuáles de las últimas migraciones están puestas?
+-- ¿Qué migraciones están puestas?
 --
 -- Nada lleva la cuenta: se aplican a mano en el editor SQL. Esto lo averigua
--- mirando la HUELLA de cada una —una columna, una llave que ya no está, una
--- función que ya no existe— en vez de un registro que nadie mantiene.
+-- mirando la HUELLA de cada una —una columna, un índice, una llave que ya no
+-- está, una frase dentro del cuerpo de una función— en vez de un registro que
+-- nadie mantiene.
+--
+-- Están las últimas, y además las que el documento daba por aplicadas sin que
+-- nadie pudiera comprobarlo. Esa prosa ya se equivocó una vez: el encabezado de
+-- `un_alumno_no_es_externo` decía «sin aplicar» y sus reglas llevaban días
+-- vivas. Una afirmación comprobable que nadie comprueba acaba siendo falsa sin
+-- que se note, así que las que se puedan mirar, se miran aquí.
+--
+-- **Al escribir una migración nueva, añadirle aquí su huella.**
 --
 -- **Hay que correrlo con una sesión con permisos**, en el editor SQL del panel.
 -- Desde el rol anónimo no sirve: una función revocada y una que no existe
@@ -51,6 +60,36 @@ select
        and p.proname = 'fn_evidencia_preparar'
        and pg_get_functiondef(p.oid) like '%perfil_participante%'
   ) as "20260923100000_solo_los_alumnos_entregan_evidencia",
+
+  /*
+   * Las dos que el documento daba por aplicadas y nadie podía comprobar.
+   *
+   * `verificar-conexion` corre con la clave anónima y las dos le quedan fuera:
+   * `pg_indexes` no se expone y `pg_publication_tables` tampoco. Hasta ahora la
+   * única garantía de que estaban puestas era una línea de prosa en
+   * MIGRACIONES.md, y ya se vio lo que vale eso — el encabezado de
+   * `un_alumno_no_es_externo` afirmó lo contrario de lo que había.
+   */
+  exists (
+    select 1 from pg_indexes
+     where schemaname = 'public'
+       and indexname = 'uq_participante_sin_matricula'
+  ) as "20260917140000_un_solo_preregistro_por_persona",
+
+  not exists (
+    select t.tabla
+      from unnest(array[
+             'casos_soporte', 'usuarios_internos', 'configuracion_evento',
+             'dias_evento', 'bitacora', 'niveles_academicos',
+             'programas', 'planteles'
+           ]) as t(tabla)
+     where not exists (
+       select 1 from pg_publication_tables
+        where pubname = 'supabase_realtime'
+          and schemaname = 'public'
+          and tablename = t.tabla
+     )
+  ) as "20260921180000_publicar_lo_que_faltaba",
 
   exists (
     select 1 from information_schema.columns

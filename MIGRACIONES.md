@@ -339,7 +339,9 @@ En el cliente desaparecen el botón «Ejecutar cierre automático», su diálogo
 tocaba la memoria de la pestaña, así que su aviso de «se cerraron N asistencias»
 prometía algo que no ocurría.
 
-### Publicar lo que faltaba de tiempo real (46) — aplicada
+### Publicar lo que faltaba de tiempo real (`20260921180000`) — aplicada
+
+Comprobable: `estado-de-migraciones.sql` mira las ocho tablas en `supabase_realtime`.
 
 La escucha en vivo existe desde la 21 y funciona, pero su lista se armó con las
 pantallas que había entonces. Cuatro tablas que el panel sí lee se quedaron
@@ -563,7 +565,9 @@ existen, y a un externo real rechazado por llamarse igual que un alumno no le
 queda salida —no tiene matrícula con la que entrar por el otro lado—. Antes un
 duplicado detectable que alguien legítimo fuera del evento.
 
-### El docente y el externo se podían pre-registrar dos veces (39) — aplicada
+### El docente y el externo se podían pre-registrar dos veces (`20260917140000`) — aplicada
+
+Comprobable: `estado-de-migraciones.sql` busca el índice `uq_participante_sin_matricula`, que desde el rol anónimo no se ve.
 
 En `participantes` solo hay dos cosas únicas: el `folio`, que genera una
 secuencia, y la `matricula`. Y la matrícula es **nula** para el docente y el
