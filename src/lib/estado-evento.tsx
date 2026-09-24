@@ -139,28 +139,18 @@ export function EstadoEventoProvider({
   const { reloj, setReloj } = useRelojEvento(configuracion);
 
   /*
-   * Los avisos que le esperan a alguien en su portal, y una advertencia.
+   * Aquí vivía el mapa de avisos del portal, y se fue entero.
    *
-   * `agregarAviso` estaba aquí y se fue con la migración 60: su ÚNICO productor
-   * era la liberación del taller al cambiar de día, que ya no ocurre. Así que
-   * este mapa no lo llena nadie y la sección de avisos de `/portal/estado` sale
-   * siempre vacía.
+   * `agregarAviso` lo llenaba, y se marchó con la migración 60: su ÚNICO
+   * productor era la liberación del taller al cambiar de día, que ya no ocurre.
+   * Lo que quedó fue un mapa que nadie llenaba sirviendo una sección que salía
+   * siempre vacía — y que de paso tapaba algo peor: `avisos_participante` tenía
+   * filas desde el principio y no se habían enseñado nunca.
    *
-   * Y eso destapa algo que ya estaba: la tabla `avisos_participante` de la base
-   * SÍ tiene filas —las que dejaron las liberaciones hasta hoy— y nunca se han
-   * leído a este estado. `tiempo-real` escucha esa tabla, pero `cargarTodo` no
-   * la trae. O sea que los avisos guardados no se han enseñado nunca, y eso es
-   * anterior a este cambio y sigue pendiente.
+   * `fn_portal_estado` ya las devolvía. Ahora `DatosPortal` las declara y
+   * `/portal/estado` las lee de ahí, que es además donde deben leerse: el
+   * participante es un anónimo y este estado carga tablas que no puede ver.
    */
-  const [avisos, setAvisos] = useState<Record<string, string[]>>({});
-  const avisosDe = useCallback<Ctx["avisosDe"]>((folio) => avisos[folio] ?? [], [avisos]);
-  const descartarAvisos = useCallback<Ctx["descartarAvisos"]>((folio) => {
-    setAvisos((prev) => {
-      const copia = { ...prev };
-      delete copia[folio];
-      return copia;
-    });
-  }, []);
 
   const infoDia = useCallback<Ctx["infoDia"]>(
     (dia) => configuracion.dias.find((d) => d.dia === dia) ?? configuracion.dias[0]!,
@@ -1898,8 +1888,6 @@ export function EstadoEventoProvider({
       actualizarConfiguracion,
       infoDia,
       puntosDelDia,
-      avisosDe,
-      descartarAvisos,
       talleres,
       getTaller,
       guardarTaller,
@@ -1976,8 +1964,6 @@ export function EstadoEventoProvider({
       actualizarConfiguracion,
       infoDia,
       puntosDelDia,
-      avisosDe,
-      descartarAvisos,
       talleres,
       getTaller,
       guardarTaller,

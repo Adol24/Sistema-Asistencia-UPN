@@ -18,10 +18,10 @@ import type { Participante } from "@/dominio/tipos";
  * `portal-nav.tsx`.
  *
  * Se conserva porque `DatosPortal` tiene que reflejar lo que la función
- * devuelve, y eso no es celo por la simetría: los avisos del portal salen
- * vacíos justamente porque `fn_portal_estado` manda un campo `avisos` que este
- * tipo no declara, así que el cliente lo tira sin que nadie se entere. Un campo
- * declarado y sin usar se ve; uno que falta, no.
+ * devuelve, y eso no es celo por la simetría: los avisos del portal salieron
+ * vacíos durante semanas justamente porque `fn_portal_estado` mandaba un campo
+ * `avisos` que este tipo no declaraba, así que el cliente lo tiraba sin que
+ * nadie se enterara. Un campo declarado y sin usar se ve; uno que falta, no.
  */
 export interface ElegibilidadPortal {
   elegible: boolean;
@@ -39,6 +39,16 @@ export interface DatosPortal {
   evidencias: { dia: number; estado: string; motivo_rechazo?: string | null }[];
   /** `null` mientras la vista no tenga fila para esa persona. */
   elegibilidad: ElegibilidadPortal | null;
+  /**
+   * Los cambios que alguien le hizo a su registro y todavía no ha visto.
+   *
+   * Vienen de `avisos_participante`, ya filtrados por `visto_en is null`. Es la
+   * ÚNICA forma de que le lleguen: el mapa en memoria que los servía antes
+   * perdió su productor con la migración 60 —era la liberación del taller al
+   * cambiar de día, que ya no ocurre— y las filas que la tabla guardaba desde
+   * el principio no se habían enseñado nunca.
+   */
+  avisos: { id: string; texto: string }[];
 }
 
 interface Ctx {
@@ -162,6 +172,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         // Se mapea aunque ninguna pantalla lo lea ya: es lo que la función
         // devuelve. Ver `ElegibilidadPortal`.
         elegibilidad: (crudo["elegibilidad"] ?? null) as DatosPortal["elegibilidad"],
+        avisos: (crudo["avisos"] ?? []) as DatosPortal["avisos"],
       });
     } catch {
       setError("No pudimos cargar tus datos. Inténtalo de nuevo en un momento.");

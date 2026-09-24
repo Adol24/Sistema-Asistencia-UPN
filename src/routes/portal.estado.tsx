@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Circle, Clock3, Dot } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
@@ -55,20 +56,31 @@ function EstadoPortal() {
 }
 
 function EstadoPortalContenido({ p }: { p: Participante }) {
-  const {
-    estadoDe,
-    configuracion: evento,
-    infoDia,
-    avisosDe,
-    descartarAvisos,
-    getTaller,
-  } = useEstadoEvento();
+  const { estadoDe, configuracion: evento, infoDia, getTaller } = useEstadoEvento();
+  const { datos } = usePortal();
   const estado = estadoDe(p);
   const dia = infoDia(p.dia);
   const taller = getTaller(p.tallerId);
   const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance, p.programa);
-  const avisos = avisosDe(p.folio);
   const actual = indiceDe(estado.evento);
+
+  /*
+   * Los avisos salen de `fn_portal_estado`, no del estado general del evento.
+   *
+   * Antes venían de un mapa en memoria de `estado-evento`, y ese mapa se quedó
+   * sin productor con la migración 60: su único origen era la liberación del
+   * taller al cambiar de día, que ya no ocurre. Resultado, la sección salía
+   * siempre vacía — y de paso tapaba que las filas que `avisos_participante`
+   * guardaba desde el principio no se habían enseñado NUNCA. La función ya las
+   * mandaba; lo que faltaba era recogerlas.
+   *
+   * «Ya lo vi» solo los esconde en esta pestaña: `visto_en` es de la base y el
+   * participante no puede escribir esa tabla. Volverán en la próxima visita
+   * hasta que alguien del personal los marque, y eso es preferible a fingir que
+   * se guardó algo que no se guardó.
+   */
+  const [descartados, setDescartados] = useState<string[]>([]);
+  const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 
   return (
     <PantallaPublica ancho="lg">
@@ -83,7 +95,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
           <AlertDescription className="grid gap-2">
             <ul className="grid gap-2">
               {avisos.map((a) => (
-                <li key={a}>{a}</li>
+                <li key={a.id}>{a.texto}</li>
               ))}
             </ul>
             <div className="flex flex-wrap gap-2">
@@ -95,7 +107,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               </Link>
               <button
                 type="button"
-                onClick={() => descartarAvisos(p.folio)}
+                onClick={() => setDescartados((prev) => [...prev, ...avisos.map((a) => a.id)])}
                 className="inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold text-muted-foreground hover:bg-muted"
               >
                 Ya lo vi

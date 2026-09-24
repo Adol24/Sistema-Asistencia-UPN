@@ -224,14 +224,10 @@ export interface Ctx {
   casoDeNombreAbierto: (folio: string) => CasoSoporte | undefined;
 
   // --- Avisos para el participante ---
-  /**
-   * Cosas que le pasaron a su registro y tiene que saber, sin que nadie se las
-   * envíe: se las encuentra en su portal. Hoy solo se usa para la inscripción
-   * que se libera al cambiar de día, que era el caso en el que el participante
-   * se quedaba sin taller y sin explicación.
-   */
-  avisosDe: (folio: string) => string[];
-  descartarAvisos: (folio: string) => void;
+  // Ya no viven aquí. Las cosas que le pasaron a su registro y tiene que saber
+  // se las encuentra en su portal, y llegan por `fn_portal_estado` a
+  // `DatosPortal.avisos`. Este estado no las sirve: carga tablas que un
+  // participante anónimo no puede leer.
 
   // --- Participantes ---
   /** Participantes con los cambios de la sesión aplicados (día, sede, taller). */
