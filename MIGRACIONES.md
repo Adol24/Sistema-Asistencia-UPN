@@ -268,7 +268,7 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
-### La salida que nadie dio (62) — sin aplicar
+### La salida que nadie dio (62) — aplicada
 
 Quita `fn_cierre_automatico`, y con ella la última pieza que inventaba
 movimientos en `asistencias`.
@@ -487,7 +487,22 @@ existente**, porque hasta ahora nada impedía repartir 900 alumnos a un día ni
 pre-registrar a 800 en otro. No echa a nadie —borrar pre-registros que la gente ya
 vio confirmados sería peor— y avisa para que la organización decida.
 
-### Un alumno no se inscribe como externo (40) — sin aplicar
+### Un alumno no se inscribe como externo (40) — sus reglas están puestas
+
+**Este encabezado decía «sin aplicar» y engañaba.** Las dos comprobaciones de
+esta migración viven dentro de `fn_preregistrar_externo`, y la **61**
+—`20260923140000`, aplicada— volvió a crear esa función llevándoselas dentro.
+O sea que la protección está hoy en la base, haya corrido o no este archivo.
+
+Lo que importa de una migración que solo redefine funciones no es si su archivo
+llegó a correr: es si su regla está en el cuerpo que la base tiene puesto. Eso es
+lo que comprueba `supabase/utilidades/estado-de-migraciones.sql`, y por eso busca
+la frase de la regla y no el nombre del archivo.
+
+La segunda regla sigue dormida a propósito, y eso no cambia: depende de
+`dominio_institucional`, que está vacío porque aquí nadie tiene cuenta
+institucional. Ver el aviso de `verificar-conexion`.
+
 
 La 39 cerró el pre-registro doble por los dos lados que tenía. Quedaba un tercer
 camino que ningún índice ve: el mismo alumno volviendo por `/registro` como

@@ -15,6 +15,22 @@
 -- =============================================================================
 
 select
+  /*
+   * La 40 no se busca en su propia migración, sino en la función.
+   *
+   * Sus dos reglas viven dentro de `fn_preregistrar_externo`, y la 61 volvió a
+   * crear esa función llevándoselas dentro. Así que lo que importa no es si el
+   * archivo de la 40 llegó a correr, sino si las reglas están HOY en el cuerpo
+   * que la base tiene puesto — que es lo único que protege a alguien.
+   */
+  exists (
+    select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'fn_preregistrar_externo'
+       and pg_get_functiondef(p.oid) like '%ya está registrado como alumno%'
+  ) as "40_un_alumno_no_es_externo",
+
   exists (
     select 1 from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
