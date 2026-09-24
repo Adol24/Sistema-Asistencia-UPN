@@ -545,7 +545,7 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
 {
   const { data, error } = await sb
     .from("ventanas_preregistro")
-    .select("etiqueta, abre, cierra, ventana_cohortes ( avance, programas ( nombre ) )")
+    .select("id, etiqueta, abre, cierra, ventana_cohortes ( avance, programas ( nombre ) )")
     .order("abre");
 
   // PostgREST contesta PGRST205 cuando la tabla no está en su caché de esquema,
@@ -562,11 +562,27 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
      * escribir código defensivo para un array que nunca llega.
      */
     const ventanas = data as unknown as {
+      id: string;
       etiqueta: string;
       abre: string;
       cierra: string;
       ventana_cohortes: { avance: number; programas: { nombre: string } | null }[];
     }[];
+
+    /*
+     * Los perfiles se piden aparte, y por la misma razón que explica el bloque
+     * de la 49 más abajo: embebidos en el `select` de arriba, una 49 sin
+     * aplicar rompería TAMBIÉN la lectura de las cohortes y el comprobante
+     * culparía a la 44, que sí está.
+     *
+     * Si no se pueden leer se sigue con el mapa vacío. No se calla nada: el
+     * bloque de la 49 dice qué falta, y una ventana sin cohortes y sin perfiles
+     * conocidos se sigue denunciando aquí.
+     */
+    const { data: filasPerfil } = await sb.from("ventana_perfiles").select("ventana_id, perfil");
+    const perfilesDe = new Map<string, string[]>();
+    for (const f of (filasPerfil ?? []) as { ventana_id: string; perfil: string }[])
+      perfilesDe.set(f.ventana_id, [...(perfilesDe.get(f.ventana_id) ?? []), f.perfil]);
 
     if (!ventanas.length) {
       /*
@@ -586,13 +602,29 @@ console.log("\n=== LAS VENTANAS DE PRE-REGISTRO ===\n");
           new Date(iso).toLocaleDateString("es-MX", { timeZone: "America/Mexico_City" });
         ok(`«${v.etiqueta}» — del ${fecha(v.abre)} al ${fecha(v.cierra)} · ${estado}`);
 
-        // Una ventana sin cohortes no deja pasar a nadie y no lo parece: se ve
-        // cargada en el panel y en la base, y rechaza a todo el mundo con
-        // «todavía no se anuncia la fecha de tu grupo».
-        if (!v.ventana_cohortes.length) {
-          falla(`«${v.etiqueta}» no admite a nadie: no tiene ningún programa declarado`);
+        const perfiles = [...new Set(perfilesDe.get(v.id) ?? [])].sort();
+
+        /*
+         * Una ventana que no admite a NADIE no lo parece: se ve cargada en el
+         * panel y en la base, y rechaza a todo el mundo con «todavía no se
+         * anuncia la fecha de registro para tu grupo».
+         *
+         * Se admite de DOS formas, y mirar solo una daba un rojo falso. La
+         * ventana de docentes y externos no declara cohortes —no pertenecen a
+         * ningún programa— sino perfiles, así que este comprobante la denunciaba
+         * en cada ejecución mientras él mismo confirmaba, dos líneas más abajo,
+         * que el docente y el externo leen su aviso. Terminaba siempre en «1
+         * PROBLEMAS», y un comprobante que siempre sale en rojo deja de
+         * comprobar: se mira por encima y el día que el rojo sea de verdad
+         * también se mirará por encima.
+         */
+        if (!v.ventana_cohortes.length && !perfiles.length) {
+          falla(`«${v.etiqueta}» no admite a nadie: no declara ni programas ni perfiles`);
           continue;
         }
+
+        if (perfiles.length) console.log(`       por perfil: ${perfiles.join(", ")}`);
+        if (!v.ventana_cohortes.length) continue;
         const porAvance = new Map<number, string[]>();
         for (const c of v.ventana_cohortes)
           porAvance.set(c.avance, [

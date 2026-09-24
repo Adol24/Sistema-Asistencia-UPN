@@ -13,6 +13,14 @@ aplicada cuando la base contesta lo que debe, no cuando el archivo existe.
 Ese comprobante ya cazó una: `20260911120000` dejó dos funciones abiertas al rol
 anónimo, y desde el archivo parecían cerradas.
 
+**Y el 2026-09-24 se le quitó un rojo falso.** Denunciaba que la ventana de
+docentes y externos «no admite a nadie» porque no tiene filas en
+`ventana_cohortes`, cuando esa ventana admite por `ventana_perfiles` —docente y
+externo no pertenecen a ningún programa— y él mismo confirmaba dos líneas más
+abajo que los dos leen su aviso. Terminaba siempre en «1 PROBLEMAS», y un
+comprobante que siempre sale en rojo se mira por encima el día que el rojo es de
+verdad. Ahora mira las dos formas de admitir y solo falla si no hay ninguna.
+
 ## Aplicadas
 
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
