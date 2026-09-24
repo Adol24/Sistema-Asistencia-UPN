@@ -90,6 +90,72 @@ export const fechaLimiteTexto = (iso: string) => {
 };
 
 /**
+ * Un día del evento como se lee en público: «miércoles 14 de octubre».
+ *
+ * La entrada es el `AAAA-MM-DD` de `dias_evento.fecha`, y **no se puede pasar
+ * por `new Date(iso)`**: una fecha sin hora la lee JavaScript como medianoche
+ * UTC, y al pintarla en la zona de México —seis horas por detrás— sale el día
+ * ANTERIOR. El taller del 14 se anunciaría el 13. Por eso se parte a mano y se
+ * arma con el constructor de tres argumentos, que sí construye medianoche
+ * local.
+ *
+ * Lo que no reconoce devuelve cadena vacía, para que quien lo pinte pueda caer
+ * a otra cosa en vez de enseñar una fecha inventada.
+ */
+export const fechaLarga = (iso: string) => {
+  const p = partesDeIso(iso);
+  return p ? `${diaSemana(p)} ${p.dia} de ${mes(p)}` : "";
+};
+
+/**
+ * Los días de un taller en una sola frase: «miércoles 14 y jueves 15 de
+ * octubre».
+ *
+ * El mes se dice una vez cuando los dos días caen en el mismo, que es el caso
+ * real —el Encuentro dura tres días de octubre—, y las dos veces cuando no,
+ * porque «martes 30 y miércoles 1 de octubre» dataría el 30 en octubre.
+ *
+ * Si algún día no trae fecha devuelve cadena vacía en vez de media frase: un
+ * taller de dos días anunciado con uno solo es peor que no anunciar ninguno.
+ */
+export const fechasEnTexto = (isos: string[]) => {
+  const partes = isos.map(partesDeIso);
+  if (!partes.length || partes.some((p) => !p)) return "";
+
+  const dias = partes as NonNullable<(typeof partes)[number]>[];
+  const mismoMes = dias.every((d) => d.mes === dias[0]!.mes && d.anio === dias[0]!.anio);
+
+  return mismoMes
+    ? `${unirConY(dias.map((d) => `${diaSemana(d)} ${d.dia}`))} de ${mes(dias[0]!)}`
+    : unirConY(dias.map((d) => `${diaSemana(d)} ${d.dia} de ${mes(d)}`));
+};
+
+interface PartesDeFecha {
+  anio: number;
+  mes: number;
+  dia: number;
+}
+
+const partesDeIso = (iso: string): PartesDeFecha | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  return m ? { anio: Number(m[1]), mes: Number(m[2]), dia: Number(m[3]) } : null;
+};
+
+/** Medianoche LOCAL de esa fecha. Ver el porqué en `fechaLarga`. */
+const comoFechaLocal = (p: PartesDeFecha) => new Date(p.anio, p.mes - 1, p.dia);
+
+const diaSemana = (p: PartesDeFecha) =>
+  comoFechaLocal(p).toLocaleDateString("es-MX", { weekday: "long" });
+
+const mes = (p: PartesDeFecha) => comoFechaLocal(p).toLocaleDateString("es-MX", { month: "long" });
+
+/** «a», «a y b», «a, b y c». Los talleres son de uno o dos días, pero el tercero no cuesta nada. */
+const unirConY = (partes: string[]) =>
+  partes.length <= 1
+    ? (partes[0] ?? "")
+    : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+
+/**
  * De un `timestamptz` de la base al valor que espera un `<input
  * type="datetime-local">`: `AAAA-MM-DDTHH:mm`, en la hora del equipo.
  *

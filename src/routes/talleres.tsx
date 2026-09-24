@@ -6,7 +6,7 @@ import { RequiereBorrador } from "@/components/requiere-borrador";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { fechaLimiteTexto, moneda } from "@/lib/formato";
+import { fechaLarga, fechaLimiteTexto, fechasEnTexto, moneda } from "@/lib/formato";
 import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -234,6 +234,22 @@ function CatalogoTalleres() {
        */}
       <ul className="grid gap-3 lg:grid-cols-2">
         {talleres.map((t) => {
+          /*
+           * «Día 1» no le dice a nadie cuándo venir.
+           *
+           * El número es la coordenada interna del evento —`dias_evento.dia`—
+           * y quien elige taller lo que necesita es la fecha: se la va a
+           * apuntar en el calendario y el taller es en otra sede, por la
+           * tarde, y puede caer un día que no es el suyo.
+           *
+           * Se cae al número si la fecha no está: `CONFIGURACION_VACIA` trae
+           * los tres días con `fecha: ""` hasta que la base contesta, y esta
+           * lista se dibuja antes. Media frase —«Se imparte el»— sería peor
+           * que el número.
+           */
+          const fechaDe = (d: number) => configuracion.dias.find((c) => c.dia === d)?.fecha ?? "";
+          const fechas = fechasEnTexto(t.dias.map(fechaDe));
+          const numeros = t.dias.join(" y ");
           const libres = t.cupoTotal - t.cupoOcupado;
           const lleno = libres <= 0;
           const pocos = libres > 0 && libres < 5;
@@ -286,7 +302,7 @@ function CatalogoTalleres() {
                     <User className="size-4" aria-hidden /> {t.ponente}
                   </div>
                   <div className="flex items-center gap-2">
-                    <CalendarRange className="size-4" aria-hidden /> Día {t.dias.join(" y ")}
+                    <CalendarRange className="size-4" aria-hidden /> {fechas || `Día ${numeros}`}
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="size-4" aria-hidden /> {t.horario}
@@ -300,8 +316,9 @@ function CatalogoTalleres() {
                   <p className="mt-3 flex items-start gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-xs text-muted-foreground">
                     <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     <span>
-                      Se imparte el día {t.dias.join(" y ")} y a ti te toca el día {dia} en el
-                      Encuentro. Puedes tomarlo: vendrás también esa tarde a {t.lugar}.
+                      Se imparte el {fechas || `día ${numeros}`} y a ti en el Encuentro te toca el{" "}
+                      {fechaLarga(fechaDe(dia)) || `día ${dia}`}. Puedes tomarlo: vendrás también
+                      esa tarde a {t.lugar}.
                     </span>
                   </p>
                 ) : null}
