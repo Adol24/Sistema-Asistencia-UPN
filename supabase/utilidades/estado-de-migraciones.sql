@@ -110,4 +110,20 @@ select
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and p.proname = 'fn_cierre_automatico'
-  ) as "20260923160000_la_salida_que_nadie_dio";
+  ) as "20260923160000_la_salida_que_nadie_dio",
+
+  /*
+   * La ventana de primer semestre.
+   *
+   * Se comprueba que existan cohortes en avance 1, no que exista la fila de la
+   * ventana: una ventana sin cohortes no deja pasar a nadie, así que estaría
+   * «aplicada» y cerrada al mismo tiempo. Lo que hace falta saber es si esas
+   * personas pueden registrarse, y eso lo dicen las cohortes.
+   */
+  exists (
+    select 1
+      from ventana_cohortes c
+      join ventanas_preregistro v on v.id = c.ventana_id
+     where v.etiqueta = 'El registro de primer semestre'
+       and c.avance = 1
+  ) as "20260923180000_la_ventana_de_primer_semestre";
