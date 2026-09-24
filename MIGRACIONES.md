@@ -296,6 +296,46 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Los datos de pago reales (`20260924000000`) — sin aplicar
+
+La cuenta que `/pago` le enseña al alumno era la inventada de la migración de
+datos iniciales: BBVA México, cuenta `0123456789`, CLABE `012320001234567897`.
+Esta la sustituye por la del Encuentro:
+
+| Dato | Valor |
+| --- | --- |
+| Banco | Santander |
+| Cuenta | `65501202802` |
+| Beneficiario | Universidad Pedagógica Nacional |
+| CLABE | *no se conoce* |
+
+**La CLABE se guarda vacía a propósito.** No llegó con las otras tres y no se
+deduce: la de Santander son 18 dígitos —`014` + plaza + los 11 de la cuenta +
+control— y la plaza no está en ningún lado. Dejar la del relleno sería peor que
+no tener ninguna, porque esa CLABE es de otro banco y **existe**: quien la
+copiara mandaría el depósito a una cuenta que no es esta. `/pago` deja de
+dibujar la fila cuando está vacía, así que el alumno ve tres datos ciertos en
+vez de cuatro con uno falso.
+
+Por eso cambia el `check` de `banco_clabe`: exigía 18 dígitos y `not null`, o
+sea que «todavía no la sabemos» no era un estado que la base admitiera, ni desde
+una migración ni desde `/admin/configuracion`. Ahora acepta la CLABE completa o
+ninguna; una a medias sigue rechazada.
+
+Comprobable sin permisos —la configuración se lee con la clave anónima—:
+
+```sql
+select banco_nombre, banco_cuenta, banco_clabe, banco_beneficiario
+  from configuracion_evento where id = 1;
+```
+
+El bloque final de la migración ya lo comprueba solo: si la fila no quedó con
+esos valores, o no existe, levanta excepción en vez de dejar un «UPDATE 0» que
+nadie lee en el editor SQL.
+
+Cuando aparezca la CLABE no hace falta otra migración: se teclea en
+`/admin/configuracion` → Datos bancarios, y la fila vuelve a `/pago` sola.
+
 ### La salida que nadie dio (`20260923160000`) — aplicada
 
 Quita `fn_cierre_automatico`, y con ella la última pieza que inventaba
