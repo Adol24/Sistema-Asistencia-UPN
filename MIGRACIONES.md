@@ -296,6 +296,45 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El módulo que trae el alumno (`20260924160000`) — sin aplicar
+
+Una alumna de LEIP leía «El registro de séptimo semestre y de los módulos **X y
+XIV** abre el 25/09/2026», y los dos números estaban mal de dos maneras.
+
+**El dato**: la ventana admitía los módulos 10 y 13, y las cohortes que entran
+el 25 son la **9 y la 13** —dicho por la organización el 2026-09-24—. Quien va
+en 9 habría leído «Todavía no se anuncia la fecha de registro para tu grupo» el
+día que sí le tocaba.
+
+La `20260924120000` ya había visto la mitad: guardó el módulo XIV como 13
+porque «es el número que trae el alumno y el que compara `ventana_cohortes`», y
+dejó escrito que el X guardado como 10 era «lo único de esta migración que no
+está comprobado contra el padrón». Era eso, el mismo desfase de uno.
+
+**El rótulo**: ese texto sale tal cual en la pantalla de «todavía no te toca», y
+el alumno lo compara contra el número de su lista. Pasa a decir «de los módulos
+9 y 13».
+
+Queda una pregunta abierta, escrita también en la cabecera de la migración: la
+ventana del 27 y 28 lleva a LEIP con los módulos II y VI, guardados como 2 y 6.
+Si el desfase vale para todo LEIP serían 1 y 5, y los módulos 2 y 6 se quedarían
+fuera sin que nadie se entere hasta el día 27. **No se cambia sin que alguien lo
+confirme**: de la organización vino la corrección del 9 y el 13, no la de estos.
+
+Comprobable sin permisos —las ventanas y sus cohortes las lee el anónimo—:
+
+```sql
+select v.etiqueta, p.nombre, c.avance
+  from ventana_cohortes c
+  join ventanas_preregistro v on v.id = c.ventana_id
+  join programas p on p.id = c.programa_id
+ where v.abre::date = '2026-09-25'
+ order by p.nombre, c.avance;
+```
+
+El bloque final de la migración exige que LEIP quede exactamente con `{9,13}` en
+esa ventana y revienta si no, porque el 25 es mañana.
+
 ### El calendario oficial (`20260924120000` y `20260924140000`) — SIN APLICAR
 
 Las dos salen del «Calendario_registro-inscripción_XIV Encuentro

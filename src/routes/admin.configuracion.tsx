@@ -867,7 +867,7 @@ function SeccionVentanas({
                       <Input
                         id={`vent-${i}`}
                         value={v.etiqueta}
-                        placeholder="El registro previo para semestre 7 y módulo 13"
+                        placeholder="El registro de séptimo semestre y de los módulos 9 y 13"
                         onChange={(e) => setVentana(i, { etiqueta: e.target.value })}
                         className="mt-1 h-11"
                       />
@@ -1053,8 +1053,8 @@ function SeccionVentanas({
           {/*
             A quién no ha invitado nadie todavía.
 
-            No es un error: la organización abre primero a semestre 7 y módulo 13
-            y anuncia el resto después. Pero es lo que hay que ver antes de
+            No es un error: la organización abre primero a séptimo semestre y a
+            los módulos 9 y 13, y anuncia el resto después. Pero es lo que hay que ver antes de
             cerrar la pantalla, porque sus alumnos reciben «todavía no se anuncia
             la fecha de registro para tu grupo» y eso tiene que ser una decisión.
           */}

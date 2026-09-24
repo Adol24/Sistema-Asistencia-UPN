@@ -4,8 +4,8 @@
  * Las ventanas existen desde la migración 44 y hasta aquí solo se podían tocar
  * escribiendo SQL: la única fecha que cierra el pre-registro del evento vivía
  * sembrada dentro de un archivo de migración. Cambiar el día en que abre el
- * registro de semestre 7 y módulo 13 —que es una decisión de la organización, y
- * de las que se mueven— exigía a alguien con acceso al editor de Supabase.
+ * registro de séptimo semestre —que es una decisión de la organización, y de las
+ * que se mueven— exigía a alguien con acceso al editor de Supabase.
  *
  * **Esto no decide nada.** La puerta es `trg_ventana_preregistro`, un disparador
  * sobre `participantes` que vuelve a comprobar la ventana justo antes de
@@ -61,10 +61,14 @@ export interface VentanaPreregistro {
   /** El uuid de la base. Vacío en una ventana que todavía no se ha guardado. */
   id: string;
   /**
-   * Lo que lee quien llega fuera de plazo, ya redactado: «El registro previo
-   * para semestre 7 y módulo 13 abre el 25/09/2026». La fecha la pone la base al
-   * final, así que esto tiene que poder leerse seguido de «abre el…» sin sonar
-   * raro.
+   * Lo que lee quien llega fuera de plazo, ya redactado: «El registro de
+   * séptimo semestre y de los módulos 9 y 13 abre el 25/09/2026». La fecha la
+   * pone la base al final, así que esto tiene que poder leerse seguido de «abre
+   * el…» sin sonar raro.
+   *
+   * Los números son los que trae el alumno en su lista, no los del documento
+   * administrativo: es contra los suyos contra los que compara para saber si el
+   * aviso habla de él.
    */
   etiqueta: string;
   /** ISO completo con zona, tal como viaja un `timestamptz`. */
