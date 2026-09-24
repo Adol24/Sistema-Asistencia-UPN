@@ -685,11 +685,23 @@ function Configuracion() {
           </Seccion>
 
           <Seccion titulo="Soporte" icono={<LifeBuoy className="size-4" aria-hidden />} pares>
+            {/*
+             * Se descartan los signos al teclear, y no es cosmética.
+             *
+             * Este número se pega tal cual detrás de `https://wa.me/`, así que
+             * escribirlo como se lee —«231 147 2210»— deja el enlace roto en
+             * TODAS las pantallas públicas a la vez y sin ninguna señal: el
+             * botón sigue ahí, se pulsa, y WhatsApp abre un número inválido.
+             *
+             * La base también lo comprueba desde `20260924180000`; esto evita
+             * que el panel rebote un guardado por un espacio y que haya que
+             * adivinar cuál de los treinta campos lo tenía.
+             */}
             <Campo
               id="wa"
-              etiqueta="WhatsApp de soporte (con lada)"
+              etiqueta="WhatsApp de soporte (lada de país y número, solo dígitos)"
               valor={b.whatsappSoporte}
-              onChange={(v) => set({ whatsappSoporte: v })}
+              onChange={(v) => set({ whatsappSoporte: v.replace(/\D/g, "") })}
             />
             <Campo
               id="correo"
