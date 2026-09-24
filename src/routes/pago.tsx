@@ -288,18 +288,26 @@ function Pago() {
               Tu código se activa cuando validen tu pago
             </h2>
             {/*
-              Decía «Tu código QR lo descargas tú», y con eso contaba la
-              historia equivocada: que el código llega DESPUÉS, como si fuera
-              otro. Es el mismo de arriba desde el primer minuto —el folio— y lo
-              que ocurre al validar el pago no es que nazca, sino que empiece a
-              abrir la puerta. Los cuatro pasos son los mismos; lo que cambia es
-              qué se está esperando.
+              Este párrafo llegó a explicar de dónde sale el código: que ya lo
+              tenía, que era el de arriba y que era el mismo de su comprobante.
+              Las tres cosas sobran, y dos son además falsas aquí: mientras el
+              pago no se confirme, arriba no hay ningún código —solo el folio y
+              el sello de pendiente—, así que «el de arriba» manda a buscar algo
+              que no está.
+
+              Y lo del comprobante es fontanería nuestra. Al alumno le importa
+              QUÉ hacer y CUÁNDO lo tendrá, no que dos pantallas dibujen el
+              mismo dato. Contárselo solo invita a comparar códigos y a dudar de
+              cuál sirve.
+
+              Lo que sí tiene que quedar es que no espere un correo: es lo que
+              evita la llamada de «no me ha llegado mi QR» y lo que le quita
+              valor a un mensaje falso que se lo prometa.
             */}
             <p className="mt-2 text-sm">
-              Ya lo tienes: es el de arriba, el mismo de tu comprobante, y nadie te va a mandar
-              otro. Después de dejar tu voucher en ventanilla, espera{" "}
-              <span className="font-semibold">{evento.horasValidacion} horas</span> a que Servicios
-              Financieros valide tu pago; en cuanto lo haga, ese mismo código abre la puerta.
+              Después de dejar tu voucher en ventanilla, Servicios Financieros tarda unas{" "}
+              <span className="font-semibold">{evento.horasValidacion} horas</span> en validar tu
+              pago. En cuanto lo haga, tu código aparece en tu portal y abre la puerta.
             </p>
             <ol className="mt-3 grid gap-2 text-sm">
               {[
@@ -317,8 +325,8 @@ function Pago() {
               ))}
             </ol>
             <p className="mt-3 text-sm text-muted-foreground">
-              Ese código es tu acceso al evento. Con la captura en tu celular no necesitas internet
-              para mostrarlo en la entrada.
+              Nadie te lo va a mandar por correo ni por WhatsApp: siempre está en tu portal. Con la
+              captura en el celular no necesitas internet para mostrarlo en la entrada.
             </p>
             <Button
               variant="outline"
