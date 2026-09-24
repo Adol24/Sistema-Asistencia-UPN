@@ -254,21 +254,49 @@ migración que cree o recree funciones internas:
   `20260908160000` y en `20260911160000`.
 - Correr `bun run verificar-conexion` después. Fue lo que lo encontró.
 
-## Qué hicieron las últimas
+## Los dos números, y por qué no hay que fiarse de ninguno
 
-El número entre paréntesis es **la posición del archivo en la carpeta**, que se
-comprueba así:
+**Para aplicar y para comprobar, se usa el NOMBRE DEL ARCHIVO. No el ordinal.**
 
-```bash
-ls supabase/migrations/*.sql | nl
+En este repo el ordinal significa dos cosas distintas, y ya no coinciden:
+
+1. **La posición en la carpeta** — `ls supabase/migrations/*.sql | nl`.
+2. **El número que el archivo declara en su encabezado** — la línea `-- NN · …`.
+
+Divergen desde `20260921180000_publicar_lo_que_faltaba`, que **no declara
+ninguno** y además comparte marca de tiempo con el archivo anterior. De ahí en
+adelante, **posición = encabezado + 1**:
+
+```
+pos 46  hdr 46   los_dos_grupos_de_decolonialidad_son_de_70
+pos 47  hdr —    publicar_lo_que_faltaba            <-- aquí empieza la deriva
+pos 48  hdr 47   el_padron_planea_y_el_preregistro_reserva
+…
+pos 60  hdr 59   el_cupo_del_taller_que_no_comprobaba_nadie
+pos 61  hdr 60   el_taller_no_depende_del_dia_del_evento
+pos 62  hdr 62   la_salida_que_nadie_dio            <-- salta el 61
 ```
 
-Se dice porque ya se había desfasado una vez: este documento llamaba «30» a la
-del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encima
-heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
-y hay que verificarlo.
+O sea que **«la 60» nombra dos migraciones distintas** según quién lo diga, y el
+encabezado 61 no lo usa nadie. No se renumera: los encabezados están citados
+dentro de decenas de comentarios que se referencian entre sí —«ver la 39», «la
+25», «desde la 62»—, en las migraciones y también en `tipos.ts` y
+`elegibilidad.ts`. Renumerar sería reescribir todo eso para ganar cosmética.
 
-### La salida que nadie dio (62) — aplicada
+Lo que se hace es **no depender del ordinal para nada que importe**. La marca de
+tiempo es lo único único de verdad, es lo que ordena a Postgres y es lo que usa
+`supabase db push`. Por eso `supabase/utilidades/estado-de-migraciones.sql`
+etiqueta por marca de tiempo y slug, y no por número.
+
+Los números que siguen en este documento son **encabezados**, y se conservan
+porque son los que citan los comentarios. Para localizar el archivo, el slug.
+
+Esto ya había mordido una vez por el otro lado: este documento llamaba «30» a la
+del torniquete cuando era la 31, y todo lo que se numeró encima heredó el error.
+
+## Qué hicieron las últimas
+
+### La salida que nadie dio (`20260923160000`) — aplicada
 
 Quita `fn_cierre_automatico`, y con ella la última pieza que inventaba
 movimientos en `asistencias`.
@@ -487,7 +515,7 @@ existente**, porque hasta ahora nada impedía repartir 900 alumnos a un día ni
 pre-registrar a 800 en otro. No echa a nadie —borrar pre-registros que la gente ya
 vio confirmados sería peor— y avisa para que la organización decida.
 
-### Un alumno no se inscribe como externo (40) — sus reglas están puestas
+### Un alumno no se inscribe como externo (`20260917160000`) — sus reglas están puestas
 
 **Este encabezado decía «sin aplicar» y engañaba.** Las dos comprobaciones de
 esta migración viven dentro de `fn_preregistrar_externo`, y la **61**
