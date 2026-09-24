@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createIsomorphicFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import {
   Outlet,
   Link,
@@ -102,8 +104,39 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+/**
+ * El origen del sitio: «https://…», sin ruta.
+ *
+ * Hace falta para las etiquetas que lee WhatsApp —o Telegram, o Slack— al pegar
+ * el enlace: la imagen de la tarjeta tiene que ir en URL absoluta, y no hay
+ * dominio que escribir aquí a mano. El Worker se publica con el nombre que le
+ * derive Cloudflare y mañana puede colgar de un dominio propio; cualquier
+ * dirección fija sería una que caduca sin avisar y sin romper nada visible.
+ *
+ * Se saca de la petición, que es lo único que siempre dice la verdad. En el
+ * navegador no hay petición que mirar, así que se usa la barra de direcciones;
+ * `createIsomorphicFn` es lo que deja escribir las dos mitades sin que el
+ * código del servidor acabe en el paquete del cliente.
+ *
+ * Si algo falla se devuelve cadena vacía y las URLs quedan relativas. No es lo
+ * ideal —hay lectores que no las resuelven— pero es preferible a tumbar la
+ * carga de la página por una etiqueta de vista previa.
+ */
+const origenDelSitio = createIsomorphicFn()
+  .server(() => {
+    try {
+      return new URL(getRequest().url).origin;
+    } catch {
+      return "";
+    }
+  })
+  .client(() => window.location.origin);
+
+/** La tarjeta que se ve al pegar el enlace. La dibuja `bun run generar-iconos`. */
+const TARJETA = "/og-encuentro.png";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
       { charSet: "utf-8" },
       /*
@@ -141,7 +174,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Registro, pagos, asistencia y elegibilidad para constancia del XIV Encuentro Internacional de Educación.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "XIV Encuentro Internacional de Educación" },
+      { property: "og:locale", content: "es_MX" },
+      /*
+       * La imagen de la tarjeta, y sus medidas.
+       *
+       * Sin `og:image` el chat enseñaba lo primero que encontraba —el icono de
+       * la aplicación—, y eso era un cuadro azul con un cuadrito dentro: el ojo
+       * de código QR que se dibujó cuando el logotipo todavía no existía. El
+       * logotipo estaba en la portada y en el menú desde hace semanas, y era lo
+       * único que no aparecía justo donde el enlace se comparte.
+       *
+       * El ancho y el alto van declarados porque con ellos el chat reserva el
+       * hueco y pinta la tarjeta grande de entrada; sin ellos, algunos lectores
+       * esperan a descargar la imagen y mientras tanto la enseñan pequeña, o no
+       * la enseñan.
+       */
+      { property: "og:image", content: `${loaderData?.origen ?? ""}${TARJETA}` },
+      { property: "og:image:type", content: "image/png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content:
+          "Logotipo del XIV Encuentro Internacional de Educación: tres manos con lápices alrededor del mundo",
+      },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: `${loaderData?.origen ?? ""}${TARJETA}` },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -154,7 +213,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // Hasta el 2026-09-24 esto apuntaba a un archivo que no existía: el
+      // navegador lo pide solo, y era un 404 en cada carga. Ahora lo dibuja
+      // `generar-iconos` con el logotipo, en 32 y 48.
+      { rel: "icon", href: "/favicon.ico", sizes: "32x32 48x48" },
+      { rel: "icon", href: "/icons/icono-192.png", type: "image/png", sizes: "192x192" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       // iOS ignora el manifiesto para el icono: usa este y solo acepta PNG.
       { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
@@ -172,11 +235,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
    * está vacía. Una portada sin título es mejor que una pantalla de error.
    */
   loader: async () => {
+    /*
+     * El origen se resuelve aquí y no en `head` porque `head` corre también en
+     * el navegador al cambiar de ruta, y ahí no hay petición: lo que vale es lo
+     * que el servidor puso en el HTML, que es lo único que lee un robot de
+     * vista previa.
+     */
+    const origen = origenDelSitio();
     try {
       const { cargarPublico } = await import("@/lib/datos");
-      return await cargarPublico();
+      return { publico: await cargarPublico(), origen };
     } catch {
-      return null;
+      return { publico: null, origen };
     }
   },
   shellComponent: RootShell,
@@ -201,7 +271,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const publico = Route.useLoaderData();
+  const { publico } = Route.useLoaderData();
   // Publica `--teclado` para que las pantallas con formulario dejen sitio.
   useAltoTeclado();
   useTrabajadorDeServicio();
