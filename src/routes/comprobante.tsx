@@ -229,8 +229,17 @@ function Comprobante() {
            * del evento, es lo que deja tiempo de hacer algo al respecto.
            *
            * La lista se redacta a mano en lugar de leerse de `elegibilidad.ts`
-           * porque aquí son condiciones generales, no el estado de esta persona:
-           * su avance real vive en `/portal/constancia`, que sí las evalúa.
+           * porque aquí son condiciones GENERALES, no el estado de esta persona.
+           *
+           * Y esa distinción pasó a ser lo único que se le dice al alumno sobre
+           * la constancia: `/portal/constancia` evaluaba su caso concreto y se
+           * quitó por eso mismo —dos de los tres requisitos solo se cumplen
+           * durante el evento, así que antes le enseñaba tachas rojas sobre
+           * cosas que no estaban en su mano—. Ver `portal-nav.tsx`.
+           *
+           * Así que este bloque es ahora el sitio donde el alumno se entera de
+           * qué se le va a pedir. Lo accionable vive donde se puede accionar: su
+           * pago en `/portal/estado` y cada evidencia en `/portal/evidencias`.
            */}
           <section className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">

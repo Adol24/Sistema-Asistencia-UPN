@@ -166,14 +166,13 @@ Rutas realmente definidas: **16** (`src/routeTree.gen.ts:30-106`).
 | `/portal/estado`     | `src/routes/portal.estado.tsx:27`     | Real                                      |
 | `/portal/qr`         | `src/routes/portal.qr.tsx:30`         | Real                                      |
 | `/portal/evidencias` | `src/routes/portal.evidencias.tsx:32` | Real                                      |
-| `/portal/constancia` | `src/routes/portal.constancia.tsx:21` | Real                                      |
 | `/financieros`       | `src/routes/financieros.index.tsx:26` | Real, pero termina en callejón sin salida |
 
 **No existe ningún cascarón.** La distinción relevante en este proyecto no es entre pantalla real y placeholder, sino entre pantalla real y ruta inexistente: lo que falta, falta por completo.
 
 ### Clasificación de las pantallas exigidas por la especificación
 
-**Implementadas (16):** Bienvenida · Identificación de alumno · Confirmación de nombre · Formulario docente/externo · Verificación de correo · Día y sede asignados · Catálogo de talleres · Instrucciones de pago · Comprobante de pre-registro · Acceso al portal · Vista de estado · Mi código QR · Mis evidencias · Mi constancia · Búsqueda de financieros · Índice del prototipo.
+**Implementadas (15):** Bienvenida · Identificación de alumno · Confirmación de nombre · Formulario docente/externo · Verificación de correo · Día y sede asignados · Catálogo de talleres · Instrucciones de pago · Comprobante de pre-registro · Acceso al portal · Vista de estado · Mi código QR · Mis evidencias · Búsqueda de financieros · Índice del prototipo.
 
 **Parciales (2):** Vista de estado del portal (línea de tiempo incompleta) · Búsqueda de financieros (atajos anunciados sin implementar, y navega a una ruta inexistente).
 
@@ -374,11 +373,11 @@ La normalización se aplica **solo donde corresponde**: la derivación de correo
   - _Rechazada con motivo visible y botón de volver a subir_ — líneas 132-146
 - **Componente de subida con vista previa, indicador de progreso y contador de intentos restantes (máximo 3)** — `src/routes/portal.evidencias.tsx:174-234`; vista previa en 223-225, barra de progreso en 226, contador en 228, bloqueo al agotar intentos en 199-204
 - Estado vacío correcto para perfiles no alumno — `src/routes/portal.evidencias.tsx:38-51`
-- Constancia con botón activo solo si se cumplen los requisitos, y lista de qué falta con marca por requisito — `src/routes/portal.constancia.tsx:26-35, 49-60, 70-76`
+- ~~Constancia con lista de qué falta por requisito~~ — **retirada**. `/portal/constancia` enseñaba el veredicto de `v_elegibles` por alumno, y dos de sus tres requisitos —entrada registrada su día, dos evidencias aprobadas— solo se cumplen durante el evento o después: en las semanas previas la pantalla decía «Todavía no cumples los requisitos» con tachas rojas sobre cosas que no estaban en la mano de esa persona. Las condiciones generales siguen dichas en `/comprobante`, y lo accionable —pago y evidencia por evidencia— en `/portal/estado` y `/portal/evidencias`. El caso de quien asistió sin que le escanearan lo sigue detectando `/admin/elegibles`.
 
 **Faltante / incompleto:**
 
-- **La línea de tiempo nunca marca "Pagado" como nodo actual.** `indiceDe()` mapea `pagado → 3` y `comprobante_recibido → 1`, saltando el índice 2 — `src/routes/portal.estado.tsx:24-25`. Además, los estados `discrepancia`, `expirado` y `cancelado` se mapean todos a `0`, indistinguibles de `pre_registrado` dentro de la línea de tiempo. Los badges de más abajo sí los diferencian, así que la información no se pierde, pero la línea de tiempo transmite un estado engañoso.
+- **La línea de tiempo nunca marca "Pagado" como nodo actual.** `indiceDe()` mapea al nodo 3 a quien ya abre la puerta y `comprobante_recibido → 1`, saltando el índice 2 — `src/routes/portal.estado.tsx`. `expirado` y `cancelado` siguen mapeados a `0`, indistinguibles de `pre_registrado` en la línea de tiempo; los badges de más abajo sí los diferencian. (`discrepancia` ya no cae ahí: desde que el QR se esconde hasta confirmar el pago, `indiceDe` pregunta por `abreLaPuerta`, que es la misma regla.)
 
 ---
 

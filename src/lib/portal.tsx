@@ -11,15 +11,17 @@ import type { Participante } from "@/dominio/tipos";
 /**
  * El veredicto de `v_elegibles`, tal como lo manda `fn_portal_estado`.
  *
- * Es la ÚNICA regla de elegibilidad del sistema, y el portal tiene que leerla en
- * vez de rehacerla. `/portal/constancia` escribía la suya a mano —pago, entrada,
- * UNA evidencia y nombre sin observaciones— y con eso le decía «Cumples los
- * requisitos» a gente que el listado de administración, que pide dos, no
- * incluía. Esa persona llegaba a recoger una constancia que no existía.
+ * **Hoy no lo consume ninguna pantalla, y se declara igual.** Lo leía
+ * `/portal/constancia`, que se quitó: evaluaba el caso de cada alumno y dos de
+ * los tres requisitos solo se cumplen durante el evento, así que en las semanas
+ * previas le enseñaba tachas rojas sobre cosas que no estaban en su mano. Ver
+ * `portal-nav.tsx`.
  *
- * Y recalcularla aquí tampoco valía: el participante es anónimo y las políticas
- * le cierran `evidencias`, `asistencias` y `pagos`, así que cualquier cuenta
- * hecha en su navegador parte de listas vacías.
+ * Se conserva porque `DatosPortal` tiene que reflejar lo que la función
+ * devuelve, y eso no es celo por la simetría: los avisos del portal salen
+ * vacíos justamente porque `fn_portal_estado` manda un campo `avisos` que este
+ * tipo no declara, así que el cliente lo tira sin que nadie se entere. Un campo
+ * declarado y sin usar se ve; uno que falta, no.
  */
 export interface ElegibilidadPortal {
   elegible: boolean;
@@ -157,9 +159,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         ),
         asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
         evidencias: (crudo["evidencias"] ?? []) as DatosPortal["evidencias"],
-        // `fn_portal_estado` lo devuelve desde el principio y aquí se tiraba
-        // sin mapear, que es lo que obligó a `/portal/constancia` a inventarse
-        // su propia regla. Ver `ElegibilidadPortal`.
+        // Se mapea aunque ninguna pantalla lo lea ya: es lo que la función
+        // devuelve. Ver `ElegibilidadPortal`.
         elegibilidad: (crudo["elegibilidad"] ?? null) as DatosPortal["elegibilidad"],
       });
     } catch {

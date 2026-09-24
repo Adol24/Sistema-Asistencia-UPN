@@ -24,7 +24,6 @@ export type RutaConstruida =
   | "/portal/estado"
   | "/portal/qr"
   | "/portal/evidencias"
-  | "/portal/constancia"
   | "/financieros"
   | "/financieros/ficha"
   | "/financieros/carga-masiva"
@@ -91,7 +90,6 @@ export const modulos: ModuloIndice[] = [
       { estado: "listo", to: "/portal/estado", label: "Vista de estado" },
       { estado: "listo", to: "/portal/qr", label: "Mi código QR" },
       { estado: "listo", to: "/portal/evidencias", label: "Mis evidencias" },
-      { estado: "listo", to: "/portal/constancia", label: "Mi constancia" },
     ],
   },
   {

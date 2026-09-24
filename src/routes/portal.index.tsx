@@ -15,7 +15,7 @@ export const Route = createFileRoute("/portal/")({
   head: () =>
     meta(
       "Portal del participante — XIV Encuentro Internacional de Educación",
-      "Consulta el estado de tu registro, tu código QR, tus evidencias y si cumples los requisitos de constancia, con tu folio del XIV Encuentro Internacional de Educación.",
+      "Consulta el estado de tu registro, tu código QR y tus evidencias con tu folio del XIV Encuentro Internacional de Educación.",
     ),
   component: AccesoPortal,
 });

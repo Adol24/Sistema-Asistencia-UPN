@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Award, ImageUp, LogOut, QrCode, Route as RouteIcon } from "lucide-react";
+import { ImageUp, LogOut, QrCode, Route as RouteIcon } from "lucide-react";
 
 import { ENLACE_NAV } from "@/lib/estilos";
 import { usePortal } from "@/lib/portal";
@@ -9,8 +9,31 @@ const items: { to: RutaConstruida; label: string; icono: typeof QrCode }[] = [
   { to: "/portal/estado", label: "Estado", icono: RouteIcon },
   { to: "/portal/qr", label: "Mi QR", icono: QrCode },
   { to: "/portal/evidencias", label: "Evidencias", icono: ImageUp },
-  { to: "/portal/constancia", label: "Constancia", icono: Award },
 ];
+
+/*
+ * Aquí había una cuarta pestaña, «Constancia», y se quitó a propósito.
+ *
+ * Enseñaba el veredicto de `v_elegibles` —pagó, entró su día y, si es alumno,
+ * dos evidencias aprobadas— con una palomita o una tacha por requisito. Dos de
+ * los tres SOLO se pueden cumplir durante el evento o después, así que durante
+ * las semanas previas cualquiera que la abriera leía «Todavía no cumples los
+ * requisitos» con tachas rojas sobre cosas que no estaban en su mano. No había
+ * nada mal en su registro: el evento no había ocurrido.
+ *
+ * Un rechazo que no se puede accionar no informa, alarma, y genera justo las
+ * preguntas que la pantalla venía a evitar.
+ *
+ * Lo que el alumno necesita saber sigue estando, repartido donde sí es
+ * accionable: las condiciones generales en `/comprobante` —«El pre-registro no
+ * da derecho a la constancia»—, el estado de su pago en `/portal/estado` y el
+ * de cada evidencia, una por una, en `/portal/evidencias`.
+ *
+ * Y no se pierde el caso que importa. Quien asistió pero pasó sin que le
+ * escanearan desaparece del listado de elegibles; eso lo sigue encontrando
+ * `/admin/elegibles`, que lista a los no elegibles con el motivo textual. Lo
+ * que ya no ocurre es que el alumno lo descubra por su cuenta.
+ */
 
 /**
  * Navegación del portal del participante.
@@ -28,7 +51,7 @@ export function PortalNav() {
     <div className="mb-5 grid gap-2">
       <nav
         aria-label="Secciones del portal"
-        className="grid grid-cols-4 gap-1 rounded-lg border border-border bg-card p-1"
+        className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1"
       >
         {items.map((i) => (
           <Link
