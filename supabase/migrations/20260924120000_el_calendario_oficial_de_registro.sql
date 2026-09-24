@@ -185,10 +185,18 @@ on conflict (ventana_id, programa_id, avance) do nothing;
 -- sin salida. Se reafirman aquí por si la utilidad que las cargó no se hubiera
 -- corrido en algún entorno.
 -- ---------------------------------------------------------------------------
+--
+-- El `::perfil_participante` no es decorado: `ventana_perfiles.perfil` es ese
+-- tipo enumerado, no texto. Un `values` sin la conversión resuelve sus cadenas
+-- a `text` dentro de la subconsulta, y el `insert` se planta con «column
+-- "perfil" is of type perfil_participante but expression is of type text».
 insert into ventana_perfiles (ventana_id, perfil)
 select v.id, e.perfil
   from ventanas_preregistro v
-  cross join (values ('docente'), ('externo')) as e(perfil)
+  cross join (values
+    ('docente'::perfil_participante),
+    ('externo'::perfil_participante)
+  ) as e(perfil)
  where v.etiqueta = 'El registro previo para docentes y participantes externos'
 on conflict (ventana_id, perfil) do nothing;
 
