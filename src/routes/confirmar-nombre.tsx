@@ -180,9 +180,16 @@ function ConfirmarNombre() {
           yaRegistrado: ya,
         });
       }
-    } catch {
+    } catch (e) {
       setComprobando(false);
-      setErrorIdentidad("No pudimos comprobar tus datos. Inténtalo de nuevo en un momento.");
+      const { esTopePorConexion } = await import("@/lib/datos");
+      // Ver `esTopePorConexion`: el tope de esta puerta es el más estrecho de
+      // todo el pre-registro, así que es aquí donde la fila se va a topar.
+      setErrorIdentidad(
+        esTopePorConexion(e)
+          ? "Hay muchas personas registrándose desde esta misma red. Espera unos minutos y vuelve a intentarlo, o usa tus datos móviles."
+          : "No pudimos comprobar tus datos. Inténtalo de nuevo en un momento.",
+      );
       return;
     }
     setComprobando(false);

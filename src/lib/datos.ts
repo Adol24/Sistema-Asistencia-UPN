@@ -562,6 +562,26 @@ async function llamar<T>(funcion: string, parametros?: Record<string, unknown>):
 }
 
 /**
+ * Si este fallo es el tope por IP y no una avería.
+ *
+ * `privado.limitar` contesta con `PGRST` y un 429 cuando una conexión se pasa
+ * de la cuenta. Hasta ahora eso solo lo distinguía `sesion.tsx`, o sea la
+ * puerta del PERSONAL; en el pre-registro caía en el `catch` genérico y el
+ * alumno leía «no pudimos comprobar tus datos, inténtalo de nuevo en un
+ * momento» — que suena a avería nuestra y, peor, lo invita a reintentar en
+ * bucle contra una puerta que no se le va a abrir hasta pasados unos minutos.
+ *
+ * Importa más de lo que parece el día que abre el registro: 700 alumnos desde
+ * la red de la universidad salen todos con la MISMA IP, así que el tope no lo
+ * agota un atacante sino la fila.
+ *
+ * Se compara el código y no el texto del mensaje, que puede cambiar.
+ */
+export function esTopePorConexion(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "PGRST";
+}
+
+/**
  * Traduce un identificador de la aplicacion al uuid de la base.
  *
  * **Esta funcion existe por un fallo que aparecio tres veces.** La aplicacion

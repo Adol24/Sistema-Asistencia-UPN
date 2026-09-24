@@ -72,9 +72,15 @@ function IdentificacionAlumno() {
     try {
       const { existeEnPadronRemoto } = await import("@/lib/datos");
       existe = (await existeEnPadronRemoto(matricula)).existe;
-    } catch {
+    } catch (e) {
       setCargando(false);
-      return setError("No pudimos comprobar tu matrícula. Inténtalo de nuevo en un momento.");
+      const { esTopePorConexion } = await import("@/lib/datos");
+      // Dos fallos distintos que se leían igual. Ver `esTopePorConexion`.
+      return setError(
+        esTopePorConexion(e)
+          ? "Hay muchas personas registrándose desde esta misma red. Espera unos minutos y vuelve a intentarlo, o usa tus datos móviles."
+          : "No pudimos comprobar tu matrícula. Inténtalo de nuevo en un momento.",
+      );
     }
     setCargando(false);
 
