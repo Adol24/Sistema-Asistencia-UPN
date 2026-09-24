@@ -129,8 +129,6 @@ export interface Ctx {
    */
   descartarEscaneo: (r: ResultadoEscaneo, motivo: string) => void;
   deshacerUltimo: () => EscaneoHistorial | undefined;
-  /** Cierra el día: salida automática a quien entró y no salió. */
-  ejecutarCierreAutomatico: (dia: Dia) => number;
   /** Quita una asistencia concreta. Lo usa el pase de lista para desmarcar. */
   quitarAsistencia: (id: string) => void;
 

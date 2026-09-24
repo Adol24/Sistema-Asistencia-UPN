@@ -268,6 +268,49 @@ del torniquete cuando era la 31, y a partir de ahí todo lo que se numeró encim
 heredó el error. El timestamp del nombre no miente nunca; el ordinal es comodidad
 y hay que verificarlo.
 
+### La salida que nadie dio (62) — sin aplicar
+
+Quita `fn_cierre_automatico`, y con ella la última pieza que inventaba
+movimientos en `asistencias`.
+
+Nació con la 31, cuando la puerta pasó a ser torniquete, y entonces hacía falta:
+`v_elegibles` exigía entrada **y salida** para la constancia, así que sin esa
+fila nadie que no escaneara al irse recibía su documento. El cierre no era un
+registro, era un parche para un requisito.
+
+La 53 quitó la salida de la regla de elegibilidad. Desde ahí la única razón por
+la que existía el cierre había desaparecido, y lo que quedaba era una función que
+escribe salidas que nadie dio. La 57 ya lo había notado a medias —le revocó el
+`execute` observando que «no se invoca desde ni una línea de `src/`»— pero la
+dejó en pie.
+
+Por qué inventarla es peor que no tenerla:
+
+- `asistencias` es el registro de lo que pasó en la puerta. Una salida a las
+  15:00 a nombre de quien nunca pasó por ahí a esa hora es un dato falso en el
+  único sitio donde se guarda la verdad. Que lleve `punto = 'Cierre automático'`
+  la hace rastreable, no cierta.
+- Deja a todo el mundo con una `salida` como último movimiento, y el primer
+  bloque de `fn_evaluar_escaneo` resuelve eso como **REGRESÓ, en verde**, antes
+  de mirar el día y el pago. Después del cierre, un escaneo cualquiera reabría la
+  jornada sin que nadie cotejara una credencial.
+- Borra justo la diferencia que la 31 quería conservar: quien se fue a media
+  mañana volvía a ser indistinguible de quien aguantó la jornada completa.
+
+La presencia la prueba la **entrada**. Quien entró y no volvió a escanear estuvo;
+quien entró, salió a la calle y no regresó también estuvo. Ninguno necesita que
+nadie le escriba una salida al final del día.
+
+Las filas ya escritas no se tocan: dropear la función no borra datos, y
+`cierreAutomatico` se conserva en el cliente como campo de **lectura** para poder
+explicarlas en el reporte. `tiene_salida` sigue en `v_elegibles` como columna que
+se mira y no condiciona, igual que la dejó la 53.
+
+En el cliente desaparecen el botón «Ejecutar cierre automático», su diálogo y
+`ejecutarCierreAutomatico`. Ese botón además nunca escribió en la base: solo
+tocaba la memoria de la pestaña, así que su aviso de «se cerraron N asistencias»
+prometía algo que no ocurría.
+
 ### Publicar lo que faltaba de tiempo real (46) — aplicada
 
 La escucha en vivo existe desde la 21 y funciona, pero su lista se armó con las

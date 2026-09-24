@@ -1,10 +1,8 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, MapPin, ScanLine, TimerOff, UserRound } from "lucide-react";
-import { toast } from "sonner";
+import { CalendarDays, MapPin, ScanLine, UserRound } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Button } from "@/components/ui/button";
-import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 
 import { isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -28,7 +26,6 @@ function ConfiguracionSesion() {
   const {
     sesion,
     setSesion,
-    ejecutarCierreAutomatico,
     configuracion: evento,
     infoDia,
     puntosDelDia,
@@ -173,40 +170,6 @@ function ConfiguracionSesion() {
       >
         <ScanLine className="size-5" /> Comenzar a escanear
       </Button>
-
-      <section className="mt-8 rounded-lg border border-dashed border-border bg-muted/40 p-4">
-        <h2 className="flex items-center gap-2 text-sm font-bold">
-          <TimerOff className="size-4 text-muted-foreground" aria-hidden /> Cierre del día
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Marca la salida de quien siga dentro del recinto. A quien ya se fue no lo toca, y no
-          decide constancias. Se dispara a mano porque el prototipo no tiene reloj de evento.
-        </p>
-        <DialogoConfirmar
-          disparador={
-            <Button variant="outline" className="mt-3 h-12 w-full">
-              Ejecutar cierre automático del día {sesion.dia}
-            </Button>
-          }
-          titulo={`¿Cerrar el día ${sesion.dia}?`}
-          descripcion={
-            <>
-              Se registrará la salida de todo participante del día {sesion.dia} que siga dentro del
-              recinto. A quien ya había salido no se le toca. Queda marcada como cierre automático.
-              No cambia quién es elegible para constancia. No se puede deshacer desde esta pantalla.
-            </>
-          }
-          confirmar="Sí, cerrar el día"
-          alConfirmar={() => {
-            const n = ejecutarCierreAutomatico(sesion.dia);
-            toast.success(
-              n === 0
-                ? `No quedaba nadie sin salida en el día ${sesion.dia}.`
-                : `Se cerraron ${n} asistencias del día ${sesion.dia}.`,
-            );
-          }}
-        />
-      </section>
     </PantallaCaptura>
   );
 }

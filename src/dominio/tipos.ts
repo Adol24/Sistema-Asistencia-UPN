@@ -131,6 +131,16 @@ export interface Asistencia {
   hora: string;
   punto: string;
   capturista: string;
+  /**
+   * Esta salida la puso el cierre del día, no un escaneo.
+   *
+   * Solo de LECTURA: desde la 62 nada la escribe. El cierre automático se quitó
+   * porque la presencia la prueba la entrada —quien entró y no escaneó al irse
+   * estuvo igual—, y fabricarle una salida metía un movimiento falso en el único
+   * registro que dice quién pasó por la puerta. Se conserva el campo para poder
+   * leer las filas que alguna base ya tenga, que en el reporte son justo las que
+   * hay que saber explicar.
+   */
   cierreAutomatico?: boolean | undefined;
   /** Momento del escaneo en ms. Solo lo traen las asistencias capturadas en la sesión. */
   ts?: number | undefined;

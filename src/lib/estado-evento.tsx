@@ -37,7 +37,7 @@ import {
   type Concepto,
   type PagoRegistrado,
 } from "@/lib/pagos-logica";
-import { asistenciaDe, estaDentro, evaluarEscaneo, type SesionCaptura } from "@/lib/escaneo";
+import { asistenciaDe, evaluarEscaneo, type SesionCaptura } from "@/lib/escaneo";
 import { fechaHora, hora as horaActual } from "@/lib/formato";
 import { guardarCola, leerCola } from "@/lib/cola-pendientes";
 import { aplicarRevisiones } from "@/lib/revision";
@@ -1063,50 +1063,6 @@ export function EstadoEventoProvider({
     setHistorial((prev) => prev.filter((h) => h.asistencia?.id !== id));
   }, []);
 
-  const ejecutarCierreAutomatico = useCallback<Ctx["ejecutarCierreAutomatico"]>(
-    (dia) => {
-      /*
-       * Solo se cierra a quien sigue DENTRO.
-       *
-       * Antes se cerraba a todo el que tuviera entrada y no tuviera salida, y
-       * eso tapaba justo lo que interesa saber: quien salió a las 11 y no
-       * volvió ya tiene su salida registrada, así que si el cierre le pusiera
-       * otra al final del horario quedaría indistinguible de quien aguantó la
-       * jornada completa. Su último movimiento es una salida, y ahí se queda.
-       *
-       * El cierre existe para lo contrario: para los que sí están adentro
-       * cuando termina el evento y se van todos a la vez sin escanear, que son
-       * los que no podemos formar en la puerta.
-       */
-      const delDia = [...asistenciasBase, ...capturadas].filter((a) => a.dia === dia);
-      const folios = [...new Set(delDia.map((a) => a.folio))];
-      const dentro = folios.filter((f) => estaDentro(delDia, f, dia));
-      if (dentro.length === 0) return 0;
-
-      const cierres: Asistencia[] = dentro.map((folio, k) => {
-        const p = participantes.find((x) => x.folio === folio);
-        return {
-          id: `AS-CIERRE-D${dia}-${folio}`,
-          folio,
-          nombre: p?.nombre ?? folio,
-          dia,
-          tipo: "salida",
-          // La hora del cierre sale del horario configurado del evento. Si aún
-          // no hay configuración, se deja en blanco antes que inventar una hora
-          // que quedaría escrita en el registro de asistencia de alguien.
-          hora: configuracion.horario.split(" a ")[1]?.replace(" hrs", "").trim() ?? "",
-          punto: "Cierre del sistema",
-          capturista: "SISTEMA",
-          cierreAutomatico: true,
-          ts: Date.now() + k,
-        };
-      });
-      setCapturadas((prev) => [...prev, ...cierres]);
-      return cierres.length;
-    },
-    [participantes, capturadas, asistenciasBase, configuracion.horario],
-  );
-
   // ------------------------------------------------ revisión de evidencias ---
   const evidencias = useMemo<Evidencia[]>(
     () => aplicarRevisiones(evidenciasBase, revisiones),
@@ -1889,7 +1845,6 @@ export function EstadoEventoProvider({
       registrar,
       descartarEscaneo,
       deshacerUltimo,
-      ejecutarCierreAutomatico,
       quitarAsistencia,
       evidencias,
       revisiones,
@@ -1967,7 +1922,6 @@ export function EstadoEventoProvider({
       registrar,
       descartarEscaneo,
       deshacerUltimo,
-      ejecutarCierreAutomatico,
       quitarAsistencia,
       evidencias,
       revisiones,

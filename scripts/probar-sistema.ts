@@ -319,7 +319,6 @@ for (const [fn, args] of [
   ["fn_evaluar_escaneo", { p_entrada: "PRE-00801", p_dia: 1, p_modo: "puerta" }],
   ["fn_reasignar_dia", { p_matricula: "00000000000", p_dia: 1 }],
   ["fn_repartir_dias_pendientes", {}],
-  ["fn_cierre_automatico", { p_dia: 1, p_hora: new Date(0).toISOString() }],
   ["fn_alta_usuario_interno", { p_correo: "qa@prueba.invalid", p_nombre: "QA", p_rol: "admin" }],
   [
     "fn_guardar_taller",

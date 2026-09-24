@@ -58,6 +58,10 @@ export interface EntornoConstancias {
  * puerta al terminar el día, y la organización decidió no condicionar la
  * constancia a eso.
  *
+ * Desde la 62 el cierre automático ya no existe, así que ni siquiera queda ese
+ * adorno: nadie escribe salidas que no ocurrieron, y quien entró y no escaneó al
+ * irse se queda DENTRO, que es exactamente lo que pasó.
+ *
  * De ahí se sigue algo que manda sobre el resto del sistema: la entrada es la
  * ÚNICA prueba que queda de que esa persona estuvo. Si la fila de la puerta se
  * satura y alguien pasa sin escanear, desaparece del listado de elegibles sin
