@@ -1,16 +1,20 @@
 /**
- * Imágenes de relleno para las vistas previas de comprobante.
+ * La hoja de instrucciones para el canje del voucher.
  *
- * No son datos de nadie: son marcadores que ocupan el lugar de la foto que el
- * participante sube y que, en producción, vive en el almacenamiento de Supabase.
- * Se separan de los datos simulados justamente para dejar clara la diferencia:
- * un voucher inventado se puede confundir con uno real, un rectángulo gris que
- * dice VOUCHER no.
+ * Es la que entrega Servicios Financieros, tal cual, y vive en `public/` porque
+ * es un archivo del evento y no un dato de nadie: la misma para las setecientas
+ * personas, sin nombres ni montos dentro.
  *
- * Cuando se conecte la subida de evidencias, esto se sustituye por la URL
- * firmada del archivo y este módulo desaparece.
+ * Aquí había dos marcadores de `placehold.co` —«VOUCHER LEGIBLE» y «VOUCHER
+ * BORROSO»— que la especificación pidió mientras no existiera la imagen real.
+ * El segundo se quitó el 2026-09-24 y el primero lo sustituye esta. De paso
+ * desaparece la única imagen del recorrido público que venía de fuera: el
+ * recuadro ya no se rompe sin internet, y el trabajador de servicio la guarda
+ * en cuanto se ve una vez, que es lo que hace falta para poder enseñarla en la
+ * fila de la ventanilla.
+ *
+ * Al cambiarla hay que cambiar también la transcripción que la acompaña en
+ * `/pago`: la imagen no se puede leer en un teléfono a tamaño de tarjeta, y esa
+ * lista es lo que de verdad se sigue.
  */
-const marcador = (texto: string, fondo: string) =>
-  `https://placehold.co/800x1000/${fondo}/f1f5f9?text=${encodeURIComponent(texto)}`;
-
-export const IMAGEN_VOUCHER_OK = marcador("VOUCHER LEGIBLE", "334155");
+export const IMAGEN_INSTRUCCIONES_VOUCHER = "/instrucciones-canje-de-voucher.png";

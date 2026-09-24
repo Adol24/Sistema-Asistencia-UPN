@@ -17,10 +17,14 @@ vista previa de PDF, folio de constancia, QR de verificación, página pública
 
 CAMBIO — EJEMPLO DE VOUCHER
 
-Se enseña **una** imagen de ejemplo, la del voucher correcto, no dos. La del
-voucher borroso rotulada «Así NO» se quitó el 2026-09-24: enseñar el error junto
-al acierto obliga a leer cuál es cuál, y quien va deprisa se queda con la imagen
-y no con el rótulo. Lo que no hay que llevar lo dice el texto.
+Se enseña **una** imagen, y ya no es un marcador de posición: es la hoja de
+instrucciones para el canje que entrega Servicios Financieros, con su contenido
+transcrito debajo en tres pasos —una hoja tamaño carta no se lee en un
+teléfono—. La del voucher borroso rotulada «Así NO» se quitó el 2026-09-24:
+enseñar el error junto al acierto obliga a leer cuál es cuál, y quien va deprisa
+se queda con la imagen y no con el rótulo.
+
+Con eso, el recorrido público deja de pedirle una imagen a `placehold.co`.
 
 CAMBIO — DATOS BANCARIOS
 

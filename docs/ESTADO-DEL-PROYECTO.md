@@ -343,7 +343,7 @@ La normalización se aplica **solo donde corresponde**: la derivación de correo
 - **Aviso destacado de dos depósitos separados** con el texto exigido, en bloque con color de advertencia — líneas 88-93
 - Desglose en dos bloques: evento con concepto `ENCUENTRO-{folio}` (línea 100) y taller con `TALLER-{folio}` (línea 108). Cuando no hay taller se muestra un bloque explicativo en lugar de omitirlo — líneas 112-121
 - **Datos bancarios** (banco, cuenta, beneficiario — la CLABE se retiró el 2026-09-24), **cada uno con botón de copiar que confirma al pulsarse** cambiando a "Copiado" durante 1,8 s — componente `CampoCopiable`, líneas 25-48; instancias en 127-130
-- **La imagen de ejemplo de voucher**, en posición prominente y **ampliable al tocar** mediante diálogo modal. Marcador de posición claramente etiquetado. La especificación pedía dos —correcta e incorrecta—; la del voucher borroso se quitó el 2026-09-24
+- **La hoja de instrucciones para el canje del voucher** que entrega Servicios Financieros, en posición prominente y **ampliable al tocar** mediante diálogo modal, con su contenido transcrito debajo en tres pasos porque una hoja tamaño carta no se lee en un teléfono. La especificación pedía dos marcadores de posición —correcto e incorrecto—; el del voucher borroso se quitó el 2026-09-24 y el otro lo sustituyó la hoja real ese mismo día
 - Ubicación y horario de Servicios Financieros — líneas 153-158
 - **Fecha límite con día y hora exactos**, destacada en bloque con borde de color — líneas 159-162 (valor en `src/mocks/evento.ts:7`: "viernes 10 de octubre, 18:00 hrs")
 - Qué llevar: credencial, voucher original, folio — líneas 165-172

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
-import { IMAGEN_VOUCHER_OK } from "@/lib/imagenes";
+import { IMAGEN_INSTRUCCIONES_VOUCHER } from "@/lib/imagenes";
 import { fechaLimiteTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -234,31 +234,50 @@ function Pago() {
           <section className="mt-6">
             <h2 className="text-base font-semibold">Cómo presentar tu voucher</h2>
             {/*
-             * Un solo ejemplo, el bueno.
+             * La hoja de Servicios Financieros, y debajo lo que dice.
              *
-             * Eran dos, y el segundo era un voucher borroso rotulado «Así NO».
-             * Enseñar el error junto al acierto obliga a leer cuál es cuál, y
-             * quien va deprisa se queda con la imagen, no con el rótulo.
+             * La transcripción no es un extra: la hoja es tamaño carta y en un
+             * teléfono, a tamaño de tarjeta, no se lee ni una línea. Quien no
+             * piense en ampliarla se iría sin saber qué hay que anotar, que es
+             * justo lo que la ventanilla revisa. Es la lista de la imagen, en
+             * el mismo orden, y no otra cosa: si la hoja cambia, cambian las
+             * dos.
              *
-             * El requisito no se pierde al quitarla: iba en el rótulo del
-             * ejemplo malo —cortado, borroso, con datos tapados— y va ahora en
-             * el del bueno, en positivo: completo, legible y sin dobleces. Es
-             * la misma exigencia dicha una vez en vez de dos.
+             * `object-contain` y fondo claro porque es una hoja, no una foto:
+             * recortarla —que es lo que hacía `object-cover` con el ejemplo de
+             * antes— le corta justo el bloque de datos.
              */}
             <button
-              onClick={() => setAmpliada(IMAGEN_VOUCHER_OK)}
-              className="mt-2 block w-full overflow-hidden rounded-lg border border-border bg-card text-left sm:max-w-sm"
+              onClick={() => setAmpliada(IMAGEN_INSTRUCCIONES_VOUCHER)}
+              className="mt-2 block w-full overflow-hidden rounded-lg border border-border bg-white text-left sm:max-w-sm"
             >
               <img
-                src={IMAGEN_VOUCHER_OK}
-                alt="Así debe verse tu voucher: completo, legible y sin dobleces"
-                className="h-56 w-full object-cover"
+                src={IMAGEN_INSTRUCCIONES_VOUCHER}
+                alt="Instrucciones para el canje del voucher original: pegar el voucher completo en la parte superior de la hoja y anotar debajo, con tinta negra o azul, nombre completo, matrícula escolar, licenciatura o maestría, sede regional, semestre o módulo, grupo y concepto. Después, pasar a ventanilla."
+                className="h-72 w-full object-contain"
                 loading="lazy"
               />
-              <p className="p-3 text-xs font-medium">
-                Así debe verse: completo, legible y sin dobleces — toca para ampliar
+              <p className="border-t border-border p-3 text-xs font-medium">
+                Instrucciones para el canje — toca para ampliar
               </p>
             </button>
+
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+              <li>
+                Pega el{" "}
+                <span className="font-medium text-foreground">voucher original completo</span> en la
+                parte superior de una hoja.
+              </li>
+              <li>
+                Debajo, con tinta negra o azul, anota en este orden: nombre completo, matrícula
+                escolar, licenciatura o maestría, sede regional, semestre o módulo, grupo y concepto
+                —el que dice cada depósito aquí arriba—.
+                <span className="mt-1 block">
+                  Si no eres alumno, solo tu nombre completo y el concepto.
+                </span>
+              </li>
+              <li>Pasa a ventanilla con esa hoja.</li>
+            </ol>
           </section>
 
           <section className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -348,9 +367,18 @@ function Pago() {
 
       <Dialog open={!!ampliada} onOpenChange={(o) => !o && setAmpliada(null)}>
         <DialogContent className="max-w-lg">
-          <DialogTitle className="text-sm">Ejemplo de voucher</DialogTitle>
+          <DialogTitle className="text-sm">Instrucciones para el canje del voucher</DialogTitle>
+          {/*
+           * Fondo blanco y no el del diálogo: la hoja es negra sobre blanco y
+           * en modo oscuro quedaba un papel flotando sobre un marco oscuro con
+           * los bordes del dibujo perdiéndose en él.
+           */}
           {ampliada ? (
-            <img src={ampliada} alt="Ejemplo de voucher ampliado" className="w-full rounded-md" />
+            <img
+              src={ampliada}
+              alt="Hoja de instrucciones para el canje del voucher original, ampliada"
+              className="w-full rounded-md bg-white"
+            />
           ) : null}
         </DialogContent>
       </Dialog>
