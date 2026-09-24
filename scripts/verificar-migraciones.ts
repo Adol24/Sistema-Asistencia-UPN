@@ -251,7 +251,18 @@ console.log();
 
 let raises = 0;
 
-for (const { ruta, nombre: archivo } of archivos) {
+/*
+ * Se recorre por RUTA y se reporta por ruta, no por nombre.
+ *
+ * Aquí se destructuraba `nombre` y se pasaba a `falla`, mientras el comentario
+ * de arriba prometía que una falla diría en cuál de las dos carpetas está. No lo
+ * decía: imprimía `abrir-ventana.sql:12` y había que adivinar. Es el mismo
+ * patrón que este comprobante persigue —prosa que afirma algo comprobable sin
+ * comprobarlo— cometido dentro del comprobante.
+ *
+ * Con la ruta completa, además, el aviso se puede abrir de un clic.
+ */
+for (const { ruta } of archivos) {
   const bruto = readFileSync(ruta, "utf8");
   const sql = sinComentarios(bruto);
 
@@ -269,7 +280,7 @@ for (const { ruta, nombre: archivo } of archivos) {
     if (nf !== na) {
       const linea = bruto.slice(0, m.index).split("\n").length;
       falla(
-        archivo,
+        ruta,
         linea,
         `raise con ${nf} marcador(es) y ${na} argumento(s). Ojo a «%%», que es un ` +
           `porcentaje literal y NO dos marcadores. Formato: «${formato.slice(0, 60)}…»`,
@@ -289,7 +300,7 @@ for (const { ruta, nombre: archivo } of archivos) {
     const escapada = etiqueta.replace(/\$/g, "\\$");
     const veces = (sql.match(new RegExp(escapada, "gi")) ?? []).length;
     if (veces % 2 !== 0)
-      falla(archivo, 1, `la comilla de dólar «${etiqueta}» aparece ${veces} veces, y son impares.`);
+      falla(ruta, 1, `la comilla de dólar «${etiqueta}» aparece ${veces} veces, y son impares.`);
   }
 }
 
