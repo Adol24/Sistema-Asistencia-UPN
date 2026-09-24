@@ -296,6 +296,73 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El calendario oficial (`20260924120000` y `20260924140000`) — SIN APLICAR
+
+Las dos salen del «Calendario_registro-inscripción_XIV Encuentro
+Internacional», firmado por Jefatura Administrativa el 23/09/2026. Es el primer
+documento oficial de fechas, y **ninguna de las tres ventanas cargadas hasta
+entonces coincidía con él**: lo que había venía de conversaciones previas.
+
+El documento separa dos procesos que el sistema trataba como uno:
+
+| | Qué es | Dónde vive |
+| --- | --- | --- |
+| **Registro** | el formulario en línea | `ventanas_preregistro`, y es una puerta |
+| **Inscripción** | el pago presencial en ventanilla | `citas_inscripcion`, y es solo información |
+
+**`20260924120000` mueve las ventanas de registro.** Renglón por renglón:
+
+| | Antes | Ahora |
+| --- | --- | --- |
+| séptimo semestre | 21 al 27 de septiembre | 25 y 26 |
+| séptimo, quiénes | cinco licenciaturas | cuatro: Educación Indígena no tiene séptimo |
+| primer semestre | 27-28, solo avance 1 | 27-28, avances 1, 3 y 5 |
+| LEIP | avance 1 y 13 | módulos II, VI, X y XIV |
+| las tres maestrías | avance 13 | módulos I y IV |
+| docentes y externos | 29 y 30 de septiembre | solo el 29 |
+
+**El módulo XIV se guarda como 13, y no es una errata.** Esa generación va a
+pasar a un módulo nuevo, pero en las listas de las que sale el padrón todavía
+se trata como 13, que es el número que trae el alumno y el que compara
+`ventana_cohortes`. Por eso el `total_avance` de LEIP —13— sigue siendo
+correcto.
+
+Lo que **no** está comprobado contra el padrón es que los otros tres módulos de
+LEIP vayan por su número: II como 2, VI como 6, X como 10. Si las listas
+también los corrieran, esas cohortes quedarían fuera y leerían «Todavía no se
+anuncia la fecha de registro para tu grupo». El bloque final de la migración
+enumera las cohortes sin ventana justamente para que eso se vea al aplicarla.
+
+Se **actualizan** las ventanas en vez de borrarlas y reinsertarlas:
+`fn_motivo_fuera_de_ventana` deja pasar a todo el mundo cuando hay CERO
+ventanas, así que un borrado abre esa puerta mientras dura. Dentro de una
+transacción no se vería, pero no toda forma de aplicar una migración garantiza
+una.
+
+**`20260924140000` añade el calendario de inscripción.** Dos tablas nuevas
+—`citas_inscripcion` y `cita_cohortes`, con lectura para el anónimo— y
+`fn_cita_de_inscripcion(matricula)`, que devuelve la frase ya redactada. El
+comprobante la pide al terminar el registro y le dice al alumno **qué día le
+toca ir a pagar**, que es lo que preguntaba y no se le contestaba.
+
+| Cita | Quiénes |
+| --- | --- |
+| 28 y 29 de septiembre | séptimo de las cuatro licenciaturas |
+| 29 y 30 de septiembre, y 1 y 2 de octubre | primero, tercero y quinto de las cinco |
+| 3 de octubre | las tres maestrías, módulos I y IV |
+| el día de tu reinscripción | LEIP, módulos II, VI, X y XIV |
+
+La cita es **texto y no dos fechas**, a propósito: tres de las cuatro son
+rangos partidos y la cuarta ni siquiera es una fecha. Nada de esto se compara
+con `now()`, así que un texto no pierde nada.
+
+**Dos cosas que el documento deja abiertas.** Docentes y externos no aparecen
+en la tabla de inscripción: aquí no se les inventa una fecha, y su comprobante
+enseña la ventanilla sin día concreto. Y el 3 de octubre de 2026 cae en
+**sábado**, mientras `configuracion_evento.ventanilla_horario` dice «Lunes a
+viernes de 9:00 a 17:00 hrs» — a una maestría le diría «el 3 de octubre, de
+lunes a viernes». El horario se corrige en la configuración, no aquí.
+
 ### Los datos de pago reales (`20260924000000`) — aplicada
 
 La cuenta que `/pago` le enseña al alumno era la inventada de la migración de

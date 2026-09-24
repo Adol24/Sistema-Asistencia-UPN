@@ -1527,6 +1527,27 @@ export async function ventanaDePerfilRemota(perfil: PerfilSinPadron): Promise<st
 }
 
 /**
+ * El día que le toca ir a pagar en ventanilla, ya redactado: «28 y 29 de
+ * septiembre».
+ *
+ * El calendario oficial tiene dos tablas y son dos procesos distintos: el
+ * REGISTRO es este formulario, y la INSCRIPCIÓN es el pago presencial, que
+ * ocurre otro día y fuera de aquí. Hasta ahora el comprobante solo hablaba de
+ * la fecha límite general, así que quien terminaba su registro no sabía cuándo
+ * le tocaba a ÉL.
+ *
+ * Se pregunta por matrícula porque es lo único que el comprobante tiene a mano:
+ * la pantalla conoce al alumno que acaba de registrarse, no el uuid de su
+ * programa. Ver `fn_cita_de_inscripcion`.
+ *
+ * `null` es una respuesta legítima y no un fallo: docentes y externos no tienen
+ * cita en el documento, y a una cohorte sin cita se le enseña lo de siempre.
+ */
+export async function citaDeInscripcionRemota(matricula: string): Promise<string | null> {
+  return llamar<string | null>("fn_cita_de_inscripcion", { p_matricula: matricula });
+}
+
+/**
  * El uuid del taller a partir de su clave, o `null` si no eligió ninguno.
  *
  * **Tercera vez que este identificador se manda sin traducir.** `TallerBase.id`

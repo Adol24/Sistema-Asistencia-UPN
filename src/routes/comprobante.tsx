@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, Info, LayoutList } from "lucide-react";
+import { CalendarClock, CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { CodigoPendiente } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
@@ -34,6 +35,42 @@ function Comprobante() {
   const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
   const nombre = borrador.nombre ?? participante?.nombre;
   const total = evento.cuotaEvento + (taller?.costo ?? 0);
+
+  /*
+   * El día que le toca ir a pagar, que es lo que la persona pregunta aquí.
+   *
+   * El calendario oficial tiene DOS tablas y son dos procesos: el registro es
+   * este formulario, y la inscripción es el pago presencial, que ocurre otro
+   * día y fuera del sistema. Hasta ahora esta pantalla solo hablaba de la fecha
+   * límite general —«antes del 10 de octubre»—, que es cierta para todos y no
+   * le dice a nadie cuándo le toca a él.
+   *
+   * Se pide por matrícula y no se calcula aquí: la correspondencia generación →
+   * fecha vive en `cita_cohortes` porque el calendario lo firma Jefatura
+   * Administrativa y puede cambiar sin que cambie el sistema.
+   *
+   * `null` no es un fallo. Docentes y externos no tienen cita en el documento,
+   * y entonces esta pantalla enseña lo de siempre: la ventanilla y su horario.
+   */
+  const matricula = borrador.matricula ?? participante?.matricula;
+  const [cita, setCita] = useState<string | null>(null);
+  useEffect(() => {
+    if (!matricula) return;
+    let vigente = true;
+    void (async () => {
+      try {
+        const { citaDeInscripcionRemota } = await import("@/lib/datos");
+        const r = await citaDeInscripcionRemota(matricula);
+        if (vigente) setCita(r);
+      } catch {
+        // Sin cita se enseña el bloque de siempre. Un comprobante que no se
+        // pinta porque falló una consulta informativa sería peor que no tenerla.
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [matricula]);
 
   return (
     <PantallaPublica titulo="Comprobante de pre-registro" ancho="xl">
@@ -209,6 +246,36 @@ function Comprobante() {
         </div>
 
         <div>
+          {/*
+           * Lo primero de esta columna, y por delante de la fecha límite.
+           *
+           * Son dos fechas distintas y se confundían en una: la fecha límite es
+           * el tope común para todos, y esta es la cita concreta de SU
+           * generación. Quien terminaba el registro solo veía la primera y se
+           * iba sin saber qué día presentarse.
+           *
+           * El horario sale de la configuración y no del calendario: el
+           * documento da el día, la ventanilla pone la hora.
+           */}
+          {cita ? (
+            <section className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:mt-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <CalendarClock className="size-4 shrink-0 text-primary" aria-hidden />
+                Tu inscripción: {cita}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Es el día que te toca ir a pagar en persona. Lleva tu folio{" "}
+                <span className="font-mono font-semibold text-foreground">{folio}</span>.
+              </p>
+              {evento.ventanilla.lugar ? (
+                <p className="mt-2 text-sm text-muted-foreground">{evento.ventanilla.lugar}</p>
+              ) : null}
+              {evento.ventanilla.horario ? (
+                <p className="text-sm text-muted-foreground">{evento.ventanilla.horario}</p>
+              ) : null}
+            </section>
+          ) : null}
+
           <p className="mt-6 text-center text-sm text-muted-foreground lg:mt-4 lg:text-left">
             Siguiente paso: haz tus depósitos y entrega los vouchers antes del{" "}
             {fechaLimiteTexto(evento.fechaLimite)}.{" "}
