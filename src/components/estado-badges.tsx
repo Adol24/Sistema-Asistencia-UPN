@@ -190,6 +190,7 @@ export function EstadoCasoBadge({ estado, className }: { estado: EstadoCaso; cla
  */
 const CLASE_SEMAFORO: Record<Semaforo, string> = {
   verde: "bg-semaforo-verde",
+  azul: "bg-semaforo-azul",
   amarillo: "bg-semaforo-amarillo",
   rojo: "bg-semaforo-rojo",
 };

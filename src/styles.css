@@ -87,6 +87,8 @@
   --color-estado-cancelado-bg: var(--estado-cancelado-bg);
   --color-semaforo-verde: var(--semaforo-verde);
   --color-semaforo-verde-fg: var(--semaforo-verde-fg);
+  --color-semaforo-azul: var(--semaforo-azul);
+  --color-semaforo-azul-fg: var(--semaforo-azul-fg);
   --color-semaforo-amarillo: var(--semaforo-amarillo);
   --color-semaforo-amarillo-fg: var(--semaforo-amarillo-fg);
   --color-semaforo-rojo: var(--semaforo-rojo);
@@ -177,6 +179,18 @@
    */
   --semaforo-verde: oklch(0.48 0.15 150);
   --semaforo-verde-fg: oklch(1 0 0);
+  /*
+   * El azul de la salida. No es un cuarto estado del semáforo: es la otra
+   * dirección. Se elige en el tono 255 —lejos del verde (150), del ámbar (85) y
+   * del rojo (27)— porque el eje que falla en el daltonismo más común es el
+   * rojo-verde, y el azul se distingue de los tres incluso ahí. Aun así no viaja
+   * solo: la flecha de dirección dice lo mismo sin depender del color.
+   *
+   * Misma luminancia que el verde (0.48) para que uno no parezca más urgente que
+   * el otro: entrar y salir pesan igual.
+   */
+  --semaforo-azul: oklch(0.48 0.16 255);
+  --semaforo-azul-fg: oklch(1 0 0);
   --semaforo-amarillo: oklch(0.84 0.16 85);
   --semaforo-amarillo-fg: oklch(0.2 0.03 85);
   --semaforo-rojo: oklch(0.48 0.2 27);

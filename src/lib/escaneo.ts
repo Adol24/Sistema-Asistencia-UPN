@@ -25,7 +25,20 @@ import { sinAcreditar } from "@/lib/pagos-logica";
  * mismo acto —pasar por la puerta— y cuál de los dos es lo decide el sistema.
  */
 export type Modo = "puerta" | "taller";
-export type Color = "verde" | "amarillo" | "rojo";
+/**
+ * Los colores del resultado. Ver `Semaforo` en `dominio/tipos`.
+ *
+ * El azul es SOLO de la salida, y existe porque sin él la puerta mentía por
+ * omisión: entrada, salida y regreso salían los tres en verde, y a un metro de
+ * distancia con fila delante, verde se lee «entró». La dirección quedaba nada
+ * más en el título, que es una palabra que hay que detenerse a leer justo
+ * cuando no hay tiempo.
+ *
+ * El regreso se queda VERDE a propósito: es una entrada. Así la regla que el
+ * capturista memoriza es la más corta posible —verde entra, azul sale— y no
+ * una tercera categoría que haya que recordar aparte.
+ */
+export type Color = "verde" | "azul" | "amarillo" | "rojo";
 
 /**
  * Minutos dentro de los cuales un segundo escaneo de la misma persona en la
@@ -271,7 +284,8 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
         return {
           ...conPersona,
           tipo: "salida",
-          color: "verde",
+          // El único azul del sistema. Ver `Color`.
+          color: "azul",
           titulo: "SALIDA REGISTRADA",
           motivo: primera ? `Entró a las ${primera.hora}.` : "",
           accion: "",

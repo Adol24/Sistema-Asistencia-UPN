@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Keyboard, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
+import { Keyboard, LogIn, LogOut, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
 import { CamaraQR } from "@/components/camara-qr";
@@ -18,9 +18,10 @@ import type { OpcionesEscaneo } from "@/lib/contrato-estado";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
-/** Los siete avisos, con el nombre que usa quien está en la puerta. */
+/** Los ocho avisos, con el nombre que usa quien está en la puerta. */
 const PRUEBAS: [Aviso, string][] = [
-  ["correcto", "Registrada"],
+  ["correcto", "Entrada"],
+  ["salida", "Salida"],
   ["folio_invalido", "Folio inválido"],
   ["dia_equivocado", "Día equivocado"],
   ["denegado", "Sin pagar"],
@@ -203,7 +204,7 @@ function PantallaEscaneo() {
       const clave = `${r.color}:${r.titulo}`;
       if (!encontrado.has(clave)) encontrado.set(clave, { p, titulo: r.titulo });
     }
-    const orden: Color[] = ["verde", "amarillo", "rojo"];
+    const orden: Color[] = ["verde", "azul", "amarillo", "rojo"];
     return [...encontrado.entries()]
       .map(([clave, v]) => ({ color: clave.split(":")[0] as Color, ...v }))
       .sort((a, b) => orden.indexOf(a.color) - orden.indexOf(b.color));
@@ -510,7 +511,8 @@ function Verificacion({
           onClick={onConfirmar}
           className="flex min-h-20 items-center justify-center gap-3 rounded-lg bg-semaforo-verde text-xl font-extrabold text-semaforo-verde-fg"
         >
-          <CheckCircle2 className="size-7" aria-hidden /> REGISTRAR ENTRADA
+          {/* La misma flecha que verá en el destello: un solo vocabulario. */}
+          <LogIn className="size-7" aria-hidden /> REGISTRAR ENTRADA
         </button>
         <button
           onClick={onDescartar}
@@ -547,7 +549,16 @@ function Destello({ r }: { r: ResultadoEscaneo }) {
         FONDO[r.color],
       )}
     >
-      {r.color === "verde" ? <CheckCircle2 className="size-10" aria-hidden /> : null}
+      {/*
+       * La flecha, y no una palomita.
+       *
+       * La palomita decía «bien», que es lo que ya dice el color, y callaba lo
+       * único que el color no podía decir: hacia dónde va esta persona. Además
+       * el color solo no basta —el daltonismo rojo-verde es el más común y hay
+       * uno de cada doce hombres en la fila del capturista—, así que la
+       * dirección tiene que estar dicha también con una forma.
+       */}
+      <Flecha tipo={r.tipo} color={r.color} className="size-10" />
       <p className="text-xl font-extrabold leading-tight">
         {r.participante?.nombre ?? r.entradaCruda}
       </p>
@@ -558,12 +569,43 @@ function Destello({ r }: { r: ResultadoEscaneo }) {
 }
 
 /**
+ * Hacia dónde va esta persona, dicho con una forma y no solo con un color.
+ *
+ * Se dibuja únicamente cuando hay un movimiento de verdad que enseñar. En lo
+ * que no registra nada —un rojo, un «ya escaneado»— no hay dirección que
+ * comunicar, y poner una flecha ahí sería afirmar un paso que no ocurrió.
+ *
+ * El pase de lista del taller no es un paso por la puerta: no entra ni sale,
+ * así que tampoco lleva flecha.
+ */
+function Flecha({
+  tipo,
+  color,
+  className,
+}: {
+  tipo: ResultadoEscaneo["tipo"];
+  color: Color;
+  className?: string;
+}) {
+  if (color === "rojo" || color === "amarillo" || tipo === "taller") return null;
+  const Icono = tipo === "salida" ? LogOut : LogIn;
+  return (
+    <>
+      <Icono className={className} aria-hidden />
+      {/* El lector de pantalla necesita la palabra: la flecha es solo visual. */}
+      <span className="sr-only">{tipo === "salida" ? "Sale del recinto" : "Entra al recinto"}</span>
+    </>
+  );
+}
+
+/**
  * Cada color trae su propio color de texto, fijo en claro y oscuro. Antes el
  * amarillo usaba `text-foreground`, que en modo oscuro es casi blanco y dejaba
  * el aviso en 1.65:1: ilegible justo en la pantalla que se lee a un metro.
  */
 const FONDO: Record<Color, string> = {
   verde: "bg-semaforo-verde text-semaforo-verde-fg",
+  azul: "bg-semaforo-azul text-semaforo-azul-fg",
   amarillo: "bg-semaforo-amarillo text-semaforo-amarillo-fg",
   rojo: "bg-semaforo-rojo text-semaforo-rojo-fg",
 };
@@ -621,9 +663,9 @@ function Semaforo({
 
       <div>
         <p className="text-4xl font-extrabold leading-none sm:text-6xl">{r.titulo}</p>
-        {r.color === "verde" ? (
+        {r.registra ? (
           <p className="mt-3 flex items-center gap-2 text-2xl font-bold">
-            <CheckCircle2 className="size-7" aria-hidden />{" "}
+            <Flecha tipo={r.tipo} color={r.color} className="size-7" />{" "}
             {new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
           </p>
         ) : null}

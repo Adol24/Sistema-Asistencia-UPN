@@ -26,6 +26,7 @@ import type { Color } from "@/lib/escaneo";
 /** Qué suena. Se decide por el título del resultado, no solo por el color. */
 export type Aviso =
   | "correcto"
+  | "salida"
   | "folio_invalido"
   | "dia_equivocado"
   | "denegado"
@@ -63,6 +64,27 @@ const PATRONES: Record<Aviso, Patron> = {
     notas: [
       { hz: 880, en: 0, dura: 0.09 },
       { hz: 1318.51, en: 0.08, dura: 0.16 },
+    ],
+  },
+
+  /*
+   * La misma quinta, AL REVÉS (MI6 → LA5): baja en vez de subir.
+   *
+   * Entrada y salida sonaban igual —las dos caían en `correcto`— así que en la
+   * puerta el oído no distinguía la dirección, y el oído es lo que llega antes
+   * que la pantalla cuando el capturista está mirando a quien tiene delante.
+   *
+   * Es el espejo exacto del aviso bueno y no un sonido nuevo: las dos son la
+   * misma quinta afinada y con las mismas notas, así que ninguna suena peor que
+   * la otra. Lo único que cambia es hacia dónde va, que es justo lo que hay que
+   * comunicar. Dos pulsos de vibración en lugar de uno, para quien lo lleva en
+   * la mano en un salón ruidoso.
+   */
+  salida: {
+    vibracion: [45, 60, 45],
+    notas: [
+      { hz: 1318.51, en: 0, dura: 0.09 },
+      { hz: 880, en: 0.08, dura: 0.16 },
     ],
   },
 
@@ -138,8 +160,15 @@ const PATRONES: Record<Aviso, Patron> = {
 export function avisoDe(titulo: string, color: Color): Aviso {
   if (titulo === "FOLIO INVÁLIDO") return "folio_invalido";
   if (titulo === "DÍA EQUIVOCADO") return "dia_equivocado";
-  if (titulo === "YA REGISTRADO") return "ya_registrado";
+  // Los dos «esto ya estaba hecho»: el pase de lista duplicado del taller y el
+  // doble escaneo de la puerta. Caían en `advertencia`, cuyo sonido significa
+  // «pasa, pero hay algo que atender», y aquí no hay nada que atender: la
+  // instrucción de los dos es literalmente «déjalo pasar».
+  if (titulo === "YA REGISTRADO" || titulo === "YA ESCANEADO") return "ya_registrado";
   if (titulo === "REINGRESO") return "reingreso";
+  // Va por título y no por color para que siga valiendo cuando el veredicto
+  // viene de la base, que solo conoce tres colores y llama verde a la salida.
+  if (titulo === "SALIDA REGISTRADA") return "salida";
   if (color === "rojo") return "denegado";
   if (color === "amarillo") return "advertencia";
   return "correcto";
@@ -252,6 +281,7 @@ export function retroalimentar(r: { color: Color; titulo: string }): void {
  */
 const EJEMPLO: Record<Aviso, { color: Color; titulo: string }> = {
   correcto: { color: "verde", titulo: "ENTRADA REGISTRADA" },
+  salida: { color: "azul", titulo: "SALIDA REGISTRADA" },
   folio_invalido: { color: "rojo", titulo: "FOLIO INVÁLIDO" },
   dia_equivocado: { color: "rojo", titulo: "DÍA EQUIVOCADO" },
   ya_registrado: { color: "amarillo", titulo: "YA REGISTRADO" },

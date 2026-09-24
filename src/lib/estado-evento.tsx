@@ -853,7 +853,21 @@ export function EstadoEventoProvider({
           if (remoto)
             resultado = {
               ...resultado,
-              color: remoto.color,
+              /*
+               * La base decide la DIRECCIÓN; con qué color se pinta esa
+               * dirección lo decide la pantalla.
+               *
+               * El enum `semaforo` de Postgres tiene tres valores y llama verde
+               * a la salida, así que tomar su color tal cual borraba el azul que
+               * el motor local acababa de poner: la puerta volvía a enseñar
+               * verde para entrar y para salir, justo en el caso en que se le
+               * pregunta a la base porque este teléfono puede ir atrasado.
+               *
+               * Se repinta a partir de `tipo`, que es el dato de verdad y el que
+               * la base sí manda. Un rojo o un amarillo remotos pasan intactos:
+               * ahí el color dice si pasa o no, y eso no se toca.
+               */
+              color: remoto.color === "verde" && remoto.tipo === "salida" ? "azul" : remoto.color,
               titulo: remoto.titulo,
               // La base llama «detalle» a lo que aquí es el motivo.
               motivo: remoto.detalle,

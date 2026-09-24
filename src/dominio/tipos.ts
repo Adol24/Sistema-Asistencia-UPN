@@ -5,7 +5,19 @@ export type EstadoPago =
 
 export type EstadoEvidencia = "pendiente" | "aprobada" | "rechazada" | "no_entregada";
 
-export type Semaforo = "verde" | "amarillo" | "rojo";
+/**
+ * Los colores del escáner de la puerta.
+ *
+ * Tres son el semáforo de siempre y contestan «¿pasa o no pasa?». El azul
+ * contesta otra cosa —«va SALIENDO»— y por eso no es uno de los tres: nadie lee
+ * azul como permiso ni como alto, que es justo lo que lo hace servir para una
+ * dimensión distinta sin estropear el código de seguridad.
+ *
+ * El enum `semaforo` de la base se queda en tres a propósito. La base decide la
+ * dirección y la devuelve en `tipo`; con qué color se pinta una salida es cosa
+ * de la pantalla, no de Postgres.
+ */
+export type Semaforo = "verde" | "azul" | "amarillo" | "rojo";
 
 export type Dia = 1 | 2 | 3;
 
