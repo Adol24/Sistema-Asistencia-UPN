@@ -307,34 +307,32 @@ Esta la sustituye por la del Encuentro:
 | Banco | Santander |
 | Cuenta | `65501202802` |
 | Beneficiario | Universidad Pedagógica Nacional |
-| CLABE | *no se conoce* |
 
-**La CLABE se guarda vacía a propósito.** No llegó con las otras tres y no se
-deduce: la de Santander son 18 dígitos —`014` + plaza + los 11 de la cuenta +
-control— y la plaza no está en ningún lado. Dejar la del relleno sería peor que
-no tener ninguna, porque esa CLABE es de otro banco y **existe**: quien la
-copiara mandaría el depósito a una cuenta que no es esta. `/pago` deja de
-dibujar la fila cuando está vacía, así que el alumno ve tres datos ciertos en
-vez de cuatro con uno falso.
+Son tres, no cuatro: **la CLABE se retira**, dicho por la organización el
+2026-09-24. No es que falte y se espere, así que la columna `banco_clabe` se va
+con ella —`drop column`— en vez de quedarse vacía marcando un hueco. Ninguna
+vista, función ni política la nombraba; solo la definición de la tabla y el
+`insert` de datos iniciales, así que soltarla no arrastra nada.
 
-Por eso cambia el `check` de `banco_clabe`: exigía 18 dígitos y `not null`, o
-sea que «todavía no la sabemos» no era un estado que la base admitiera, ni desde
-una migración ni desde `/admin/configuracion`. Ahora acepta la CLABE completa o
-ninguna; una a medias sigue rechazada.
+Lo que no podía quedarse era la del relleno: es de BBVA y **existe**, o sea que
+quien la copiara junto a una cuenta de Santander mandaría el depósito a una
+cuenta ajena. En el cliente desaparecen la fila de `/pago`, el campo de
+`/admin/configuracion` y `banco.clabe` del tipo `ConfiguracionEvento`.
 
 Comprobable sin permisos —la configuración se lee con la clave anónima—:
 
 ```sql
-select banco_nombre, banco_cuenta, banco_clabe, banco_beneficiario
+select banco_nombre, banco_cuenta, banco_beneficiario
   from configuracion_evento where id = 1;
 ```
 
 El bloque final de la migración ya lo comprueba solo: si la fila no quedó con
-esos valores, o no existe, levanta excepción en vez de dejar un «UPDATE 0» que
-nadie lee en el editor SQL.
+esos valores, si no existe, o si `banco_clabe` sigue en la tabla, levanta
+excepción en vez de dejar un «UPDATE 0» que nadie lee en el editor SQL.
 
-Cuando aparezca la CLABE no hace falta otra migración: se teclea en
-`/admin/configuracion` → Datos bancarios, y la fila vuelve a `/pago` sola.
+Si algún día vuelve a hacer falta, vuelve en una migración de una línea
+(`alter table … add column banco_clabe text not null default ''`) y el campo
+regresa al panel. Retirarla no cierra esa puerta.
 
 ### La salida que nadie dio (`20260923160000`) — aplicada
 

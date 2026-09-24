@@ -39,7 +39,7 @@ export type ModuloDatos = typeof import("@/lib/datos");
  * términos, el horario de soporte y los dos tramos de registro. Trece campos.
  *
  * El más caro era el banco. Es la cuenta a la que depositan setecientas
- * personas: alguien corrige la CLABE dos días antes, lee que se guardó, se va
+ * personas: alguien corrige el número dos días antes, lee que se guardó, se va
  * tranquilo, y los depósitos siguen yendo a la cuenta vieja.
  *
  * Que faltara una fila no es el defecto —una tabla se completa—; el defecto es
@@ -79,7 +79,6 @@ const ANIDADAS = {
   banco: {
     banco: "banco_nombre",
     cuenta: "banco_cuenta",
-    clabe: "banco_clabe",
     beneficiario: "banco_beneficiario",
   },
   ventanilla: { lugar: "ventanilla_lugar", horario: "ventanilla_horario" },
@@ -208,8 +207,8 @@ export function avisarLogro(mensaje: string): void {
  * El resultado es el mismo defecto una y otra vez, con nombres distintos: **la
  * pantalla dice que sí y la base dice que no.** La puerta pinta VERDE y la
  * asistencia no existe. La evidencia se aprueba y el alumno no lo ve nunca. Se
- * da de baja a un capturista y su sesión sigue viva. Se corrige la CLABE y los
- * depósitos siguen yendo a la cuenta vieja. Nadie se entera hasta que se
+ * da de baja a un capturista y su sesión sigue viva. Se corrige la cuenta del
+ * banco y los depósitos siguen yendo a la vieja. Nadie se entera hasta que se
  * cuentan los resultados, que es cuando ya no se puede arreglar.
  *
  * Ponerlo obligatorio no arregla por sí solo ninguno de esos casos: los arregla

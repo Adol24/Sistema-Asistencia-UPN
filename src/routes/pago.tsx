@@ -227,18 +227,6 @@ function Pago() {
             <div className="mt-2 grid gap-2">
               <CampoCopiable etiqueta="Banco" valor={evento.banco.banco} />
               <CampoCopiable etiqueta="Número de cuenta" valor={evento.banco.cuenta} />
-              {/*
-               * La CLABE solo si la hay.
-               *
-               * De la cuenta real del Encuentro llegaron banco, número y
-               * beneficiario; la CLABE no, y no se deduce. Dibujar la fila
-               * vacía invita a preguntar por ella; dibujar la del relleno
-               * —que era de otro banco y sí existe— manda el depósito a otra
-               * cuenta. Tres datos ciertos valen más que cuatro con uno falso.
-               */}
-              {evento.banco.clabe ? (
-                <CampoCopiable etiqueta="CLABE interbancaria" valor={evento.banco.clabe} />
-              ) : null}
               <CampoCopiable etiqueta="Beneficiario" valor={evento.banco.beneficiario} />
             </div>
           </section>

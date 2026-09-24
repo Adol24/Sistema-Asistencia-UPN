@@ -677,12 +677,6 @@ function Configuracion() {
               onChange={(v) => setBanco({ cuenta: v })}
             />
             <Campo
-              id="clabe"
-              etiqueta="CLABE"
-              valor={b.banco.clabe}
-              onChange={(v) => setBanco({ clabe: v })}
-            />
-            <Campo
               id="benef"
               etiqueta="Beneficiario"
               valor={b.banco.beneficiario}
@@ -1103,7 +1097,7 @@ function Seccion({
    * Pone los campos de dos en dos cuando la tarjeta tiene sitio.
    *
    * Es lo que se hace con el ancho que sobra, y no ensanchar el campo. Una
-   * CLABE son 18 dígitos y un horario cabe en cinco palabras: estirarlos a
+   * cuenta son once dígitos y un horario cabe en cinco palabras: estirarlos a
    * media pantalla no los hace más fáciles de llenar, solo aleja la etiqueta
    * de su control y deja la mitad derecha en blanco. Dos por renglón usan el
    * mismo espacio enseñando el doble.

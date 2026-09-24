@@ -1135,12 +1135,12 @@ export function EstadoEventoProvider({
         (d) => d.guardarConfiguracion(columnas).then(() => d.olvidarPublico()),
         () =>
           /*
-           * Aquí viven la CLABE, la cuota y la fecha límite. La pantalla ya dijo
+           * Aquí viven la cuenta del banco, la cuota y la fecha límite. La pantalla ya dijo
            * «Configuración guardada. Las pantallas públicas ya la usan», así que
            * quien corrigió la cuenta bancaria se va tranquilo mientras los
            * depósitos siguen yendo a la vieja.
            *
-           * No se revierte el borrador: quien acaba de teclear la CLABE buena no
+           * No se revierte el borrador: quien acaba de teclear la cuenta buena no
            * quiere verla desaparecer, quiere poder volver a darle a guardar. Se
            * le nombran los campos para que sepa cuáles no llegaron.
            */

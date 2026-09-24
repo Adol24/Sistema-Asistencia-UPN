@@ -62,7 +62,7 @@ export interface ConfiguracionEvento {
   whatsappSoporte: string;
   correoSoporte: string;
   horarioSoporte: string;
-  banco: { banco: string; cuenta: string; clabe: string; beneficiario: string };
+  banco: { banco: string; cuenta: string; beneficiario: string };
   ventanilla: { lugar: string; horario: string };
   dias: DiaEvento[];
   registroEntrada: string;
@@ -102,7 +102,7 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   whatsappSoporte: "",
   correoSoporte: "",
   horarioSoporte: "",
-  banco: { banco: "", cuenta: "", clabe: "", beneficiario: "" },
+  banco: { banco: "", cuenta: "", beneficiario: "" },
   ventanilla: { lugar: "", horario: "" },
   dias: [
     { dia: 1, etiqueta: "DÍA 1", fecha: "", lugar: "", puntos: [], cupo: 0 },

@@ -65,7 +65,6 @@ for (const [tabla, cols, minimo] of publicas) {
     "fecha_limite",
     "horas_validacion",
     "dominio_institucional",
-    "banco_clabe",
     "ventanilla_lugar",
     "aviso_privacidad",
   ].filter((c) => data && !(c in data));

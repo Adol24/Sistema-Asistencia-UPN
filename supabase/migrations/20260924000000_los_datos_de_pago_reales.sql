@@ -20,41 +20,35 @@
 -- Son setecientos depósitos. Un dígito equivocado aquí no es un error de
 -- pantalla: es dinero que sale de la cuenta del alumno y no llega a ninguna.
 --
--- La CLABE que nadie dio
--- ----------------------
--- De los cuatro datos bancarios llegaron tres. La CLABE **no**, y no se puede
--- deducir: la de Santander son 18 dígitos —`014` + plaza + los 11 de la cuenta
--- + dígito de control— y la plaza no está en ningún lado. Inventarla sería
--- exactamente el fallo que esta migración viene a arreglar.
+-- La CLABE se retira
+-- ------------------
+-- Son tres datos, no cuatro: **la CLABE deja de existir en el sistema**. No es
+-- que falte y se espere —decisión de la organización el 2026-09-24—, así que la
+-- columna se va con ella en vez de quedarse vacía marcando un hueco.
 --
--- Así que se guarda vacía, y `/pago` deja de dibujar esa fila cuando lo está:
--- el alumno ve tres datos ciertos en vez de cuatro con uno falso. Dejar la
--- CLABE del relleno junto a una cuenta de Santander sería peor que no tener
--- ninguna —la de BBVA existe, y quien la copie manda el dinero a otro banco—.
+-- Lo que no podía quedarse era la del relleno. Es de BBVA y **existe**: quien
+-- la copiara junto a una cuenta de Santander mandaría el depósito a una cuenta
+-- ajena. Una CLABE falsa es peor que ninguna, y ninguna es justo lo que el
+-- alumno necesita aquí: el depósito se hace a la cuenta, que es lo que se le da.
 --
--- Por eso el `check` de la columna cambia: seguía exigiendo 18 dígitos y `not
--- null`, así que «todavía no la sabemos» no era un estado que la base
--- permitiera, ni desde aquí ni desde el panel de configuración. Ahora acepta
--- las dos cosas que son ciertas: una CLABE completa, o ninguna. Lo que NO
--- acepta es una a medias.
+-- En el cliente desaparecen la fila de `/pago`, el campo de
+-- `/admin/configuracion` y `banco.clabe` del tipo `ConfiguracionEvento`. Nada
+-- en la base la leía: ninguna vista, función ni política la nombra —solo la
+-- definición de la tabla y el `insert` de datos iniciales—, así que soltarla no
+-- arrastra nada.
+--
+-- Si algún día vuelve a hacer falta, vuelve en una migración de una línea
+-- (`alter table … add column banco_clabe text not null default ''`) y el campo
+-- regresa al panel. Retirarla no cierra esa puerta.
 -- =============================================================================
-
-alter table configuracion_evento
-  drop constraint if exists configuracion_evento_banco_clabe_check;
-
-alter table configuracion_evento
-  add constraint configuracion_evento_banco_clabe_check
-  check (banco_clabe = '' or banco_clabe ~ '^[0-9]{18}$');
-
-comment on column configuracion_evento.banco_clabe is
-  'Vacía significa que no se conoce: /pago oculta la fila en vez de mostrar una falsa. Con valor, son los 18 dígitos completos.';
 
 update configuracion_evento
    set banco_nombre       = 'Santander',
        banco_cuenta       = '65501202802',
-       banco_clabe        = '',
        banco_beneficiario = 'Universidad Pedagógica Nacional'
  where id = 1;
+
+alter table configuracion_evento drop column if exists banco_clabe;
 
 /*
  * Que la fila quedó como dice la cabecera, no como dice la intención.
@@ -62,6 +56,10 @@ update configuracion_evento
  * El `update` de arriba no falla si la fila no existe —afecta cero filas y
  * Postgres lo da por bueno—, y este archivo se pega a mano en el editor SQL de
  * producción, donde nadie lee el «UPDATE 0». Esto lo convierte en un error.
+ *
+ * Y de paso que la columna se fue de verdad. `drop column if exists` calla
+ * igual si nunca existió que si la acaba de soltar, así que preguntar por ella
+ * es la única forma de distinguir las dos cosas.
  */
 do $$
 declare
@@ -75,13 +73,21 @@ begin
 
   if fila.banco_nombre <> 'Santander'
      or fila.banco_cuenta <> '65501202802'
-     or fila.banco_beneficiario <> 'Universidad Pedagógica Nacional'
-     or fila.banco_clabe <> '' then
-    raise exception 'Los datos bancarios no quedaron como esta migración los deja. Están así: banco=%, cuenta=%, clabe=%, beneficiario=%',
-      fila.banco_nombre, fila.banco_cuenta, fila.banco_clabe, fila.banco_beneficiario;
+     or fila.banco_beneficiario <> 'Universidad Pedagógica Nacional' then
+    raise exception 'Los datos bancarios no quedaron como esta migración los deja. Están así: banco=%, cuenta=%, beneficiario=%',
+      fila.banco_nombre, fila.banco_cuenta, fila.banco_beneficiario;
   end if;
 
-  raise notice 'Datos de pago: % · cuenta % · % (sin CLABE)',
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'configuracion_evento'
+       and column_name = 'banco_clabe'
+  ) then
+    raise exception 'La columna banco_clabe sigue en configuracion_evento: la CLABE no se retiró.';
+  end if;
+
+  raise notice 'Datos de pago: % · cuenta % · %',
     fila.banco_nombre, fila.banco_cuenta, fila.banco_beneficiario;
 end
 $$;

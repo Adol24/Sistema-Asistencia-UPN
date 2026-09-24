@@ -16,8 +16,8 @@
  * pantalla anunciaba «Configuración guardada» igual.
  *
  * El más caro era el banco: es la cuenta a la que depositan setecientas
- * personas. Alguien corrige la CLABE, lee que se guardó, se va tranquilo, y los
- * depósitos siguen yendo a la cuenta vieja.
+ * personas. Alguien corrige el número, lee que se guardó, se va tranquilo, y
+ * los depósitos siguen yendo a la cuenta vieja.
  *
  * Lo que dejó que durara no fue el error, fue que era invisible: añadir un
  * campo al formulario y olvidar su fila en el mapa no rompía nada. Esta
@@ -94,20 +94,18 @@ console.log("=== TODO CAMPO TIENE DESTINO ===\n");
 console.log("\n=== LOS TRECE QUE SE DESCARTABAN ===\n");
 // ---------------------------------------------------------------------------
 igual(
-  "los cuatro datos bancarios llegan a sus columnas",
+  "los tres datos bancarios llegan a sus columnas",
   columnasDeConfiguracion({
     banco: {
-      banco: "BBVA",
-      cuenta: "0123456789",
-      clabe: "012345678901234567",
-      beneficiario: "UPN",
+      banco: "Santander",
+      cuenta: "65501202802",
+      beneficiario: "Universidad Pedagógica Nacional",
     },
   }),
   {
-    banco_nombre: "BBVA",
-    banco_cuenta: "0123456789",
-    banco_clabe: "012345678901234567",
-    banco_beneficiario: "UPN",
+    banco_nombre: "Santander",
+    banco_cuenta: "65501202802",
+    banco_beneficiario: "Universidad Pedagógica Nacional",
   },
 );
 

@@ -15,6 +15,14 @@ Fuera de alcance, y por tanto ausentes del prototipo a propósito: generación o
 vista previa de PDF, folio de constancia, QR de verificación, página pública
 `/verificar/{folio}`, emisión individual o masiva, y anulación de constancias.
 
+CAMBIO — DATOS BANCARIOS
+
+La cuenta del Encuentro es de Santander, 65501202802, a nombre de la Universidad
+Pedagógica Nacional, y **no tiene CLABE publicada**: la organización la retiró el
+2026-09-24. Donde esta especificación pide cuatro datos bancarios, la pantalla de
+pago enseña tres. El campo tampoco está ya en `/admin/configuracion` ni en la
+base (migración `20260924000000_los_datos_de_pago_reales`).
+
 ALCANCE — LEE ESTO PRIMERO
 
 Construye únicamente la interfaz de usuario. No implementes backend, base de datos, autenticación real, envío de correos ni integraciones.

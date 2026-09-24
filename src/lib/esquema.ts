@@ -49,7 +49,6 @@ export interface FilaConfiguracion {
   horario_soporte: string;
   banco_nombre: string;
   banco_cuenta: string;
-  banco_clabe: string;
   banco_beneficiario: string;
   ventanilla_lugar: string;
   ventanilla_horario: string;
@@ -369,7 +368,6 @@ export function aConfiguracion(
     banco: {
       banco: f.banco_nombre,
       cuenta: f.banco_cuenta,
-      clabe: f.banco_clabe,
       beneficiario: f.banco_beneficiario,
     },
     ventanilla: { lugar: f.ventanilla_lugar, horario: f.ventanilla_horario },
