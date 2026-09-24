@@ -153,10 +153,25 @@ begin
         'en vez de darla de alta otra vez.', v_matricula, v_ya.nombre
         using errcode = 'unique_violation';
     end if;
+    /*
+     * La marca va CONCATENADA al nombre, no como un tercer argumento.
+     *
+     * Aquí ponía `a nombre de %%` con tres argumentos, y no compilaba: en
+     * `raise`, `%%` es un porcentaje LITERAL, no dos marcadores. Así que el
+     * formato declaraba dos y recibía tres —«too many parameters specified for
+     * RAISE»— y la función entera se quedaba sin crear.
+     *
+     * Y no se arregla escribiendo `% %`: eso mete un espacio que sobra cuando
+     * la marca está vacía, y queda un « .» al final. Concatenar deja UN
+     * marcador para un dato que de todas formas se lee como una sola cosa:
+     * «JUAN PÉREZ (declarada en mesa)».
+     */
     raise exception
-      'La matrícula % ya está en el padrón, a nombre de %%. Corrígela ahí si los '
-      'datos no cuadran.', v_matricula, v_ya.nombre,
-      case when v_ya.autodeclarado then ' (declarada en mesa)' else '' end
+      'La matrícula % ya está en el padrón, a nombre de %. Corrígela ahí si los '
+      'datos no cuadran.',
+      v_matricula,
+      v_ya.nombre ||
+        case when v_ya.autodeclarado then ' (declarada en mesa)' else '' end
       using errcode = 'unique_violation';
   end if;
 

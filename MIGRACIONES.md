@@ -803,6 +803,27 @@ de Supabase, ni Docker. Salen revisadas leyéndolas, no probadas — y ya se vio
 que eso cuesta: la 31 parecía correcta en el archivo y dejó dos funciones
 abiertas al público.
 
+**Antes de pegarlas, `bun run verificar-migraciones`.** Revisa las 64 sin base de
+datos y caza lo que solo se descubre al aplicarlas:
+
+- **Los argumentos de cada `raise`**, contra sus marcadores. Es de donde salió:
+  `20260923200000` llevaba un `%%` —que en PL/pgSQL es un porcentaje LITERAL, no
+  dos marcadores— con tres argumentos para dos, y la función entera no compiló.
+  El error apareció en producción, al aplicarla, con el pre-registro a cuatro
+  días.
+- **El equilibrio de las comillas de dólar.** Un `$fn$` sin cerrar no da un
+  error legible: Postgres se come el resto del archivo como texto.
+
+Revisarlo a ojo no funciona, y hay prueba de las dos formas: auditar a mano las
+tres migraciones de ese día no lo encontró, y el primer comprobante escrito para
+buscarlo acusó de desajuste a un `raise` correcto porque cortaba la sentencia en
+un punto y coma que estaba **dentro de una cadena**. Hay que leer el SQL como lo
+lee Postgres.
+
+Lo que ese comprobante **no** hace es validar SQL: una columna que no existe o
+una política mal puesta solo las dice la base. Un verde ahí significa «no tiene
+los errores que se pueden ver leyendo», no «se puede aplicar».
+
 Después de correrlas, `bun run verificar-conexion`. Siempre.
 
 ## Cómo verificar que quedaron
