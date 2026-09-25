@@ -134,17 +134,29 @@ export function PortalProvider({ children }: { children: ReactNode }) {
        * `/portal/estado` buscaba el taller por uuid en una lista indexada por
        * clave y le decía «sin taller» a quien sí tenía uno.
        *
-       * No cuesta una llamada de más: `cargarPublico` tiene media hora de caché
-       * y las pantallas públicas ya la tienen pedida cuando se llega aquí.
+       * No cuesta una llamada de más: `cargarPublico` se cachea medio minuto
+       * —`VIDA_CACHE` en `datos.ts`— y las pantallas públicas ya la tienen
+       * pedida cuando se llega aquí.
        */
-      // `cargarPublico` devuelve `null` sin base configurada. Aquí no puede
-      // pasar —`cargar` sale antes si `!hayBaseDeDatos`— pero el tipo lo admite
-      // y un mapa vacío es la respuesta correcta a «no hay catálogo».
-      const publico = await cargarPublico();
+      /*
+       * Las dos a la vez, que no dependen una de otra.
+       *
+       * Estaban en fila —`await` y luego `await`— y eso sumaba los dos viajes:
+       * unos 160 ms de más en cada carga del portal, incluido cada sondeo de
+       * tres minutos y cada vez que la persona vuelve a la pestaña mientras
+       * espera a que le validen el pago, que es justo cuando está mirando.
+       *
+       * `cargarPublico` devuelve `null` sin base configurada. Aquí no puede
+       * pasar —`cargar` sale antes si `!hayBaseDeDatos`— pero el tipo lo admite
+       * y un mapa vacío es la respuesta correcta a «no hay catálogo».
+       */
+      const [publico, crudo] = await Promise.all([
+        cargarPublico(),
+        estadoDelPortal(sesion.folio, sesion.credencial),
+      ]);
       const clavePorId = new Map(
         Object.entries(publico?.idPorClave ?? {}).map(([clave, id]) => [id, clave]),
       );
-      const crudo = await estadoDelPortal(sesion.folio, sesion.credencial);
       if (!crudo) {
         // Se borra lo guardado: una credencial que la base ya rechaza no debe
         // sobrevivir a la siguiente recarga para volver a fallar igual.

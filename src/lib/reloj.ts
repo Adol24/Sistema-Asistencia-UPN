@@ -80,18 +80,26 @@ export function useRelojEvento(configuracion: ConfiguracionEvento) {
   useEffect(() => {
     if (!reloj.automatico) return;
 
+    /*
+     * Devolver `prev` cuando nada cambió no es una micro-optimización.
+     *
+     * El reloj viaja dentro del `value` del contexto del evento, que lo leen 81
+     * componentes. Fabricar un objeto nuevo cada treinta segundos —aunque el
+     * minuto fuera el mismo— cambiaba la identidad del contexto y repintaba a
+     * los 81, incluidas las listas de dos mil filas de los paneles. Cada medio
+     * minuto, todo el día del evento, para no enseñar nada distinto.
+     *
+     * Ahora solo se construye cuando el minuto o el día de verdad avanzan.
+     */
     const poner = () => {
       const ahora = new Date();
       const hoy = diaDeHoy();
-      setRelojState((prev) =>
-        prev.automatico
-          ? {
-              ...prev,
-              minutos: ahora.getHours() * 60 + ahora.getMinutes(),
-              ...(hoy ? { dia: hoy } : {}),
-            }
-          : prev,
-      );
+      const minutos = ahora.getHours() * 60 + ahora.getMinutes();
+      setRelojState((prev) => {
+        if (!prev.automatico) return prev;
+        if (prev.minutos === minutos && (!hoy || prev.dia === hoy)) return prev;
+        return { ...prev, minutos, ...(hoy ? { dia: hoy } : {}) };
+      });
     };
 
     poner();

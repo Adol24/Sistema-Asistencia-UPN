@@ -1,16 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import {
   Outlet,
   Link,
-  createRootRouteWithContext,
+  createRootRoute,
   useRouter,
   useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { Suspense, lazy, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { PrototipoProvider } from "../lib/prototipo";
@@ -20,7 +19,18 @@ import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
 import { useTrabajadorDeServicio } from "../lib/trabajador-de-servicio";
 import { useSelloDeVersion } from "../lib/sello-de-version";
-import { Toaster } from "../components/ui/sonner";
+/*
+ * El Toaster llega tarde a propósito.
+ *
+ * Es lo único que ataba `sonner` —unos 28 KB— al chunk de entrada, y un aviso
+ * flotante no existe hasta que algo falla o se guarda. Cargarlo aparte quita
+ * ese peso de la primera pantalla de TODO el mundo a cambio de que el primer
+ * aviso tarde un tick más en aparecer.
+ *
+ * Las diecisiete rutas que importan `toast` de forma estática se quedan como
+ * están: son chunks de ruta, ya perezosos, y comparten este mismo módulo.
+ */
+const Toaster = lazy(() => import("../components/ui/sonner").then((m) => ({ default: m.Toaster })));
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
 
 function NotFoundComponent() {
@@ -135,7 +145,7 @@ const origenDelSitio = createIsomorphicFn()
 /** La tarjeta que se ve al pegar el enlace. La dibuja `bun run generar-iconos`. */
 const TARJETA = "/og-encuentro.png";
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRoute({
   head: ({ loaderData }) => ({
     meta: [
       { charSet: "utf-8" },
@@ -270,7 +280,6 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
   const { publico } = Route.useLoaderData();
   // Publica `--teclado` para que las pantallas con formulario dejen sitio.
   useAltoTeclado();
@@ -278,22 +287,22 @@ function RootComponent() {
   useSelloDeVersion();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {/*
-        El orden importa: `PrototipoProvider` resuelve el participante de prueba
-        contra la lista del contexto, que puede haber cambiado en la sesión.
-      */}
-      <SesionProvider>
-        <EstadoEventoProvider inicial={publico}>
-          <PrototipoProvider>
-            <PortalProvider>
-              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-              <Outlet />
+    /*
+      El orden importa: `PrototipoProvider` resuelve el participante de prueba
+      contra la lista del contexto, que puede haber cambiado en la sesión.
+    */
+    <SesionProvider>
+      <EstadoEventoProvider inicial={publico}>
+        <PrototipoProvider>
+          <PortalProvider>
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <Suspense fallback={null}>
               <Toaster position="top-center" richColors />
-            </PortalProvider>
-          </PrototipoProvider>
-        </EstadoEventoProvider>
-      </SesionProvider>
-    </QueryClientProvider>
+            </Suspense>
+          </PortalProvider>
+        </PrototipoProvider>
+      </EstadoEventoProvider>
+    </SesionProvider>
   );
 }

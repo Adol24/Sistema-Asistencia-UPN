@@ -231,9 +231,17 @@ export function EstadoEventoProvider({
       if (!silencioso) setCargandoDatos(true);
       try {
         const m = await import("@/lib/datos");
-        // El público se cachea 30 segundos dentro de `cargarPublico`; al recargar
-        // a mano hay que olvidarlo o la configuración recién cambiada no llega.
-        m.olvidarPublico();
+        /*
+         * El público se cachea 30 segundos dentro de `cargarPublico`, y aquí se
+         * tiraba ese caché SIEMPRE.
+         *
+         * El comentario decía «al recargar a mano», que es la razón correcta:
+         * quien acaba de guardar la configuración tiene que verla. Pero el
+         * código no distinguía, así que también lo tiraban las recargas
+         * silenciosas —las de tiempo real y las de volver a la pestaña—, que son
+         * justo las que nadie pidió. El caché no llegaba a servir nunca.
+         */
+        if (!silencioso) m.olvidarPublico();
         const datos = await m.cargarTodo(personaId !== null);
         if (!datos) return;
         setConfiguracion(datos.configuracion);
@@ -338,10 +346,23 @@ export function EstadoEventoProvider({
    * cambios de ese rato no se reenvían al despertar. Volver al frente es
    * exactamente el momento en que hay que ponerse al día.
    */
+  /*
+   * Los dos oyentes son a propósito —hay navegadores que solo emiten uno— pero
+   * volver a la pestaña emite LOS DOS, y eso era recargar dos veces seguidas.
+   *
+   * El sello de tiempo deja pasar el primero y descarta al gemelo. Un segundo
+   * es de sobra: son el mismo gesto del usuario, y una recarga legítima que
+   * llegue justo detrás la cubre igual el tiempo real.
+   */
+  const ultimoRegreso = useRef(0);
   useEffect(() => {
     if (!hayBaseDeDatos) return;
     const alVolver = () => {
-      if (document.visibilityState === "visible") void cargar(true);
+      if (document.visibilityState !== "visible") return;
+      const ahora = Date.now();
+      if (ahora - ultimoRegreso.current < 1000) return;
+      ultimoRegreso.current = ahora;
+      void cargar(true);
     };
     document.addEventListener("visibilitychange", alVolver);
     window.addEventListener("focus", alVolver);

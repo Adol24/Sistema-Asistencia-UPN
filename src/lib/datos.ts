@@ -284,12 +284,29 @@ async function porTramos(pedir: (desde: number, hasta: number) => PromiseLike<Re
 }
 
 /**
+ * La respuesta que se usa en lugar de PREGUNTAR lo que no se puede leer.
+ *
+ * Tiene la forma de una lectura vacía porque el resto de la función ya sabe
+ * tratarla: `talleresConSesion.data ?? []` cae al catálogo público, y las demás
+ * listas se arman con `?? []`.
+ */
+const NADA = { data: null, error: null };
+
+/**
  * @param conSesion Si quien pregunta ya se identificó como personal interno.
- *   Solo cambia cómo se REPORTA el fallo de las tablas del personal, nunca lo
- *   que se pide: sin sesión el 401 es lo esperado y callarlo es correcto; con
- *   sesión significa que a esa cuenta le falta permiso o su fila en
- *   `usuarios_internos`, y eso tiene que verse aunque nadie abra las
- *   herramientas de desarrollo.
+ *   **Decide si las tablas del personal se piden siquiera.** Antes solo cambiaba
+ *   cómo se reportaba el fallo, y eso costaba diez peticiones por visita
+ *   anónima: `revoke all on all tables from anon` hace que las nueve respondan
+ *   401 —comprobado contra el proyecto real— y la décima, `v_talleres`, sea un
+ *   duplicado exacto de la que `cargarPublico` acaba de traer.
+ *
+ *   No era un desperdicio teórico. El día que abre el registro son 700 alumnos
+ *   entrando a la vez: siete mil peticiones contra PostgREST para recibir siete
+ *   mil «no puedes».
+ *
+ *   Con sesión, un 401 significa que a esa cuenta le falta permiso o su fila en
+ *   `usuarios_internos`, y eso sí tiene que verse aunque nadie abra las
+ *   herramientas de desarrollo. De ahí que el aviso de abajo siga estando.
  */
 export async function cargarTodo(conSesion = false): Promise<Instantanea | null> {
   if (!supabase) return null;
@@ -328,114 +345,116 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     casos,
     talleresConSesion,
     bitacora,
-  ] = await Promise.all([
-    porTramos((desde, hasta) =>
-      sb.from("participantes").select(COLS_PARTICIPANTE).order("folio").range(desde, hasta),
-    ),
-    /*
-     * El estado derivado, que puede leer cualquier miembro del personal.
-     * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
-     * pagó nadie ni con qué referencia.
-     */
-    porTramos((desde, hasta) =>
-      sb
-        .from("v_estado_pago")
-        .select("participante_id, concepto, estado")
-        // La vista tiene una fila por participante y concepto, así que las dos
-        // columnas juntas son su clave y dan el orden estable que el tramo pide.
-        .order("participante_id")
-        .order("concepto")
-        .range(desde, hasta),
-    ),
-    /*
-     * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
-     * los demás las políticas les devuelven cero filas, sin error.
-     *
-     * Se ordenan del más antiguo al más reciente porque `estadoDePagos`
-     * recorre la lista al revés y se queda con la primera coincidencia: el
-     * último pago de un concepto es el que manda, y ese orden es el que lo
-     * garantiza.
-     */
-    porTramos((desde, hasta) =>
-      sb
-        .from("pagos")
-        .select(COLS_PAGO)
-        // `id` detrás de la fecha: dos pagos del mismo instante empatan, y un
-        // empate al paginar repite filas en un tramo y las pierde en el otro.
-        .order("registrado_en")
-        .order("id")
-        .range(desde, hasta),
-    ),
-    porTramos((desde, hasta) =>
-      sb.from("padron_alumnos").select(COLS_PADRON).order("matricula").range(desde, hasta),
-    ),
-    porTramos((desde, hasta) =>
-      sb
-        .from("asistencias")
-        .select(
-          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-        )
-        .is("anulada_en", null)
-        // `id` detrás de la fecha: dos registros del mismo instante empatan, y
-        // un empate al paginar repite filas en un tramo y las pierde en el otro.
-        .order("registrada_en")
-        .order("id")
-        .range(desde, hasta),
-    ),
-    porTramos((desde, hasta) =>
-      sb
-        .from("evidencias")
-        .select(
-          "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
-        )
-        // Por día hay miles de empates: sin `id` detrás, paginar sobre `dia`
-        // devolvería unas evidencias dos veces y otras ninguna.
-        .order("dia")
-        .order("id")
-        .range(desde, hasta),
-    ),
-    // `usuarios_internos` y `casos_soporte` se piden enteros a propósito: son
-    // decenas de filas, no miles, y no alimentan ningún recuento que se falsee
-    // si faltara una. La bitácora ya tiene su propio tope, más abajo.
-    sb.from("usuarios_internos").select("*").order("nombre"),
-    sb
-      .from("casos_soporte")
-      .select(
-        "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
-      )
-      .order("creado_en", { ascending: false }),
-    /*
-     * Los talleres se vuelven a pedir aquí, con la sesión puesta, en vez de
-     * heredarlos de `cargarPublico`.
-     *
-     * **Este era el fallo que dejó cuatro talleres apagados sin forma de
-     * encenderlos.** `talleres_lectura` es `using (activo or
-     * es_interno_activo())`, así que un taller inactivo solo se ve con sesión.
-     * Y `cargarPublico` se pide también desde el servidor, antes de pintar,
-     * donde no hay sesión de nadie —y su resultado se guarda en caché medio
-     * minuto—: el panel recibía la lista que ve un anónimo.
-     *
-     * De ahí que `/admin/talleres` no listara T01 a T04 y que su distintivo de
-     * «Inactivo» fuera código muerto: para que se pintara, tenía que llegar un
-     * taller inactivo, y nunca llegaba ninguno. Quien los apagó desde el panel
-     * los perdió de vista en el mismo clic.
-     */
-    sb.from("v_talleres").select("*").order("clave"),
-    /*
-     * Lo ya anotado en la bitácora, de lo más reciente hacia atrás.
-     *
-     * Se pide con tope. La bitácora no se poda —no tiene política de DELETE, es
-     * inmutable a propósito— así que en un evento de cinco mil personas crece
-     * por miles de filas, y traerlas todas para pintar una tabla que pagina de
-     * diez sería pagar el histórico entero en cada carga. Lo que la pantalla
-     * contesta es «quién hizo esto», y eso se pregunta sobre lo reciente.
-     */
-    sb
-      .from("bitacora")
-      .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
-      .order("ocurrido_en", { ascending: false })
-      .limit(500),
-  ]);
+  ] = conSesion
+    ? await Promise.all([
+        porTramos((desde, hasta) =>
+          sb.from("participantes").select(COLS_PARTICIPANTE).order("folio").range(desde, hasta),
+        ),
+        /*
+         * El estado derivado, que puede leer cualquier miembro del personal.
+         * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto
+         * pagó nadie ni con qué referencia.
+         */
+        porTramos((desde, hasta) =>
+          sb
+            .from("v_estado_pago")
+            .select("participante_id, concepto, estado")
+            // La vista tiene una fila por participante y concepto, así que las dos
+            // columnas juntas son su clave y dan el orden estable que el tramo pide.
+            .order("participante_id")
+            .order("concepto")
+            .range(desde, hasta),
+        ),
+        /*
+         * Los pagos completos. Solo los ve quien puede cobrarlos o auditarlos; a
+         * los demás las políticas les devuelven cero filas, sin error.
+         *
+         * Se ordenan del más antiguo al más reciente porque `estadoDePagos`
+         * recorre la lista al revés y se queda con la primera coincidencia: el
+         * último pago de un concepto es el que manda, y ese orden es el que lo
+         * garantiza.
+         */
+        porTramos((desde, hasta) =>
+          sb
+            .from("pagos")
+            .select(COLS_PAGO)
+            // `id` detrás de la fecha: dos pagos del mismo instante empatan, y un
+            // empate al paginar repite filas en un tramo y las pierde en el otro.
+            .order("registrado_en")
+            .order("id")
+            .range(desde, hasta),
+        ),
+        porTramos((desde, hasta) =>
+          sb.from("padron_alumnos").select(COLS_PADRON).order("matricula").range(desde, hasta),
+        ),
+        porTramos((desde, hasta) =>
+          sb
+            .from("asistencias")
+            .select(
+              "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+            )
+            .is("anulada_en", null)
+            // `id` detrás de la fecha: dos registros del mismo instante empatan, y
+            // un empate al paginar repite filas en un tramo y las pierde en el otro.
+            .order("registrada_en")
+            .order("id")
+            .range(desde, hasta),
+        ),
+        porTramos((desde, hasta) =>
+          sb
+            .from("evidencias")
+            .select(
+              "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
+            )
+            // Por día hay miles de empates: sin `id` detrás, paginar sobre `dia`
+            // devolvería unas evidencias dos veces y otras ninguna.
+            .order("dia")
+            .order("id")
+            .range(desde, hasta),
+        ),
+        // `usuarios_internos` y `casos_soporte` se piden enteros a propósito: son
+        // decenas de filas, no miles, y no alimentan ningún recuento que se falsee
+        // si faltara una. La bitácora ya tiene su propio tope, más abajo.
+        sb.from("usuarios_internos").select("*").order("nombre"),
+        sb
+          .from("casos_soporte")
+          .select(
+            "id, clave, asunto, detalle, estado, canal, creado_en, usuarios_internos ( nombre ), participantes ( folio, nombre )",
+          )
+          .order("creado_en", { ascending: false }),
+        /*
+         * Los talleres se vuelven a pedir aquí, con la sesión puesta, en vez de
+         * heredarlos de `cargarPublico`.
+         *
+         * **Este era el fallo que dejó cuatro talleres apagados sin forma de
+         * encenderlos.** `talleres_lectura` es `using (activo or
+         * es_interno_activo())`, así que un taller inactivo solo se ve con sesión.
+         * Y `cargarPublico` se pide también desde el servidor, antes de pintar,
+         * donde no hay sesión de nadie —y su resultado se guarda en caché medio
+         * minuto—: el panel recibía la lista que ve un anónimo.
+         *
+         * De ahí que `/admin/talleres` no listara T01 a T04 y que su distintivo de
+         * «Inactivo» fuera código muerto: para que se pintara, tenía que llegar un
+         * taller inactivo, y nunca llegaba ninguno. Quien los apagó desde el panel
+         * los perdió de vista en el mismo clic.
+         */
+        sb.from("v_talleres").select("*").order("clave"),
+        /*
+         * Lo ya anotado en la bitácora, de lo más reciente hacia atrás.
+         *
+         * Se pide con tope. La bitácora no se poda —no tiene política de DELETE, es
+         * inmutable a propósito— así que en un evento de cinco mil personas crece
+         * por miles de filas, y traerlas todas para pintar una tabla que pagina de
+         * diez sería pagar el histórico entero en cada carga. Lo que la pantalla
+         * contesta es «quién hizo esto», y eso se pregunta sobre lo reciente.
+         */
+        sb
+          .from("bitacora")
+          .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
+          .order("ocurrido_en", { ascending: false })
+          .limit(500),
+      ])
+    : [NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA];
 
   // No se lanza: sin sesión de personal estas consultas fallan por diseño, y lo
   // público ya se cargó arriba. Solo lo público es imprescindible.

@@ -70,10 +70,27 @@ function Conciliacion() {
 
   const filas = useMemo(() => {
     const t = q.trim().toLowerCase();
+    /*
+     * Un índice por folio antes de recorrer, no un `filter` por participante.
+     *
+     * Aquí había `pagos.filter((x) => x.folio === p.folio)` DENTRO del `map`
+     * sobre participantes: a escala real son dos mil por cuatro mil, ocho
+     * millones de comparaciones de cadena. Y no se pagaban una vez: `q` está
+     * entre las dependencias, así que se rehacían con cada tecla del buscador.
+     *
+     * `estado-evento` ya resuelve este mismo patrón dos veces con un `Map`
+     * —`indicePagos` y `porFolioAsistencias`—; aquí faltaba.
+     */
+    const porFolio = new Map<string, typeof pagos>();
+    for (const x of pagos) {
+      const suyos = porFolio.get(x.folio);
+      if (suyos) suyos.push(x);
+      else porFolio.set(x.folio, [x]);
+    }
     return participantes
       .map((p) => {
         const e = estadoDe(p);
-        const suyos = pagos.filter((x) => x.folio === p.folio);
+        const suyos = porFolio.get(p.folio) ?? [];
         return { p, estado: e, pagado: suyos.reduce((a, x) => a + x.monto, 0), n: suyos.length };
       })
       .filter((f) => {

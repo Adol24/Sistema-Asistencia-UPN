@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Suspense, lazy, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,28 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Asistencia } from "@/dominio/tipos";
 import { createFileRoute } from "@tanstack/react-router";
 import { Award, CreditCard, ImageUp, ScanLine, ShieldAlert, Users } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+/*
+ * Las gráficas llegan tarde, y es lo que hace que el panel abra rápido.
+ *
+ * `recharts` con su `lodash` son unos 375 de los 389 KB que pesaba este trozo.
+ * Importándolas aquí de forma estática, abrir `/admin` esperaba esos 389 KB
+ * antes de pintar el primer indicador — y ni los indicadores, ni el embudo de
+ * pagos, ni las tablas necesitan `recharts`.
+ *
+ * El hueco reservado mide lo mismo que la gráfica, así que nada salta cuando
+ * termina de bajar.
+ */
+const GraficaPerfiles = lazy(() =>
+  import("@/components/graficas-panel").then((m) => ({ default: m.GraficaPerfiles })),
+);
+const GraficaPorDia = lazy(() =>
+  import("@/components/graficas-panel").then((m) => ({ default: m.GraficaPorDia })),
+);
+
+/** El hueco de una gráfica mientras baja. Mismo alto, para que no salte nada. */
+const HuecoGrafica = ({ ancho }: { ancho: string }) => (
+  <div className="h-[180px] animate-pulse rounded-md bg-muted/50" style={{ width: ancho }} />
+);
 import { PantallaPanel } from "@/components/layouts";
 import { Progress } from "@/components/ui/progress";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -70,7 +81,18 @@ function Dashboard() {
    */
   const desfasadas = useMemo(() => {
     const diaDe = new Map(participantes.map((p) => [p.folio, p.dia]));
-    return asistencias.filter((a) => diaDe.has(a.folio) && diaDe.get(a.folio) !== a.dia);
+    /*
+     * Se devuelve el día que TOCA junto a la asistencia, en vez de dejar que el
+     * JSX lo busque después.
+     *
+     * Abajo había un `participantes.find(...)` dentro del `map` que pinta la
+     * lista: una búsqueda lineal sobre dos mil participantes por cada registro
+     * desfasado, en cada render, con el `Map` que lo resuelve construido aquí
+     * mismo y encerrado en este closure.
+     */
+    return asistencias
+      .filter((a) => diaDe.has(a.folio) && diaDe.get(a.folio) !== a.dia)
+      .map((a) => ({ ...a, diaQueToca: diaDe.get(a.folio) }));
   }, [asistencias, participantes]);
 
   // Todo se calcula del contexto compartido: un pago registrado en ventanilla,
@@ -233,8 +255,7 @@ function Dashboard() {
                   {a.dia} a las {a.hora}
                   <span className="text-muted-foreground">
                     {" "}
-                    · hoy le corresponde el día{" "}
-                    {participantes.find((p) => p.folio === a.folio)?.dia}
+                    · hoy le corresponde el día {a.diaQueToca}
                   </span>
                 </span>
                 <Button
@@ -272,23 +293,9 @@ function Dashboard() {
           nota={`Reparto de ${participantes.length} pre-registrados`}
         >
           <div className="flex items-center gap-4">
-            <ResponsiveContainer width="45%" height={180}>
-              <PieChart>
-                <Pie
-                  data={datos.porPerfil}
-                  dataKey="total"
-                  nameKey="etiqueta"
-                  innerRadius={38}
-                  outerRadius={68}
-                  strokeWidth={2}
-                >
-                  {datos.porPerfil.map((d) => (
-                    <Cell key={d.perfil} fill={COLOR_PERFIL[d.perfil]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<HuecoGrafica ancho="45%" />}>
+              <GraficaPerfiles datos={datos.porPerfil} color={COLOR_PERFIL} />
+            </Suspense>
             <ul className="grid flex-1 gap-2">
               {datos.porPerfil.map((d) => (
                 <li key={d.perfil} className="flex items-center justify-between gap-2 text-sm">
@@ -307,22 +314,9 @@ function Dashboard() {
         </Tarjeta>
 
         <Tarjeta titulo="Pre-registros por día" nota="Cada día es un grupo distinto">
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={datos.porDia}>
-              <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} width={28} />
-              <Tooltip />
-              <Bar dataKey="alumno" stackId="a" fill={COLOR_PERFIL["alumno"]} name="Alumnos" />
-              <Bar dataKey="docente" stackId="a" fill={COLOR_PERFIL["docente"]} name="Docentes" />
-              <Bar
-                dataKey="externo"
-                stackId="a"
-                fill={COLOR_PERFIL["externo"]}
-                name="Externos"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<HuecoGrafica ancho="100%" />}>
+            <GraficaPorDia datos={datos.porDia} color={COLOR_PERFIL} />
+          </Suspense>
         </Tarjeta>
 
         <Tarjeta titulo="Embudo de pagos" nota="Pre-registrado → comprobante → pagado">
