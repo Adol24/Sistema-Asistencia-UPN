@@ -6,7 +6,7 @@ import { RequiereBorrador } from "@/components/requiere-borrador";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { fechaLarga, fechaLimiteTexto, fechasEnTexto, moneda } from "@/lib/formato";
+import { fechaLarga, fechaLimiteTexto, fechasEnTexto } from "@/lib/formato";
 import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -324,8 +324,20 @@ function CatalogoTalleres() {
                 ) : null}
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 lg:mt-auto lg:pt-4">
+                  {/*
+                   * La tarjeta ya no enseña el precio del taller.
+                   *
+                   * Lo pidió la organización: la cifra iba en grande, pegada al
+                   * botón de seleccionar, y ahí lo que hace falta saber es si
+                   * queda lugar. Que el taller se paga por separado lo sigue
+                   * advirtiendo la descripción de arriba, sin número, para que
+                   * nadie elija creyendo que es gratis.
+                   *
+                   * El monto vive en /pago, que es la pantalla desde la que se va
+                   * al banco, y en el comprobante. Quitarlo de ahí sería pedir un
+                   * depósito sin decir de cuánto.
+                   */}
                   <div className="text-sm">
-                    <p className="font-semibold">{moneda(t.costo)}</p>
                     {lleno ? (
                       <Rotulo>Cupo lleno</Rotulo>
                     ) : (
