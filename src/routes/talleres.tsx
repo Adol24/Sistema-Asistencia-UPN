@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarRange, Clock, Info, Loader2, MapPin, User } from "lucide-react";
+import { CalendarRange, Clock, DoorOpen, Info, Loader2, MapPin, User } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { RequiereBorrador } from "@/components/requiere-borrador";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
@@ -310,6 +310,25 @@ function CatalogoTalleres() {
                   <div className="flex items-center gap-2">
                     <MapPin className="size-4" aria-hidden /> {t.lugar}
                   </div>
+                  {/*
+                   * El aula, en su propio renglón y no pegada a la sede.
+                   *
+                   * Es el dato nuevo de esta tarjeta y el único que distingue a
+                   * un taller de otro dentro del edificio: los doce se imparten
+                   * en la UPN U-212, así que la sede no ayuda a elegir y el aula
+                   * es lo que hay que apuntar. Pegado detrás de «Instalaciones
+                   * UPN U-212, Teziutlán» quedaba al final de un renglón que ya
+                   * se parte en dos.
+                   *
+                   * Se calla si está vacío: hasta que la organización reparte
+                   * los espacios, un renglón con un icono y nada al lado parece
+                   * un dato que no cargó.
+                   */}
+                  {t.salon ? (
+                    <div className="flex items-center gap-2 font-semibold text-foreground">
+                      <DoorOpen className="size-4" aria-hidden /> {t.salon}
+                    </div>
+                  ) : null}
                 </dl>
 
                 {otroDia ? (

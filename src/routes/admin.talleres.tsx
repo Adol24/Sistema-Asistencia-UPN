@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { moneda } from "@/lib/formato";
+import { moneda, sitioDelTaller } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia, TallerBase } from "@/dominio/tipos";
@@ -63,6 +63,7 @@ function AdminTalleres() {
     dias: [1],
     horario: "10:00 a 13:00 hrs",
     lugar: "",
+    salon: "",
     cupoTotal: 25,
     ocupadosPrevios: 0,
     // Un taller que todavía no existe no tiene a nadie dentro. El valor real
@@ -121,7 +122,7 @@ function AdminTalleres() {
                     ) : null}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {t.ponente} · Día {t.dias.join(" y ")} · {t.horario} · {t.lugar} ·{" "}
+                    {t.ponente} · Día {t.dias.join(" y ")} · {t.horario} · {sitioDelTaller(t)} ·{" "}
                     {moneda(t.costo)}
                   </p>
                 </div>
@@ -330,6 +331,31 @@ function FormularioTaller({
                 onChange={(e) => set({ lugar: e.target.value })}
                 className="mt-1 h-11"
               />
+            </div>
+            {/*
+             * El salón se edita aquí, y esa es la razón de que sea columna.
+             *
+             * El aula es lo que se mueve a última hora —un taller que crece, un
+             * proyector que no sirve— y cambiarla tiene que costar diez segundos
+             * desde esta pantalla, no una migración y un despliegue.
+             *
+             * La ayuda dice el formato con un ejemplo de cada clase: los que
+             * llevan la palabra «Aula» y los que no la llevan porque no son
+             * aulas. Se guarda tal cual se escribe: las pantallas lo imprimen
+             * sin anteponerle nada, así que un «B1» suelto saldría «B1».
+             */}
+            <div>
+              <Label htmlFor="t-salon">Salón</Label>
+              <Input
+                id="t-salon"
+                value={b.salon}
+                onChange={(e) => set({ salon: e.target.value })}
+                placeholder="Aula B1"
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Como se va a leer: «Aula B1», «Centro de cómputo». Vacío si todavía no se reparte.
+              </p>
             </div>
             <div>
               <Label htmlFor="t-cupo">Cupo total</Label>

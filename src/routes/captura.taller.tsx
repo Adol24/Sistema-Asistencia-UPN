@@ -8,6 +8,7 @@ import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { sitioDelTaller } from "@/lib/formato";
 import { retroalimentar } from "@/lib/retro";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -127,7 +128,7 @@ function ModoTaller() {
 
           {taller ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              {taller.ponente} · {taller.horario} · {taller.lugar}
+              {taller.ponente} · {taller.horario} · {sitioDelTaller(taller)}
             </p>
           ) : null}
 

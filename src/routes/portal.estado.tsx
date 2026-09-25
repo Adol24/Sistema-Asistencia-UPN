@@ -7,7 +7,7 @@ import { PortalNav } from "@/components/portal-nav";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
-import { fechasEnTexto, isoAFecha } from "@/lib/formato";
+import { fechasEnTexto, isoAFecha, sitioDelTaller } from "@/lib/formato";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
@@ -254,7 +254,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               <p>{taller.nombre}</p>
               {fechasTaller ? <p className="mt-0.5 font-medium">{fechasTaller}</p> : null}
               <p className="mt-0.5">
-                {taller.horario} · {taller.lugar}
+                {taller.horario} · {sitioDelTaller(taller)}
               </p>
             </div>
           ) : null}

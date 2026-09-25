@@ -1179,6 +1179,8 @@ export async function guardarTallerRemoto(t: {
   dias: number[];
   horario: string;
   lugar: string;
+  /** El aula. Ver `TallerBase.salon`. */
+  salon: string;
   activo: boolean;
   /** Alta o edición. Un alta con clave repetida tiene que rebotar, no machacar. */
   crear: boolean;
@@ -1192,6 +1194,7 @@ export async function guardarTallerRemoto(t: {
     p_cupo_total: t.cupoTotal,
     p_horario: t.horario,
     p_lugar: t.lugar,
+    p_salon: t.salon,
     p_activo: t.activo,
     p_dias: t.dias,
     p_crear: t.crear,

@@ -108,6 +108,8 @@ export interface FilaTaller {
   descripcion: string;
   horario: string;
   lugar: string;
+  /** El aula dentro de la sede. Ver `TallerBase.salon`. */
+  salon: string;
   cupo_total: number;
   ocupados_previos: number;
   /** Ya contado por la vista: `ocupados_previos` más los inscritos. */
@@ -421,6 +423,11 @@ export const aTallerBase = (f: FilaTaller): TallerBase => ({
   dias: [...f.dias].sort(),
   horario: f.horario,
   lugar: f.lugar,
+  // `?? ""` y no a secas: las migraciones de este repo se pegan a mano, así que
+  // hay un rato en el que el cliente nuevo habla con una vista que todavía no
+  // publica `salon`. Sin esto, la columna llegaría `undefined` y las pantallas
+  // pintarían «undefined · Instalaciones UPN U-212».
+  salon: f.salon ?? "",
   cupoTotal: f.cupo_total,
   ocupadosPrevios: f.ocupados_previos,
   // Contado por la vista, no por el navegador. Ver `TallerBase.cupoOcupado`.

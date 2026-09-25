@@ -5,7 +5,7 @@ import { PantallaPublica } from "@/components/layouts";
 import { CodigoPendiente } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
-import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda } from "@/lib/formato";
+import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -201,7 +201,7 @@ function Comprobante() {
                           </span>
                         ) : null}
                         <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                          {taller.horario} · {taller.lugar}
+                          {taller.horario} · {sitioDelTaller(taller)}
                         </span>
                       </>
                     ) : null}

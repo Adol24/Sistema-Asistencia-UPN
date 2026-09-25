@@ -107,6 +107,18 @@ export interface TallerBase {
   dias: Dia[];
   horario: string;
   lugar: string;
+  /**
+   * El espacio concreto: «Aula B1», «Centro de cómputo».
+   *
+   * Distinto de `lugar`, que es el edificio y es el MISMO para los doce
+   * talleres —«Instalaciones UPN U-212, Teziutlán»—. Quien llega a la UPN ya
+   * sabe a qué edificio va; lo que le falta es a qué puerta entrar.
+   *
+   * Vacío significa que la organización todavía no lo repartió, no que el
+   * taller no lo tenga: las pantallas se callan el renglón en vez de enseñar
+   * un separador suelto.
+   */
+  salon: string;
   cupoTotal: number;
   /** Invitados y cortesías que no pasan por el sistema. No son participantes. */
   ocupadosPrevios: number;

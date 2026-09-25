@@ -214,3 +214,21 @@ export const momentoLocalAIso = (valor: string) => {
   const d = new Date(valor);
   return Number.isNaN(d.getTime()) ? valor : d.toISOString();
 };
+
+/**
+ * Dónde se imparte un taller, en un renglón: «Aula B1 · Instalaciones UPN
+ * U-212, Teziutlán».
+ *
+ * Existe porque son cinco las pantallas que lo dicen en un renglón —el
+ * comprobante, el portal del alumno, el pase de lista, la ficha financiera y el
+ * panel— y en todas hay que resolver lo mismo: el salón puede estar vacío
+ * mientras la organización no reparte los espacios, y entonces el separador se
+ * queda colgando delante de la sede. El catálogo no lo usa: ahí el aula tiene
+ * su propio renglón, porque es el momento de elegir.
+ *
+ * Se filtra por `trim` y no por verdadero/falso: un salón con un espacio en
+ * blanco, que es lo que deja un campo de texto al que se le borró el contenido,
+ * pasaría el segundo y volvería a dejar el « · » suelto.
+ */
+export const sitioDelTaller = (t: { salon: string; lugar: string }) =>
+  [t.salon, t.lugar].filter((x) => x.trim()).join(" · ");

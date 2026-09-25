@@ -8,7 +8,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-import { isoAFecha, moneda } from "@/lib/formato";
+import { isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
@@ -152,8 +152,8 @@ function FichaDe({ p }: { p: Participante }) {
               {taller.id} — {taller.nombre}
             </p>
             <p className="text-muted-foreground">
-              {taller.ponente} · Día {taller.dias.join(" y ")} · {taller.horario} · {taller.lugar} ·{" "}
-              {moneda(taller.costo)}
+              {taller.ponente} · Día {taller.dias.join(" y ")} · {taller.horario} ·{" "}
+              {sitioDelTaller(taller)} · {moneda(taller.costo)}
             </p>
           </div>
         ) : null}
