@@ -304,7 +304,7 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### La ventana viaja con la ficha (`20260924200000`) — SIN APLICAR
+### La ventana viaja con la ficha (`20260924240000`) — SIN APLICAR
 
 `/confirmar-nombre` hacía dos viajes seguidos: `fn_padron_confirmar` para el
 reto de identidad y, con su respuesta en la mano, `fn_ventana_de_matricula`
@@ -337,30 +337,34 @@ diez minutos— y no se toca: es lo que impide recorrer el padrón.
 El cuerpo se copió mecánicamente de `20260922180000`; lo único añadido son tres
 líneas dentro del `jsonb_build_object`.
 
-### Los módulos de LEIP van todos corridos (`20260924160000`) — SIN APLICAR
+### Las citas de pago de LEIP (`20260924230000`) — SIN APLICAR
 
-`20260924120000` tradujo los módulos del calendario oficial a los números del
-padrón y acertó en uno de cuatro. Su cabecera marcaba justo eso como lo único
-sin comprobar, y no se comprobó: las listas corren **todos** los módulos una
-posición, no solo el XIV.
+Los módulos que el calendario administrativo llama II, VI, X y XIV llegan al
+padrón **corridos una posición**: son el 1, 5, 9 y 13.
 
-| calendario | II | VI | X | XIV |
-| --- | --- | --- | --- | --- |
-| padrón | 1 | 5 | 9 | 13 |
+Dos migraciones ya arreglaron la mitad del sistema con ese desfase —
+`20260924160000_el_modulo_que_trae_el_alumno` para la ventana del 25 y
+`20260924180000_los_modulos_bajos_de_leip` para la del 27—. Las dos tocan
+`ventana_cohortes`, que es **quién puede registrarse y cuándo**. Ninguna toca
+`cita_cohortes`, que es **qué día le toca ir a pagar**, y ahí siguen los
+números viejos.
 
-Al aplicarla se corrigieron a mano `ventana_cohortes` y las dos etiquetas.
-`cita_cohortes` no, y ahí muerde: las tres cohortes bajas de LEIP tienen ventana
-—se pueden registrar— y su comprobante **no les dice qué día ir a pagar**,
-porque la cita está declarada con el número equivocado. Del otro lado quedan
-tres filas de cita que nadie alcanza.
+| | |
+| --- | --- |
+| con ventana y SIN cita | LEIP 1, 5 y 9 — se registran y su comprobante no les dice cuándo pagar |
+| con cita y SIN ventana | LEIP 2, 6 y 10 — filas que nadie alcanza |
 
-Esta migración vuelve a declarar las cuatro cohortes de LEIP en las dos tablas,
-fija las etiquetas como quedaron en producción, y termina comprobando lo que de
-verdad importa: que ninguna cohorte tenga ventana sin cita ni cita sin ventana.
+Solo el módulo 13 queda bien, que es el único número que se había comprobado
+contra el padrón cuando se escribió `20260924140000`.
 
-**Se reescribe también lo que ya estaba bien**, a propósito. Un entorno nuevo
-aplica los archivos en orden, y sin esto acabaría con lo que `20260924120000`
-escribió en vez de con lo que hay en producción.
+Esta migración toca **solo** `cita_cohortes`, y solo las filas de LEIP. No
+repite las ventanas ni las etiquetas: eso ya está bien y es trabajo de las
+otras dos. Tampoco cambia a qué cita apunta LEIP, que sigue siendo «el día de
+tu reinscripción» porque el calendario oficial no le da fecha fija.
+
+**La comprobación no cuenta filas: cruza las dos tablas.** Las cuentas ya
+cuadraban cuando el error estaba —veintinueve cohortes con ventana y
+veintinueve con cita—; el fallo estaba en cuáles, no en cuántas.
 
 ### Los módulos bajos de LEIP (`20260924180000`) — sin aplicar
 

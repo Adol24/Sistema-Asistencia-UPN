@@ -3,7 +3,7 @@
 --
 -- El ordinal de esta cabecera NO la identifica: en este repo hay dos
 -- numeraciones que difieren en uno (ver «Los dos números» en MIGRACIONES.md).
--- Esta migración es `20260924200000_la_ventana_viaja_con_la_ficha`.
+-- Esta migración es `20260924240000_la_ventana_viaja_con_la_ficha`.
 --
 -- Lo que costaba
 -- --------------
@@ -131,7 +131,7 @@ grant execute on function fn_padron_confirmar(text, text, text) to anon, authent
 
 comment on function fn_padron_confirmar is
   'El reto de identidad del pre-registro. Devuelve la ficha del padrón, si ya '
-  'está registrado y —desde 20260924200000— la frase de su ventana: null si le '
+  'está registrado y —desde 20260924240000— la frase de su ventana: null si le '
   'toca. Matrícula inexistente y reto fallido devuelven lo mismo a propósito.';
 
 -- ---------------------------------------------------------------------------
