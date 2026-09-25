@@ -24,8 +24,20 @@ export const Route = createFileRoute("/portal/qr")({
   component: MiQr,
 });
 
-const faltantesDe = (horas: number): Record<string, string> => ({
-  pre_registrado: "Falta que hagas tu depósito y entregues el voucher en Servicios Financieros.",
+/*
+ * El sitio donde se entrega viene de la configuración, no escrito aquí.
+ *
+ * Decía «Servicios Financieros» y dejó de ser verdad el 2026-09-24, cuando la
+ * entrega pasó al Departamento de Aportaciones —`20260924200000`—. El dato ya
+ * vivía en `configuracion_evento.ventanilla_lugar` y `/pago` ya lo leía de
+ * ahí; esta pantalla se había quedado con el nombre viejo escrito a mano, que
+ * es justo cómo un cambio de sitio manda a la gente al edificio equivocado.
+ *
+ * El respaldo es «ventanilla» y no un nombre: sin dato configurado es mejor
+ * una palabra genérica que un departamento que quizá ya no recibe a nadie.
+ */
+const faltantesDe = (horas: number, lugar: string): Record<string, string> => ({
+  pre_registrado: `Falta que hagas tu depósito y entregues el voucher en ${lugar}.`,
   comprobante_recibido: `Ya recibimos tu comprobante. Servicios Financieros tarda unas ${horas} horas en validarlo; vuelve a esta pantalla y tu código estará aquí.`,
   // `discrepancia` ya NO está en este mapa: esa persona tiene código —la puerta
   // la admite— así que nunca llega a esta rama. Su aviso se da junto al código,
@@ -67,7 +79,7 @@ function MiQrContenido({ p }: { p: Participante }) {
    * puerta que le estaba abierta.
    */
   const tieneCodigo = abreLaPuerta(estado.evento);
-  const faltantes = faltantesDe(evento.horasValidacion);
+  const faltantes = faltantesDe(evento.horasValidacion, evento.ventanilla.lugar || "ventanilla");
   const [ampliado, setAmpliado] = useState(false);
 
   // También en la vista normal: alguien puede enseñar el pase sin ampliarlo.
@@ -129,7 +141,7 @@ function MiQrContenido({ p }: { p: Participante }) {
               <p className="mt-4 flex items-start gap-2 rounded-md border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-left text-sm text-estado-discrepancia">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
                 Tu código ya abre la puerta, pero el monto depositado no coincide con el esperado.
-                Pasa a Servicios Financieros a aclararlo.
+                Pasa a {evento.ventanilla.lugar || "ventanilla"} a aclararlo.
               </p>
             ) : null}
 

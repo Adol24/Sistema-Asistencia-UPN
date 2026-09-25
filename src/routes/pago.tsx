@@ -18,7 +18,10 @@ export const Route = createFileRoute("/pago")({
   head: () =>
     meta(
       "Instrucciones de pago — XIV Encuentro Internacional de Educación",
-      "Datos bancarios, montos, fecha límite y entrega de vouchers en Servicios Financieros para completar tu registro al XIV Encuentro Internacional de Educación.",
+      // Sin nombrar el departamento: una `meta` se arma antes de que llegue la
+      // configuración, así que no puede leer `ventanilla_lugar` y cualquier
+      // nombre escrito aquí envejece con el primer cambio de sitio.
+      "Datos bancarios, montos, fecha límite y entrega de vouchers en ventanilla para completar tu registro al XIV Encuentro Internacional de Educación.",
     ),
   component: Pago,
 });
