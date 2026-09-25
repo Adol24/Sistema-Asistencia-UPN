@@ -304,6 +304,33 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Las maestrías van en módulo 1 y 3 (`20260925140000`) — SIN APLICAR
+
+Las tres maestrías entraban con los módulos **1 y 4**. Son el **1 y el 3**,
+dicho por la organización el 2026-09-25.
+
+El 4 venía de traducir el calendario del Encuentro de forma mecánica: allí las
+maestrías salen con los romanos **I y IV**, y IV se leyó como 4. Con LEIP la
+regla resultó ser restar uno —II→1, VI→5, X→9, XIV→13— pero a las maestrías no
+se les aplicó, porque I menos uno da cero y ahí la regla se rompía. Se dejaron
+tal cual, y ese fue el error: **el IV sí corre, el I no**.
+
+Con el 4 puesto, en la ventana del 27 y 28: quien va en módulo 3 lee «Todavía
+no se anuncia la fecha de registro para tu grupo» el día que sí le toca, y
+quien fuera en 4 se registraría un día que no es el suyo.
+
+Se corrige en `ventana_cohortes` **y** en `cita_cohortes` a la vez. Cambiar solo
+la ventana dejaría a esa generación registrándose sin saber qué día ir a pagar
+— que es exactamente el agujero que abrió `20260924120000` con LEIP y que hubo
+que cerrar después con `20260924230000`.
+
+Se filtra por **nivel** y no por una lista de nombres: lo que define a las tres
+es su nivel, y una lista escrita a mano es lo que se queda atrás el día que se
+dé de alta una cuarta.
+
+La etiqueta de la ventana pasa a «…y de los módulos 1, 3 y 5», porque esa frase
+se le enseña a quien llega fuera de plazo y también tiene que decir la verdad.
+
 ### El día de reinscripción de LEIP (`20260925120000`) — SIN APLICAR
 
 Para LEIP —y solo para LEIP— el día de dejar el voucher **no es un rango**: es
