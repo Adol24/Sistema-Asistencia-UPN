@@ -304,6 +304,54 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El día de reinscripción de LEIP (`20260925120000`) — SIN APLICAR
+
+Para LEIP —y solo para LEIP— el día de dejar el voucher **no es un rango**: es
+un día concreto, y no puede ir antes ni después. Sale de la hoja «LEIP OCTUBRE
+26» del calendario de reinscripciones de Servicios Escolares, elaborado el
+17/08/2026.
+
+Y no depende solo del módulo: depende de **sede, módulo y grupo** a la vez. Un
+alumno de Teziutlán en módulo 9 va el 7 de octubre si es del grupo A o B, y el
+8 si es del C o del D. Por eso no cabía en `cita_cohortes`, que solo conoce
+programa y avance.
+
+| Día | Sedes |
+| --- | --- |
+| 2 de octubre | Huehuetla, Hueyapan, Zapotitlán |
+| 3 de octubre | Caxhuacan, Guadalupe Victoria, Hueyapan, Hueytamalco, Zapotitlán |
+| 6 de octubre | Ayotoxco |
+| 7 de octubre | Teziutlán |
+| 8 de octubre | Teziutlán |
+
+Son 66 grupos. La fecha límite de vouchers es el 10, así que ninguno se sale de
+plazo.
+
+**Los números de módulo.** La hoja habla de los módulos a los que el alumno
+PASA al reinscribirse; el padrón del Encuentro se carga antes, así que trae el
+anterior: la hoja dice 2, 6, 10 y 14 y el padrón guarda 1, 5, 9 y 13. Es la
+misma correspondencia que ya usan `ventana_cohortes` y `cita_cohortes`. En la
+hoja, la clave del grupo lleva el módulo dentro en hexadecimal (`2NM…`=2,
+`6NM…`=6, `ANM…`=10, `ENM…`=14), y cada fila de la migración lleva su clave
+anotada para poder cotejarla contra el papel.
+
+**La tabla está cerrada al público.** Al alumno se la sirve `fn_cita_de_pago`,
+que es `security definer` y solo contesta por SU matrícula; abrir la tabla
+entregaría el calendario completo de todos los grupos a quien lo pida.
+
+**`fn_cita_de_pago` devuelve `jsonb`** —`{cuando, estricto}`— y no texto,
+porque la pantalla necesita saber dos cosas: qué día, y si ese día es único.
+Se añade junto a `fn_cita_de_inscripcion`, que se queda: el cliente prueba la
+nueva y, si la base contesta `PGRST202`, cae a la vieja. Comprobado contra el
+proyecto real antes de aplicar nada.
+
+**La llave primaria ES la regla**: `(programa, plantel, avance, grupo)`. Un
+alumno no puede resolver a dos días.
+
+El bloque final cruza la tabla contra el padrón y **enumera a los alumnos de
+LEIP que se quedan sin día**. Esos verán «el día de tu reinscripción», la frase
+vaga de siempre, que es mucho mejor que una fecha equivocada.
+
 ### La ventana viaja con la ficha (`20260924240000`) — SIN APLICAR
 
 `/confirmar-nombre` hacía dos viajes seguidos: `fn_padron_confirmar` para el

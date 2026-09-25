@@ -1599,6 +1599,41 @@ export async function citaDeInscripcionRemota(matricula: string): Promise<string
   return llamar<string | null>("fn_cita_de_inscripcion", { p_matricula: matricula });
 }
 
+/** Qué día le toca pagar, y si ese día es único o un rango. */
+export interface CitaDePago {
+  /** Ya redactado: «viernes 2 de octubre», o «28 y 29 de septiembre». */
+  cuando: string;
+  /**
+   * Cierto cuando es UN día y no puede ir otro. Hoy solo le pasa a LEIP, cuyo
+   * pago cae en su día de reinscripción y ese lo fija Servicios Escolares por
+   * sede, módulo y grupo.
+   */
+  estricto: boolean;
+}
+
+/**
+ * El día de pago de quien tiene esa matrícula.
+ *
+ * **Con respaldo a propósito.** `fn_cita_de_pago` llega con la migración
+ * `20260925120000`; si la base todavía no la tiene, PostgREST contesta
+ * `PGRST202` —«esa función no existe»— y aquí se cae a `fn_cita_de_inscripcion`,
+ * que es la de antes y devuelve texto. El alumno ve su cita igual, sin el día
+ * exacto, en vez de no ver nada.
+ *
+ * Solo se atrapa ESE código. Un fallo de red o un tope por IP tienen que seguir
+ * subiendo: taparlos aquí convertiría «no se pudo preguntar» en «no tienes
+ * cita», que son cosas distintas.
+ */
+export async function citaDePagoRemota(matricula: string): Promise<CitaDePago | null> {
+  try {
+    return await llamar<CitaDePago | null>("fn_cita_de_pago", { p_matricula: matricula });
+  } catch (e) {
+    if ((e as { code?: string })?.code !== "PGRST202") throw e;
+    const cuando = await citaDeInscripcionRemota(matricula);
+    return cuando ? { cuando, estricto: false } : null;
+  }
+}
+
 /**
  * El uuid del taller a partir de su clave, o `null` si no eligió ninguno.
  *

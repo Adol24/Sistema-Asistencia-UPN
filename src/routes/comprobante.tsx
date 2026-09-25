@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CitaDePago } from "@/lib/datos";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarClock, CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
@@ -9,6 +10,7 @@ import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } fr
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/comprobante")({
   head: () =>
@@ -62,16 +64,22 @@ function Comprobante() {
    *
    * `null` no es un fallo. Docentes y externos no tienen cita en el documento,
    * y entonces esta pantalla enseña lo de siempre: la ventanilla y su horario.
+   *
+   * `estricto` distingue los dos casos que hay. Para casi todos la cita es un
+   * RANGO —«28 y 29 de septiembre»— y llegar cualquiera de esos días vale. Para
+   * LEIP es UN día, el de su reinscripción, que Servicios Escolares fija por
+   * sede, módulo y grupo: ir antes o después no sirve, porque ese día es cuando
+   * su sede está abierta para ellos.
    */
   const matricula = borrador.matricula ?? participante?.matricula;
-  const [cita, setCita] = useState<string | null>(null);
+  const [cita, setCita] = useState<CitaDePago | null>(null);
   useEffect(() => {
     if (!matricula) return;
     let vigente = true;
     void (async () => {
       try {
-        const { citaDeInscripcionRemota } = await import("@/lib/datos");
-        const r = await citaDeInscripcionRemota(matricula);
+        const { citaDePagoRemota } = await import("@/lib/datos");
+        const r = await citaDePagoRemota(matricula);
         if (vigente) setCita(r);
       } catch {
         // Sin cita se enseña el bloque de siempre. Un comprobante que no se
@@ -277,11 +285,31 @@ function Comprobante() {
            * documento da el día, la ventanilla pone la hora.
            */}
           {cita ? (
-            <section className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-4 lg:mt-4">
+            <section
+              className={cn(
+                "mt-6 rounded-lg border p-4 lg:mt-4",
+                // El día único se pinta como advertencia y no como dato: quien
+                // lo lea de reojo tiene que llevarse que ahí no hay margen.
+                cita.estricto
+                  ? "border-estado-discrepancia/50 bg-estado-discrepancia-bg"
+                  : "border-primary/30 bg-primary/5",
+              )}
+            >
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <CalendarClock className="size-4 shrink-0 text-primary" aria-hidden />
-                Tu inscripción: {cita}
+                <CalendarClock
+                  className={cn(
+                    "size-4 shrink-0",
+                    cita.estricto ? "text-estado-discrepancia" : "text-primary",
+                  )}
+                  aria-hidden
+                />
+                Tu inscripción: {cita.cuando}
               </h2>
+              {cita.estricto ? (
+                <p className="mt-2 text-sm font-semibold text-estado-discrepancia">
+                  Es ese día y solo ese: no puedes ir antes ni después.
+                </p>
+              ) : null}
               <p className="mt-2 text-sm text-muted-foreground">
                 Es el día que te toca ir a pagar en persona. Lleva tu folio{" "}
                 <span className="font-mono font-semibold text-foreground">{folio}</span>.

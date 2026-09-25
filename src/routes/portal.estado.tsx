@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Check, Circle, Clock3, Dot } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, Circle, Clock3, Dot } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PortalNav } from "@/components/portal-nav";
@@ -9,6 +9,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, sitioDelTaller } from "@/lib/formato";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import type { CitaDePago } from "@/lib/datos";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -91,11 +92,79 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
    * se guardó algo que no se guardó.
    */
   const [descartados, setDescartados] = useState<string[]>([]);
+
+  /*
+   * El día de pago también vive aquí, y no solo en el comprobante.
+   *
+   * El comprobante se ve UNA vez, justo al terminar el registro, y el portal es
+   * a donde la persona vuelve —con su folio— cuando ya no lo tiene delante. Si
+   * el día solo estuviera allí, quien cerrara la pestaña se quedaría sin saber
+   * cuándo le toca.
+   *
+   * Solo lo tienen los alumnos: docentes y externos no traen matrícula, y a
+   * ellos el calendario oficial no les da día de inscripción.
+   */
+  const [cita, setCita] = useState<CitaDePago | null>(null);
+  useEffect(() => {
+    if (!p.matricula) return;
+    let vigente = true;
+    void (async () => {
+      try {
+        const { citaDePagoRemota } = await import("@/lib/datos");
+        const r = await citaDePagoRemota(p.matricula!);
+        if (vigente) setCita(r);
+      } catch {
+        // Sin cita no se pinta el bloque. Que falle una consulta informativa no
+        // puede dejar al alumno sin ver el estado de su pago, que es a lo que
+        // venía.
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [p.matricula]);
   const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 
   return (
     <PantallaPublica ancho="lg">
       <PortalNav />
+
+      {/*
+        Por delante de los avisos y de la línea de tiempo: es lo único de esta
+        pantalla que tiene fecha de caducidad. El estado del pago se puede
+        consultar mañana; el día de ir a pagarlo, no.
+      */}
+      {cita ? (
+        <section
+          className={cn(
+            "mb-4 rounded-lg border p-4",
+            cita.estricto
+              ? "border-estado-discrepancia/50 bg-estado-discrepancia-bg"
+              : "border-primary/30 bg-primary/5",
+          )}
+        >
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <CalendarClock
+              className={cn(
+                "size-4 shrink-0",
+                cita.estricto ? "text-estado-discrepancia" : "text-primary",
+              )}
+              aria-hidden
+            />
+            Tu inscripción: {cita.cuando}
+          </h2>
+          {cita.estricto ? (
+            <p className="mt-2 text-sm font-semibold text-estado-discrepancia">
+              Es ese día y solo ese: no puedes ir antes ni después.
+            </p>
+          ) : null}
+          <p className="mt-2 text-sm text-muted-foreground">
+            Lleva tu folio <span className="font-mono font-semibold">{p.folio}</span> y tus
+            vouchers.
+            {evento.ventanilla.lugar ? ` ${evento.ventanilla.lugar}.` : ""}
+          </p>
+        </section>
+      ) : null}
 
       {avisos.length > 0 ? (
         <Alert className="mb-4 border-estado-discrepancia/40 bg-estado-discrepancia-bg">
