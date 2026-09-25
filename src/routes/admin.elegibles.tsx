@@ -18,6 +18,8 @@ import {
   useEntornoConstancias,
 } from "@/lib/elegibilidad";
 import { descargarCsv } from "@/lib/exportar";
+import { usePaginacion } from "@/lib/paginacion";
+import { Paginacion } from "@/components/tabla";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia, Participante } from "@/dominio/tipos";
@@ -94,6 +96,18 @@ function Elegibles() {
       );
     });
   }, [filas, perfil, dia, estado, q]);
+
+  /*
+   * La lista se pagina, y esta es la más cara por fila de todo el sistema.
+   *
+   * Cada elemento lleva dos bloques de requisitos anidados, así que pintar dos
+   * mil de golpe es mucho más trabajo que una tabla de dos mil renglones. Y se
+   * repintaba entera con cada recarga de tiempo real.
+   *
+   * La cuenta de arriba —«N de M · K elegibles»— sigue hablando de la lista
+   * COMPLETA, no de la página: es lo que se está mirando cuando se filtra.
+   */
+  const tramo = usePaginacion(visibles, 40, `${q}|${perfil}|${dia}|${estado}`);
 
   // La marca de nombre en revisión viaja en la exportación, no solo en pantalla:
   // quien elabora los documentos tiene que poder apartar esos casos.
@@ -271,7 +285,7 @@ function Elegibles() {
       </div>
 
       <ul className="mt-3 grid gap-2">
-        {visibles.map((f) => (
+        {tramo.visibles.map((f) => (
           <li
             key={f.p.folio}
             className={cn(
@@ -340,6 +354,8 @@ function Elegibles() {
           </li>
         ) : null}
       </ul>
+
+      <Paginacion tramo={tramo} />
     </PantallaPanel>
   );
 }

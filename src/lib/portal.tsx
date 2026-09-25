@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -120,6 +128,24 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const [intento, setIntento] = useState(0);
   const { infoDia } = useEstadoEvento();
+  /*
+   * `infoDia` viaja por referencia, y no es un capricho de estilo.
+   *
+   * Es un `useCallback` que depende de `configuracion.dias`, y ese arreglo es
+   * NUEVO en cada `setConfiguracion`: o sea en cada recarga del estado del
+   * evento, que las hay por tiempo real y por volver a la pestaña. Al estar en
+   * las dependencias de `cargar`, cambiaba la identidad de `cargar`, y el
+   * efecto que lo observa volvía a pedir `fn_portal_estado`.
+   *
+   * Esa llamada tiene tope por IP —40 cada diez minutos— y la comparte toda la
+   * red de la universidad. Gastarla en refrescos que nadie pidió es quitársela
+   * a quien sí está esperando a que le validen el pago.
+   *
+   * La referencia se pone al día en cada render, así que `cargar` sigue usando
+   * el mapa de días vigente; lo único que deja de hacer es reconstruirse.
+   */
+  const infoDiaRef = useRef(infoDia);
+  infoDiaRef.current = infoDia;
 
   const cargar = useCallback(async () => {
     if (!sesion || !hayBaseDeDatos) return;
@@ -176,7 +202,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       setDatos({
         participante: aParticipanteDeVista(
           { ...fila, correo: contacto?.correo ?? "", celular: contacto?.celular ?? "" },
-          (d) => infoDia(d).lugar,
+          (d) => infoDiaRef.current(d).lugar,
           (uuid) => clavePorId.get(uuid),
         ),
         asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
@@ -191,7 +217,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     } finally {
       setCargando(false);
     }
-  }, [sesion, infoDia]);
+  }, [sesion]);
 
   useEffect(() => {
     void cargar();

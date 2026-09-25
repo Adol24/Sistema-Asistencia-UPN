@@ -4,7 +4,7 @@ import { AlertTriangle, Copy, Download, TimerOff, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Buscador } from "@/components/buscador";
 import { PantallaPanel } from "@/components/layouts";
-import { Fila, Tabla } from "@/components/tabla";
+import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { Indicador } from "@/components/indicador";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { folioDeEjemplo } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { porVencer as vencible } from "@/lib/pagos-logica";
 import { usePrototipo } from "@/lib/prototipo";
+import { usePaginacion } from "@/lib/paginacion";
 import { meta } from "@/lib/seo";
 import { GrupoFiltro } from "@/components/grupo-filtro";
 
@@ -115,6 +116,19 @@ function Conciliacion() {
         );
       });
   }, [participantes, q, filtro, pagos, estadoDe]);
+
+  /*
+   * La tabla se pagina, y con dos mil participantes deja de ser un lujo.
+   *
+   * Aquí se pintaban TODAS las filas que pasaran el filtro. Cada una crea dos
+   * funciones nuevas en el render —el clic y el teclado— así que a escala real
+   * eran cuatro mil closures por render, y se rehacían enteras con cada
+   * recarga de tiempo real y con cada tecla del buscador.
+   *
+   * La clave de reinicio son los dos filtros: cambiar de estado o de búsqueda
+   * devuelve a la página 1, que es lo que se espera. Ver `usePaginacion`.
+   */
+  const tramo = usePaginacion(filas, 50, `${q}|${filtro}`);
 
   /*
    * El archivo que Servicios Financieros cuadra contra el estado de cuenta.
@@ -273,7 +287,7 @@ function Conciliacion() {
           ) : null
         }
       >
-        {filas.map((f) => (
+        {tramo.visibles.map((f) => (
           <Fila
             key={f.p.folio}
             onClick={() => {
@@ -312,6 +326,8 @@ function Conciliacion() {
           </Fila>
         ))}
       </Tabla>
+
+      <Paginacion tramo={tramo} />
     </PantallaPanel>
   );
 }

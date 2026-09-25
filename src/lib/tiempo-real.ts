@@ -66,6 +66,22 @@ const TABLAS = [
  */
 const AGRUPAR_MS = 500;
 
+/**
+ * Lo mínimo que pasa entre dos recargas, por muchos cambios que lleguen.
+ *
+ * `AGRUPAR_MS` agrupa RÁFAGAS —una importación de padrón son cientos de eventos
+ * en un segundo— pero el día del evento los cambios no llegan en ráfaga: llegan
+ * separados por segundos, uno por escaneo. Cada uno pasaba el agrupador y
+ * lanzaba su propia recarga del conjunto entero.
+ *
+ * Con setecientas personas entrando, eso es una recarga cada pocos segundos, en
+ * cada pestaña abierta, de todas las tablas. Este suelo las junta sin que nadie
+ * lo note: lo que la persona que está capturando ve al instante es la respuesta
+ * de SU escaneo, que no pasa por aquí. Esto es enterarse de lo que hacen los
+ * demás, y cinco segundos de retraso en eso no cambia ninguna decisión.
+ */
+const SUELO_MS = 5_000;
+
 export interface Escucha {
   /** Corta la suscripción. Hay que llamarlo al desmontar o al cerrar sesión. */
   cerrar: () => void;
@@ -89,15 +105,48 @@ export async function escucharCambios(
 
   let temporizador: ReturnType<typeof setTimeout> | null = null;
   let cerrado = false;
+  let ultima = 0;
+  /** Hubo cambios mientras nadie miraba; se atienden al volver. */
+  let pendiente = false;
 
+  const disparar = () => {
+    ultima = Date.now();
+    pendiente = false;
+    alCambiar();
+  };
+
+  /*
+   * Dos frenos, y cada uno tapa un agujero distinto.
+   *
+   * El primero: **con la pestaña oculta no se recarga**. Una ventanilla suele
+   * tener tres o cuatro pestañas del sistema abiertas, y todas escuchaban y
+   * todas recargaban las diez tablas con cada cambio, incluidas las que nadie
+   * estaba mirando. Ahora se apunta que hay algo pendiente y se atiende al
+   * volver. Nadie ve datos viejos: al reaparecer la pestaña se recarga, y
+   * además `estado-evento` ya recarga por su cuenta al volver al frente.
+   *
+   * El segundo: **un suelo entre recargas**. Ver `SUELO_MS`.
+   */
   const agrupado = () => {
     if (cerrado) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      pendiente = true;
+      return;
+    }
     if (temporizador) clearTimeout(temporizador);
+    const espera = Math.max(AGRUPAR_MS, SUELO_MS - (Date.now() - ultima));
     temporizador = setTimeout(() => {
       temporizador = null;
-      alCambiar();
-    }, AGRUPAR_MS);
+      disparar();
+    }, espera);
   };
+
+  const alVolverAlFrente = () => {
+    if (cerrado || document.visibilityState !== "visible" || !pendiente) return;
+    agrupado();
+  };
+  if (typeof document !== "undefined")
+    document.addEventListener("visibilitychange", alVolverAlFrente);
 
   /*
    * Un solo canal para todas las tablas.
@@ -124,6 +173,8 @@ export async function escucharCambios(
     cerrar: () => {
       cerrado = true;
       if (temporizador) clearTimeout(temporizador);
+      if (typeof document !== "undefined")
+        document.removeEventListener("visibilitychange", alVolverAlFrente);
       alEstado?.(false);
       void supabase.removeChannel(canal);
     },
