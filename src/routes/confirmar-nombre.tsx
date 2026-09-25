@@ -90,14 +90,13 @@ function ConfirmarNombre() {
    */
   const [fueraDeVentana, setFueraDeVentana] = useState("");
   /**
-   * Ya tiene pre-registro, y hasta ahora nadie se lo decía.
+   * Ya tiene pre-registro, y de aquí no pasa.
    *
-   * `seguirAunAsi` es su respuesta al aviso: quien viene a cambiar de taller
-   * sigue teniendo por dónde, pero pasando por delante del aviso en vez de
-   * recorrer el alta entera creyendo que se está registrando.
+   * Hubo una versión con un botón de «Cambiar mi taller» que lo dejaba seguir
+   * el recorrido. Estaba mal: el taller no se cambia después de cerrar el
+   * pre-registro, y ese botón era la única puerta que lo permitía.
    */
   const [yaRegistrado, setYaRegistrado] = useState(false);
-  const [seguirAunAsi, setSeguirAunAsi] = useState(false);
   const bloqueado = intentos >= INTENTOS;
 
   const programas = useMemo(
@@ -321,15 +320,25 @@ function ConfirmarNombre() {
    * matrícula inexistente. Aquí el reto ya está superado, así que el dato es
    * suyo y se le puede dar.
    *
-   * Por qué no es solo un aviso encima del formulario
+   * Por qué es una pantalla sin salida hacia adelante
    * -------------------------------------------------
    * Seguir adelante no duplica nada: `fn_preregistrar_alumno` lo reconoce por
    * su matrícula y devuelve SU folio. Pero de camino llama a
-   * `fn_cambiar_taller` con lo que elija en ESTA vuelta, así que continuar no
-   * es un paseo: es cambiar de taller. Se ofrece nombrado como lo que de verdad
-   * hace, y no como volver a registrarse.
+   * `fn_cambiar_taller` con lo que elija en ESTA vuelta. Eso convierte el
+   * recorrido en un cambio de taller, y el taller no se cambia una vez cerrado
+   * el pre-registro.
+   *
+   * Aquí hubo un botón de «Cambiar mi taller» que ofrecía justo eso. Lo pedía
+   * la buena intención de no dejar a nadie sin salida, y el precio era peor: el
+   * caso corriente no es quien viene a cambiar de taller, sino quien se salió
+   * en la pantalla del banco y vuelve a escribir su matrícula para ver cómo
+   * iba. Esa persona se encontraba un botón que invitaba a tocar lo único que
+   * ya no debía tocarse —y bastaba con que siguiera y pulsara «continuar sin
+   * taller» para quedarse sin el suyo.
+   *
+   * Lo que sí necesita ver está en el portal, y hacia allá va.
    */
-  if (yaRegistrado && !seguirAunAsi) {
+  if (yaRegistrado) {
     return (
       <PantallaPublica
         titulo="Ya tienes tu pre-registro"
@@ -344,27 +353,44 @@ function ConfirmarNombre() {
           </AlertDescription>
         </Alert>
 
-        <div className="mt-6 grid gap-2 sm:grid-cols-2">
-          <Link
-            to="/portal"
-            className="inline-flex min-h-12 items-center justify-center rounded-md bg-primary px-4 text-base font-semibold text-primary-foreground"
-          >
-            Ver mi registro
-          </Link>
-          <Button
-            variant="outline"
-            className="h-12 md:h-11 text-base"
-            onClick={() => setSeguirAunAsi(true)}
-          >
-            Cambiar mi taller
-          </Button>
-        </div>
+        {/*
+         * Un solo camino, y a lo ancho.
+         *
+         * Eran dos botones en rejilla porque el segundo era «Cambiar mi
+         * taller». Sin él, dejar el que queda a media anchura haría buscar al
+         * otro: un hueco al lado de un botón se lee como algo que no cargó.
+         */}
+        <Link
+          to="/portal"
+          className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-primary px-4 text-base font-semibold text-primary-foreground"
+        >
+          Ver mi registro
+        </Link>
+
+        {/*
+         * El taller, dicho antes de que lo busque.
+         *
+         * Quien vuelve a escribir su matrícula suele venir a mirar cómo iba lo
+         * suyo, y el taller es de lo primero que se mira. Decir aquí que ya no
+         * se cambia le ahorra el recorrido entero para descubrirlo al final —y
+         * es más honesto que el botón que había, que lo invitaba a hacerlo.
+         *
+         * No promete que soporte se lo cambie: hoy no hay ninguna pantalla
+         * interna que cambie el taller de nadie. Dice a dónde preguntar, que es
+         * lo único que este sistema puede sostener.
+         */}
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Tu taller quedó guardado con tu pre-registro y ya no se cambia desde aquí. Si necesitas
+          algo con él,{" "}
+          <a href={wa} className="underline" target="_blank" rel="noreferrer">
+            escríbenos por WhatsApp
+          </a>
+          .
+        </p>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Para entrar al portal necesitas tu folio. ¿No lo tienes a mano?{" "}
-          <a href={wa} className="underline" target="_blank" rel="noreferrer">
-            Escríbenos por WhatsApp
-          </a>
+          Para entrar al portal necesitas tu folio. ¿No lo tienes a mano? Escríbenos por ese mismo
+          WhatsApp.
         </p>
         <p className="mt-2 text-center text-xs text-muted-foreground">
           <Link to="/bienvenida" className="underline">
