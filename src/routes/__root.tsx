@@ -32,6 +32,7 @@ import { useSelloDeVersion } from "../lib/sello-de-version";
  */
 const Toaster = lazy(() => import("../components/ui/sonner").then((m) => ({ default: m.Toaster })));
 import { pantallaPendienteDe } from "../lib/mapa-pantallas";
+import { PuertaDeMantenimiento } from "../components/mantenimiento";
 
 function NotFoundComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -292,17 +293,25 @@ function RootComponent() {
       contra la lista del contexto, que puede haber cambiado en la sesión.
     */
     <SesionProvider>
-      <EstadoEventoProvider inicial={publico}>
-        <PrototipoProvider>
-          <PortalProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <Suspense fallback={null}>
-              <Toaster position="top-center" richColors />
-            </Suspense>
-          </PortalProvider>
-        </PrototipoProvider>
-      </EstadoEventoProvider>
+      {/*
+        La puerta de mantenimiento va aquí y no más adentro: cuando está
+        encendida, nada del estado del evento llega a montarse. Necesita la
+        sesión —para dejar pasar al personal— y nada más, así que este es el
+        punto más alto en el que puede vivir.
+      */}
+      <PuertaDeMantenimiento>
+        <EstadoEventoProvider inicial={publico}>
+          <PrototipoProvider>
+            <PortalProvider>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <Suspense fallback={null}>
+                <Toaster position="top-center" richColors />
+              </Suspense>
+            </PortalProvider>
+          </PrototipoProvider>
+        </EstadoEventoProvider>
+      </PuertaDeMantenimiento>
     </SesionProvider>
   );
 }
