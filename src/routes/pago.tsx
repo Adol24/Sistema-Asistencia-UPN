@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
 import { IMAGEN_INSTRUCCIONES_VOUCHER } from "@/lib/imagenes";
-import { fechaLimiteTexto, moneda } from "@/lib/formato";
+import { fechaYHoraTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { abreLaPuerta } from "@/lib/pagos-logica";
@@ -153,8 +153,8 @@ function Pago() {
 
             Ahora aquí no hay código hasta que el pago se confirme. Lo que esta
             pantalla necesita enseñar es el folio, y ya lo enseña arriba en
-            grande con su botón de copiar: es lo que va en el concepto del
-            depósito y lo que abre el portal.
+            grande con su botón de copiar: es lo que se lleva a Aportaciones y
+            lo que abre el portal.
           */}
           {tieneCodigo ? (
             <div className="mt-4 flex justify-center">
@@ -200,16 +200,23 @@ function Pago() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {/*
+             * Sin «Concepto: ENCUENTRO-PRE-00842».
+             *
+             * Era un código que este sistema se inventaba y que no usa nadie
+             * más: ni el banco lo pide en la ficha, ni Aportaciones lo busca al
+             * recibir. Lo que la tarjeta tiene que decir es cuántos depósitos
+             * son y de cuánto es cada uno; el folio ya está arriba, en grande y
+             * con su botón de copiar, que es donde hay que ir a buscarlo.
+             */}
             <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
               <Rotulo>Depósito 1 — Evento</Rotulo>
-              <p className="mt-2 font-mono text-sm">Concepto: ENCUENTRO-{folio}</p>
-              <p className="mt-1 text-2xl font-bold">{moneda(evento.cuotaEvento)}</p>
+              <p className="mt-2 text-2xl font-bold">{moneda(evento.cuotaEvento)}</p>
             </article>
             {taller ? (
               <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
                 <Rotulo>Depósito 2 — Taller</Rotulo>
-                <p className="mt-2 font-mono text-sm">Concepto: TALLER-{folio}</p>
-                <p className="mt-1 text-2xl font-bold">{moneda(taller.costo)}</p>
+                <p className="mt-2 text-2xl font-bold">{moneda(taller.costo)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{taller.nombre}</p>
               </article>
             ) : (
@@ -270,8 +277,8 @@ function Pago() {
               </li>
               <li>
                 Debajo, con tinta negra o azul, anota en este orden: nombre completo, matrícula
-                escolar, licenciatura o maestría, sede regional, semestre o módulo, grupo y concepto
-                —el que dice cada depósito aquí arriba—.
+                escolar, licenciatura o maestría, sede regional, semestre o módulo, grupo y
+                concepto.
                 <span className="mt-1 block">
                   Si no eres alumno, solo tu nombre completo y el concepto.
                 </span>
@@ -280,15 +287,33 @@ function Pago() {
             </ol>
           </section>
 
+          {/*
+            Un lugar y un momento, y ninguno de los dos lleva letra chica.
+
+            Aquí decía «Servicios Financieros, Edificio A, planta baja» y, al
+            lado, «Lunes a viernes de 9:00 a 17:00 hrs». Los dos venían
+            sembrados de la migración de datos iniciales y los dos eran falsos.
+            La entrega es en el Departamento de Aportaciones —que se pregunta
+            por su nombre, no por una letra de edificio que no está rotulada en
+            ninguna pared— y no hay semana de entrega: hay UN día, con SU hora.
+
+            Por eso la segunda tarjeta deja de titularse «Fecha límite»: no es
+            un plazo que vence, es la cita. Y por eso enseña la hora, que un
+            plazo se puede dar sin ella y una cita no.
+
+            El horario de atención ya no se dibuja. La migración
+            `20260924200000` lo dejó vacío, y además se quita de aquí para que
+            el día que alguien vuelva a llenarlo no reaparezca contradiciendo a
+            la tarjeta de al lado.
+          */}
           <section className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
               <h2 className="text-sm font-semibold">Entrega de vouchers</h2>
               <p className="mt-1 text-sm text-muted-foreground">{evento.ventanilla.lugar}</p>
-              <p className="text-sm text-muted-foreground">{evento.ventanilla.horario}</p>
             </div>
             <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
-              <h2 className="text-sm font-semibold">Fecha límite de entrega</h2>
-              <p className="mt-1 text-lg font-bold">{fechaLimiteTexto(evento.fechaLimite)}</p>
+              <h2 className="text-sm font-semibold">Día y hora de entrega</h2>
+              <p className="mt-1 text-lg font-bold">{fechaYHoraTexto(evento.fechaLimite)}</p>
             </div>
           </section>
 

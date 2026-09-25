@@ -156,6 +156,43 @@ const unirConY = (partes: string[]) =>
     : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 
 /**
+ * El mismo instante, con la hora: «viernes 9 de octubre · 18:00 hrs».
+ *
+ * `fechaLimiteTexto` deja fuera la hora a propósito, y ese razonamiento sigue
+ * valiendo donde se usa: cuando lo que se promete es un plazo, «antes del
+ * viernes 9» es una instrucción y «antes del viernes 9 a las 18:00» invita a
+ * llegar a las 17:55 a una ventanilla con cola.
+ *
+ * Aquí es al revés. La entrega del voucher no es un plazo que vence: es UN día
+ * con SU hora, y quien no la sepa se presenta cuando no hay nadie. Ocultarla
+ * obligaría a preguntarla por WhatsApp.
+ *
+ * La hora se fija en la zona de México y no en la del aparato. Un plazo de un
+ * día aguanta que el teléfono esté en otro huso; una hora, no: la misma cita
+ * saldría a las 17:00 o a las 19:00 según cómo tenga configurado el reloj quien
+ * la lee.
+ */
+export const fechaYHoraTexto = (iso: string) => {
+  if (!iso.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const zona = "America/Mexico_City";
+  const dia = d.toLocaleDateString("es-MX", {
+    timeZone: zona,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const hora = d.toLocaleTimeString("es-MX", {
+    timeZone: zona,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${dia} · ${hora} hrs`;
+};
+
+/**
  * De un `timestamptz` de la base al valor que espera un `<input
  * type="datetime-local">`: `AAAA-MM-DDTHH:mm`, en la hora del equipo.
  *
