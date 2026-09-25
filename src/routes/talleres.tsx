@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { mensajeDeError } from "@/lib/supabase";
+import { mensajeDeError } from "@/lib/errores";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 

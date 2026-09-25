@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { mensajeDeError } from "@/lib/supabase";
+import { mensajeDeError } from "@/lib/errores";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { CasoSoporte } from "@/dominio/tipos";

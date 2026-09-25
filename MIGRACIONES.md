@@ -304,6 +304,39 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### La ventana viaja con la ficha (`20260924200000`) — SIN APLICAR
+
+`/confirmar-nombre` hacía dos viajes seguidos: `fn_padron_confirmar` para el
+reto de identidad y, con su respuesta en la mano, `fn_ventana_de_matricula`
+para saber si a esa cohorte ya le toca. Unos 160 ms de más, y en la única
+pantalla donde el alumno está parado mirando la rueda.
+
+Las dos preguntan por la misma matrícula y acaban en la misma fila del padrón.
+La segunda no aportaba un viaje: aportaba un campo. Ahora `fn_padron_confirmar`
+devuelve además `ventana`.
+
+**Se puede desplegar en cualquier orden**, y esa es la parte que importa. La
+clave se AÑADE; no se quita ni se renombra nada, así que un cliente viejo la
+ignora. Y el cliente nuevo distingue tres casos:
+
+| lo que llega | qué significa |
+| --- | --- |
+| la clave no viene | esta migración no está aplicada → preguntar aparte, como siempre |
+| `null` | le toca; adelante |
+| texto | no le toca todavía; esa frase es lo que se le enseña |
+
+Sin esa distinción entre «no viene» y «viene vacía», subir el código antes que
+el SQL dejaría pasar a cohortes cuya ventana ni se comprobó.
+
+De paso, el alumno gasta **un cupo menos** de tope por IP por intento:
+`fn_ventana_de_matricula` consume `ventana_matricula` (30 cada diez minutos) y
+`fn_motivo_fuera_de_ventana`, que es a quien se llama ahora por dentro, no tiene
+tope propio. El que de verdad aprieta sigue siendo `padron_confirmar` —10 cada
+diez minutos— y no se toca: es lo que impide recorrer el padrón.
+
+El cuerpo se copió mecánicamente de `20260922180000`; lo único añadido son tres
+líneas dentro del `jsonb_build_object`.
+
 ### Los módulos de LEIP van todos corridos (`20260924160000`) — SIN APLICAR
 
 `20260924120000` tradujo los módulos del calendario oficial a los números del

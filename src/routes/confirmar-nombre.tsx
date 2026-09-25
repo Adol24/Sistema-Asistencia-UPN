@@ -146,9 +146,24 @@ function ConfirmarNombre() {
         const ya = ficha.ya_registrado === true;
         setYaRegistrado(ya);
         if (!ya) {
-          // Su turno. Si no es ahora, se dice aquí y no se sigue.
-          const { ventanaDeMatriculaRemota } = await import("@/lib/datos");
-          setFueraDeVentana((await ventanaDeMatriculaRemota(matricula)) ?? "");
+          /*
+           * Su turno. Si no es ahora, se dice aquí y no se sigue.
+           *
+           * La ficha ya trae la ventana desde la migración `20260924200000`, y
+           * eso ahorra un viaje entero —unos 160 ms— justo en la pantalla donde
+           * la persona está parada mirando.
+           *
+           * Los tres casos, y el tercero es el que importa: `undefined` no es
+           * «le toca», es «esta base todavía no manda el campo». Ahí se
+           * pregunta como siempre. Sin esa distinción, subir el código antes
+           * que el SQL dejaría pasar a cohortes cuya ventana ni se comprobó.
+           */
+          if (ficha.ventana === undefined) {
+            const { ventanaDeMatriculaRemota } = await import("@/lib/datos");
+            setFueraDeVentana((await ventanaDeMatriculaRemota(matricula)) ?? "");
+          } else {
+            setFueraDeVentana(ficha.ventana ?? "");
+          }
         }
         // El expediente llega ahora, no antes. Se guarda para los pasos
         // siguientes del pre-registro.

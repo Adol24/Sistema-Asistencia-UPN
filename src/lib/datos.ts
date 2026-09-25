@@ -1526,6 +1526,16 @@ export async function confirmarEnPadronRemoto(
      */
     dia: number | null;
     ya_registrado: boolean;
+    /**
+     * Si a su cohorte todavía no le toca, la frase ya redactada; `null` si le
+     * toca. **`undefined` significa otra cosa**: que la migración
+     * `20260924200000` no está aplicada en esa base, y entonces hay que
+     * preguntarlo aparte con `ventanaDeMatriculaRemota`.
+     *
+     * Esa tercera posibilidad es lo que permite subir este código antes que el
+     * SQL sin que nadie se cuele por una ventana cerrada.
+     */
+    ventana?: string | null;
   } | null>("fn_padron_confirmar", {
     p_matricula: matricula,
     p_nombres: nombres,

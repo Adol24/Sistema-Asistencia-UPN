@@ -225,9 +225,39 @@ export function EstadoEventoProvider({
    * que sí pidió alguien conserva su indicador, porque ahí la espera se
    * entiende: la pulsó.
    */
+  /*
+   * Lo que el servidor ya resolvió no se vuelve a pedir.
+   *
+   * `__root.tsx` corre `cargarPublico()` en su loader y nos lo entrega como
+   * `inicial`, que siembra la configuración, los talleres y las sedes. Aun así
+   * la primera carga del cliente volvía a pedir lo mismo —y, de paso, importaba
+   * `@/lib/datos`, que arrastra el SDK de Supabase: 210 KB, 54 comprimidos—
+   * para un visitante que no tiene sesión y por tanto no tiene nada más que
+   * traer.
+   *
+   * Con 700 alumnos entrando a la vez por la red de la universidad, eso son 37
+   * MB de SDK que nadie necesita todavía. Sigue bajando en cuanto haga falta de
+   * verdad —al enviar su matrícula, o al abrir el catálogo de talleres—, que es
+   * cuando ya hay una pantalla pintada delante.
+   *
+   * Solo vale para la PRIMERA vez: la marca se gasta al usarla, así que volver
+   * a la pestaña o pulsar recargar hace el camino completo de siempre y nadie
+   * se queda con datos viejos.
+   */
+  const sembradoDelServidor = useRef(inicial != null);
+
   const cargar = useCallback(
     async (silencioso = false) => {
       if (!hayBaseDeDatos || cargandoSesion) return;
+      if (personaId === null && sembradoDelServidor.current) {
+        sembradoDelServidor.current = false;
+        // Lo mismo que deja una carga con éxito, porque los datos ya están: sin
+        // esto la pantalla se quedaría con su indicador de carga para siempre.
+        setConectado(true);
+        setCargadoEn(Date.now());
+        setCargandoDatos(false);
+        return;
+      }
       if (!silencioso) setCargandoDatos(true);
       try {
         const m = await import("@/lib/datos");
