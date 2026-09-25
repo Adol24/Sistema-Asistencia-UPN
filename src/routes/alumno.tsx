@@ -174,8 +174,17 @@ function IdentificacionAlumno() {
         </Button>
       </form>
 
+      {/*
+       * El mismo ancho que la tarjeta, y por eso se repite el tope.
+       *
+       * `PantallaPublica` da un contenedor ancho y la tarjeta se acota a
+       * `max-w-lg`; el aviso salía a todo lo ancho, más largo que aquello de lo
+       * que habla, y la columna se veía rota justo en el momento en que la
+       * persona se ha quedado atascada. Va debajo de la tarjeta y tiene que
+       * medir como ella.
+       */}
       {noEncontrada ? (
-        <Alert variant="destructive" className="mt-5">
+        <Alert variant="destructive" className="mx-auto mt-5 w-full max-w-lg">
           <AlertCircle className="size-4" />
           <AlertTitle>No encontramos esa matrícula</AlertTitle>
           <AlertDescription className="grid gap-3">
@@ -186,7 +195,7 @@ function IdentificacionAlumno() {
               rel="noreferrer"
               className="inline-flex h-11 w-fit items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
             >
-              <MessageCircle className="size-4" /> Contactar a soporte por WhatsApp
+              <MessageCircle className="size-4" /> Contactar a soporte
             </a>
           </AlertDescription>
         </Alert>
