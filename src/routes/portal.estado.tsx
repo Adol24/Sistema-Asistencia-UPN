@@ -106,6 +106,19 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const cita = useCitaDePago(p.matricula);
   const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 
+  /*
+   * El WhatsApp de soporte, y se calla si no hay número.
+   *
+   * `CONFIGURACION_VACIA` lo trae vacío hasta que la base contesta, y
+   * `https://wa.me/?text=…` es un enlace a ninguna parte con aspecto de botón.
+   * Mismo criterio que el pie y el riel de `layouts.tsx`.
+   */
+  const wa = evento.whatsappSoporte
+    ? `https://wa.me/${evento.whatsappSoporte}?text=${encodeURIComponent(
+        `Hola, tengo un aviso en mi registro. Folio: ${p.folio}.`,
+      )}`
+    : null;
+
   return (
     <PantallaPublica ancho="lg">
       <PortalNav />
@@ -160,12 +173,48 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               ))}
             </ul>
             <div className="flex flex-wrap gap-2">
-              <Link
-                to="/talleres"
-                className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
-              >
-                Elegir otro taller
-              </Link>
+              {/*
+               * Aquí había un enlace «Elegir otro taller» a `/talleres`, y no llevaba
+               * a ningún sitio para nadie.
+               *
+               * Al portal se entra con folio y credencial, y `portal.tsx` los
+               * guarda APARTE del borrador del pre-registro: `setFolio` es su
+               * propio estado y no escribe `borrador`. Así que en la pestaña
+               * corriente del portal —la que se abre días después para mirar cómo
+               * va lo suyo— `/talleres` se encontraba el borrador vacío y
+               * `RequiereBorrador` devolvía a `/bienvenida`. Y en la pestaña que
+               * acababa de registrarse, donde el borrador sí trae matrícula, lo
+               * que se encontraba era `preregistroCerrado`: «Tu pre-registro ya
+               * está cerrado». El catálogo, nunca.
+               *
+               * No era un enlace por cablear. El taller no se cambia una vez
+               * cerrado el pre-registro, y hoy no hay NINGUNA pantalla —pública
+               * ni interna— que cambie el de nadie: `fn_cambiar_taller` está
+               * revocada a `public`, `anon` y `authenticated`, y solo la llaman
+               * las dos altas del pre-registro.
+               *
+               * El aviso que lo acompañaba tampoco lo produce ya nadie: su único
+               * origen era la liberación del taller al cambiar de día, y la
+               * migración 60 dejó `fn_asignar_dia_a_varios` sin tocar el taller.
+               * Pero `avisos_participante` sigue en pie para lo que el personal
+               * escriba, y este botón esperaba ahí para prometer lo imposible en
+               * cuanto apareciera una fila.
+               *
+               * Queda lo único que este sistema puede sostener: a dónde
+               * preguntar. Es la misma salida que da `/confirmar-nombre` a quien
+               * vuelve con su pre-registro hecho, y no promete que soporte se lo
+               * cambie.
+               */}
+              {wa ? (
+                <a
+                  href={wa}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-11 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                >
+                  Preguntar por WhatsApp
+                </a>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setDescartados((prev) => [...prev, ...avisos.map((a) => a.id)])}
