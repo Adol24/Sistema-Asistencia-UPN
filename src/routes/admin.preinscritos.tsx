@@ -44,6 +44,31 @@ function aOrdenable(fechaHora: string): string {
 /** Solo el día, para comparar con los dos `<input type="date">` del filtro. */
 const soloFecha = (fechaHora: string): string => aOrdenable(fechaHora).slice(0, 10);
 
+/**
+ * La misma fecha, con la hora de doce y su «a. m.» o «p. m.».
+ *
+ * `aFechaHora` entrega veinticuatro horas y lo hace para todo el sistema —el
+ * portal, la bitácora, el historial de la puerta—, así que la conversión vive
+ * aquí y no allí: cambiarla en el origen le cambiaría la hora a nueve pantallas
+ * que nadie pidió tocar.
+ *
+ * Los dos casos que se escapan al restar doce: las 00:xx son las 12 de la noche
+ * y las 12:xx son las 12 del mediodía. `18 % 12` da 6, pero `12 % 12` da 0, y
+ * «0:30 p. m.» no es una hora.
+ *
+ * Sin `Date` de por medio: el texto ya trae la hora local: convertirlo a fecha
+ * para volver a formatearlo es la vía por la que se cuela un corrimiento de zona.
+ */
+function enDoceHoras(fechaHora: string): string {
+  const m = /^(\d{2}\/\d{2}\/\d{4}) (\d{2}):(\d{2})$/.exec(fechaHora);
+  // Sin el formato esperado se devuelve tal cual: una fila con la hora en
+  // veinticuatro horas se lee; una que dijera «NaN» o se quedara vacía, no.
+  if (!m) return fechaHora;
+  const h = Number(m[2]);
+  const docenas = h % 12 === 0 ? 12 : h % 12;
+  return `${m[1]} ${docenas}:${m[3]} ${h < 12 ? "a. m." : "p. m."}`;
+}
+
 function Preinscritos() {
   const { participantes, configuracion, infoDia, registrarBitacora } = useEstadoEvento();
   const [q, setQ] = useState("");
@@ -366,7 +391,11 @@ function Preinscritos() {
           );
           return (
             <Fila key={p.id}>
-              <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{p.creadoEn}</td>
+              {/* El orden y el filtro siguen usando `p.creadoEn` sin tocar: aquí
+                  solo cambia cómo se lee. */}
+              <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">
+                {enDoceHoras(p.creadoEn)}
+              </td>
               <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{p.folio}</td>
               <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">
                 {p.matricula ?? "—"}
