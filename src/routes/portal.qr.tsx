@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Camera, Maximize2 } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Lock, Maximize2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
+import { Subtitulo } from "@/components/tipografia";
 import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
 import { AccionesDelPase, CodigoParaPagar } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
@@ -17,8 +18,8 @@ import { abreLaPuerta } from "@/lib/pagos-logica";
 export const Route = createFileRoute("/portal/qr")({
   head: () =>
     meta(
-      "Mi código QR — XIV Encuentro Internacional de Educación",
-      "Tu código de entrada al XIV Encuentro Internacional de Educación. Aparece aquí en cuanto Servicios Financieros confirme tu pago.",
+      "Mis códigos — XIV Encuentro Internacional de Educación",
+      "Tu código para entregar el voucher y, en cuanto Servicios Financieros confirme tu pago, tu pase de entrada al XIV Encuentro Internacional de Educación.",
     ),
   component: MiQr,
 });
@@ -100,123 +101,163 @@ function MiQrContenido({ p }: { p: Participante }) {
   usePantallaEncendida(tieneCodigo);
 
   return (
-    <PantallaPublica titulo="Mi código QR" ancho="lg">
+    <PantallaPublica titulo="Mis códigos" ancho="lg">
       <PortalNav />
       {/*
-        Un mismo símbolo, dos cosas distintas según el pago.
+        Dos secciones, y nunca las dos con un código a la vez.
         ------------------------------------------------------------------
-        Por aquí pasaron tres versiones. El QR solo al pagar, diciendo «esta
-        pantalla es la única que lo tiene» cuando el comprobante ya lo pintaba;
-        luego siempre, atenuado y con un sello; luego un hueco punteado hasta que
-        el pago se confirmara.
+        La pantalla se llamaba «Mi código QR» y dentro decía «Código para tu
+        pago»: el título prometía el pase del evento y el contenido hablaba de la
+        ventanilla. Ahora hay dos bloques con nombre propio, y cada uno enseña su
+        código solo cuando toca.
 
-        Ahora el código se dibuja siempre, y lo que cambia es qué se dice de él.
-        Sin pago confirmado es `CodigoParaPagar`: sirve para que en Aportaciones
-        lo lean con la cámara en lugar de que dicte su folio en una fila de dos
-        mil personas. Con el pago confirmado es el pase, con su etiqueta «UPN» en
-        el centro, sus acciones para descargarlo y compartirlo, y la pantalla que
-        se queda encendida.
+        Que se turnen no es una economía de espacio, es lo que evita el problema
+        que ya costó dos rediseños: **los dos códigos son el mismo símbolo**, el
+        folio. Dibujados juntos serían dos imágenes idénticas con dos rótulos
+        distintos, y la primera pregunta sería cuál de las dos sirve. Puestos en
+        orden no hay nada que elegir: mientras no paga necesita el de la
+        ventanilla, y una vez pagado ese trámite ya está hecho y lo que necesita
+        es el pase.
 
-        Que no se anuncie como pase antes de tiempo es cosa del rótulo. Que no
-        FUNCIONE como pase antes de tiempo no depende de esta pantalla: el
-        torniquete lo rechaza en rojo, y eso lo decide `fn_evaluar_escaneo` en la
-        base. Esa es la diferencia con las versiones de antes, que intentaban
-        contener con tipografía algo que ya estaba contenido con una regla.
+        Lo que distingue a uno de otro no es la imagen sino lo que la base decide
+        al leerla: `fn_evaluar_escaneo` rechaza en rojo al que no tenga el pago
+        confirmado. Por eso el bloque del pase se puede dibujar cerrado sin
+        engañar a nadie: no está oculto un código que ya funcionaría, está
+        anunciado uno que todavía no.
       */}
-      <section className="rounded-lg border border-border bg-card p-6 text-center">
-        {tieneCodigo ? (
-          <>
-            {/*
-             * Tocar el código lo abre a pantalla completa. Es el gesto que la
-             * gente intenta por instinto con cualquier imagen, y aquí resulta
-             * ser justo lo que conviene hacer en la puerta.
-             */}
-            <button
-              type="button"
-              onClick={() => setAmpliado(true)}
-              className="mx-auto flex flex-col items-center gap-2 rounded-lg"
-              aria-label="Ver el código a pantalla completa"
-            >
-              <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Maximize2 className="size-3.5" aria-hidden />
-                Tócalo para mostrarlo en grande
-              </span>
-            </button>
+      <div className="grid gap-4">
+        {/*
+          Bloque 1 · el del pago. Se enseña mientras el pago no esté confirmado, y
+          después se queda como acuse: desaparecer del todo dejaría a quien vuelve
+          preguntándose si ese paso existió.
+        */}
+        <section className="rounded-lg border border-border bg-card p-6 text-center">
+          <Subtitulo>Código para tu pago</Subtitulo>
+          {tieneCodigo ? (
+            <p className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-estado-pagado">
+              <CheckCircle2 className="size-5 shrink-0" aria-hidden />
+              Tu pago ya está confirmado: este paso ya no te hace falta.
+            </p>
+          ) : (
+            <>
+              <CodigoParaPagar folio={p.folio} lugar={evento.ventanilla.lugar} />
 
-            <p className="mt-5 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
-            <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">{p.folio}</p>
-
-            {/*
-             * La discrepancia se dice AQUÍ, junto al código que sí funciona.
-             *
-             * Antes esta persona caía en la otra rama y leía «acude a ventanilla
-             * para aclararlo» en lugar de un pase. Ahora tiene su código —la
-             * puerta la admite— y lo que necesita saber es que aun así le falta
-             * un trámite. Callarlo aquí sería dejar que se enterara en la fila.
-             */}
-            {estado.evento === "discrepancia" ? (
-              <p className="mt-4 flex items-start gap-2 rounded-md border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-left text-sm text-estado-discrepancia">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                Tu código ya abre la puerta, pero el monto depositado no coincide con el esperado.
-                Pasa a {evento.ventanilla.lugar || "ventanilla"} a aclararlo.
+              <div className="mt-5 flex justify-center">
+                <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />
+              </div>
+              <p className="mt-3 text-sm font-medium">
+                {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
               </p>
-            ) : null}
+              {/*
+               * Sin cita no se dice ninguna fecha, y eso es una decisión de Adol
+               * del 2026-09-25.
+               *
+               * Aquí se pintaba `fecha_limite` —«viernes, 9 de octubre»— a quien
+               * no tuviera cita. Esa fecha es el corte tras el cual el
+               * pre-registro expira, una sola para todo el evento, y nadie la
+               * confirmó: viene de la siembra del prototipo. Enseñársela a
+               * alguien como si fuera su plazo de entrega es lo que mandaba al
+               * alumno de LEIP seis días tarde, y a un docente le daba una fecha
+               * que no es de nadie.
+               *
+               * Quien no tiene cita —docentes y externos, que no están en el
+               * calendario oficial— lee el renglón de arriba: qué le falta y
+               * dónde se entrega. La fecha sigue en /pago y en el comprobante,
+               * que es donde se leyó al registrarse.
+               */}
+              {cita ? (
+                <>
+                  <p className="mt-2 text-sm font-semibold">Tu día para entregar: {cita.cuando}</p>
+                  {cita.estricto ? (
+                    <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
+                      Es ese día y solo ese: no puedes ir antes ni después.
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+              <Link
+                to="/portal/estado"
+                className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
+              >
+                Ver mi línea de tiempo
+              </Link>
+            </>
+          )}
+        </section>
 
-            <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} />
-            <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-left text-sm">
-              <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-              Toma una captura de pantalla: en la entrada no necesitas internet para mostrar tu
-              código.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+        {/* Bloque 2 · el pase. Cerrado hasta que el pago esté confirmado. */}
+        <section className="rounded-lg border border-border bg-card p-6 text-center">
+          <Subtitulo>Pase para entrar al evento</Subtitulo>
+          {tieneCodigo ? (
+            <>
+              <p className="mt-4 text-balance text-lg font-bold leading-snug">{p.nombre}</p>
+              <p className="mt-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+                {p.folio}
+              </p>
 
-            <CodigoParaPagar folio={p.folio} lugar={evento.ventanilla.lugar} />
+              {/*
+               * Tocar el código lo abre a pantalla completa. Es el gesto que la
+               * gente intenta por instinto con cualquier imagen, y aquí resulta
+               * ser justo lo que conviene hacer en la puerta.
+               */}
+              <button
+                type="button"
+                onClick={() => setAmpliado(true)}
+                className="mx-auto mt-4 flex flex-col items-center gap-2 rounded-lg"
+                aria-label="Ver el código a pantalla completa"
+              >
+                <CodigoQR valor={p.folio} size={320} etiqueta="UPN" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Maximize2 className="size-3.5" aria-hidden />
+                  Tócalo para mostrarlo en grande
+                </span>
+              </button>
 
-            <div className="mt-5 flex justify-center">
-              <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />
+              {/*
+               * La discrepancia se dice AQUÍ, junto al código que sí funciona.
+               *
+               * Antes esta persona caía en la otra rama y leía «acude a
+               * ventanilla para aclararlo» en lugar de un pase. Ahora tiene su
+               * código —la puerta la admite— y lo que necesita saber es que aun
+               * así le falta un trámite. Callarlo aquí sería dejar que se
+               * enterara en la fila.
+               */}
+              {estado.evento === "discrepancia" ? (
+                <p className="mt-4 flex items-start gap-2 rounded-md border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-left text-sm text-estado-discrepancia">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  Tu código ya abre la puerta, pero el monto depositado no coincide con el esperado.
+                  Pasa a {evento.ventanilla.lugar || "ventanilla"} a aclararlo.
+                </p>
+              ) : null}
+
+              <AccionesDelPase folio={p.folio} nombre={p.nombre} evento={evento.nombre} />
+              <p className="mt-4 flex items-start gap-2 rounded-md bg-muted p-3 text-left text-sm">
+                <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                Toma una captura de pantalla: en la entrada no necesitas internet para mostrar tu
+                código.
+              </p>
+            </>
+          ) : (
+            /*
+              El bloque cerrado no dibuja un QR atenuado: dice qué falta y ya.
+              Un símbolo a medio tono es lo que en su día hizo que la gente
+              llegara a la puerta con el comprobante creyendo que era su pase.
+            */
+            <div className="mx-auto mt-4 flex max-w-xs flex-col items-center gap-3">
+              <span className="flex size-14 items-center justify-center rounded-full bg-muted">
+                <Lock className="size-6 text-muted-foreground" aria-hidden />
+              </span>
+              <p className="text-pretty text-sm font-semibold">
+                Aparece aquí cuando se confirme tu pago
+              </p>
+              <p className="text-pretty text-xs text-muted-foreground">
+                Es el que se escanea en la entrada, el día que te toca asistir. Hasta entonces no
+                existe: primero entrega tu voucher con el código de arriba.
+              </p>
             </div>
-            <p className="mt-3 text-sm font-medium">
-              {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
-            </p>
-            {/*
-             * Sin cita no se dice ninguna fecha, y eso es una decisión de Adol
-             * del 2026-09-25.
-             *
-             * Aquí se pintaba `fecha_limite` —«viernes, 9 de octubre»— a quien no
-             * tuviera cita. Esa fecha es el corte tras el cual el pre-registro
-             * expira, una sola para todo el evento, y nadie la confirmó: viene de
-             * la siembra del prototipo. Enseñársela a alguien como si fuera su
-             * plazo de entrega es lo que mandaba al alumno de LEIP seis días
-             * tarde, y a un docente le daba una fecha que no es de nadie.
-             *
-             * Quien no tiene cita —docentes y externos, que no están en el
-             * calendario oficial— lee el renglón de arriba: qué le falta y dónde
-             * se entrega. La fecha sigue en /pago y en el comprobante, que es
-             * donde se leyó al registrarse.
-             */}
-            {cita ? (
-              <>
-                <p className="mt-2 text-sm font-semibold">Tu día para entregar: {cita.cuando}</p>
-                {cita.estricto ? (
-                  <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
-                    Es ese día y solo ese: no puedes ir antes ni después.
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-            <Link
-              to="/portal/estado"
-              className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
-            >
-              Ver mi línea de tiempo
-            </Link>
-          </>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
       {ampliado && tieneCodigo ? (
         <PaseAPantallaCompleta
           valor={p.folio}

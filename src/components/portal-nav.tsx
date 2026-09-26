@@ -7,7 +7,7 @@ import type { RutaConstruida } from "@/lib/mapa-pantallas";
 
 const items: { to: RutaConstruida; label: string; icono: typeof QrCode }[] = [
   { to: "/portal/estado", label: "Estado", icono: RouteIcon },
-  { to: "/portal/qr", label: "Mi QR", icono: QrCode },
+  { to: "/portal/qr", label: "Mis códigos", icono: QrCode },
   { to: "/portal/evidencias", label: "Evidencias", icono: ImageUp },
 ];
 
