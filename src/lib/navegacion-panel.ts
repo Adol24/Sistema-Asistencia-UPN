@@ -27,6 +27,7 @@ import {
   Receipt,
   ScrollText,
   Upload,
+  UserCheck,
   UserSearch,
   Users,
   Wallet,
@@ -67,6 +68,7 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
       titulo: "Participantes",
       enlaces: [
         { to: "/admin/padron", label: "Padrón", icono: Upload },
+        { to: "/admin/preinscritos", label: "Preinscritos", icono: UserCheck },
         { to: "/admin/elegibles", label: "Elegibles", icono: UserSearch },
         { to: "/admin/soporte", label: "Soporte", icono: LifeBuoy },
       ],

@@ -26,6 +26,7 @@ import { Route as AdminConfiguracionRouteImport } from './routes/admin.configura
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
 import { Route as AdminPadronRouteImport } from './routes/admin.padron'
+import { Route as AdminPreinscritosRouteImport } from './routes/admin.preinscritos'
 import { Route as AdminReportesRouteImport } from './routes/admin.reportes'
 import { Route as AdminSoporteRouteImport } from './routes/admin.soporte'
 import { Route as AdminTalleresRouteImport } from './routes/admin.talleres'
@@ -128,6 +129,11 @@ const AdminPadronRoute = AdminPadronRouteImport.update({
   path: '/admin/padron',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPreinscritosRoute = AdminPreinscritosRouteImport.update({
+  id: '/admin/preinscritos',
+  path: '/admin/preinscritos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminReportesRoute = AdminReportesRouteImport.update({
   id: '/admin/reportes',
   path: '/admin/reportes',
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
   '/admin/talleres': typeof AdminTalleresRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
   '/admin/talleres': typeof AdminTalleresRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
   '/admin/talleres': typeof AdminTalleresRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/admin/elegibles'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
     | '/admin/talleres'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/admin/elegibles'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
     | '/admin/talleres'
@@ -404,6 +415,7 @@ export interface FileRouteTypes {
     | '/admin/elegibles'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
     | '/admin/talleres'
@@ -440,6 +452,7 @@ export interface RootRouteChildren {
   AdminElegiblesRoute: typeof AdminElegiblesRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
   AdminPadronRoute: typeof AdminPadronRoute
+  AdminPreinscritosRoute: typeof AdminPreinscritosRoute
   AdminReportesRoute: typeof AdminReportesRoute
   AdminSoporteRoute: typeof AdminSoporteRoute
   AdminTalleresRoute: typeof AdminTalleresRoute
@@ -580,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPadronRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/preinscritos': {
+      id: '/admin/preinscritos'
+      path: '/admin/preinscritos'
+      fullPath: '/admin/preinscritos'
+      preLoaderRoute: typeof AdminPreinscritosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/reportes': {
       id: '/admin/reportes'
       path: '/admin/reportes'
@@ -712,6 +732,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminElegiblesRoute: AdminElegiblesRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
   AdminPadronRoute: AdminPadronRoute,
+  AdminPreinscritosRoute: AdminPreinscritosRoute,
   AdminReportesRoute: AdminReportesRoute,
   AdminSoporteRoute: AdminSoporteRoute,
   AdminTalleresRoute: AdminTalleresRoute,
