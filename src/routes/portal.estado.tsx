@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, CalendarClock, Check, Circle, Clock3, Dot } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
@@ -8,8 +8,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, sitioDelTaller } from "@/lib/formato";
-import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
-import type { CitaDePago } from "@/lib/datos";
+import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -104,25 +103,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
    * Solo lo tienen los alumnos: docentes y externos no traen matrícula, y a
    * ellos el calendario oficial no les da día de inscripción.
    */
-  const [cita, setCita] = useState<CitaDePago | null>(null);
-  useEffect(() => {
-    if (!p.matricula) return;
-    let vigente = true;
-    void (async () => {
-      try {
-        const { citaDePagoRemota } = await import("@/lib/datos");
-        const r = await citaDePagoRemota(p.matricula!);
-        if (vigente) setCita(r);
-      } catch {
-        // Sin cita no se pinta el bloque. Que falle una consulta informativa no
-        // puede dejar al alumno sin ver el estado de su pago, que es a lo que
-        // venía.
-      }
-    })();
-    return () => {
-      vigente = false;
-    };
-  }, [p.matricula]);
+  const cita = useCitaDePago(p.matricula);
   const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 
   return (

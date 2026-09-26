@@ -7,7 +7,7 @@ import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
 import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { EstadoPagoBadge } from "@/components/estado-badges";
-import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -64,6 +64,21 @@ function MiQrContenido({ p }: { p: Participante }) {
   // plazo o la fecha límite, esta pantalla lo refleja sin recargar.
   const { estadoDe, configuracion: evento } = useEstadoEvento();
   const estado = estadoDe(p);
+  /*
+   * El día que le toca a ESTA persona, y no la fecha límite del evento.
+   *
+   * `configuracion.fecha_limite` es una sola para todos —hoy el 9 de octubre— y
+   * es el corte tras el cual el pre-registro expira, no la cita de nadie. Quien
+   * entra aquí sin haber pagado leía esa fecha como su plazo, y su cita puede
+   * caer seis días antes: un alumno de LEIP en Guadalupe Victoria entrega el 3 de
+   * octubre. Anunciarle el 9 es mandarlo a la sede cuando ya nadie recibe.
+   *
+   * Lo dice `fn_cita_de_pago`, que resuelve la fecha por programa, avance, sede y
+   * grupo con el calendario oficial. Sin matrícula —docentes y externos— no hay
+   * cita, y entonces sí manda la fecha límite: para ellos es el único plazo que
+   * existe.
+   */
+  const cita = useCitaDePago(p.matricula);
   /*
    * Quién tiene código, y no se decide aquí.
    *
@@ -164,9 +179,20 @@ function MiQrContenido({ p }: { p: Participante }) {
             <p className="mt-3 text-sm font-medium">
               {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
-            </p>
+            {cita ? (
+              <>
+                <p className="mt-2 text-sm font-semibold">Tu día para entregar: {cita.cuando}</p>
+                {cita.estricto ? (
+                  <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
+                    Es ese día y solo ese: no puedes ir antes ni después.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
+              </p>
+            )}
             <Link
               to="/portal/estado"
               className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"

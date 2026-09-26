@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 
 import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { aParticipanteDeVista, type FilaVistaParticipante } from "@/lib/esquema";
+import type { CitaDePago } from "@/lib/datos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
 import { guardarJSON, leerJSON } from "@/lib/almacen-sesion";
@@ -323,4 +324,44 @@ export function useParticipanteDelPortal(): Participante | null {
   const { datos } = usePortal();
   const { participante } = usePrototipo();
   return hayBaseDeDatos ? (datos?.participante ?? null) : participante;
+}
+
+/**
+ * El día que le toca ir a dejar el voucher, preguntado por matrícula.
+ *
+ * Vive aquí y no en una pantalla porque lo necesitan DOS: la línea de tiempo y
+ * la del código QR. Estaba solo en la primera, así que quien entraba directo a
+ * su pase leía la fecha límite del evento —una sola para todos— como si fuera su
+ * plazo, cuando su cita puede caer seis días antes.
+ *
+ * Devuelve `null` mientras carga, cuando no hay matrícula —docentes y externos
+ * no tienen cita en el calendario oficial— y cuando la consulta falla. Las tres
+ * cosas se pintan igual: sin bloque de cita. Que falle una consulta informativa
+ * no puede dejar a nadie sin ver aquello a lo que venía.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useCitaDePago(matricula: string | undefined): CitaDePago | null {
+  const [cita, setCita] = useState<CitaDePago | null>(null);
+  useEffect(() => {
+    if (!matricula) {
+      // Se limpia: un docente que entrara tras un alumno en la misma pestaña
+      // heredaría la cita del anterior.
+      setCita(null);
+      return;
+    }
+    let vigente = true;
+    void (async () => {
+      try {
+        const { citaDePagoRemota } = await import("@/lib/datos");
+        const r = await citaDePagoRemota(matricula);
+        if (vigente) setCita(r);
+      } catch {
+        if (vigente) setCita(null);
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [matricula]);
+  return cita;
 }
