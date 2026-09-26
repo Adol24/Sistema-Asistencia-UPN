@@ -162,7 +162,7 @@ function MiDia() {
           disabled={!elegidoSirve}
           onClick={() => navigate({ to: "/talleres" })}
         >
-          {elegidoSirve ? "Continuar" : "Elige un día para continuar"}
+          {elegidoSirve ? "Continuar a talleres" : "Elige un día para continuar"}
         </Button>
       </PantallaPublica>
     );
@@ -197,7 +197,7 @@ function MiDia() {
           className="mt-6 h-12 md:h-11 w-full text-base"
           onClick={() => navigate({ to: "/talleres" })}
         >
-          Continuar
+          Continuar a talleres
         </Button>
       </PantallaPublica>
     );
