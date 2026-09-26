@@ -55,6 +55,13 @@ whatsapp real, la entrega en Aportaciones, el salón de cada taller, las citas d
 pago de LEIP, la ventana en la ficha, el día de reinscripción, las maestrías en
 módulo 1 y 3, y el día único para dejar el voucher. Ninguna quedó pendiente.
 
+**Y `20260926140000`, la del texto de los avisos**, aplicada el 2026-09-26. Esta no
+se comprobó desde fuera —`avisos_participante` está cerrada a la clave anónima—
+sino desde dentro: la migración lleva sus propias guardias y contestó «0 del cambio
+de día, 0 de la baja de un taller» sin lanzar ninguna. Cero filas que reescribir, y
+de paso la prueba de que las tres funciones que la 60 reescribió ya no producen el
+aviso.
+
 Este archivo decía lo contrario de siete de ellas —«SIN APLICAR»— durante días.
 Escribir el rótulo al terminar de redactar la migración es justo el modo de fallar
 que advierte la primera línea de este documento: **una migración está aplicada
@@ -338,12 +345,23 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### El aviso ya no promete otro taller (`20260926140000`) — SIN APLICAR
+### El aviso ya no promete otro taller (`20260926140000`) — aplicada, y cero filas
 
-Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
-contestado**. Y esta es de las que no se pueden comprobar con la clave anónima:
-`avisos_participante` está cerrada y sus filas solo salen por `fn_portal_estado`,
-que exige el folio y la credencial de una persona concreta.
+**Aplicada contra el proyecto real el 2026-09-26.** Reescribió **cero** filas:
+«Avisos reescritos: 0 del cambio de día, 0 de la baja de un taller». Es el
+resultado esperado y no un fallo —esas filas solo existen si se movió de día a
+alguien que ya tenía taller antes del 2026-09-23, y no pasó— pero eso no se sabía
+antes de preguntar: la alternativa era dejar filas mintiendo sin saber si existían.
+
+Que terminara **sin excepción** prueba dos cosas más, y ninguna de las dos se podía
+comprobar con la clave anónima:
+
+- **Ninguna función de `public` contiene «Puedes elegir otro».** Su primera guardia
+  le pregunta a `pg_proc` y se habría detenido enumerándolas. O sea que las tres
+  reescrituras de `20260923140000` —`fn_reasignar_dia`, `fn_asignar_dia_a_varios` y
+  `fn_guardar_taller`— están puestas en producción con sus cuerpos nuevos.
+- **Ningún aviso por leer lo promete con otras palabras.** Su segunda guardia busca
+  `Puedes elegir otro` suelto y habría enumerado lo que no reconociera.
 
 No toca el esquema ni ninguna función. Reescribe el TEXTO de las filas que ya
 están en `avisos_participante` y que dicen «Puedes elegir otro taller», porque
@@ -378,11 +396,12 @@ Trae sus dos comprobaciones dentro:
   excepción en vez de dar el trabajo por hecho.
 
 Se puede volver a aplicar: `replace` sobre una fila ya reescrita no encuentra nada
-que sustituir.
+que sustituir. Y conviene, porque las dos guardias siguen mirando aunque no haya
+nada que reescribir —es lo único de este repo que comprueba desde dentro que la 60
+dejó de producir el aviso—.
 
-**Puede que no reescriba ninguna fila, y eso no es un fallo.** Si nunca se movió
-a nadie de día antes del 2026-09-23, no existen filas con ese texto; lo dice al
-aplicarse, con un `notice`. Para saberlo de antemano hacen falta permisos:
+Las filas marcadas como vistas se quedaron como estaban, a propósito. Con cero
+por leer da igual, pero si alguna vez hace falta contarlas, con permisos:
 
 ```sql
 select count(*) filter (where visto_en is null) as por_leer,
