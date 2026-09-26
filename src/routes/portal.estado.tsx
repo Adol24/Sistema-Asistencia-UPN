@@ -13,7 +13,7 @@ import type { CitaDePago } from "@/lib/datos";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { abreLaPuerta } from "@/lib/pagos-logica";
+import { abreLaPuerta, estadoDelDeposito } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago } from "@/dominio/tipos";
@@ -296,21 +296,38 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
        * dos: la misma información sin los huecos.
        */}
       <section className="mt-4 grid gap-3 sm:grid-cols-2">
+        {/*
+         * Un solo estado de pago, porque es un solo depósito.
+         *
+         * Aquí había dos cuadros con dos insignias —«Pago del evento» y «Pago
+         * del taller»— y eso describía cómo lo lleva Servicios Financieros por
+         * dentro, no lo que hizo el alumno: desde el 2026-09-25 deposita una
+         * vez y entrega un voucher. Dos insignias para un papel es la pregunta
+         * que acaba en soporte.
+         *
+         * Los dos conceptos siguen ahí y siguen pudiendo no coincidir; lo que
+         * cambia es cuál se enseña, y lo decide `estadoDelDeposito`: la
+         * discrepancia gana, y si no, lo menos avanzado. Así nadie lee «pagado»
+         * con la mitad sin registrar.
+         */}
         <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
-          <p className="text-xs text-muted-foreground">Pago del evento</p>
+          <p className="text-xs text-muted-foreground">Tu pago</p>
           <div className="mt-2">
-            <EstadoPagoBadge estado={estado.evento} />
+            <EstadoPagoBadge estado={estadoDelDeposito(estado)} />
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {estado.taller
+              ? "Un solo depósito, por el evento y el taller."
+              : "Un solo depósito, por el evento."}
+          </p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
-          <p className="text-xs text-muted-foreground">Pago del taller</p>
-          <div className="mt-2">
-            {estado.taller ? (
-              <EstadoPagoBadge estado={estado.taller} />
-            ) : (
-              <span className="text-sm text-muted-foreground">Sin taller seleccionado</span>
-            )}
-          </div>
+          <p className="text-xs text-muted-foreground">Tu taller</p>
+          {taller ? (
+            <p className="mt-2 text-sm font-semibold text-pretty">{taller.nombre}</p>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">Sin taller seleccionado</p>
+          )}
           {/*
            * Con la fecha, la hora y el lugar, porque el recuadro de abajo —«Tu
            * asistencia presencial»— dice cuándo y dónde son las ponencias, y el
@@ -320,8 +337,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
            */}
           {taller ? (
             <div className="mt-2 text-xs text-muted-foreground">
-              <p>{taller.nombre}</p>
-              {fechasTaller ? <p className="mt-0.5 font-medium">{fechasTaller}</p> : null}
+              {fechasTaller ? <p className="font-medium">{fechasTaller}</p> : null}
               <p className="mt-0.5">
                 {taller.horario} · {sitioDelTaller(taller)}
               </p>

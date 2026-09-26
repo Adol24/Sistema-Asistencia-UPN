@@ -105,6 +105,46 @@ export const alCorriente = (estado: {
 }): boolean => estado.evento === "pagado" && (!estado.taller || estado.taller === "pagado");
 
 /**
+ * El estado del DEPÓSITO, que desde el 2026-09-25 es uno solo.
+ *
+ * Por dentro siguen existiendo dos conceptos y Servicios Financieros sigue
+ * confirmando cada uno por su lado; por fuera el alumno hizo un único depósito
+ * y presentó un único voucher. Enseñarle dos estados de pago por un papel que
+ * entregó una vez es la pregunta que llega a soporte: «¿por qué me piden dos
+ * pagos si solo hice uno?».
+ *
+ * El orden de abajo es el de qué contar primero cuando los dos conceptos no
+ * dicen lo mismo, y se lee de arriba abajo:
+ *
+ * - `discrepancia` gana a todo, incluso a un `pagado` del otro concepto: es lo
+ *   único que exige ir a resolverlo en persona, y callarlo porque la otra mitad
+ *   cuadra es justo cómo se pierde.
+ * - Después, lo menos avanzado. Quien tiene el evento pagado y el taller sin
+ *   registrar todavía debe algo, y decirle «pagado» le haría creer que terminó.
+ * - `pagado` solo cuando los dos lo están.
+ *
+ * `alCorriente` sigue existiendo y sigue sirviendo para otra cosa: contesta sí
+ * o no, y los paneles internos lo usan para contar. Esto devuelve CUÁL de los
+ * seis estados enseñar.
+ */
+const URGENCIA: Record<EstadoPago, number> = {
+  discrepancia: 6,
+  cancelado: 5,
+  expirado: 4,
+  pre_registrado: 3,
+  comprobante_recibido: 2,
+  pagado: 1,
+};
+
+export const estadoDelDeposito = (estado: {
+  evento: EstadoPago;
+  taller: EstadoPago | undefined;
+}): EstadoPago =>
+  !estado.taller || URGENCIA[estado.evento] >= URGENCIA[estado.taller]
+    ? estado.evento
+    : estado.taller;
+
+/**
  * Cómo queda un concepto según lo depositado.
  *
  * **Quien captura no lo elige**: lo decide la comparación. Está escrito así en

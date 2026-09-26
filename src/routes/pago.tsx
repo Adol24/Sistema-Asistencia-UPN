@@ -12,6 +12,7 @@ import { fechaYHoraTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { abreLaPuerta } from "@/lib/pagos-logica";
+import { depositoDe } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
 
 export const Route = createFileRoute("/pago")({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/pago")({
       // Sin nombrar el departamento: una `meta` se arma antes de que llegue la
       // configuración, así que no puede leer `ventanilla_lugar` y cualquier
       // nombre escrito aquí envejece con el primer cambio de sitio.
-      "Datos bancarios, montos, fecha límite y entrega de vouchers en ventanilla para completar tu registro al XIV Encuentro Internacional de Educación.",
+      "Datos bancarios, monto único, concepto, fecha límite y entrega del voucher en ventanilla para completar tu registro al XIV Encuentro Internacional de Educación.",
     ),
   component: Pago,
 });
@@ -81,8 +82,12 @@ function Pago() {
   // es sin tener que abrirla y leer el folio.
   const nombre = borrador.nombre ?? participante?.nombre ?? "";
   const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
+  // Un solo depósito y un solo voucher, con el concepto que le toca. La regla
+  // vive en `lib/deposito.ts`; aquí solo se dibuja.
+  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
   const [ampliada, setAmpliada] = useState<string | null>(null);
   const [copiadoFolio, setCopiadoFolio] = useState(false);
+  const [copiadoConcepto, setCopiadoConcepto] = useState(false);
 
   return (
     <PantallaPublica titulo="Instrucciones de pago" ancho="xl">
@@ -195,42 +200,65 @@ function Pago() {
 
         {/* La columna larga: todo lo que hay que hacer con ese folio. */}
         <div>
+          {/*
+            Esto decía lo contrario hasta el 2026-09-25: «son DOS depósitos por
+            separado, debes presentar DOS vouchers distintos». Se cambió la
+            regla, y este cartel es el sitio donde más caro salía dejarla vieja:
+            quien lo leyera se iría al banco a hacer dos depósitos y llegaría a
+            ventanilla con dos vouchers que ya no se reciben así.
+
+            Sigue en rojo y sigue arriba del todo por el mismo motivo por el que
+            estaba: es lo único de esta pantalla que, si se pasa por alto,
+            obliga a volver al banco.
+          */}
           <div className="rounded-lg border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-4 lg:p-5">
             <p className="flex items-start gap-2 text-sm font-bold text-estado-discrepancia">
               <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
-              IMPORTANTE: son DOS depósitos por separado. Debes presentar DOS vouchers distintos.
+              IMPORTANTE: es UN SOLO depósito y UN SOLO voucher.
+              {deposito.llevaTaller
+                ? " El taller va incluido en el mismo pago, no se deposita aparte."
+                : null}
             </p>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {/*
-             * Sin «Concepto: ENCUENTRO-PRE-00842».
-             *
-             * Era un código que este sistema se inventaba y que no usa nadie
-             * más: ni el banco lo pide en la ficha, ni Aportaciones lo busca al
-             * recibir. Lo que la tarjeta tiene que decir es cuántos depósitos
-             * son y de cuánto es cada uno; el folio ya está arriba, en grande y
-             * con su botón de copiar, que es donde hay que ir a buscarlo.
-             */}
-            <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
-              <Rotulo>Depósito 1 — Evento</Rotulo>
-              <p className="mt-2 text-2xl font-bold">{moneda(evento.cuotaEvento)}</p>
-            </article>
-            {taller ? (
-              <article className="rounded-lg border border-border bg-card p-4 lg:p-5">
-                <Rotulo>Depósito 2 — Taller</Rotulo>
-                <p className="mt-2 text-2xl font-bold">{moneda(taller.costo)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{taller.nombre}</p>
-              </article>
+          {/*
+           * Una sola tarjeta, y el total en grande.
+           *
+           * Antes eran dos, una por depósito, y el número que el alumno tenía
+           * que llevarse al banco —cuánto deposita— no aparecía en ninguna: lo
+           * tenía que sumar él. Ahora el total es lo primero que se lee y el
+           * desglose va debajo en pequeño, que es el orden en que se necesita.
+           *
+           * Sigue sin haber «Concepto: ENCUENTRO-PRE-00842». Aquel era un
+           * código que este sistema se inventaba y que no usa nadie más: ni el
+           * banco lo pide en la ficha, ni Aportaciones lo busca al recibir. El
+           * concepto que SÍ existe es la frase que se escribe a mano junto al
+           * voucher, y tiene su propio bloque más abajo.
+           */}
+          <article className="mt-4 rounded-lg border border-border bg-card p-4 lg:p-5">
+            <Rotulo>Cuánto depositar</Rotulo>
+            <p className="mt-2 text-4xl font-extrabold tracking-tight">{moneda(deposito.total)}</p>
+            {deposito.llevaTaller && taller ? (
+              <dl className="mt-3 space-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
+                <div className="flex justify-between gap-4">
+                  <dt>Evento</dt>
+                  <dd className="tabular-nums">{moneda(deposito.cuotaEvento)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="min-w-0">
+                    Taller
+                    <span className="block text-xs">{taller.nombre}</span>
+                  </dt>
+                  <dd className="tabular-nums">{moneda(deposito.costoTaller ?? 0)}</dd>
+                </div>
+              </dl>
             ) : (
-              <article className="rounded-lg border border-dashed border-border bg-muted/40 p-4">
-                <Rotulo>Depósito 2 — Taller</Rotulo>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No seleccionaste taller, solo debes hacer el depósito del evento.
-                </p>
-              </article>
+              <p className="mt-2 text-sm text-muted-foreground">
+                No seleccionaste taller, así que es solo la cuota del evento.
+              </p>
             )}
-          </div>
+            <p className="mt-3 text-sm font-medium">Todo en un mismo depósito. No hagas dos.</p>
+          </article>
 
           <section className="mt-6">
             <h2 className="text-base font-semibold">Datos bancarios</h2>
@@ -288,6 +316,50 @@ function Pago() {
               </li>
               <li>Pasa a ventanilla con esa hoja.</li>
             </ol>
+
+            {/*
+             * El concepto, literal.
+             *
+             * La lista de arriba pedía «…grupo y concepto» y ahí se acababa: en
+             * ninguna parte decía QUÉ concepto. Cada quien escribía lo que le
+             * parecía —«pago del encuentro», «taller», el nombre del taller— y
+             * en ventanilla eso es una hoja que hay que devolver.
+             *
+             * Va fuera de la lista y en su propio recuadro porque no es un paso
+             * más: es el texto que hay que copiar tal cual, y dentro del punto
+             * 2 quedaba como una aclaración entre otras seis palabras.
+             *
+             * La frase cambia con el taller, y por eso no está escrita aquí:
+             * sale de `depositoDe`, que es lo que garantiza que el concepto y
+             * el importe de arriba hablen siempre del mismo depósito.
+             */}
+            <div className="mt-4 rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
+              <Rotulo>El concepto que debes anotar</Rotulo>
+              <p className="mt-2 text-pretty text-base font-semibold leading-snug">
+                {deposito.concepto}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Cópialo tal cual, completo y con las siglas del final.
+                {deposito.llevaTaller
+                  ? " Menciona el taller porque va en el mismo depósito."
+                  : " Si después agregas un taller, el concepto cambia: vuelve a esta pantalla."}
+              </p>
+              <div className="mt-3 print:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-11"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(deposito.concepto);
+                    setCopiadoConcepto(true);
+                    setTimeout(() => setCopiadoConcepto(false), 1800);
+                  }}
+                >
+                  {copiadoConcepto ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {copiadoConcepto ? "Concepto copiado" : "Copiar el concepto"}
+                </Button>
+              </div>
+            </div>
           </section>
 
           {/*
@@ -324,7 +396,7 @@ function Pago() {
             <h2 className="text-sm font-semibold">Qué llevar</h2>
             <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
               <li>Credencial vigente</li>
-              <li>Voucher original (uno por cada depósito)</li>
+              <li>Voucher original (uno solo, del depósito completo)</li>
               <li>Folio impreso o en pantalla</li>
             </ul>
           </section>

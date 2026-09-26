@@ -260,7 +260,7 @@ function CatalogoTalleres() {
       descripcion={
         sinTalleres
           ? "Continúa: tu registro al Encuentro no depende de esto."
-          : "Puedes elegir máximo uno, de cualquier día, con costo adicional que se paga por separado. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
+          : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
       }
     >
       {seleccion ? (
@@ -405,9 +405,10 @@ function CatalogoTalleres() {
                    *
                    * Lo pidió la organización: la cifra iba en grande, pegada al
                    * botón de seleccionar, y ahí lo que hace falta saber es si
-                   * queda lugar. Que el taller se paga por separado lo sigue
+                   * queda lugar. Que el taller tiene un costo lo sigue
                    * advirtiendo la descripción de arriba, sin número, para que
-                   * nadie elija creyendo que es gratis.
+                   * nadie elija creyendo que es gratis. Ya no dice «por
+                   * separado»: desde el 2026-09-25 se suma al mismo depósito.
                    *
                    * El monto vive en /pago, que es la pantalla desde la que se va
                    * al banco, y en el comprobante. Quitarlo de ahí sería pedir un

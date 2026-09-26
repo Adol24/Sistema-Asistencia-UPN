@@ -111,8 +111,16 @@ function FichaDe({ p }: { p: Participante }) {
           <div className="rounded-lg border border-primary/30 bg-secondary px-4 py-3 text-right">
             <Rotulo>Total esperado</Rotulo>
             <p className="text-2xl font-extrabold tabular-nums">{moneda(totalEsperado)}</p>
+            {/*
+              Un solo depósito desde el 2026-09-25, lleve taller o no. Aquí
+              decía «en dos depósitos» cuando hay taller, y esta pantalla la lee
+              quien tiene el voucher delante: un voucher único por el total, que
+              según este renglón tendría que ser dos. Por dentro se siguen
+              confirmando los dos conceptos, y eso es lo que dice el desglose de
+              abajo; lo que cambia es cuántos papeles trae la persona.
+            */}
             <p className="text-xs text-muted-foreground">
-              {taller ? "Evento + taller, en dos depósitos" : "Solo evento, un depósito"}
+              {taller ? "Evento + taller, en un solo depósito" : "Solo evento, un depósito"}
             </p>
           </div>
         </div>

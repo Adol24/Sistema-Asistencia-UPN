@@ -9,6 +9,7 @@ import { avanceTexto } from "@/dominio/catalogos";
 import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { depositoDe } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/comprobante")({
   head: () =>
     meta(
       "Comprobante de pre-registro — XIV Encuentro Internacional de Educación",
-      "Resumen de tu pre-registro: folio, perfil, día, lugar, taller y montos por pagar del XIV Encuentro Internacional de Educación.",
+      "Resumen de tu pre-registro: folio, perfil, día, lugar, taller, el total por pagar y el concepto del depósito del XIV Encuentro Internacional de Educación.",
     ),
   component: Comprobante,
 });
@@ -36,7 +37,15 @@ function Comprobante() {
   const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);
   const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
   const nombre = borrador.nombre ?? participante?.nombre;
-  const total = evento.cuotaEvento + (taller?.costo ?? 0);
+  /*
+   * El total y el concepto salen de `depositoDe`, no de una suma escrita aquí.
+   *
+   * Eran dos sumas idénticas —esta y la de `/pago`— y ese es exactamente el
+   * arreglo que hace falta ahora que además hay un concepto que depende de lo
+   * mismo: un papel que diga 600 con el concepto de solo evento manda a
+   * ventanilla una hoja que hay que devolver.
+   */
+  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
   /*
    * Los días del taller, en fechas.
    *
@@ -217,9 +226,25 @@ function Comprobante() {
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">
-                    Total por pagar (en dos depósitos)
+                    Total por pagar (en un solo depósito)
                   </dt>
-                  <dd className="text-lg font-bold tabular-nums">{moneda(total)}</dd>
+                  <dd className="text-lg font-bold tabular-nums">{moneda(deposito.total)}</dd>
+                </div>
+                {/*
+                 * El concepto también va en este papel, y no solo en `/pago`.
+                 *
+                 * Este es el que se imprime y el que se lleva al banco; la
+                 * pantalla de instrucciones se lee una vez y se cierra. Dejar
+                 * el concepto solo allí obligaba a volver a buscarlo justo
+                 * cuando ya no se tiene el teléfono a mano.
+                 *
+                 * `sm:col-span-2` porque es una frase larga dentro de una
+                 * rejilla de datos cortos: en media columna se parte en cinco
+                 * renglones.
+                 */}
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted-foreground">Concepto que debes anotar</dt>
+                  <dd className="text-pretty font-medium leading-snug">{deposito.concepto}</dd>
                 </div>
               </dl>
               {/*
@@ -324,7 +349,7 @@ function Comprobante() {
           ) : null}
 
           <p className="mt-6 text-center text-sm text-muted-foreground lg:mt-4 lg:text-left">
-            Siguiente paso: haz tus depósitos y entrega los vouchers antes del{" "}
+            Siguiente paso: haz tu depósito y entrega tu voucher antes del{" "}
             {fechaLimiteTexto(evento.fechaLimite)}.{" "}
             <Link to="/portal" className="font-semibold text-primary underline">
               Consulta tu estado en el portal

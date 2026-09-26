@@ -34,7 +34,9 @@ import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/form
 import { asistenciaDe, estaDentro, movimientosDe } from "@/lib/escaneo";
 import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
-import { referenciaValida, resultadoDe } from "@/lib/pagos-logica";
+import { estadoDelDeposito, referenciaValida, resultadoDe } from "@/lib/pagos-logica";
+import { depositoDe } from "@/lib/deposito";
+import type { EstadoPago } from "@/dominio/tipos";
 import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
   estadoDeVentana,
@@ -589,6 +591,76 @@ console.log("\n=== SIN HUELLA NO HAY DUPLICADO ===\n");
   const conHuella = [ev("d", h), ev("e", h), ev("f", "")];
   igual("dos que comparten huella SÍ se agrupan", gruposDuplicados(conHuella).size, 1);
   igual("y se ven la una a la otra", gemelasDe(conHuella, conHuella[0]!).length, 1);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== UN SOLO DEPOSITO, UN SOLO CONCEPTO ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * El alumno deposita una vez y escribe a mano un concepto que depende de si
+ * lleva taller. Las dos cosas se deciden en la misma función a propósito: un
+ * papel que diga 600 con el concepto de solo evento es una hoja que ventanilla
+ * devuelve, y esa pareja solo se puede romper si alguien vuelve a calcular el
+ * total por su cuenta.
+ *
+ * Los importes de abajo son los de producción el 2026-09-25: cuota 500 y los
+ * doce talleres a 100. Si cambian, estas cifras cambian con ellos; lo que se
+ * comprueba aquí es que el total sea la suma y que el concepto la acompañe.
+ */
+{
+  const solo = depositoDe(500);
+  igual("solo evento: un depósito de 500", solo.total, 500);
+  igual("solo evento: no lleva taller", solo.llevaTaller, false);
+  igual(
+    "solo evento: el concepto es el corto",
+    solo.concepto,
+    "Cuota de recuperación Curso de Formación Continua (XIV EIE)",
+  );
+
+  const conTaller = depositoDe(500, 100);
+  igual("evento y taller: un depósito de 600", conTaller.total, 600);
+  igual("evento y taller: lleva taller", conTaller.llevaTaller, true);
+  igual(
+    "evento y taller: el concepto nombra el taller",
+    conTaller.concepto,
+    "Cuota de recuperación Curso de Formación Continua y Taller de Formación Continua (XIV EIE)",
+  );
+
+  // `getTaller` devuelve `undefined`, no `null`, y las dos pantallas se lo
+  // pasan tal cual. Tratarlos distinto dejaría un total de 500 con NaN.
+  igual("sin taller vale undefined igual que null", depositoDe(500, null), depositoDe(500));
+  igual("un taller gratis sí cuenta como taller", depositoDe(500, 0).llevaTaller, true);
+  igual("y su concepto sigue siendo el largo", depositoDe(500, 0).concepto, conTaller.concepto);
+}
+
+/*
+ * Y el estado que ve el alumno en su portal, que ahora es uno.
+ *
+ * Por dentro siguen siendo dos conceptos: lo que se comprueba es cuál de los
+ * dos se enseña cuando no coinciden.
+ */
+{
+  const e = (evento: EstadoPago, taller?: EstadoPago) => estadoDelDeposito({ evento, taller });
+
+  igual("los dos pagados: pagado", e("pagado", "pagado"), "pagado");
+  igual("sin taller, manda el evento", e("pagado"), "pagado");
+  igual(
+    "evento pagado y taller sin registrar: todavía debe",
+    e("pagado", "pre_registrado"),
+    "pre_registrado",
+  );
+  igual(
+    "una discrepancia gana aunque la otra mitad cuadre",
+    e("pagado", "discrepancia"),
+    "discrepancia",
+  );
+  igual("y gana en cualquier orden", e("discrepancia", "pagado"), "discrepancia");
+  igual(
+    "comprobante recibido pesa más que pagado",
+    e("pagado", "comprobante_recibido"),
+    "comprobante_recibido",
+  );
+  igual("expirado gana a pre_registrado", e("expirado", "pre_registrado"), "expirado");
 }
 
 console.log(fallas === 0 ? "\nLA CONFIGURACIÓN SE GUARDA" : `\n${fallas} PROBLEMAS`);
