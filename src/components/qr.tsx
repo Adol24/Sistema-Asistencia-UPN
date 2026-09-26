@@ -178,10 +178,11 @@ export async function pngDelPase(
      * llevaba un `pase-PRE-00847.png` idéntico al de quien ya pagó, y el
      * parámetro le estampaba «TODAVÍA NO ABRE LA PUERTA».
      *
-     * Ese caso ya no existe: sin pago confirmado no se enseña el código ni se
-     * ofrece descargarlo, así que toda imagen que salga de aquí es de un pase
-     * de verdad. Se deja el campo —y no el sello— para que la llamada siga
-     * diciendo en voz alta qué está generando.
+     * Ese caso ya no existe, y no porque no se descargue nada antes de pagar
+     * —sí se descarga— sino porque esa descarga sale de `pngDelCodigoDePago`,
+     * que es otra imagen: sin sigla, sin nombre y rotulada para la ventanilla.
+     * Toda imagen que salga de AQUÍ es de un pase de verdad. Se deja el campo
+     * —y no el sello— para que la llamada siga diciendo qué está generando.
      */
     activo: true;
   },
@@ -269,11 +270,97 @@ export async function pngDelPase(
    * que la advertencia viajara con el archivo y no solo en la pantalla que lo
    * generó —un pie de foto en la web no se ve meses después en una galería—.
    *
-   * Se va porque el archivo que advertía ya no se produce: sin pago confirmado
-   * no se enseña el código ni se ofrece descargarlo. Un sello que nunca se
-   * dibuja es peor que ninguno, porque hace creer que la salvaguarda sigue
-   * puesta. La salvaguarda ahora es no generar la imagen.
+   * Se va porque el archivo que advertía ya no se produce: quien no ha pagado y
+   * descarga su código se lleva `codigo-pago-*.png`, que dice para qué sirve en
+   * vez de advertir para qué no. Un sello que nunca se dibuja es peor que
+   * ninguno, porque hace creer que la salvaguarda sigue puesta. La salvaguarda
+   * ahora es que estas dos imágenes son distintas y se llaman distinto.
    */
+
+  return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
+}
+
+/**
+ * El código de antes del pago como imagen, para la fila de la ventanilla.
+ *
+ * Es la misma codificación y los mismos colores que el pase —un lector tiene que
+ * leer los dos igual de bien—, pero **sin la sigla en el centro y sin el nombre
+ * de la persona**. Esos dos remates son lo que convierte una imagen en una
+ * credencial a ojos de quien la mira, y esta no lo es: sirve para que en la
+ * ventanilla la lean con la cámara, y nada más.
+ *
+ * Lo que sí lleva es texto que la explica sola. Una imagen suelta en la galería
+ * del teléfono, semanas después, tiene que decir qué es sin la pantalla que la
+ * generó; si no, el día del evento alguien la enseñará en la puerta creyendo que
+ * era su pase. Que la puerta lo rechace no quita que se lleve el chasco en la
+ * fila equivocada.
+ */
+// Comparte la codificación y el criterio de contraste con el componente y con
+// `pngDelPase`: separarlos obligaría a mantener tres veces la misma decisión.
+// eslint-disable-next-line react-refresh/only-export-components
+export async function pngDelCodigoDePago(
+  valor: string,
+  datos: { lugar: string },
+): Promise<Blob | null> {
+  const qr = encode(valor, { ecc: "H", border: 4 });
+  const n = qr.size;
+
+  const modulo = 16;
+  const lado = n * modulo;
+  const margen = 48;
+  /*
+   * Cuatro renglones: folio, para qué es, y el sitio en DOS.
+   *
+   * La instrucción y el lugar iban en uno solo —«Muéstralo al entregar tu voucher
+   * en Departamento de Aportaciones»— y no cabía: un folio corto da un símbolo de
+   * unos 620 px de ancho, y esa frase a 24 px pide más de 700. `recortar` hacía su
+   * trabajo y la imagen salía diciendo «…en Departamen…», o sea escondiendo justo
+   * el dato por el que alguien abre esta imagen semanas después.
+   *
+   * Partido en dos, el lugar tiene el renglón entero para él y solo se recorta si
+   * el nombre configurado es larguísimo.
+   */
+  const alturaTexto = 222;
+
+  const lienzo = document.createElement("canvas");
+  lienzo.width = lado + margen * 2;
+  lienzo.height = lado + margen + alturaTexto;
+  const ctx = lienzo.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+
+  // Sin `huecoSeguro`: el símbolo va completo, que además es lo más legible.
+  for (let f = 0; f < n; f++)
+    for (let c = 0; c < n; c++) {
+      if (!qr.data[f]?.[c]) continue;
+      ctx.fillStyle = qr.types[f]?.[c] === QrCodeDataType.Position ? "#0047BB" : "#0B1220";
+      ctx.fillRect(margen + c * modulo, margen + f * modulo, modulo, modulo);
+    }
+
+  const centro = lienzo.width / 2;
+  let y = margen + lado + 46;
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#0B1220";
+  ctx.font = "bold 44px ui-monospace, 'Courier New', monospace";
+  ctx.fillText(valor, centro, y);
+
+  y += 44;
+  ctx.fillStyle = "#0047BB";
+  ctx.font = "bold 26px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText("CÓDIGO PARA TU PAGO", centro, y);
+
+  y += 36;
+  ctx.fillStyle = "#334155";
+  ctx.font = "23px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText("Muéstralo al entregar tu voucher en", centro, y);
+
+  y += 32;
+  ctx.fillStyle = "#0B1220";
+  ctx.font = "bold 23px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText(recortar(ctx, datos.lugar, lienzo.width - margen), centro, y);
 
   return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
 }

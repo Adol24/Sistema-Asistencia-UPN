@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Loader2, Share2 } from "lucide-react";
+import { Camera, Download, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { CodigoQR, pngDelPase } from "@/components/qr";
@@ -54,6 +54,41 @@ export function CodigoParaPagar({
   /** El siguiente paso, que sí es distinto en cada pantalla. */
   children?: React.ReactNode;
 }) {
+  const donde = lugar?.trim() || "ventanilla";
+  const [descargando, setDescargando] = useState(false);
+
+  /*
+   * Descargar el código, y solo descargar.
+   *
+   * No hay botón de compartir como en el pase. Compartir abre el menú del
+   * sistema, que es el camino para dejar una imagen en WhatsApp, y este archivo
+   * no está hecho para viajar entre personas: es el folio de UNA, y en la fila
+   * del pago sirve a quien lo trae. La captura de pantalla —la leyenda de
+   * abajo— cubre el caso de guardarlo sin pasar por la carpeta de descargas.
+   */
+  const descargar = async () => {
+    setDescargando(true);
+    try {
+      const { pngDelCodigoDePago } = await import("@/components/qr");
+      const blob = await pngDelCodigoDePago(folio, { lugar: donde });
+      if (!blob) throw new Error("El navegador no pudo generar la imagen");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // El nombre importa: `pase-*.png` es el otro archivo, el que sí abre la
+      // puerta. Dos imágenes del mismo folio en la misma galería tienen que
+      // poder distinguirse por el nombre, sin abrirlas.
+      a.download = `codigo-pago-${folio}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Descargamos tu código.");
+    } catch {
+      toast.error("No pudimos generar la imagen. Toma una captura de pantalla.");
+    } finally {
+      setDescargando(false);
+    }
+  };
+
   return (
     <div className="mt-3 text-center">
       {/*
@@ -73,13 +108,44 @@ export function CodigoParaPagar({
         «a su manera», volvemos a tener tres versiones de un solo hecho.
       */}
       <p className="mx-auto mt-1 max-w-xs text-pretty text-xs text-muted-foreground">
-        Muéstralo en {lugar?.trim() || "ventanilla"} cuando entregues tu voucher: con él te atienden
-        sin dictar tu folio.
+        Muéstralo en {donde} cuando entregues tu voucher: con él te atienden sin dictar tu folio.
       </p>
 
       <p className="mt-2 text-xs text-muted-foreground">
         Folio <span className="font-mono font-semibold text-foreground">{folio}</span>
       </p>
+
+      {/*
+        Las dos formas de conservarlo, y la leyenda va PRIMERO a propósito.
+        ------------------------------------------------------------------
+        La captura de pantalla es la que de verdad usa la gente, no necesita
+        permisos ni carpeta de descargas, y es la única que funciona igual en
+        cualquier teléfono. El botón está debajo para quien prefiera el archivo.
+
+        `print:hidden` porque esto se imprime desde el comprobante: un botón en
+        papel es tinta gastada, y la frase sobre la captura no le dice nada a
+        quien ya tiene la hoja en la mano.
+      */}
+      <p className="mx-auto mt-3 flex max-w-xs items-start gap-2 rounded-md bg-muted p-2.5 text-left text-xs print:hidden">
+        <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        Toma una captura de pantalla: en la fila no necesitas internet para mostrar tu código.
+      </p>
+
+      <div className="mt-2 flex justify-center print:hidden">
+        <Button
+          variant="outline"
+          className="h-11"
+          disabled={descargando}
+          onClick={() => void descargar()}
+        >
+          {descargando ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <Download className="size-4" aria-hidden />
+          )}
+          Descargar mi código
+        </Button>
+      </div>
       {children}
     </div>
   );
@@ -98,9 +164,11 @@ export function CodigoParaPagar({
  * compartir archivos, en vez de ofrecer un botón que no haría nada.
  *
  * Recibía un `activo` para poder descargar también el folio sin pagar, con el
- * archivo llamado `folio-*.png` en vez de `pase-*.png`. Ya no hay tal caso:
- * antes de confirmarse el pago no hay imagen que llevarse, así que estas
- * acciones solo se dibujan cuando el pase existe y son siempre del pase.
+ * archivo llamado `folio-*.png` en vez de `pase-*.png`. Ese parámetro ya no
+ * hace falta, y no porque antes de pagar no haya nada que llevarse: hay
+ * `codigo-pago-*.png`, que lo genera `CodigoParaPagar` con su propio botón. Son
+ * dos archivos distintos para dos cosas distintas, así que estas acciones solo
+ * se dibujan cuando el pase existe y son siempre del pase.
  */
 export function AccionesDelPase({
   folio,
