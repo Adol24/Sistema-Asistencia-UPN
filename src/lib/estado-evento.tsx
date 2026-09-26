@@ -1820,6 +1820,59 @@ export function EstadoEventoProvider({
    * Así que se espera, y el estado se actualiza con lo que la base devolvió
    * —nombre en mayúsculas y sin acentos incluido—, no con lo que se tecleó.
    */
+  /*
+   * El taller de alguien ya pre-registrado, y tampoco usa `escribir`.
+   *
+   * Por lo mismo que el alta en mesa: los rechazos de esta llamada son
+   * información, no un contratiempo. «Ese taller ya no tiene lugares» y «ese
+   * folio ya depositó» son las dos respuestas que quien está atendiendo necesita
+   * leer ANTES de decirle algo a la persona del otro lado. Pintado primero y
+   * corregido después, se le habría dicho que ya tiene taller a alguien que no.
+   *
+   * El ajuste se aplica con lo que el catálogo dice del taller, y solo después
+   * de que la base contestó sí: es ella la que lleva el cupo con su cerrojo, y
+   * adivinarlo aquí sería una segunda opinión sin autoridad.
+   *
+   * La clave del ajuste es el folio que DEVUELVE la función, no el que se mandó:
+   * la base lo normaliza a mayúsculas y sin espacios, y `ajustesParticipante` se
+   * indexa por el folio tal como lo trae el participante.
+   */
+  const asignarTaller = useCallback<Ctx["asignarTaller"]>(
+    async (folio, clave) => {
+      if (!hayBaseDeDatos)
+        throw new Error("Sin base de datos configurada no se puede asignar un taller.");
+      const d = await import("@/lib/datos");
+      const r = await d.asignarTaller(folio, clave);
+
+      /*
+       * `x.id === clave`, y no es una confusión: en la aplicación el
+       * identificador de un taller ES su clave. `aTallerBase` hace `id: f.clave`
+       * y `aParticipante` traduce el uuid de la vista con `clavePorId`, así que
+       * `Taller.id` y `Participante.tallerId` valen «T01». El uuid solo existe
+       * dentro de la base, y `fn_asignar_taller` también habla de claves.
+       */
+      const t = clave ? talleres.find((x) => x.id === clave) : undefined;
+      setAjustesParticipante((prev) => ({
+        ...prev,
+        [r.folio]: {
+          ...(prev[r.folio] ?? {}),
+          tallerId: t?.id,
+          montoEsperadoTaller: t?.costo,
+          /*
+           * `pre_registrado`, y se puede afirmar: la función rechaza si existe
+           * cualquier pago, así que quien llega aquí no tiene ninguno y su
+           * concepto nuevo nace donde nace el del evento de quien no ha
+           * depositado. Al quitar el taller no queda concepto que tenga estado.
+           */
+          estadoPagoTaller: t ? "pre_registrado" : undefined,
+        },
+      }));
+      // La bitácora NO se escribe aquí: `fn_asignar_taller` la anota con
+      // `auth.uid()` dentro de la misma transacción que mueve el taller.
+    },
+    [talleres],
+  );
+
   const altaAsistidaPadron = useCallback<Ctx["altaAsistidaPadron"]>(async (datos) => {
     if (!hayBaseDeDatos)
       throw new Error("Sin base de datos configurada no se puede dar de alta a nadie.");
@@ -1968,6 +2021,7 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
+      asignarTaller,
       /*
        * Lo de esta sesión primero y lo ya anotado debajo, que es el orden en
        * que se busca: se entra a la bitácora a comprobar lo que se acaba de
@@ -2044,6 +2098,7 @@ export function EstadoEventoProvider({
       repartirDiasPendientes,
       reasignarDia,
       asignarDiaAVarios,
+      asignarTaller,
       bitacoraDeVista,
       registrarBitacora,
       usuarioActual,

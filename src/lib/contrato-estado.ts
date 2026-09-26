@@ -279,6 +279,24 @@ export interface Ctx {
   asignarDiaAVarios: (matriculas: string[], dia: Dia) => { movidos: number };
 
   /**
+   * Asigna —o quita, con `clave` nula— el taller de alguien ya pre-registrado.
+   *
+   * Es la única forma de cambiarlo después de cerrar el pre-registro: `/talleres`
+   * se cierra en cuanto hay folio y no había ninguna pantalla interna que lo
+   * hiciera. Solo administración y soporte; la base lo comprueba con `tiene_rol`.
+   *
+   * Es `async` y **propaga el error** por lo mismo que `altaAsistidaPadron`: los
+   * rechazos son la información que hace falta en el momento —el taller sin
+   * cupo, el folio que ya depositó— y no algo que se arregle recargando. El
+   * estado local solo se mueve cuando la base ya dijo sí.
+   *
+   * El depósito lo cierra: quien ya pagó va a Servicios Financieros, porque el
+   * taller viaja en el mismo depósito y su concepto ya está escrito en el voucher
+   * que entregó.
+   */
+  asignarTaller: (folio: string, clave: string | null) => Promise<void>;
+
+  /**
    * Guarda el padrón en la base y dice qué aceptó y qué no.
    *
    * Separada de `aplicarPadron` —que actualiza la pantalla— porque escribir

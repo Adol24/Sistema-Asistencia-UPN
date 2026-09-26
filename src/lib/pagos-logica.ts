@@ -95,6 +95,27 @@ export const porVencer = (e: EstadoPago): boolean =>
   e === "pre_registrado" || e === "comprobante_recibido";
 
 /**
+ * No hay NINGUNA fila de pago de ese concepto. No es lo mismo que «no pagó».
+ *
+ * Se lee directamente de cómo deriva `v_estado_pago`: sus cinco ramas dependen
+ * de `count(pagos)`, y solo dos de ellas se alcanzan con cero filas —
+ * `pre_registrado` antes de la fecha límite y `expirado` después—. Las otras
+ * tres (`comprobante_recibido`, `pagado`, `discrepancia`) exigen al menos un
+ * registro.
+ *
+ * Sirve para anticipar lo que `fn_asignar_taller` va a rechazar: el taller viaja
+ * en el mismo depósito desde el 2026-09-25, así que en cuanto existe una fila de
+ * pago el taller deja de poder moverse desde el panel. Preguntarlo así evita
+ * ofrecer un formulario que la base va a rechazar al enviarlo.
+ *
+ * NO se usa `sinAcreditar` para esto, aunque se parezca: incluye `cancelado`,
+ * que `v_estado_pago` no produce nunca, y excluye `expirado`, que sí significa
+ * cero filas. Son dos preguntas distintas —«¿pasa por la puerta?» y «¿hay
+ * dinero registrado?»— y compartir la respuesta las haría divergir en silencio.
+ */
+export const sinDeposito = (e: EstadoPago): boolean => e === "pre_registrado" || e === "expirado";
+
+/**
  * Debe TODO lo que se le puede cobrar. Al corriente es no deber nada: quien
  * tiene el evento pagado y el taller a medias sigue teniendo un cobro
  * pendiente, y contarlo entre los pagados es lo que haría que se le pasara.

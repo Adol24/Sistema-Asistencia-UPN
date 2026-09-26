@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, UserSearch } from "lucide-react";
+import { Download, Pencil, UserSearch } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
+import { AsignarTaller } from "@/components/asignar-taller";
 import { Buscador } from "@/components/buscador";
 import { Campo } from "@/components/tipografia";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
@@ -14,7 +15,7 @@ import { descargarCsv } from "@/lib/exportar";
 import { usePaginacion } from "@/lib/paginacion";
 import { avanceTexto } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
-import type { Dia, EstadoPago, Perfil } from "@/dominio/tipos";
+import type { Dia, EstadoPago, Participante, Perfil } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/preinscritos")({
   head: () =>
@@ -70,7 +71,17 @@ function enDoceHoras(fechaHora: string): string {
 }
 
 function Preinscritos() {
-  const { participantes, configuracion, infoDia, registrarBitacora } = useEstadoEvento();
+  const { participantes, configuracion, infoDia, registrarBitacora, talleres, asignarTaller } =
+    useEstadoEvento();
+  /*
+   * A quién se le está asignando el taller, o nulo si el diálogo está cerrado.
+   *
+   * Se guarda el FOLIO y no el participante entero: el objeto se rehace en cada
+   * carga y en cada ajuste local, así que uno guardado aquí quedaría congelado en
+   * cómo estaba al abrir. Con el folio, el diálogo siempre lee la versión de
+   * ahora —la que acaba de cambiar el guardado incluida—.
+   */
+  const [asignando, setAsignando] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [perfil, setPerfil] = useState<"todos" | Perfil>("todos");
   const [dia, setDia] = useState<"todos" | Dia>("todos");
@@ -144,6 +155,18 @@ function Preinscritos() {
     30,
     `${perfil}|${dia}|${programa}|${grupo}|${pago}|${desde}|${hasta}|${q}`,
   );
+
+  /*
+   * Del folio guardado al participante de ahora. Ver `asignando`: resolverlo en
+   * cada dibujo es lo que hace que el diálogo enseñe el taller recién guardado
+   * en vez del que había al abrirlo.
+   *
+   * Se busca en `participantes` y no en `visibles`: un filtro por taller o por
+   * pago puede sacar de la lista a la persona justo después de cambiarla, y el
+   * diálogo se cerraría solo a mitad de la confirmación.
+   */
+  const aAsignar: Participante | null =
+    (asignando ? participantes.find((p) => p.folio === asignando) : undefined) ?? null;
 
   const conPagoConfirmado = visibles.filter((p) => p.estadoPagoEvento === "pagado").length;
   const conTaller = visibles.filter((p) => p.tallerId).length;
@@ -428,7 +451,36 @@ function Preinscritos() {
                 {d.etiqueta}
                 <span className="block text-xs text-muted-foreground">{p.lugar}</span>
               </td>
-              <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{p.tallerId ?? "—"}</td>
+              {/*
+               * La celda deja de ser solo un dato y pasa a ser el sitio donde se
+               * cambia. Es la única forma que existe de darle un taller a quien
+               * cerró su pre-registro sin elegir ninguno: `/talleres` se cierra en
+               * cuanto hay folio y no había ninguna pantalla interna que lo hiciera.
+               *
+               * El botón no dice si se va a poder —el depósito ya hecho lo cierra—
+               * porque eso lo explica el diálogo con el motivo delante. Un botón
+               * desactivado en una tabla de once columnas no tiene sitio donde
+               * contar por qué, y sin el motivo se lee como un fallo.
+               */}
+              <td className="whitespace-nowrap px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs">{p.tallerId ?? "—"}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() => setAsignando(p.folio)}
+                    aria-label={
+                      p.tallerId
+                        ? `Cambiar el taller de ${p.folio}`
+                        : `Asignar un taller a ${p.folio}`
+                    }
+                  >
+                    <Pencil className="size-3.5" aria-hidden />
+                    <span className="text-xs">{p.tallerId ? "Cambiar" : "Asignar"}</span>
+                  </Button>
+                </div>
+              </td>
               <td className="px-3 py-2">
                 <EstadoPagoBadge estado={p.estadoPagoEvento} />
                 {p.estadoPagoTaller ? (
@@ -443,6 +495,21 @@ function Preinscritos() {
         tramo={tramo}
         nota="Exportar se lleva a quienes pasan el filtro, no solo esta página, y añade el contacto."
       />
+
+      {/*
+       * `key={folio}` para que cada persona estrene diálogo: dentro, la selección
+       * se siembra del taller que ya tiene, y sin la llave la del anterior
+       * sobreviviría al siguiente que se abriera.
+       */}
+      {aAsignar ? (
+        <AsignarTaller
+          key={aAsignar.folio}
+          participante={aAsignar}
+          talleres={talleres}
+          asignar={asignarTaller}
+          alCerrar={() => setAsignando(null)}
+        />
+      ) : null}
     </PantallaPanel>
   );
 }

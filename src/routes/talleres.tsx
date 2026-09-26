@@ -452,39 +452,69 @@ function CatalogoTalleres() {
        * perdió un paso. Y el segundo botón desaparece en vez de quedarse
        * desactivado para siempre, que es ruido con aspecto de algo que falta.
        */}
-      <div
-        className={cn(
-          "sticky bottom-0 mt-6 grid gap-2 border-t border-border bg-background/95 py-4 backdrop-blur",
-          sinTalleres ? "" : "sm:grid-cols-2",
-        )}
-      >
-        <Button
-          variant={sinTalleres ? "default" : "outline"}
-          className="h-12 md:h-11 text-base"
-          disabled={registrando}
-          onClick={() => void cerrarPreregistro(undefined)}
-        >
-          {/*
-           * Ya no hay paso de confirmación, y no es un descuido.
-           *
-           * Aquí se preguntaba «¿seguro que quieres quedarte sin taller?» a
-           * quien ya estaba registrado, porque continuar le borraba el suyo.
-           * Quien podía perder algo ya no llega a esta pantalla: la cierra
-           * `preregistroCerrado` unas líneas más arriba. Al que sí llega, este
-           * botón no le quita nada — todavía no tiene nada que quitar.
-           */}
-          {sinTalleres ? "Continuar" : "Continuar sin taller"}
-        </Button>
+      <div className="sticky bottom-0 mt-6 border-t border-border bg-background/95 py-4 backdrop-blur">
+        {/*
+         * Que esta es la oportunidad, dicho antes de pulsar.
+         *
+         * Faltaba, y es el origen del problema que veníamos parcheando por el
+         * otro extremo. La pantalla decía «an taller (opcional)» y ofrecía
+         * «Continuar sin taller» sin contar que esa puerta no se vuelve a abrir:
+         * quien salía por ahí no sabía que estaba decidiendo, y se enteraba días
+         * después en el portal, donde no hay nada que pulsar.
+         *
+         * Va aquí y no arriba a propósito. Arriba, junto a la descripción, se lee
+         * al llegar —cuando todavía se está mirando el catálogo y no hay nada que
+         * decidir— y se ha olvidado al bajar los once talleres. Pegado a los
+         * botones se lee en el momento de pulsar, que es cuando importa.
+         *
+         * No promete que soporte se lo cambie, y dice la condición de verdad: lo
+         * que cierra el taller es el DEPÓSITO, no el pre-registro. Mientras no
+         * haya depositado, `fn_asignar_taller` permite movérselo desde el panel;
+         * en cuanto deposita, el taller viaja en ese mismo depósito y su concepto
+         * ya está escrito en el voucher que entregó.
+         *
+         * Se calla sin talleres: advertir de una elección que no se ofreció hace
+         * dudar de si uno se perdió un paso.
+         */}
         {sinTalleres ? null : (
-          <Button
-            className="h-12 md:h-11 text-base"
-            disabled={!seleccion || registrando}
-            onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
-          >
-            {registrando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-            {registrando ? "Guardando…" : "Continuar con el taller elegido"}
-          </Button>
+          <p className="mb-3 flex items-start gap-2 px-1 text-xs text-muted-foreground">
+            <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>
+              Este es el momento de elegir: al continuar se cierra tu pre-registro y tu taller queda
+              guardado con él. Después solo se puede cambiar escribiéndonos, y solo mientras no
+              hayas hecho tu depósito.
+            </span>
+          </p>
         )}
+        <div className={cn("grid gap-2", sinTalleres ? "" : "sm:grid-cols-2")}>
+          <Button
+            variant={sinTalleres ? "default" : "outline"}
+            className="h-12 md:h-11 text-base"
+            disabled={registrando}
+            onClick={() => void cerrarPreregistro(undefined)}
+          >
+            {/*
+             * Ya no hay paso de confirmación, y no es un descuido.
+             *
+             * Aquí se preguntaba «¿seguro que quieres quedarte sin taller?» a
+             * quien ya estaba registrado, porque continuar le borraba el suyo.
+             * Quien podía perder algo ya no llega a esta pantalla: la cierra
+             * `preregistroCerrado` unas líneas más arriba. Al que sí llega, este
+             * botón no le quita nada — todavía no tiene nada que quitar.
+             */}
+            {sinTalleres ? "Continuar" : "Continuar sin taller"}
+          </Button>
+          {sinTalleres ? null : (
+            <Button
+              className="h-12 md:h-11 text-base"
+              disabled={!seleccion || registrando}
+              onClick={() => void cerrarPreregistro(seleccion ?? undefined)}
+            >
+              {registrando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              {registrando ? "Guardando…" : "Continuar con el taller elegido"}
+            </Button>
+          )}
+        </div>
       </div>
     </PantallaPublica>
   );

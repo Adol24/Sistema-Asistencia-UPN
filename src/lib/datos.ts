@@ -2027,6 +2027,34 @@ export async function asignarDiaRemoto(
 }
 
 /**
+ * Asigna —o quita— el taller de alguien que ya cerró su pre-registro.
+ *
+ * Es la ÚNICA forma de cambiar el taller de un inscrito, y no existía. Quien
+ * pulsaba «Continuar sin taller» se quedaba sin taller para siempre:
+ * `/talleres` se cierra en cuanto hay folio, y `fn_cambiar_taller` está revocada
+ * a todo el mundo y solo la llamaban las dos altas del pre-registro.
+ *
+ * Se identifica por FOLIO y por CLAVE, no por uuid, porque los dos son lo que
+ * una persona puede dictar por teléfono y lo que la bitácora deja legible.
+ * `clave` nula quita el taller.
+ *
+ * **Propaga el error en vez de tragárselo**, y es lo que la separa de las
+ * escrituras optimistas de la ventanilla: los rechazos de esta llamada son
+ * información que quien la hace necesita en la cara —«ese taller ya no tiene
+ * lugares», «ese folio ya depositó y el taller va en ese mismo depósito»— y no
+ * un contratiempo que se resuelve recargando.
+ */
+export async function asignarTaller(
+  folio: string,
+  clave: string | null,
+): Promise<{ folio: string; antes: string | null; ahora: string | null }> {
+  return llamar<{ folio: string; antes: string | null; ahora: string | null }>(
+    "fn_asignar_taller",
+    { p_folio: folio, p_clave: clave },
+  );
+}
+
+/**
  * Da de alta a UN alumno en el padrón con lo que declara en la mesa de registro.
  *
  * Para los de nuevo ingreso, que se pre-registran el 27 y el 28 y cuyo padrón la

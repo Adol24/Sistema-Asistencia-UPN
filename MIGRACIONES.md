@@ -345,6 +345,64 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Asignar el taller desde el panel (`20260926160000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando `fn_asignar_taller` exista y rechace a
+la clave anónima, no cuando esta línea se termine de escribir.
+
+Dos cosas, y la segunda es una pantalla que no existía.
+
+**1 · El hueco de `fn_cambiar_taller`.** Su guardia de pago decía
+`and concepto = 'taller'`, y por ahí se colaba el caso que importa: quien ya
+depositó los 500 del evento tiene una fila con `concepto = 'evento'`, así que la
+comprobación no lo veía y se le podía añadir un taller que nadie iba a cobrarle.
+Ahora **cualquier** depósito cierra el taller. No es una cifra lo que cambiaba: el
+depósito es uno solo desde el 2026-09-25 y el concepto que la persona escribe a
+mano dice si lleva taller, así que añadírselo después le invalida el papel que ya
+entregó en ventanilla.
+
+La salida temprana —«si no cambia nada, vuelve»— se queda **antes** de esa
+guardia, y a propósito: el alta del pre-registro es reentrante y pasa por
+`fn_cambiar_taller` con el mismo taller que la persona ya tiene. Comprobar el pago
+primero convertiría ese «no cambia nada» en un error para todo el que ya hubiera
+depositado.
+
+**2 · `fn_asignar_taller(folio, clave)`**, para `admin` y `soporte`. Es la primera
+forma que existe de darle un taller a alguien que cerró su pre-registro sin elegir
+ninguno: `/talleres` se cierra en cuanto hay folio, `/confirmar-nombre` no ofrece
+volver y `fn_cambiar_taller` está revocada a todo el mundo. La única respuesta que
+el sistema podía dar era «pregunta por WhatsApp», y al otro lado del WhatsApp no
+había tampoco nada que pulsar.
+
+- **Identifica por folio y por clave** (`PRE-00801`, `T04`), no por uuid: son lo que
+  una persona puede dictar por teléfono y lo que la bitácora deja legible. Encaja
+  con la aplicación sin traducir nada, porque ahí `Taller.id` YA es la clave
+  (`aTallerBase` hace `id: f.clave`).
+- **Llama a `fn_cambiar_taller` en vez de reescribirla**, así que conserva el cupo
+  con su `pg_advisory_xact_lock`, el rechazo del taller inactivo y el
+  `monto_esperado_taller` que sale del catálogo. Retranscribir esa lógica para
+  colar una comprobación es como se perdió el limitador de `fn_padron_confirmar`.
+- **Comprueba el depósito por su cuenta antes**, y no es redundancia inútil: el
+  mensaje de `fn_cambiar_taller` está escrito para el alumno que lo lee en el
+  pre-registro, y quien está en el panel necesita el folio y a dónde mandar a esa
+  persona.
+- **`clave` nula quita el taller**, con el mismo guardia. Hace falta para el caso
+  contrario: quien eligió y ya no quiere venir esa tarde.
+- **No comprueba la fecha límite**, y es una decisión. Pasado el 9 de octubre el
+  pre-registro sin pago queda `expirado` y asignarle un taller no sirve de nada,
+  pero tampoco rompe nada, y quien opera el panel sabe cosas que la base no. El
+  guardia que protege el dinero es el del depósito.
+
+Al aplicarse dice a cuánta gente le sirve: cuántos participantes no tienen taller,
+cuántos de ellos se pueden mover desde el panel y cuántos ya depositaron y van a
+Servicios Financieros.
+
+Del lado de la aplicación: `/admin/preinscritos` estrena la acción en su columna
+«Taller», `/talleres` avisa por fin de que la elección se cierra al continuar, y
+`sinDeposito` —en `pagos-logica.ts`— nombra la pregunta «¿hay alguna fila de
+pago?», que se lee de las cinco ramas de `v_estado_pago` y **no** es `sinAcreditar`.
+
 ### El aviso ya no promete otro taller (`20260926140000`) — aplicada, y cero filas
 
 **Aplicada contra el proyecto real el 2026-09-26.** Reescribió **cero** filas:
