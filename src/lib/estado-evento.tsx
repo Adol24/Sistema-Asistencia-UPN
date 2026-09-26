@@ -1684,7 +1684,7 @@ export function EstadoEventoProvider({
 
   /**
    * Se reparte uno por uno al día que vaya proporcionalmente más vacío, y
-   * ninguno pasa de su aforo.
+   * **el aforo no deja a nadie fuera**.
    *
    * **Proporcionalmente, no «el que tenga menos gente»**, que es lo que hacía
    * antes. Daba igual mientras las tres sedes admitían lo mismo; dejó de darlo
@@ -1694,11 +1694,20 @@ export function EstadoEventoProvider({
    * siendo el más pequeño. Mirando el porcentaje de ocupación, los tres se
    * llenan a la vez.
    *
-   * Quien no cabe en ninguno se queda sin día, y se devuelve contado en
-   * `sinLugar`. Antes esto no podía pasar y por eso no existía: el reparto no
-   * tenía techo. Ahora puede, y la alternativa —dejarlo en un día que ya está
-   * lleno— sería peor: le prometería un lugar que el pre-registro le va a negar
-   * después, cuando ya nadie pueda hacer nada.
+   * **Y sin techo**, que es lo que cambia. El padrón es un PLAN sobre gente que
+   * todavía no se ha inscrito y que en buena parte no lo hará: de una lista de
+   * tres mil alumnos se pre-registran algunos cientos. `padron_alumnos.dia` no
+   * reserva un asiento, lo prevé. El asiento lo ocupa quien se pre-registra, y
+   * ahí sí hay un tope firme: `fn_preregistrar_alumno` cuenta `participantes`
+   * bajo candado y rechaza el alta que no cabe.
+   *
+   * Es la regla que `20260921200000_el_padron_planea_y_el_preregistro_reserva`
+   * le aplicó a `fn_asignar_dia_a_varios` —la asignación en bloque— y que aquí
+   * se quedó sin aplicar: repartir 2001 alumnos dejaba al último sin día aunque
+   * ninguno de los 2000 lugares estuviera ocupado todavía. Ahora
+   * todos salen con día, y pasarse del aforo se AVISA —en la pantalla y en la
+   * bitácora— en vez de impedirse, porque al repartir es cuando todavía se
+   * puede corregir.
    */
   const repartirDiasPendientes = useCallback<Ctx["repartirDiasPendientes"]>(() => {
     const pendientes = padron.filter((a) => !a.dia);
@@ -1711,26 +1720,21 @@ export function EstadoEventoProvider({
      * Un aforo en 0 es «todavía no cargado», no «no cabe nadie». Pasa con
      * `CONFIGURACION_VACIA`, antes de que la base responda.
      *
-     * Con techos desconocidos NO se reparte a medias: se vuelve al reparto por
-     * conteo, sin tope, que es exactamente lo que hacía esta función antes de
-     * que el aforo existiera. Tomar el 0 al pie de la letra habría dejado a todo
-     * el padrón «sin lugar» y habría hecho parecer que el evento está agotado
-     * cuando lo único que pasa es que la configuración no ha llegado.
+     * Ya no decide si alguien se queda fuera —nadie se queda fuera— pero sí
+     * contra qué se compara: con techos desconocidos la proporción no significa
+     * nada, y se reparte por conteo, que deja los tres días a tercios.
      */
     const hayAforo = ([1, 2, 3] as Dia[]).every((d) => cupos.get(d)! > 0);
+    /** Qué tan lleno va un día. Sin aforo conocido, la gente que lleva a secas. */
+    const carga = (d: Dia) => (hayAforo ? conteo.get(d)! / cupos.get(d)! : conteo.get(d)!);
 
     const asignaciones = new Map<string, Dia>();
-    let sinLugar = 0;
     for (const a of pendientes) {
-      const conSitio = hayAforo
-        ? ([1, 2, 3] as Dia[]).filter((d) => conteo.get(d)! < cupos.get(d)!)
-        : ([1, 2, 3] as Dia[]);
-      if (conSitio.length === 0) {
-        sinLugar++;
-        continue;
-      }
-      const carga = (d: Dia) => (hayAforo ? conteo.get(d)! / cupos.get(d)! : conteo.get(d)!);
-      const dia = conSitio.reduce((mejor, d) => (carga(d) < carga(mejor) ? d : mejor));
+      // Los tres días siempre entran en la comparación: ninguno se descarta por
+      // estar lleno. Pasado el aforo la proporción sigue ordenando —1.20 va
+      // antes que 1.35— así que el sobrecupo se reparte igual de parejo que los
+      // lugares, y no se amontona en el día que se llenó primero.
+      const dia = ([1, 2, 3] as Dia[]).reduce((mejor, d) => (carga(d) < carga(mejor) ? d : mejor));
       conteo.set(dia, conteo.get(dia)! + 1);
       asignaciones.set(a.matricula, dia);
     }
@@ -1762,29 +1766,28 @@ export function EstadoEventoProvider({
             `El reparto de ${asignaciones.size} días quedó A MEDIAS. Recarga para ver cuáles se aplicaron.`,
           ),
       );
+      /*
+       * Rebasar el aforo se anota, y es la contrapartida de haber quitado el
+       * techo: si el reparto ya no lo impide, el registro de lo que se decidió
+       * tiene que decirlo. Las consecuencias no llegan hoy —llegan cuando a los
+       * últimos se les rechace el pre-registro— y la bitácora es donde se busca
+       * después por qué el día quedó así.
+       */
+      const rebasados = ([1, 2, 3] as Dia[]).filter(
+        (d) => cupos.get(d)! > 0 && conteo.get(d)! > cupos.get(d)!,
+      );
       registrarBitacora(
         "Repartió los días del padrón",
         `${asignaciones.size} alumnos sin día quedaron repartidos: ${([1, 2, 3] as Dia[])
           .map((d) => `día ${d} ${conteo.get(d)}/${cupos.get(d)}`)
           .join(", ")}` +
-          (sinLugar > 0 ? `. ${sinLugar} se quedaron sin día: los tres llegaron a su aforo` : ""),
+          (rebasados.length
+            ? `. Planeados por encima del aforo: ${rebasados.map((d) => `día ${d}`).join(", ")}`
+            : ""),
       );
     }
-    // El aforo se agotó y no se movió a nadie: no hay reparto que anotar, pero
-    // sí una decisión que alguien tiene que tomar, y la bitácora es donde se
-    // busca después qué pasó ese día.
-    if (asignaciones.size === 0 && sinLugar > 0)
-      registrarBitacora(
-        "No pudo repartir los días del padrón",
-        `${sinLugar} alumnos siguen sin día: los tres días llegaron a su aforo (${(
-          [1, 2, 3] as Dia[]
-        )
-          .map((d) => `día ${d} ${conteo.get(d)}/${cupos.get(d)}`)
-          .join(", ")})`,
-      );
     return {
       asignados: asignaciones.size,
-      sinLugar,
       porDia: ([1, 2, 3] as Dia[]).map((dia) => {
         const total = conteo.get(dia)!;
         const cupo = cupos.get(dia)!;

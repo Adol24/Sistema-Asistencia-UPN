@@ -250,16 +250,19 @@ export interface Ctx {
   /** Los del padrón que todavía no tienen día. */
   sinDiaAsignado: () => AlumnoPadron[];
   /**
-   * Reparte día a quienes no lo tienen, equilibrando los tres **sin pasar del
-   * aforo de ninguno**. Devuelve cuántos quedaron en cada uno y cuántos no
-   * cupieron en ninguno.
+   * Reparte día a quienes no lo tienen, equilibrando los tres por proporción de
+   * ocupación. **Nadie se queda sin día: el aforo no detiene el reparto.**
    *
-   * `sinLugar > 0` no es un fallo de esta función: es el evento lleno, y la
-   * única salida es ampliar un aforo o mover gente a mano.
+   * El padrón planea y el pre-registro reserva, así que un día puede quedar
+   * planeado por encima de su aforo a propósito —de una lista nunca se inscriben
+   * todos— y eso se avisa, no se impide. El tope firme vive en
+   * `fn_preregistrar_alumno`, que cuenta `participantes` bajo candado.
+   *
+   * `porDia` trae el total contra el cupo de cada día: quien lo llame compara y
+   * avisa si alguno quedó por encima.
    */
   repartirDiasPendientes: () => {
     asignados: number;
-    sinLugar: number;
     porDia: { dia: Dia; total: number; cupo: number; libres: number }[];
   };
   /**

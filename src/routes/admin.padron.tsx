@@ -198,19 +198,33 @@ function ImportacionPadron() {
     await simularLatencia();
     const r = repartirDiasPendientes();
     setRepartiendo(false);
-    // `sinLugar` se avisa como error y no como éxito con nota al pie: es gente
-    // que se queda fuera del evento, y pide una decisión de la organización.
-    if (r.sinLugar > 0)
-      toast.error(
-        r.asignados === 0
-          ? `Nadie se pudo repartir: los tres días llegaron a su aforo y ${r.sinLugar} alumnos siguen sin día.`
-          : `${r.asignados} quedaron repartidos, pero ${r.sinLugar} no caben en ningún día. Amplía un aforo o reubícalos a mano.`,
-      );
-    else
-      toast.success(
-        r.asignados === 0
-          ? "Nadie estaba esperando día."
-          : `${r.asignados} alumnos quedaron repartidos entre los tres días.`,
+    toast.success(
+      r.asignados === 0
+        ? "Nadie estaba esperando día."
+        : `${r.asignados} alumnos quedaron repartidos entre los tres días.`,
+    );
+
+    /*
+     * Un día que queda por encima de su aforo se avisa, igual que en la
+     * asignación en bloque y por lo mismo. Ya no hay nadie «sin lugar» que
+     * contar: el reparto no tiene techo, porque el padrón es un plan sobre gente
+     * que en buena parte no se inscribirá.
+     *
+     * Ámbar y no rojo: no ha fallado nada, y tratar un sobrecupo deliberado como
+     * un error enseñaría a ignorar el aviso.
+     */
+    const rebasados = r.porDia.filter((x) => x.cupo > 0 && x.total > x.cupo);
+    if (rebasados.length)
+      toast.warning(
+        rebasados
+          .map((x) => `El día ${x.dia} queda con ${x.total} planeados y caben ${x.cupo}.`)
+          .join(" "),
+        {
+          description:
+            "Se permite: el lugar lo ocupa quien se pre-registra, no quien está en el padrón. " +
+            "Pero a los que se inscriban pasado el aforo se les rechazará el alta.",
+          duration: 10000,
+        },
       );
   };
 

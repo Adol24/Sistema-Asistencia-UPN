@@ -338,6 +338,40 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El padrón planea también al repartir (`20260926120000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando `fn_dia_mas_vacio` devuelva un día
+con el plan por encima del aforo, no cuando esta línea se termine de escribir.
+
+Dos funciones pierden un tope que estaba contando lo que no debía:
+
+- **`fn_dia_mas_vacio`** deja de tener techo. Devolvía NULL cuando los tres días
+  llegaban a su aforo *en el plan*, así que un padrón de 2500 alumnos no se podía
+  repartir más allá de 2000 —700 + 700 + 600— aunque ninguno de esos lugares
+  estuviera ocupado todavía. Sigue eligiendo por proporción de ocupación, que es
+  lo que mantiene los tres días parejos con aforos distintos.
+- **`fn_dia_de`** deja de elegir por el plan y elige por asientos reales,
+  contando `participantes`. Era la peor de las dos: la llama
+  `fn_preregistrar_alumno`, y con el plan lleno una persona real leía «Ya no
+  quedan lugares en ninguno de los tres días» con la sede medio vacía. Su
+  excepción sigue ahí, pero ahora solo salta cuando el evento está lleno de
+  verdad.
+
+Es la regla que ya estableció
+`20260921200000_el_padron_planea_y_el_preregistro_reserva` —el padrón PLANEA, el
+pre-registro RESERVA— y que se quedó sin aplicar en estas dos. **El tope firme no
+se toca**: `fn_preregistrar_alumno` y `fn_preregistrar_externo` siguen contando
+`participantes` bajo `pg_advisory_xact_lock`.
+
+Van juntas a propósito. Quitarle el techo al reparto sin arreglar `fn_dia_de`
+habría convertido un padrón grande en pre-registros rechazados, que es un fallo
+peor que el que se venía a corregir.
+
+Del lado de la aplicación cambia lo mismo: `repartirDiasPendientes` reparte sin
+techo y ya no devuelve `sinLugar`, y `/admin/padron` avisa en ámbar del día que
+quede por encima de su aforo en vez de dejar gente sin día.
+
 ### El día único para dejar el voucher (`20260925160000`) — aplicada
 
 **Comprobada contra el proyecto real el 2026-09-26.** `dia_entrega_voucher`
