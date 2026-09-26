@@ -338,6 +338,59 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El aviso ya no promete otro taller (`20260926140000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Y esta es de las que no se pueden comprobar con la clave anónima:
+`avisos_participante` está cerrada y sus filas solo salen por `fn_portal_estado`,
+que exige el folio y la credencial de una persona concreta.
+
+No toca el esquema ni ninguna función. Reescribe el TEXTO de las filas que ya
+están en `avisos_participante` y que dicen «Puedes elegir otro taller», porque
+hoy eso es mentira: el taller no se cambia una vez cerrado el pre-registro, y
+**no hay ninguna pantalla —pública ni interna— que cambie el de un inscrito**.
+`fn_cambiar_taller` está revocada a `public`, `anon` y `authenticated`, y solo la
+llaman las dos altas del pre-registro.
+
+Esos avisos los escribieron `fn_reasignar_dia`, `fn_asignar_dia_a_varios` y
+`fn_guardar_taller` cuando cambiar de día liberaba la inscripción al taller.
+`20260923140000` les quitó esa liberación y con ella el `insert`, pero las filas
+ya escritas se quedaron, y `fn_portal_estado` sigue devolviendo las que tienen
+`visto_en is null`. El botón «Elegir otro taller» que las acompañaba se quitó de
+`/portal/estado` el 2026-09-26 (`8f1f938`); el texto vive en la base y no se fue
+con él.
+
+Reescribe **solo la segunda frase**, con `replace` de un trozo exacto. La primera
+—«Cambiaste al día 2 y el taller «T07» no se imparte ese día, así que tu
+inscripción se liberó»— sigue siendo cierta y lleva el dato que la persona
+necesita; además el día y la clave se interpolaron con `format` al escribir la
+fila, así que un texto nuevo no podría reconstruirlos. Y solo las de
+`visto_en is null`, que son las únicas que alguien puede llegar a leer: una fila
+marcada como vista es el registro de lo que ya se le dijo a esa persona.
+
+Trae sus dos comprobaciones dentro:
+
+- **Antes de tocar nada**, pregunta a `pg_proc` si alguna función sigue
+  insertando la promesa. Si aparece alguna se detiene sin reescribir: significaría
+  que la 60 no está puesta en esa base, y entonces el problema es ese.
+- **Al terminar**, busca `Puedes elegir otro` suelto. Si queda alguna variante que
+  la migración no conoce —una escrita a mano por soporte— las enumera y lanza
+  excepción en vez de dar el trabajo por hecho.
+
+Se puede volver a aplicar: `replace` sobre una fila ya reescrita no encuentra nada
+que sustituir.
+
+**Puede que no reescriba ninguna fila, y eso no es un fallo.** Si nunca se movió
+a nadie de día antes del 2026-09-23, no existen filas con ese texto; lo dice al
+aplicarse, con un `notice`. Para saberlo de antemano hacen falta permisos:
+
+```sql
+select count(*) filter (where visto_en is null) as por_leer,
+       count(*) as todas
+  from avisos_participante
+ where texto like '%Puedes elegir otro%';
+```
+
 ### El padrón planea también al repartir (`20260926120000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
