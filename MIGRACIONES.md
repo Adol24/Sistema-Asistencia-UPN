@@ -48,6 +48,40 @@ enumerándolos en vez de aplicarse.
 **La 40, la 41, la 42 y la 43 también**, el 2026-09-21, en ese orden. El
 comprobante termina en **LA CONEXIÓN FUNCIONA**, sin fallas.
 
+**Y todas las de los días 24 y 25 también**, comprobado el 2026-09-26 con la
+clave anónima preguntando por el efecto observable de cada una: las dos del
+calendario oficial, el módulo que trae el alumno, los módulos bajos de LEIP, el
+whatsapp real, la entrega en Aportaciones, el salón de cada taller, las citas de
+pago de LEIP, la ventana en la ficha, el día de reinscripción, las maestrías en
+módulo 1 y 3, y el día único para dejar el voucher. Ninguna quedó pendiente.
+
+Este archivo decía lo contrario de siete de ellas —«SIN APLICAR»— durante días.
+Escribir el rótulo al terminar de redactar la migración es justo el modo de fallar
+que advierte la primera línea de este documento: **una migración está aplicada
+cuando la base contesta lo que debe.** Los rótulos de abajo ya dicen con qué
+respuesta se comprobó cada una.
+
+#### Tres trampas al preguntarle a la base si algo está puesto
+
+La primera vuelta de esa comprobación dio dos veredictos falsos, y los dos por el
+modo de preguntar, no por la base:
+
+- **`head: true` se come el cuerpo del error.** `select("x", { head: true })` pide
+  sin cuerpo, así que una tabla que ya no existe —404 `PGRST205`— llega al cliente
+  como «sin error, cero filas», indistinguible de una tabla vacía. Con una
+  petición normal el código sale a la vista.
+- **`42501` prueba que la tabla EXISTE.** «Permiso denegado» solo se contesta
+  sobre algo que se encontró; una tabla ausente contesta `PGRST205` o `42P01`. Un
+  comprobante que trate los dos como «no está» declara pendiente lo que ya se
+  aplicó, y es lo que pasó con `dia_entrega_voucher`.
+- **Los nombres de los parámetros importan.** `fn_motivo_fuera_de_ventana` toma
+  `p_programa`, no `p_programa_id`; con el nombre inventado PostgREST contesta
+  `PGRST202`, que es lo mismo que contesta cuando la función no existe.
+
+`supabase/utilidades/estado-de-migraciones.sql` hace esto mismo con permisos y sin
+esas trampas, pero solo llega hasta `20260923200000`: las de los días 24 y 25 no
+están ahí todavía.
+
 ```
 OK     día 1: «Salón SUTERM»        OK  día 1: aforo 700
 OK     día 2: «Salón SUTERM»        OK  día 2: aforo 700
@@ -304,7 +338,33 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### Las maestrías van en módulo 1 y 3 (`20260925140000`) — SIN APLICAR
+### El día único para dejar el voucher (`20260925160000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `dia_entrega_voucher`
+existe —contesta `42501`, permiso denegado, que solo puede contestar una tabla que
+está— y `dia_reinscripcion`, su nombre anterior, ya no existe (`PGRST205`). El
+renombre corrió.
+
+Lo que **no** se ve con la clave anónima son sus filas: la tabla está cerrada, así
+que desde aquí no se puede confirmar que las 23 cohortes-plantel de licenciatura y
+los posgrados quedaran cargados. Con permisos:
+
+```sql
+select p.nombre, pl.nombre as plantel, d.avance, d.grupo, d.fecha
+  from dia_entrega_voucher d
+  join programas p on p.id = d.programa_id
+  join planteles pl on pl.id = d.plantel_id
+ order by d.fecha, p.nombre, pl.nombre;
+```
+
+Si se aplicó entera no hace falta: su bloque final lanza excepción cuando las
+cuentas no cuadran, así que una aplicación silenciosa ya es la prueba.
+
+### Las maestrías van en módulo 1 y 3 (`20260925140000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `cita_cohortes` y
+`ventana_cohortes` dan `[1, 3]` para los tres programas de nivel Maestría, y
+ningún 4.
 
 Las tres maestrías entraban con los módulos **1 y 4**. Son el **1 y el 3**,
 dicho por la organización el 2026-09-25.
@@ -331,7 +391,10 @@ dé de alta una cuarta.
 La etiqueta de la ventana pasa a «…y de los módulos 1, 3 y 5», porque esa frase
 se le enseña a quien llega fuera de plazo y también tiene que decir la verdad.
 
-### El día de reinscripción de LEIP (`20260925120000`) — SIN APLICAR
+### El día de reinscripción de LEIP (`20260925120000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `fn_cita_de_pago` responde, y la
+tabla del calendario de pago existe.
 
 Para LEIP —y solo para LEIP— el día de dejar el voucher **no es un rango**: es
 un día concreto, y no puede ir antes ni después. Sale de la hoja «LEIP OCTUBRE
@@ -379,7 +442,11 @@ El bloque final cruza la tabla contra el padrón y **enumera a los alumnos de
 LEIP que se quedan sin día**. Esos verán «el día de tu reinscripción», la frase
 vaga de siempre, que es mucho mejor que una fecha equivocada.
 
-### La ventana viaja con la ficha (`20260924240000`) — SIN APLICAR
+### La ventana viaja con la ficha (`20260924240000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `fn_ventana_de_matricula`
+responde al anónimo. El campo `ventana` dentro de la ficha necesita una matrícula
+del padrón para verse, así que eso sigue sin comprobarse desde aquí.
 
 `/confirmar-nombre` hacía dos viajes seguidos: `fn_padron_confirmar` para el
 reto de identidad y, con su respuesta en la mano, `fn_ventana_de_matricula`
@@ -412,7 +479,10 @@ diez minutos— y no se toca: es lo que impide recorrer el padrón.
 El cuerpo se copió mecánicamente de `20260922180000`; lo único añadido son tres
 líneas dentro del `jsonb_build_object`.
 
-### Las citas de pago de LEIP (`20260924230000`) — SIN APLICAR
+### Las citas de pago de LEIP (`20260924230000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `fn_cita_de_pago` existe; la creó
+esta o `20260925120000`, y las dos están puestas.
 
 Los módulos que el calendario administrativo llama II, VI, X y XIV llegan al
 padrón **corridos una posición**: son el 1, 5, 9 y 13.
@@ -441,7 +511,10 @@ tu reinscripción» porque el calendario oficial no le da fecha fija.
 cuadraban cuando el error estaba —veintinueve cohortes con ventana y
 veintinueve con cita—; el fallo estaba en cuáles, no en cuántas.
 
-### Los módulos bajos de LEIP (`20260924180000`) — sin aplicar
+### Los módulos bajos de LEIP (`20260924180000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** `ventana_cohortes` admite los
+módulos `[1, 5, 9, 13]` de LEIP.
 
 Contesta la pregunta que dejó abierta la anterior: en la ventana del 27 y 28,
 los módulos de LEIP son el **1 y el 5**, no el 2 y el 6. Confirmado por la
@@ -460,7 +533,10 @@ es justo lo que un `update` mal acotado se llevaría por delante.
 El rótulo pasa a «…y de los módulos 1, 4 y 5»: los números que de verdad entran,
 que son los que el alumno puede comparar contra el suyo.
 
-### El módulo que trae el alumno (`20260924160000`) — sin aplicar
+### El módulo que trae el alumno (`20260924160000`) — aplicada
+
+**Comprobada contra el proyecto real el 2026-09-26.** Los mismos cuatro módulos de
+LEIP en `ventana_cohortes`.
 
 Una alumna de LEIP leía «El registro de séptimo semestre y de los módulos **X y
 XIV** abre el 25/09/2026», y los dos números estaban mal de dos maneras.
@@ -499,7 +575,11 @@ select v.etiqueta, p.nombre, c.avance
 El bloque final de la migración exige que LEIP quede exactamente con `{9,13}` en
 esa ventana y revienta si no, porque el 25 es mañana.
 
-### El calendario oficial (`20260924120000` y `20260924140000`) — SIN APLICAR
+### El calendario oficial (`20260924120000` y `20260924140000`) — aplicadas
+
+**Comprobada contra el proyecto real el 2026-09-26.** `citas_inscripcion` tiene 4 filas
+y `cita_cohortes` 27, las dos legibles al anónimo, y `fn_cita_de_inscripcion`
+responde.
 
 Las dos salen del «Calendario_registro-inscripción_XIV Encuentro
 Internacional», firmado por Jefatura Administrativa el 23/09/2026. Es el primer
