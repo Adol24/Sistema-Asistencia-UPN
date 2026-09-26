@@ -4,7 +4,7 @@ import { AlertTriangle, Camera, Maximize2 } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { PortalNav } from "@/components/portal-nav";
 import { CodigoQR, PaseAPantallaCompleta } from "@/components/qr";
-import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
+import { AccionesDelPase, CodigoParaPagar } from "@/components/pase";
 import { usePantallaEncendida } from "@/lib/pantalla-encendida";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
@@ -103,21 +103,25 @@ function MiQrContenido({ p }: { p: Participante }) {
     <PantallaPublica titulo="Mi código QR" ancho="lg">
       <PortalNav />
       {/*
-        Sin pago confirmado no hay código, y no se dibuja uno atenuado.
+        Un mismo símbolo, dos cosas distintas según el pago.
         ------------------------------------------------------------------
-        Esta pantalla pasó por las dos versiones equivocadas. Primero enseñaba
-        el QR solo al pagar pero decía «esta pantalla es la única que lo tiene»,
-        cuando el comprobante ya lo había pintado: de ahí salían los dos
-        códigos que nadie sabía distinguir. Luego lo enseñó siempre, atenuado y
-        con un sello, para dejar de fingir que eran dos.
+        Por aquí pasaron tres versiones. El QR solo al pagar, diciendo «esta
+        pantalla es la única que lo tiene» cuando el comprobante ya lo pintaba;
+        luego siempre, atenuado y con un sello; luego un hueco punteado hasta que
+        el pago se confirmara.
 
-        Las dos dejaban en pie el mismo riesgo: una imagen que el ojo clasifica
-        como «mi QR del evento», en manos de quien no ha pagado, termina en la
-        puerta el día del evento. El sello gris no compite con la imagen.
+        Ahora el código se dibuja siempre, y lo que cambia es qué se dice de él.
+        Sin pago confirmado es `CodigoParaPagar`: sirve para que en Aportaciones
+        lo lean con la cámara en lugar de que dicte su folio en una fila de dos
+        mil personas. Con el pago confirmado es el pase, con su etiqueta «UPN» en
+        el centro, sus acciones para descargarlo y compartirlo, y la pantalla que
+        se queda encendida.
 
-        Ahora el código existe cuando el pago está confirmado y antes no. Lo que
-        se enseña mientras tanto es el folio, que es lo que de verdad sirve
-        antes: abre el portal y es lo que se dice en ventanilla.
+        Que no se anuncie como pase antes de tiempo es cosa del rótulo. Que no
+        FUNCIONE como pase antes de tiempo no depende de esta pantalla: el
+        torniquete lo rechaza en rojo, y eso lo decide `fn_evaluar_escaneo` en la
+        base. Esa es la diferencia con las versiones de antes, que intentaban
+        contener con tipografía algo que ya estaba contenido con una regla.
       */}
       <section className="rounded-lg border border-border bg-card p-6 text-center">
         {tieneCodigo ? (
@@ -170,7 +174,7 @@ function MiQrContenido({ p }: { p: Participante }) {
           <>
             <p className="text-balance text-lg font-bold leading-snug">{p.nombre}</p>
 
-            <CodigoPendiente folio={p.folio} />
+            <CodigoParaPagar folio={p.folio} lugar={evento.ventanilla.lugar} />
 
             <div className="mt-5 flex justify-center">
               <EstadoPagoBadge estado={estado.evento} etiqueta="Evento" />

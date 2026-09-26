@@ -3,7 +3,7 @@ import type { CitaDePago } from "@/lib/datos";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarClock, CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
-import { CodigoPendiente } from "@/components/pase";
+import { CodigoParaPagar } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
@@ -248,26 +248,29 @@ function Comprobante() {
                 </div>
               </dl>
               {/*
-                Aquí ya no hay QR, y esta pantalla es la razón de la regla.
+                El QR vuelve aquí, y este papel es el que lo necesita.
 
-                Pasó por dos intentos. Primero ponía «Folio para ventanilla» en
-                gris junto al código: tres palabras que no compiten con una
-                imagen que el ojo ya clasificó como «mi QR del evento». Luego se
-                le puso un sello que decía «todavía no abre la puerta», que era
-                honesto y seguía perdiendo contra la imagen.
+                Esta pantalla estuvo dos versiones sin código, y la razón era
+                buena: es la hoja que la gente guarda y trae consigo el día del
+                evento —lo dice el propio encabezado, «descárgalo o guarda esta
+                pantalla»—, así que un QR encima la convierte en un boleto a los
+                ojos de cualquiera.
 
-                Este papel es el que la gente guarda y el que trae consigo el
-                día del evento —lo dice el propio encabezado: «descárgalo o
-                guarda esta pantalla»—. Un comprobante de pre-registro con un
-                QR encima ES un boleto para cualquiera que lo mire. Y no lo es:
-                el pago todavía no está confirmado, y cuando lo esté el código
-                aparecerá en el portal.
+                Lo que cambió es a qué fila sirve esta hoja ANTES de eso. Son
+                cerca de dos mil alumnos entregando voucher, y sin código cada
+                uno le dicta doce caracteres a quien cobra. `/financieros` ya
+                tenía la cámara; lo que faltaba era que el alumno trajera algo
+                que enseñarle, y es justo este papel el que trae.
 
-                Lo que sí tiene que llevarse de aquí es el folio, que es lo que
-                le piden en ventanilla y lo que abre su portal.
+                El riesgo de la puerta no se contiene con lo que esta pantalla
+                dibuje: quien llegue el día del evento sin pago confirmado sale
+                en rojo en el torniquete, porque eso lo decide
+                `fn_evaluar_escaneo`. Lo que sí está en nuestra mano es no
+                anunciarlo como el pase, y de eso se encarga el rótulo de
+                `CodigoParaPagar`: habla de su pago y no menciona la entrada.
               */}
               <div className="justify-self-center">
-                <CodigoPendiente folio={folio ?? ""} />
+                <CodigoParaPagar folio={folio ?? ""} lugar={evento.ventanilla.lugar} />
               </div>
             </div>
           </div>

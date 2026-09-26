@@ -6,7 +6,7 @@ import { Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
-import { AccionesDelPase, CodigoPendiente } from "@/components/pase";
+import { AccionesDelPase, CodigoParaPagar } from "@/components/pase";
 import { IMAGEN_INSTRUCCIONES_VOUCHER } from "@/lib/imagenes";
 import { fechaYHoraTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
@@ -150,26 +150,26 @@ function Pago() {
           </div>
 
           {/*
-            De las tres pantallas que pintaban el código, esta era la peor.
+            El código vuelve, con rótulo y sin el botón de descargar.
 
-            Salía pelado, sin una palabra que dijera qué era, y justo debajo
-            estaba el botón de descargar la imagen del pase: quien leía estas
-            instrucciones —o sea, quien todavía NO ha pagado— se bajaba un
-            `pase-PRE-00847.png` con su nombre y el escudo, idéntico al que se
-            lleva quien ya pagó. Ponerle un sello ayudó, pero seguía siendo una
-            imagen descargable en manos de quien no ha depositado.
+            De las tres pantallas que lo pintaban, esta era la peor: salía pelado,
+            sin una palabra que dijera qué era, y justo debajo estaba el botón de
+            descargar la imagen del pase. Quien leía estas instrucciones —o sea,
+            quien todavía NO ha pagado— se bajaba un `pase-PRE-00847.png` con su
+            nombre y el escudo, idéntico al que se lleva quien ya pagó.
 
-            Ahora aquí no hay código hasta que el pago se confirme. Lo que esta
-            pantalla necesita enseñar es el folio, y ya lo enseña arriba en
-            grande con su botón de copiar: es lo que se lleva a Aportaciones y
-            lo que abre el portal.
+            Lo que estaba mal no era dibujarlo: era llamarlo pase y dejar que se
+            lo llevara como archivo. `CodigoParaPagar` lo rotula por lo que sirve
+            hoy —que en Aportaciones lo lean con la cámara en vez de que dicte sus
+            doce caracteres— y las acciones del pase siguen reservadas a la rama
+            de arriba, la de quien ya tiene el pago confirmado.
           */}
           {tieneCodigo ? (
             <div className="mt-4 flex justify-center">
               <CodigoQR valor={folio ?? ""} size={148} />
             </div>
           ) : (
-            <CodigoPendiente folio={folio ?? ""} />
+            <CodigoParaPagar folio={folio ?? ""} lugar={evento.ventanilla.lugar} />
           )}
 
           <div className="mx-auto mt-4 max-w-md rounded-md border-2 border-primary/30 bg-primary/5 p-3 text-left">

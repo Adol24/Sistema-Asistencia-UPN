@@ -1,76 +1,84 @@
 import { useEffect, useState } from "react";
-import { Clock3, Download, Loader2, Share2 } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { pngDelPase } from "@/components/qr";
+import { CodigoQR, pngDelPase } from "@/components/qr";
 import { Button } from "@/components/ui/button";
 
 /**
- * El hueco donde irá su código, mientras el pago no esté confirmado.
+ * Su código antes del pago, rotulado para lo único que sirve todavía: que en la
+ * ventanilla lo lean con la cámara en vez de que dicte su folio.
  *
  * ---------------------------------------------------------------------------
- * El código no se atenúa: no se dibuja.
+ * Por qué vuelve el código al pre-registro
  * ---------------------------------------------------------------------------
  *
- * Aquí vivía `SelloDelCodigo`, que enseñaba el QR desde el pre-registro con un
- * sello de «todavía no abre la puerta». Aquel arreglo venía de un problema
- * real: el comprobante y el portal pintaban el mismo símbolo y parecían dos
- * códigos distintos, así que se decidió enseñar uno solo y nombrar en voz alta
- * lo único que cambiaba entre pantallas.
+ * Aquí hubo un hueco punteado —«tu código aparece aquí cuando se confirme tu
+ * pago»— y antes de eso un QR con un sello de «todavía no abre la puerta». Las
+ * dos versiones peleaban el mismo riesgo: que el papel del pre-registro se
+ * leyera como un boleto y su dueño llegara con él a la puerta el día del evento.
  *
- * Resolvió la confusión de los dos códigos y dejó en pie la que importaba. Su
- * propio comentario la nombraba: «gente llegando el día del evento con el
- * comprobante guardado, convencida de que era su pase». Un sello gris debajo
- * de una imagen que el ojo ya clasificó como «mi QR del evento» no compite con
- * la imagen, y `/pago` lo remataba ofreciendo descargarla con el nombre y el
- * escudo a quien todavía estaba leyendo cómo depositar.
+ * El hueco resolvía ese riesgo creando otro, y este se cuenta con números. Son
+ * cerca de dos mil alumnos entregando voucher en una fila, y sin código cada uno
+ * dicta su folio a quien cobra: un dato de doce caracteres, leído en voz alta,
+ * en una ventanilla con ruido. `/financieros` ya tiene la cámara montada y la
+ * ficha que abre al leer un folio —solo faltaba que el alumno tuviera algo que
+ * enseñarle—.
  *
- * La regla nueva no admite esa lectura: **hasta que Servicios Financieros
- * confirme el pago, no hay código que enseñar.** Lo que se enseña es el folio,
- * que es lo que de verdad hace falta antes —es la llave del portal y lo que se
- * dice en ventanilla— y que nadie confunde con un boleto.
+ * Lo que hace seguro dibujarlo es que **el riesgo de la puerta no depende de
+ * esta imagen.** Quien llegue el día del evento con este código sin pago
+ * confirmado sale en rojo en el torniquete: lo decide `fn_evaluar_escaneo` en la
+ * base, no lo que el alumno crea que tiene en la mano. La pantalla de antes
+ * intentaba impedir con un hueco algo que la base ya impide con una regla.
  *
- * Quién puede verlo lo decide `abreLaPuerta`, en `pagos-logica.ts`, que es la
- * misma línea que traza `fn_evaluar_escaneo` en la base. Esta pieza sigue
- * viviendo aquí, y no escrita a mano en cada pantalla, por la razón de siempre:
- * son tres pantallas que tienen que contar la misma historia.
+ * Lo que sí sigue en pie de aquella decisión es **no anunciarlo como el pase**.
+ * El rótulo habla de su pago y nada más: ni «entrada», ni «acceso», ni que este
+ * mismo símbolo será el que abra la puerta cuando le confirmen el depósito. Eso
+ * lo sabrá cuando llegue a `/portal/qr` y su código esté ahí con sus acciones.
+ *
+ * Vive aquí, y no escrita a mano en cada pantalla, por la razón de siempre: son
+ * tres pantallas que tienen que contar la misma historia.
  */
-export function CodigoPendiente({
+export function CodigoParaPagar({
   folio,
+  lugar,
   children,
 }: {
   folio: string;
+  /**
+   * Dónde se entrega, de `configuracion_evento.ventanilla_lugar`. El respaldo es
+   * «ventanilla» y no un nombre: sin dato configurado, una palabra genérica es
+   * mejor que un departamento que quizá ya no recibe a nadie.
+   */
+  lugar?: string;
   /** El siguiente paso, que sí es distinto en cada pantalla. */
   children?: React.ReactNode;
 }) {
   return (
     <div className="mt-3 text-center">
       {/*
-        El recuadro ocupa el sitio del código y se ve vacío a propósito. Dejar
-        el hueco sin marcar haría pensar que la pantalla no cargó; marcarlo con
-        un QR de adorno nos devolvería al problema.
+        Sin etiqueta en el centro, y no es un olvido: el hueco con «UPN» es lo que
+        convierte al símbolo en una credencial a los ojos de quien lo mira. Ese
+        remate se lo queda el pase de verdad, en el portal, una vez pagado.
       */}
-      <div className="mx-auto flex size-40 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/40 px-3">
-        <Clock3 className="size-7 text-muted-foreground" aria-hidden />
-        <p className="text-pretty text-xs font-semibold leading-snug text-muted-foreground">
-          Tu código aparece aquí cuando se confirme tu pago
-        </p>
+      <div className="mx-auto w-fit rounded-lg border border-border bg-card p-3">
+        <CodigoQR valor={folio} size={176} />
       </div>
 
-      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-estado-pre-bg px-3 py-1 text-xs font-bold text-estado-pre">
-        <Clock3 className="size-3.5" aria-hidden />
-        Todavía no tienes código
-      </span>
+      <p className="mt-3 text-sm font-bold">Código para tu pago</p>
 
       {/*
         La frase invariante, la que tiene que sonar igual en las tres pantallas.
-        No se le pasa como prop a propósito: en cuanto una pantalla pueda
-        decirlo «a su manera», volvemos a tener tres versiones de un solo hecho.
+        No se le pasa como prop a propósito: en cuanto una pantalla pueda decirlo
+        «a su manera», volvemos a tener tres versiones de un solo hecho.
       */}
-      <p className="mx-auto mt-2 max-w-xs text-pretty text-xs text-muted-foreground">
-        Mientras tanto, lo que necesitas es tu folio{" "}
-        <span className="font-mono font-semibold text-foreground">{folio}</span>: con él te atienden
-        en ventanilla y con él entras a tu portal.
+      <p className="mx-auto mt-1 max-w-xs text-pretty text-xs text-muted-foreground">
+        Muéstralo en {lugar?.trim() || "ventanilla"} cuando entregues tu voucher: con él te atienden
+        sin dictar tu folio.
+      </p>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Folio <span className="font-mono font-semibold text-foreground">{folio}</span>
       </p>
       {children}
     </div>
