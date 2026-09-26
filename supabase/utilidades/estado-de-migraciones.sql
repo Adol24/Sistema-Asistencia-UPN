@@ -150,4 +150,39 @@ select
          and table_name = 'padron_alumnos'
          and column_name = 'autodeclarado'
     )
-  ) as "20260923200000_dar_de_alta_a_un_alumno_en_mesa";
+  ) as "20260923200000_dar_de_alta_a_un_alumno_en_mesa",
+
+  /*
+   * El aforo deja de limitar el plan.
+   *
+   * Las DOS mitades, y aquí importa más que en ninguna: son la misma regla
+   * repartida en dos funciones, y una sola aplicada es peor que ninguna.
+   *
+   *   1. `fn_dia_mas_vacio` pierde su `having count < cupo`. Lo que se busca es
+   *      la AUSENCIA del techo, así que se pregunta por `having`: la función es
+   *      de cinco líneas y no tiene ningún otro motivo para llevar uno.
+   *   2. `fn_dia_de` pasa a contar `participantes` y no `padron_alumnos`. Se
+   *      busca el join, que es la regla, y no la prosa del comentario, que
+   *      alguien puede reescribir sin cambiar nada.
+   *
+   * Con la 1 sin la 2, un padrón que planea por encima del aforo hace que
+   * `fn_preregistrar_alumno` le diga «ya no quedan lugares» a una persona real
+   * con la sede medio vacía. Por eso el `and`: si sale `false`, mirar cuál de
+   * las dos falta antes de tocar nada más.
+   */
+  (
+    exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_dia_mas_vacio'
+         and pg_get_functiondef(p.oid) not like '%having%'
+    )
+    and exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_dia_de'
+         and pg_get_functiondef(p.oid) like '%left join participantes p on p.dia = d.dia%'
+    )
+  ) as "20260926120000_el_padron_planea_tambien_al_repartir";

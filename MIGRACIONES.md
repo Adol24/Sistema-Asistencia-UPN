@@ -391,11 +391,32 @@ select count(*) filter (where visto_en is null) as por_leer,
  where texto like '%Puedes elegir otro%';
 ```
 
-### El padrón planea también al repartir (`20260926120000`) — SIN APLICAR
+### El padrón planea también al repartir (`20260926120000`) — corrida, huella por comprobar
 
-Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
-contestado**. Se cambia a «aplicada» cuando `fn_dia_mas_vacio` devuelva un día
-con el plan por encima del aforo, no cuando esta línea se termine de escribir.
+Adol la corrió en el editor SQL el 2026-09-26. El rótulo se queda a medias a
+propósito: **desde la clave anónima esta migración no se puede comprobar**, y no
+por descuido. Las dos funciones que redefine están revocadas de `anon` y de
+`authenticated`, así que las dos contestan `42501` con el techo puesto y sin él —
+el mismo código antes y después—. `verificar-conexion` solo puede confirmar que
+existen y que siguen cerradas, que es lo que confirmaba ya.
+
+Lo que lo cierra es su huella en `supabase/utilidades/estado-de-migraciones.sql`,
+con una sesión con permisos:
+
+```sql
+select
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'fn_dia_mas_vacio'
+             and pg_get_functiondef(p.oid) not like '%having%')          as sin_techo,
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'fn_dia_de'
+             and pg_get_functiondef(p.oid) like '%left join participantes p on p.dia = d.dia%')
+                                                                        as cuenta_asientos;
+```
+
+Las dos en `true` y el rótulo pasa a «aplicada». Si solo sale una, falta la otra
+mitad y hay que ponerla antes de repartir un padrón grande: ver abajo por qué una
+sola es peor que ninguna.
 
 Dos funciones pierden un tope que estaba contando lo que no debía:
 
