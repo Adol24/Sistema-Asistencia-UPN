@@ -12,7 +12,6 @@ import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
-import { fechaLimiteTexto } from "@/lib/formato";
 import { abreLaPuerta } from "@/lib/pagos-logica";
 
 export const Route = createFileRoute("/portal/qr")({
@@ -61,7 +60,8 @@ function MiQr() {
 
 function MiQrContenido({ p }: { p: Participante }) {
   // La configuración sale del contexto, no del mock: si administración cambia el
-  // plazo o la fecha límite, esta pantalla lo refleja sin recargar.
+  // plazo de validación o el sitio de entrega, esta pantalla lo refleja sin
+  // recargar. La fecha límite ya no se lee aquí.
   const { estadoDe, configuracion: evento } = useEstadoEvento();
   const estado = estadoDe(p);
   /*
@@ -75,8 +75,7 @@ function MiQrContenido({ p }: { p: Participante }) {
    *
    * Lo dice `fn_cita_de_pago`, que resuelve la fecha por programa, avance, sede y
    * grupo con el calendario oficial. Sin matrícula —docentes y externos— no hay
-   * cita, y entonces sí manda la fecha límite: para ellos es el único plazo que
-   * existe.
+   * cita, y esta pantalla no dice ninguna fecha: ver el bloque de abajo.
    */
   const cita = useCitaDePago(p.matricula);
   /*
@@ -179,6 +178,22 @@ function MiQrContenido({ p }: { p: Participante }) {
             <p className="mt-3 text-sm font-medium">
               {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
             </p>
+            {/*
+             * Sin cita no se dice ninguna fecha, y eso es una decisión de Adol
+             * del 2026-09-25.
+             *
+             * Aquí se pintaba `fecha_limite` —«viernes, 9 de octubre»— a quien no
+             * tuviera cita. Esa fecha es el corte tras el cual el pre-registro
+             * expira, una sola para todo el evento, y nadie la confirmó: viene de
+             * la siembra del prototipo. Enseñársela a alguien como si fuera su
+             * plazo de entrega es lo que mandaba al alumno de LEIP seis días
+             * tarde, y a un docente le daba una fecha que no es de nadie.
+             *
+             * Quien no tiene cita —docentes y externos, que no están en el
+             * calendario oficial— lee el renglón de arriba: qué le falta y dónde
+             * se entrega. La fecha sigue en /pago y en el comprobante, que es
+             * donde se leyó al registrarse.
+             */}
             {cita ? (
               <>
                 <p className="mt-2 text-sm font-semibold">Tu día para entregar: {cita.cuando}</p>
@@ -188,11 +203,7 @@ function MiQrContenido({ p }: { p: Participante }) {
                   </p>
                 ) : null}
               </>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Fecha límite de entrega de vouchers: {fechaLimiteTexto(evento.fechaLimite)}
-              </p>
-            )}
+            ) : null}
             <Link
               to="/portal/estado"
               className="mt-5 inline-flex min-h-12 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
