@@ -124,16 +124,40 @@ grant execute on function fn_asignar_dia_a_varios(text[], smallint) to authentic
 do $bloque$
 declare
   v_def text;
+  v_n integer;
 begin
-  select pg_get_functiondef(p.oid) into v_def
+  select count(*) into v_n
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
      and p.proname = 'fn_asignar_dia_a_varios';
 
-  if v_def is null then
+  if v_n = 0 then
     raise exception 'fn_asignar_dia_a_varios no existe después de crearla.';
   end if;
+
+  /*
+   * Una sola, y esto no es celo.
+   *
+   * Las seis definiciones que ha tenido esta función en el repo llevan la misma
+   * firma —`(text[], smallint)`— así que `create or replace` reemplaza en
+   * sitio. Pero PostgREST resuelve por NOMBRES de parámetro, y una variante
+   * creada a mano en el editor SQL con otra firma se quedaría viva al lado de
+   * esta: el cliente podría seguir llamando a la del tope sin que nada lo
+   * delate. Con dos, esto se detiene y las enumera.
+   */
+  if v_n > 1 then
+    raise exception
+      'Hay % funciones fn_asignar_dia_a_varios. Quedó una firma vieja viva: bórrala antes de seguir.',
+      v_n
+      using errcode = 'check_violation';
+  end if;
+
+  select pg_get_functiondef(p.oid) into v_def
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'fn_asignar_dia_a_varios';
 
   if position('dias_evento' in v_def) > 0 then
     raise exception
