@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { CodigoQR } from "@/components/qr";
 import { AccionesDelPase, CodigoParaPagar } from "@/components/pase";
+import { EsperaDelPortal } from "@/components/acceso";
+import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { IMAGEN_INSTRUCCIONES_VOUCHER } from "@/lib/imagenes";
 import { fechaYHoraTexto, moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
+import { useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { abreLaPuerta } from "@/lib/pagos-logica";
 import { depositoDe } from "@/lib/deposito";
@@ -52,15 +55,56 @@ function CampoCopiable({ etiqueta, valor }: { etiqueta: string; valor: string })
   );
 }
 
+/*
+ * Igual que `/comprobante`: el de fuera decide de dónde salen los datos.
+ *
+ * Esta pantalla enseña «Tu folio» en letra de cuatro pisos, y con el borrador
+ * vacío lo enseñaba con nada debajo —justo el dato del que advierte que no hay
+ * otra forma de entrar al portal—. Pasa cada vez que muere la pestaña, que es
+ * más a menudo de lo que parece: el navegador incrustado de WhatsApp se cierra
+ * al deslizar atrás, «abrir en el navegador» estrena pestaña, y el teléfono
+ * descarta la que dejó en segundo plano. Ver el comentario largo de
+ * `comprobante.tsx`.
+ */
 function Pago() {
+  const { borrador, recuperado } = usePrototipo();
+  const { sesion, cargando, error } = usePortal();
+  const ficha = useParticipanteDelPortal();
+
+  if (!recuperado) return null;
+
+  if (!(borrador.folio ?? ficha?.folio)) {
+    if (sesion) return <EsperaDelPortal cargando={cargando} error={error} />;
+    return (
+      <RecuperarPorFolio
+        titulo="Instrucciones de pago"
+        explicacion="Tu folio y estas instrucciones se quedaron en la pestaña donde te registraste, y esa pestaña ya se cerró."
+        textoBoton="Ver mis instrucciones"
+      />
+    );
+  }
+
+  return <PagoContenido />;
+}
+
+function PagoContenido() {
   const navigate = useNavigate();
-  const { borrador, participante } = usePrototipo();
+  const { borrador } = usePrototipo();
+  /*
+   * El respaldo del borrador es la ficha del portal, no el participante del
+   * contexto.
+   *
+   * Aquel es siempre nulo en público —las políticas le cierran la tabla al
+   * anónimo— así que enseñaba el folio de otra persona en local y nada en
+   * producción. Con el del portal, quien perdió la pestaña y volvió a
+   * identificarse ve SUS datos, y `tieneCodigo` pasa a poder ser cierto de
+   * verdad para quien ya pagó.
+   */
+  const ficha = useParticipanteDelPortal();
   // Configuración y catálogo salen del contexto: lo que administración cambie se
   // ve aquí sin recargar.
   const { configuracion: evento, getTaller, estadoDe } = useEstadoEvento();
-  // El folio del pre-registro recién creado. `participante?.folio` es el del
-  // contexto —otra persona— y enseñarlo aquí era el fallo más visible del flujo.
-  const folio = borrador.folio ?? participante?.folio;
+  const folio = borrador.folio ?? ficha?.folio;
 
   /*
    * ¿Esta persona ya tiene código, o todavía no?
@@ -69,19 +113,19 @@ function Pago() {
    * lee no ha pagado. Pero se puede volver a ella después, y entonces negarle
    * su código sería tan falso como enseñárselo antes.
    *
-   * Se pregunta solo cuando el folio es el del participante del contexto. El
-   * del borrador acaba de nacer en el pre-registro y no tiene pago que
-   * consultar: ahí la respuesta es no, y lo es de verdad.
+   * Se pregunta solo cuando el folio NO es el del borrador: ese acaba de nacer
+   * en el pre-registro y no tiene pago que consultar, así que ahí la respuesta
+   * es no, y lo es de verdad. Si viene de la ficha del portal, en cambio, el
+   * estado del pago llega con ella.
    *
    * `abreLaPuerta` y no `=== "pagado"` escrito a mano: es la misma regla que
    * `/portal/qr` y que `fn_evaluar_escaneo`, y vivía copiada en cada pantalla.
    */
-  const tieneCodigo =
-    !borrador.folio && !!participante && abreLaPuerta(estadoDe(participante).evento);
+  const tieneCodigo = !borrador.folio && !!ficha && abreLaPuerta(estadoDe(ficha).evento);
   // El nombre va impreso en la imagen del pase, para que se reconozca de quién
   // es sin tener que abrirla y leer el folio.
-  const nombre = borrador.nombre ?? participante?.nombre ?? "";
-  const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
+  const nombre = borrador.nombre ?? ficha?.nombre ?? "";
+  const taller = getTaller(borrador.tallerId ?? ficha?.tallerId);
   // Un solo depósito y un solo voucher, con el concepto que le toca. La regla
   // vive en `lib/deposito.ts`; aquí solo se dibuja.
   const deposito = depositoDe(evento.cuotaEvento, taller?.costo);

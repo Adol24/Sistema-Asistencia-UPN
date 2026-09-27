@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
-import type { CitaDePago } from "@/lib/datos";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarClock, CheckCircle2, Info, LayoutList } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { CodigoParaPagar } from "@/components/pase";
 import { PerfilBadge } from "@/components/estado-badges";
+import { EsperaDelPortal } from "@/components/acceso";
+import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
+import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { depositoDe } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
@@ -22,21 +23,88 @@ export const Route = createFileRoute("/comprobante")({
   component: Comprobante,
 });
 
+/*
+ * Se parte en dos, y el de fuera solo decide de dónde salen los datos.
+ *
+ * -----------------------------------------------------------------------------
+ * Qué pasaba sin esto
+ * -----------------------------------------------------------------------------
+ * Todo lo que este papel dice sale del borrador del pre-registro, que vive en
+ * `sessionStorage` y muere con la pestaña. Esta pantalla y `/pago` eran las dos
+ * únicas del flujo público sin guardia, así que con el borrador vacío dibujaban
+ * el documento igual: el nombre, el folio y el taller en blanco, «Sin taller»
+ * donde había un taller elegido, y el día cayendo al 1 porque `infoDia` no
+ * falla. Los reportes del 2026-09-26 son eso, y la captura de pantalla no tiene
+ * nada que ver: nada en la aplicación borra estado al salir de la pantalla —los
+ * dos oyentes de `visibilitychange` solo recargan, y solo escriben si la carga
+ * sale bien—. Lo que se pierde es la pestaña.
+ *
+ * -----------------------------------------------------------------------------
+ * Qué hace ahora
+ * -----------------------------------------------------------------------------
+ * Sin folio pide folio y matrícula, y rehace el documento desde la base con la
+ * misma llamada del portal. El respaldo del borrador ya no es el participante
+ * del contexto —que en público es SIEMPRE nulo: las políticas le cierran la
+ * tabla al anónimo, así que esa lista llega vacía— sino el del portal, que sí
+ * llega cuando la persona acredita quién es.
+ *
+ * La comprobación va después de los hooks del contenido y por eso vive en otro
+ * componente: un `return` temprano en medio los llamaría en distinto orden según
+ * el caso, que es lo que React no permite.
+ */
 function Comprobante() {
-  const { borrador, participante } = usePrototipo();
+  const { borrador, recuperado } = usePrototipo();
+  const { sesion, cargando, error } = usePortal();
+  const ficha = useParticipanteDelPortal();
+
+  // Mientras se recupera el borrador de la pestaña no se dibuja nada: el primer
+  // fotograma siempre lo tiene vacío —se lee en un efecto, ver `prototipo.tsx`—
+  // y enseñar aquí la pantalla de recuperación para quitarla al fotograma
+  // siguiente mandaría a teclear su folio a quien lo traía puesto.
+  if (!recuperado) return null;
+
+  if (!(borrador.folio ?? ficha?.folio)) {
+    // Con sesión del portal abierta los datos vienen en camino: es espera, no
+    // falta de identificación.
+    if (sesion) return <EsperaDelPortal cargando={cargando} error={error} />;
+    return (
+      <RecuperarPorFolio
+        titulo="Comprobante de pre-registro"
+        explicacion="Tu comprobante se armó en la pestaña donde te registraste, y esa pestaña ya se cerró."
+        textoBoton="Ver mi comprobante"
+      />
+    );
+  }
+
+  return <ComprobanteContenido />;
+}
+
+function ComprobanteContenido() {
+  const { borrador } = usePrototipo();
+  const ficha = useParticipanteDelPortal();
   const { configuracion: evento, getTaller, infoDia } = useEstadoEvento();
   // Los datos académicos son del alumno: docentes y externos no los tienen.
-  const nivel = borrador.nivel ?? participante?.nivel;
-  const programa = borrador.programa ?? participante?.programa;
-  const avance = borrador.avance ?? participante?.avance;
-  const grupo = borrador.grupo ?? participante?.grupo;
-  const plantel = borrador.plantel ?? participante?.plantel;
+  const nivel = borrador.nivel ?? ficha?.nivel;
+  const programa = borrador.programa ?? ficha?.programa;
+  const avance = borrador.avance ?? ficha?.avance;
+  const grupo = borrador.grupo ?? ficha?.grupo;
+  const plantel = borrador.plantel ?? ficha?.plantel;
   const avance_ = avanceTexto(evento.catalogoAcademico, nivel, avance, programa);
-  // El folio del pre-registro recién creado, no el del participante de contexto.
-  const folio = borrador.folio ?? participante?.folio;
-  const dia = infoDia(borrador.dia ?? participante?.dia ?? 1);
-  const taller = getTaller(borrador.tallerId ?? participante?.tallerId);
-  const nombre = borrador.nombre ?? participante?.nombre;
+  // El folio del pre-registro recién creado, o el de la sesión del portal para
+  // quien volvió a identificarse porque perdió la pestaña.
+  const folio = borrador.folio ?? ficha?.folio;
+  const dia = infoDia(borrador.dia ?? ficha?.dia ?? 1);
+  const taller = getTaller(borrador.tallerId ?? ficha?.tallerId);
+  const nombre = borrador.nombre ?? ficha?.nombre;
+  /*
+   * El perfil, UNA vez y no dos.
+   *
+   * La insignia lo leía con su valor por omisión y el tercer requisito de la
+   * constancia lo leía del participante del contexto, o sea de nadie: ese
+   * renglón —«tus evidencias aprobadas»— no se le enseñaba nunca a ningún
+   * alumno, que es justo a quien le toca.
+   */
+  const perfil = borrador.perfil ?? ficha?.perfil ?? "alumno";
   /*
    * El total y el concepto salen de `depositoDe`, no de una suma escrita aquí.
    *
@@ -79,26 +147,13 @@ function Comprobante() {
    * LEIP es UN día, el de su reinscripción, que Servicios Escolares fija por
    * sede, módulo y grupo: ir antes o después no sirve, porque ese día es cuando
    * su sede está abierta para ellos.
+   *
+   * `useCitaDePago` es el mismo hook que usan la línea de tiempo del portal y la
+   * pantalla del pase. Aquí vivía copiado con su propio `useState` y su propio
+   * efecto: tres copias de la misma consulta es donde una se queda sin limpiar
+   * la cita anterior y un docente hereda la del alumno que usó la pestaña antes.
    */
-  const matricula = borrador.matricula ?? participante?.matricula;
-  const [cita, setCita] = useState<CitaDePago | null>(null);
-  useEffect(() => {
-    if (!matricula) return;
-    let vigente = true;
-    void (async () => {
-      try {
-        const { citaDePagoRemota } = await import("@/lib/datos");
-        const r = await citaDePagoRemota(matricula);
-        if (vigente) setCita(r);
-      } catch {
-        // Sin cita se enseña el bloque de siempre. Un comprobante que no se
-        // pinta porque falló una consulta informativa sería peor que no tenerla.
-      }
-    })();
-    return () => {
-      vigente = false;
-    };
-  }, [matricula]);
+  const cita = useCitaDePago(borrador.matricula ?? ficha?.matricula);
 
   return (
     <PantallaPublica titulo="Comprobante de pre-registro" ancho="xl">
@@ -177,7 +232,7 @@ function Comprobante() {
                 <div>
                   <dt className="text-xs text-muted-foreground">Perfil</dt>
                   <dd className="mt-1">
-                    <PerfilBadge perfil={borrador.perfil ?? participante?.perfil ?? "alumno"} />
+                    <PerfilBadge perfil={perfil} />
                   </dd>
                 </div>
                 {programa ? (
@@ -404,7 +459,7 @@ function Comprobante() {
                 </span>
                 Tu entrada registrada el día {dia.etiqueta}.
               </li>
-              {participante?.perfil === "alumno" ? (
+              {perfil === "alumno" ? (
                 <li className="flex gap-2">
                   <span aria-hidden className="text-primary">
                     3.

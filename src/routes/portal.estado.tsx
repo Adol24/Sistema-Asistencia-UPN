@@ -7,7 +7,8 @@ import { PortalNav } from "@/components/portal-nav";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
-import { fechasEnTexto, isoAFecha, sitioDelTaller } from "@/lib/formato";
+import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
+import { depositoDe } from "@/lib/deposito";
 import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
@@ -61,6 +62,12 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const estado = estadoDe(p);
   const dia = infoDia(p.dia);
   const taller = getTaller(p.tallerId);
+  // El importe y el concepto del depósito. La regla vive en `lib/deposito.ts` y
+  // aquí solo se dibuja: es la misma llamada de `/comprobante` y de `/pago`, y
+  // que sea la misma es lo que impide que dos pantallas pidan cifras distintas.
+  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  // La misma pregunta que ya decide la insignia de este cuadro, hecha una vez.
+  const pagoConfirmado = estadoDelDeposito(estado) === "pagado";
   const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance, p.programa);
   /*
    * Los días del taller, en fechas.
@@ -350,6 +357,40 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               ? "Un solo depósito, por el evento y el taller."
               : "Un solo depósito, por el evento."}
           </p>
+          {/*
+           * Cuánto y con qué concepto, que hasta ahora solo estaban en
+           * `/comprobante` y en `/pago`.
+           *
+           * Las dos se alimentan del borrador del pre-registro y mueren con la
+           * pestaña, así que quien volvía aquí días después —con su folio, que es
+           * el camino previsto— se quedaba sin las dos cosas que necesita para ir
+           * a ventanilla. Es el mismo `depositoDe` de allá: un cuadro del portal
+           * que diga 600 con el concepto de solo evento manda a la caja un papel
+           * que hay que devolver.
+           *
+           * Con el pago ya confirmado el concepto desaparece: la persona ya lo
+           * anotó, y «el concepto que debes anotar» sobre algo hecho se lee como
+           * que falta otro depósito. El importe se queda, como referencia de lo
+           * que entregó. Mientras el voucher esté en revisión sigue estando a la
+           * vista a propósito: es exactamente lo que hace falta si Servicios
+           * Financieros encuentra una discrepancia.
+           */}
+          <dl className="mt-3 grid gap-2 border-t border-border pt-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-xs text-muted-foreground">
+                {pagoConfirmado ? "Tu depósito" : "Total por pagar"}
+              </dt>
+              <dd className="text-lg font-bold tabular-nums">{moneda(deposito.total)}</dd>
+            </div>
+            {pagoConfirmado ? null : (
+              <div>
+                <dt className="text-xs text-muted-foreground">Concepto que debes anotar</dt>
+                <dd className="text-pretty text-sm font-medium leading-snug">
+                  {deposito.concepto}
+                </dd>
+              </div>
+            )}
+          </dl>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
           <p className="text-xs text-muted-foreground">Tu taller</p>
