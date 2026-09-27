@@ -345,6 +345,56 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El aforo dejó de frenar el padrón (`20260926180000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando el cuerpo vivo de
+`fn_asignar_dia_a_varios` ya no nombre `dias_evento`.
+
+**Es un retroceso que llevaba tres días vivo, no una regla nueva.**
+`20260921200000` le quitó el tope del aforo a `fn_asignar_dia_a_varios` el 21 de
+septiembre. El 23, `20260923140000` reescribió esa función entera para quitarle
+la liberación del taller, y al hacerlo partió de un cuerpo anterior: el bloque
+del aforo volvió a entrar sin que nadie lo pidiera.
+
+Por eso `20260926120000` no arregló el reparto aunque se corriera: su cabecera
+da por hecho que a esta función «ya» le habían quitado el tope. Con las dos
+mitades de aquella aplicadas, `fn_dia_mas_vacio` proponía días por encima del
+aforo y **esta función los rechazaba uno por uno**.
+
+Lo que la organización ve en `/admin/padron`: con 687/700, 691/700 y 583/600
+planeados y 532 alumnos sin día, cualquier reparto —y cualquier cambio a un día
+que ya llegó a su cupo— muere con «No se pudo guardar el cambio de día».
+
+La regla es la de siempre: en el padrón se sube la base de alumnos que
+**podrían** ir cada día, y no todos se inscriben. Se pueden planear mil en un día
+de 700. Los 700 los ocupa quien hace su pre-registro, y ese tope no se movió:
+`fn_preregistrar_alumno` y `fn_preregistrar_externo` cuentan `participantes` bajo
+`pg_advisory_xact_lock`.
+
+La migración termina con un bloque que comprueba su propio efecto: si el cuerpo
+que quedó todavía nombra `dias_evento`, se detiene en vez de decir que sí.
+
+**Antes de aplicarla, para ver el fallo con sus propias palabras:** abre la
+consola del navegador (F12) en `/admin/padron` y repite el cambio de día.
+`escritura-remota.ts` registra ahí el error real de Postgres —«En el día 1 caben
+700 y ya hay 687…»— debajo del aviso genérico de la pantalla.
+
+**Después, con una sesión con permisos** (no se ve desde la clave anónima: la
+función está revocada de `anon`):
+
+```sql
+select pg_get_functiondef(p.oid) not like '%dias_evento%' as sin_tope
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public'
+   and p.proname = 'fn_asignar_dia_a_varios';
+```
+
+`true` es lo que se busca. La misma comprobación está en
+`supabase/utilidades/estado-de-migraciones.sql`, junto a las otras dos mitades de
+esta regla.
+
 ### Asignar el taller desde el panel (`20260926160000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha

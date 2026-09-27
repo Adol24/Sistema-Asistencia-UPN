@@ -185,4 +185,29 @@ select
          and p.proname = 'fn_dia_de'
          and pg_get_functiondef(p.oid) like '%left join participantes p on p.dia = d.dia%'
     )
-  ) as "20260926120000_el_padron_planea_tambien_al_repartir";
+  ) as "20260926120000_el_padron_planea_tambien_al_repartir",
+
+  /*
+   * El aforo deja de frenar el padrón, tercera mitad de la misma regla.
+   *
+   * Esta es la que faltaba, y la que explica por qué el reparto seguía
+   * fallando con las otras dos ya aplicadas: `20260921200000` le quitó el tope
+   * a `fn_asignar_dia_a_varios` y `20260923140000` se lo devolvió sin querer,
+   * al reescribir la función entera para quitarle la liberación del taller.
+   *
+   * Se busca la AUSENCIA de `dias_evento`: sin aforo que consultar, esta
+   * función no tiene ningún motivo para nombrar esa tabla. Buscar la ausencia
+   * de `v_cupo` serviría igual hoy y no mañana —una variable se renombra—;
+   * la tabla es la regla.
+   *
+   * `false` aquí significa que el padrón no se puede planear por encima del
+   * aforo, y eso se ve en `/admin/padron` como «No se pudo guardar el cambio
+   * de día» en cuanto un día se acerca a su cupo.
+   */
+  exists (
+    select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'fn_asignar_dia_a_varios'
+       and pg_get_functiondef(p.oid) not like '%dias_evento%'
+  ) as "20260926180000_el_aforo_dejo_de_frenar_el_padron";
