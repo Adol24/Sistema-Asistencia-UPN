@@ -345,6 +345,71 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### La matrícula va de ocho a once dígitos (`20260927120000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando la regla viva del padrón diga
+`{8,11}`, con la consulta de más abajo.
+
+**Qué cambia.** `padron_alumnos_matricula_check` pasa de `^([0-9]{8}|[0-9]{11})$`
+al rango `^[0-9]{8,11}$`, y `fn_padron_alta_asistida` —el alta en mesa— deja de
+rechazar nueve y diez dígitos.
+
+**Corrige el argumento de `20260921220000`, no solo su regla.** Aquella migración
+abrió la columna de once a «ocho u once» y dedicó una sección a explicar por qué
+NO debía ser un rango: que nueve y diez «no son matrículas de nadie». Esa
+premisa era falsa —hay matrículas vigentes de esos dos largos—, y el efecto de
+rechazarlas es el que ella misma describió para las de ocho: la matrícula es la
+llave primaria del padrón y de ella cuelga `participantes.matricula`, así que la
+regla no rechazaba un formato, rechazaba a la persona. Sin fila en el padrón no
+hay pre-registro, ni pago, ni constancia.
+
+**Lo que sí era cierto de aquel argumento se asume como costo.** Un rango deja de
+detectar el error de captura de un dígito: al teclear una de ocho con uno de más,
+ahora entra como una de nueve en vez de rebotar. Se acepta porque dejar fuera a
+quien existe es un daño que el alumno no puede reparar desde ninguna pantalla,
+mientras que un dígito mal tecleado lo corrige la mesa con el documento delante —y
+la fila queda marcada `autodeclarado` para contrastarla cuando llegue el padrón
+real—.
+
+**Relajar no rompe nada.** La regla vieja está contenida en la nueva, así que
+ninguna fila existente queda en falta y la restricción no necesita respaldo ni
+ventana.
+
+La migración termina con un bloque que comprueba su propio efecto: lee la regla y
+el cuerpo que quedaron vivos, y se detiene si alguno sigue exigiendo los largos
+viejos. También cuenta cuántas filas hay con nueve o diez dígitos: **lo normal es
+cero, y ese cero no es un fallo** —es la prueba de que la regla vieja las estaba
+dejando fuera—. Las que existan entrarán al importar el padrón o al darlas de alta
+en mesa.
+
+**Con una sesión con permisos** (el alta en mesa está revocada de `anon`):
+
+```sql
+select pg_get_constraintdef(c.oid) as regla
+  from pg_constraint c
+  join pg_class t on t.oid = c.conrelid
+ where t.relname = 'padron_alumnos'
+   and c.conname = 'padron_alumnos_matricula_check';
+```
+
+Lo que se busca es un `{8,11}` en esa regla; el resto del texto lo rinde Postgres
+y no se ha visto todavía. Y para ver cómo quedó
+repartido el padrón por largo:
+
+```sql
+select length(matricula) as digitos, count(*)
+  from padron_alumnos group by 1 order by 1;
+```
+
+**Del lado de las pantallas** —que van en el mismo commit y no dependen de aplicar
+la migración—: `LARGOS_MATRICULA` en `src/lib/campos.ts` pasa a `[8, 9, 10, 11]`,
+y el alta en mesa deja de llevar su propia copia de la regla. Tenía
+`/^([0-9]{8}|[0-9]{11})$/` escrita a mano en `alta-de-un-alumno.tsx`, que era la
+cuarta copia de la misma regla y la que se habría quedado atrás: ahora pregunta a
+`esMatricula`.
+
+
 ### El aforo dejó de frenar el padrón (`20260926180000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha

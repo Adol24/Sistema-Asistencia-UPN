@@ -21,39 +21,44 @@ export const LARGO = {
 } as const;
 
 /**
- * La matrícula tiene dos largos, y los dos son reales.
+ * La matrícula va de ocho a once dígitos, y los cuatro largos son reales.
  *
- * Las de once dígitos son las que emite Servicios Escolares hoy; las de ocho
- * vienen de la numeración anterior y siguen siendo la matrícula vigente de
- * quien la tiene. Una regla de «son once» no rechaza un error de captura:
- * rechaza alumnos que existen y están en el padrón.
+ * Las de once son las que emite Servicios Escolares hoy y las de ocho vienen de
+ * la numeración anterior, pero entre esas dos también hay padrón: existen
+ * matrículas vigentes de nueve y de diez dígitos. Una regla de «ocho u once» no
+ * rechazaba un error de captura, rechazaba a esos alumnos.
  *
- * Se aceptan los dos largos y ningún otro. Nueve o diez dígitos no es una
- * matrícula de once a medio escribir —el campo no puede saber cuál de los dos
- * está intentando escribir quien teclea— así que se trata como lo que es: algo
- * que todavía no es una matrícula.
+ * Y rechazarlos no es cosmético. La matrícula es la llave del padrón, y sin fila
+ * en el padrón no hay pre-registro, ni pago, ni constancia: el alumno existe en
+ * la universidad y no existe aquí.
+ *
+ * Lo que se pierde al abrir el rango está asumido. Con ocho u once exactos, un
+ * dígito de más al teclear una de ocho no pasaba; ahora entra como una matrícula
+ * de nueve. Se acepta a sabiendas, porque dejar fuera a quien existe es peor que
+ * dejar pasar un error que la mesa puede corregir con el documento delante.
  */
-export const LARGOS_MATRICULA = [8, 11] as const;
+export const LARGOS_MATRICULA = [8, 9, 10, 11] as const;
 
 /**
  * Cómo se nombran esos largos dentro de una frase.
  *
- * Va pegado a `LARGOS_MATRICULA` a propósito: la conjunción castellana cambia
- * con la palabra que sigue —«8 u once», no «8 o once»— y eso no se deduce del
- * número. Si algún día se admite un tercer largo, las dos líneas se editan de
- * una sola mirada.
+ * Va pegado a `LARGOS_MATRICULA` a propósito. Los cuatro son contiguos, así que
+ * se dicen como un rango en vez de enumerarlos —«entre 8 y 11 dígitos»—, y esa
+ * forma no se deduce de la lista. Si algún día dejaran de ser contiguos, las dos
+ * líneas se editan de una sola mirada.
  */
-export const LARGOS_MATRICULA_EN_TEXTO = "8 u 11";
+export const LARGOS_MATRICULA_EN_TEXTO = "entre 8 y 11";
 
 /** El tope del campo: el mayor de los largos válidos. */
 export const MAX_MATRICULA = Math.max(...LARGOS_MATRICULA);
 
 /**
- * ¿Es una matrícula completa? Solo dígitos, y uno de los largos exactos.
+ * ¿Es una matrícula completa? Solo dígitos, y uno de los largos válidos.
  *
- * La usan el formulario del alumno y la importación del padrón, que es la razón
- * de que viva aquí: la base tiene la misma regla en un `check`, y tres copias de
- * la misma regla son tres oportunidades de que una se quede atrás.
+ * La usan el formulario del alumno, la importación del padrón y el alta en mesa,
+ * que es la razón de que viva aquí: la base tiene la misma regla en un `check`, y
+ * cuatro copias de la misma regla son cuatro oportunidades de que una se quede
+ * atrás. Ya pasó: el alta en mesa llevaba la suya escrita a mano.
  */
 export const esMatricula = (valor: string): boolean =>
   /^[0-9]+$/.test(valor) && (LARGOS_MATRICULA as readonly number[]).includes(valor.length);

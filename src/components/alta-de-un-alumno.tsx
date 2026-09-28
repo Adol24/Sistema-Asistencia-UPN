@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { LARGOS_MATRICULA_EN_TEXTO, esMatricula } from "@/lib/campos";
 import type { AlumnoPadron } from "@/dominio/tipos";
 
 /**
@@ -84,12 +85,17 @@ export function AltaDeUnAlumno({
   /*
    * Las dos comprobaciones que se pueden hacer sin preguntar a la base.
    *
-   * Son las mismas que la base exige —8 u 11 dígitos, y al menos dos palabras
-   * en el nombre— escritas aquí para poder avisar mientras se teclea en vez de
-   * al pulsar. La base sigue siendo la que manda: estas son un adelanto, no la
-   * regla, y por eso el mensaje de un rechazo suyo se enseña tal cual.
+   * Son las mismas que la base exige —el largo de la matrícula, y al menos dos
+   * palabras en el nombre— escritas aquí para poder avisar mientras se teclea en
+   * vez de al pulsar. La base sigue siendo la que manda: estas son un adelanto,
+   * no la regla, y por eso el mensaje de un rechazo suyo se enseña tal cual.
+   *
+   * El largo se pregunta a `esMatricula` y no a una copia local. Aquí había una
+   * escrita a mano —`/^([0-9]{8}|[0-9]{11})$/`— y al abrir el rango a nueve y
+   * diez dígitos se quedó atrás: esta pantalla rechazaba matrículas que la base
+   * ya aceptaba.
    */
-  const matriculaOk = /^([0-9]{8}|[0-9]{11})$/.test(matricula.trim());
+  const matriculaOk = esMatricula(matricula.trim());
   const nombreOk = nombre.trim().split(/\s+/).filter(Boolean).length >= 2;
   const completo = matriculaOk && nombreOk && !!programa && !!plantel;
 
@@ -148,7 +154,7 @@ export function AltaDeUnAlumno({
             ayuda={
               matricula && !matriculaOk ? (
                 <span className="text-xs text-estado-cancelado">
-                  Lleva 8 u 11 dígitos, sin letras ni espacios.
+                  Lleva {LARGOS_MATRICULA_EN_TEXTO} dígitos, sin letras ni espacios.
                 </span>
               ) : null
             }
