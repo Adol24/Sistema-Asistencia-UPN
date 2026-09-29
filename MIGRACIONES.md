@@ -21,6 +21,28 @@ abajo que los dos leen su aviso. Terminaba siempre en «1 PROBLEMAS», y un
 comprobante que siempre sale en rojo se mira por encima el día que el rojo es de
 verdad. Ahora mira las dos formas de admitir y solo falla si no hay ninguna.
 
+### Y antes de aplicarla, que el cliente la sepa llamar
+
+```bash
+bun run verificar-firmas-rpc
+```
+
+Compara los parámetros que `datos.ts` manda en cada `rpc` con los que declara
+cada función en estos archivos. **PostgREST resuelve la sobrecarga por los
+NOMBRES de los parámetros**, así que mandar uno de más rompe igual que mandar
+uno de menos: no encuentra ninguna función con esa combinación y contesta
+`PGRST202` antes de llegar a Postgres.
+
+Eso costó el 2026-09-29. `20260929130000` le añadió `p_quiere_constancia` a
+`fn_preregistrar_externo`; el cliente lo copió también al alta de ALUMNO, que
+nunca lo tuvo, y el pre-registro de todos los alumnos murió con la ventana
+abierta —con un mensaje que habla de «schema cache», que hace pensar en un
+caché sucio cuando lo que sobra es un argumento—. Ni TypeScript ni aplicar la
+migración lo delatan.
+
+También compara leyendo, no preguntando: una migración escrita y sin correr
+cuenta ahí como existente, y los tipos y el orden no se miran.
+
 ## Aplicadas
 
 Confirmadas contra el proyecto real hasta la 35, las dos del programa oficial
