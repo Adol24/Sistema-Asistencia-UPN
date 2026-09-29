@@ -263,18 +263,43 @@ export function AsignarTaller({
               >
                 <option value="">Sin taller</option>
                 {activos.map((t) => {
-                  const libres = t.cupoTotal - t.cupoOcupado;
+                  /*
+                   * Los lugares libres DE ESTA PERSONA, no los del aula.
+                   *
+                   * Desde el 2026-09-29 cada aula tiene 35 lugares de los que 30
+                   * son definitivos de los alumnos: los 5 de arriba solo los puede
+                   * ocupar un docente. Aquí sí se sabe de quién es la ficha, así
+                   * que se pregunta por el contador que le toca; con un solo
+                   * número, quien atiende le ofrecería a un alumno un lugar que la
+                   * base va a rechazar al guardar.
+                   *
+                   * El externo no es docente: los 5 son del profesor de la UPN
+                   * U-212. Misma línea que `fn_exigir_lugar_en_taller`.
+                   */
+                  const libres =
+                    participante.perfil === "docente" ? t.libresDocentes : t.libresNoDocentes;
                   // El que ya tiene se ofrece aunque esté lleno: su lugar es uno
                   // de los que esa cuenta ya incluye.
                   const lleno = libres <= 0 && t.id !== actual;
+                  // Reserva cero es una regla, no un taller lleno: es T10, donde no
+                  // hay cinco máquinas de sobra. A quien atiende hay que decirle
+                  // cuál de las dos cosas es, porque la respuesta al de enfrente
+                  // cambia: «vuelve mañana» o «ese no es para ti».
+                  const soloAlumnos =
+                    participante.perfil === "docente" &&
+                    t.cupoNoDocentes !== null &&
+                    t.cupoTotal - t.cupoNoDocentes === 0 &&
+                    t.id !== actual;
                   return (
                     <option key={t.id} value={t.id} disabled={lleno}>
                       {t.id} — {t.nombre.slice(0, 60)}
-                      {lleno
-                        ? " (cupo lleno)"
-                        : t.id === actual
-                          ? " (el que tiene)"
-                          : ` (${libres} ${libres === 1 ? "lugar" : "lugares"})`}
+                      {soloAlumnos
+                        ? " (solo para alumnos)"
+                        : lleno
+                          ? " (cupo lleno)"
+                          : t.id === actual
+                            ? " (el que tiene)"
+                            : ` (${libres} ${libres === 1 ? "lugar" : "lugares"})`}
                     </option>
                   );
                 })}

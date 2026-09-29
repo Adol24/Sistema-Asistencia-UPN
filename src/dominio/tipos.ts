@@ -150,6 +150,33 @@ export interface TallerBase {
    * pantalla y la base no pueden discrepar.
    */
   cupoOcupado: number;
+  /**
+   * El tope de alumnos y externos JUNTOS, o `null` si este taller no está partido.
+   *
+   * Desde el 2026-09-29 cada aula tiene 35 lugares de los que **30 son
+   * definitivos de los alumnos**: los 5 restantes solo los puede ocupar un
+   * docente. Aquí se guarda el 30, y la reserva del docente se resta.
+   *
+   * Se llama «no docentes» y no «alumnos» porque el **externo cuenta dentro**: la
+   * organización reservó los 5 para el profesor de la UPN U-212, y un profesor de
+   * otra institución es `externo` y compite por el tope del alumno.
+   *
+   * `null` significa «sin partir»: un solo número para todos, como era hasta esa
+   * fecha y como siguen T04 y T12. Cuando es `null`, los dos contadores de abajo
+   * valen lo mismo.
+   */
+  cupoNoDocentes: number | null;
+  /**
+   * Lugares libres para un alumno o un externo, contados POR LA BASE.
+   *
+   * No se derivan aquí a propósito. La misma cuenta la hace
+   * `fn_exigir_lugar_en_taller` al admitir, y si vive en dos sitios acaban
+   * discrepando: el catálogo ofrece un lugar que el alta rechaza al enviar el
+   * formulario, que es el defecto que este repo ya se comió una vez con el cupo.
+   */
+  libresNoDocentes: number;
+  /** Lugares libres para un docente. Cero significa que el taller es solo de alumnos. */
+  libresDocentes: number;
   costo: number;
   /** Un taller inactivo deja de ofrecerse en el catálogo público. */
   activo: boolean;

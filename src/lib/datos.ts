@@ -1181,6 +1181,15 @@ export async function guardarTallerRemoto(t: {
   lugar: string;
   /** El aula. Ver `TallerBase.salon`. */
   salon: string;
+  /**
+   * El tope de alumnos y externos juntos, o `null` para no partir el cupo.
+   *
+   * Se manda siempre, también cuando es `null`: la función tiene DOS firmas, y la
+   * de trece parámetros —la que no lo conoce— conserva el valor guardado en vez de
+   * borrarlo. Omitirlo aquí caería en esa envoltura y el número no se podría
+   * cambiar nunca desde el panel.
+   */
+  cupoNoDocentes: number | null;
   activo: boolean;
   /** Alta o edición. Un alta con clave repetida tiene que rebotar, no machacar. */
   crear: boolean;
@@ -1195,6 +1204,7 @@ export async function guardarTallerRemoto(t: {
     p_horario: t.horario,
     p_lugar: t.lugar,
     p_salon: t.salon,
+    p_cupo_no_docentes: t.cupoNoDocentes,
     p_activo: t.activo,
     p_dias: t.dias,
     p_crear: t.crear,

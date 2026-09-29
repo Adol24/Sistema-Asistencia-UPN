@@ -55,23 +55,40 @@ function AdminTalleres() {
     return `T${String(Math.max(0, ...usadas) + 1).padStart(2, "0")}`;
   };
 
-  const nuevo = (): TallerBase => ({
-    id: siguienteClave(),
-    nombre: "",
-    ponente: "",
-    descripcion: "",
-    dias: [1],
-    horario: "10:00 a 13:00 hrs",
-    lugar: "",
-    salon: "",
-    cupoTotal: 25,
-    ocupadosPrevios: 0,
-    // Un taller que todavía no existe no tiene a nadie dentro. El valor real
-    // lo trae `v_talleres` en cuanto se guarda.
-    cupoOcupado: 0,
-    costo: 300,
-    activo: true,
-  });
+  const nuevo = (): TallerBase => {
+    // Se nombra el cupo para poder repetirlo en los dos contadores sin escribir
+    // el número tres veces: un taller sin nadie dentro tiene libre todo su cupo,
+    // y ponerles cero haría que el objeto dijera «lleno».
+    const cupoTotal = 25;
+    return {
+      id: siguienteClave(),
+      nombre: "",
+      ponente: "",
+      descripcion: "",
+      dias: [1],
+      horario: "10:00 a 13:00 hrs",
+      lugar: "",
+      salon: "",
+      cupoTotal,
+      ocupadosPrevios: 0,
+      // Un taller que todavía no existe no tiene a nadie dentro. El valor real
+      // lo trae `v_talleres` en cuanto se guarda.
+      cupoOcupado: 0,
+      /*
+       * Sin partir, que es el valor seguro para un taller nuevo.
+       *
+       * `null` significa «un solo cupo para todos», como funcionaron los doce hasta
+       * el 2026-09-29. Poner aquí un número reservaría lugares para docentes en un
+       * taller del que nadie ha dicho que los tenga; quien los quiera los declara,
+       * y entonces la reserva existe a propósito.
+       */
+      cupoNoDocentes: null,
+      libresNoDocentes: cupoTotal,
+      libresDocentes: cupoTotal,
+      costo: 300,
+      activo: true,
+    };
+  };
 
   return (
     <PantallaPanel
@@ -256,6 +273,17 @@ function FormularioTaller({
   const ocupado = b.ocupadosPrevios + inscritos;
   // Reducir el cupo por debajo del ocupado deja fuera a gente que ya pagó.
   const cupoInsuficiente = b.cupoTotal < ocupado;
+  /*
+   * La reserva del docente no se edita: se RESTA. Ver `TallerBase.cupoNoDocentes`.
+   *
+   * Si se guardaran los tres números —total, tope de alumnos y reserva— se
+   * pueden dejar sin cuadrar desde esta misma pantalla, y entonces el aula
+   * admite 36. Con dos, la resta no puede contradecirlos.
+   */
+  const reservaDocentes = b.cupoNoDocentes === null ? null : b.cupoTotal - b.cupoNoDocentes;
+  // El tope del alumno no puede pasar del aula: la resta saldría negativa y el
+  // guardia de la base admitiría a cualquiera. `chk_cupo_no_docentes` lo repite.
+  const topeExcedido = b.cupoNoDocentes !== null && b.cupoNoDocentes > b.cupoTotal;
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
@@ -368,6 +396,36 @@ function FormularioTaller({
                 aria-invalid={cupoInsuficiente}
               />
             </div>
+            {/*
+             * El tope de alumnos y externos, que es lo que hace la reserva.
+             *
+             * Vacío significa «sin partir»: un solo cupo para todos, como los doce
+             * talleres hasta el 2026-09-29 y como siguen T04 y T12. Se deja vacío
+             * y no en cero a propósito: cero querría decir «ningún alumno», que es
+             * otra cosa y no es lo que nadie quiere pedir aquí.
+             */}
+            <div>
+              <Label htmlFor="t-tope">Tope de alumnos</Label>
+              <Input
+                id="t-tope"
+                inputMode="numeric"
+                value={b.cupoNoDocentes === null ? "" : String(b.cupoNoDocentes)}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  set({ cupoNoDocentes: v === "" ? null : Number(v) });
+                }}
+                placeholder="sin partir"
+                className="mt-1 h-11"
+                aria-invalid={topeExcedido}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {b.cupoNoDocentes === null
+                  ? "Vacío: un solo cupo para todos, sin lugares reservados."
+                  : reservaDocentes === 0
+                    ? "Reserva de 0: este taller es solo para alumnos."
+                    : `Deja ${reservaDocentes} ${reservaDocentes === 1 ? "lugar" : "lugares"} reservados solo para docentes. El externo cuenta dentro del tope.`}
+              </p>
+            </div>
             <div>
               <Label htmlFor="t-costo">Costo</Label>
               <CampoNumero
@@ -387,6 +445,19 @@ function FormularioTaller({
               derivado: no se edita aquí.
             </p>
           </div>
+
+          {topeExcedido ? (
+            <p className="flex items-start gap-2 rounded-md border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-sm text-estado-discrepancia">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                <span className="font-bold">
+                  El tope de alumnos ({b.cupoNoDocentes}) no puede pasar del cupo del aula (
+                  {b.cupoTotal}).
+                </span>{" "}
+                La reserva del docente sale de la resta, y en negativo la base rechaza guardar.
+              </span>
+            </p>
+          ) : null}
 
           {cupoInsuficiente ? (
             <p className="flex items-start gap-2 rounded-md border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-sm text-estado-discrepancia">
@@ -412,7 +483,7 @@ function FormularioTaller({
             </Button>
             <Button
               className="h-11"
-              disabled={cupoInsuficiente || !b.nombre.trim() || b.dias.length === 0}
+              disabled={cupoInsuficiente || topeExcedido || !b.nombre.trim() || b.dias.length === 0}
               onClick={() => onGuardar(b)}
             >
               Guardar taller

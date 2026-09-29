@@ -124,6 +124,23 @@ function CatalogoTalleres() {
   const exentoDePago = borrador.perfil === "docente" && borrador.quiereConstancia === false;
 
   /*
+   * Quién está mirando el catálogo, porque desde el 2026-09-29 los lugares libres
+   * NO son los mismos para todos.
+   *
+   * Cada aula tiene 35 lugares de los que 30 son definitivos de los alumnos; los
+   * 5 de arriba solo los puede ocupar un docente. Así que en el mismo taller y en
+   * el mismo instante un alumno tiene que leer «Cupo lleno» y un docente
+   * «5 lugares disponibles». Con un solo número, o el alumno ve lugares que no
+   * puede tomar —y el alta le revienta al final del recorrido— o el docente ve
+   * «Cupo lleno» en el único taller al que sí puede entrar.
+   *
+   * El externo NO es docente aquí, y es deliberado: los 5 son del profesor de la
+   * UPN U-212. Un profesor de otra institución entra como externo y cuenta dentro
+   * del tope del alumno. La misma línea la traza `fn_exigir_lugar_en_taller`.
+   */
+  const esDocente = borrador.perfil === "docente";
+
+  /*
    * Aquí se cierra el pre-registro: es el último paso donde se conocen los
    * cuatro datos que la base necesita —matrícula, correo, celular y taller—.
    *
@@ -348,7 +365,20 @@ function CatalogoTalleres() {
           const fechaDe = (d: number) => configuracion.dias.find((c) => c.dia === d)?.fecha ?? "";
           const fechas = fechasEnTexto(t.dias.map(fechaDe));
           const numeros = t.dias.join(" y ");
-          const libres = t.cupoTotal - t.cupoOcupado;
+          /*
+           * Los dos contadores los deriva `v_talleres`, no esta pantalla. Con el
+           * taller sin partir —T04 y T12— los dos valen lo mismo, así que aquí no
+           * hace falta distinguir el caso.
+           */
+          const libres = esDocente ? t.libresDocentes : t.libresNoDocentes;
+          /*
+           * Reserva cero no es un taller lleno, y al docente hay que decírselo
+           * distinto: es el caso de T10, el Centro de cómputo, donde no hay cinco
+           * máquinas de sobra y por eso no hay cinco lugares. «Cupo lleno» lo
+           * mandaría a volver mañana, y ahí no va a haber lugar nunca.
+           */
+          const soloAlumnos =
+            esDocente && t.cupoNoDocentes !== null && t.cupoTotal - t.cupoNoDocentes === 0;
           const lleno = libres <= 0;
           const pocos = libres > 0 && libres < 5;
           const elegido = seleccion === t.id;
@@ -456,7 +486,9 @@ function CatalogoTalleres() {
                    * depósito sin decir de cuánto.
                    */}
                   <div className="text-sm">
-                    {lleno ? (
+                    {soloAlumnos ? (
+                      <Rotulo>Solo para alumnos</Rotulo>
+                    ) : lleno ? (
                       <Rotulo>Cupo lleno</Rotulo>
                     ) : (
                       <p
@@ -478,7 +510,13 @@ function CatalogoTalleres() {
                     className="h-11"
                     onClick={() => setSeleccion(elegido ? null : t.id)}
                   >
-                    {lleno ? "Sin cupo" : elegido ? "Cambiar taller" : "Seleccionar"}
+                    {soloAlumnos
+                      ? "No disponible"
+                      : lleno
+                        ? "Sin cupo"
+                        : elegido
+                          ? "Cambiar taller"
+                          : "Seleccionar"}
                   </Button>
                 </div>
               </article>

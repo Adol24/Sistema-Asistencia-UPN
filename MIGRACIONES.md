@@ -367,6 +367,104 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Los cinco lugares del docente (`20260929180000`) — SIN APLICAR
+
+**Va DESPUÉS de `20260929120000` y `20260929130000`**, que a su vez van en dos
+corridas separadas. Aquí se reemiten `fn_preregistrar_externo` y
+`fn_cambiar_taller` y sus cuerpos hablan de `quiere_constancia`, así que la
+sentencia 0 comprueba las dos y se detiene con instrucciones si falta alguna.
+
+**La regla.** La organización pidió el 2026-09-29 sumar **5 lugares más por aula,
+solo para docentes**, dejando los 30 de siempre como **definitivos de los
+alumnos**. El ejemplo con el que se explicó, y que la migración tiene que poder
+contestar: un taller de 30 con 27 inscritos, llega un maestro y **no ocupa el
+lugar 28** —ese es de un alumno—, entra en el 31; después llegan tres alumnos y
+los tres pueden registrarse; un cuarto alumno ya no, porque su tope son 30 y no
+puede ser el 31 aunque esté vacío.
+
+**El desplazamiento no se programa**, y eso es lo que hace pequeño el cambio: no
+hay asientos numerados en ninguna parte —`talleres` guarda un tope y los inscritos
+se cuentan— así que con dos contadores independientes el maestro ya está siempre
+por encima de los 30 por construcción.
+
+**El externo cuenta como alumno.** Los 5 son solo del perfil `docente`, que es el
+profesor de la UPN U-212. El externo —incluido el profesor de otra institución—
+cuenta dentro del tope del alumno y no gana ninguno de los lugares nuevos. Es la
+primera vez que `docente` y `externo` significan cosas distintas: hasta hoy eran
+dos etiquetas para lo mismo.
+
+**El reparto.**
+
+| Talleres | `cupo_total` | `cupo_no_docentes` | reserva |
+|---|---|---|---|
+| T01·02·03·05·06·07·08·09·11 (nueve aulas) | 35 | 30 | 5 |
+| T10 (Centro de cómputo) | 30 | 30 | **0** |
+| T04 · T12 (Sala de usos múltiples) | 70 | **NULO** | compartido |
+
+T10 sale gratis del mismo modelo: con el tope igual al total la reserva es cero, y
+eso **es** «aquí no entra ningún maestro». No hay cinco máquinas de sobra en el
+laboratorio, así que no hay cinco lugares.
+
+**Una sola columna, y la reserva se RESTA.** Se guarda el tope de los no docentes
+y no la reserva, porque el número que no se puede mover es el de los alumnos: si
+alguien sube `cupo_total` a 40 desde el panel, con el 30 guardado los alumnos
+siguen en 30 y crece el margen del docente; con el 5 guardado, el tope del alumno
+subiría a 35 en silencio. Y con tres números guardados se pueden dejar sin cuadrar
+desde esa misma pantalla, y entonces el aula admite 36.
+
+**La columna es NULABLE, y NULO significa «sin partir».** Es lo que deja a T04 y
+T12 intactos sin dejar a nadie fuera de tope: poner `reserva = 0` por omisión
+habría puesto al docente que ya está en T04 y al de T12 por encima de un tope de
+cero.
+
+**Se tira `fn_exigir_lugar_en_taller(uuid)`.** La firma gana el perfil, y dejar
+viva la de un argumento sería dejar viva la versión que cuenta un solo cupo:
+cualquier llamador sin actualizar admitiría alumnos en los lugares del docente sin
+que nada se queje. El orden de sus comprobaciones importa —primero el aula para
+todos, porque `ocupados_previos` no tiene perfil y ocupa silla— y sus tres
+llamadores se reemiten pasándole el perfil.
+
+**`fn_guardar_taller` no se tira: la firma de trece parámetros pasa a ser
+envoltura**, igual que hizo `20260924220000` con `p_salon`. Un cliente viejo que
+editara el cupo le habría borrado la reserva; así le pasa el valor guardado.
+
+**Lo que esta regla cuesta, y se aceptó sabiéndolo.** Van a quedar sillas vacías
+que nadie puede ocupar: un aula con 30 alumnos y 0 docentes tiene cinco libres y
+un alumno al que se le dice no. Es lo que va a pasar en los diez talleres llenos
+en cuanto esto se aplique. Con los datos del 2026-09-29 no se desperdicia nada más:
+esos diez están a **30 alumnos exactos y cero maestros**, así que 30 + 5 = 35
+encaja justo.
+
+**El estado del 2026-09-29, comprobado con una sesión con permisos**, y es el que
+hace segura esta migración —no hay nada retroactivo que arreglar—:
+
+| | Alumnos | Docentes | Externos |
+|---|---|---|---|
+| Las nueve aulas y T10 | 30 | 0 | 0 |
+| T04 | 66 | 1 | 0 |
+| T12 | 36 | 1 | 1 |
+
+**Para comprobar que quedó**, con la clave anónima basta: las columnas nuevas son
+públicas.
+
+```sql
+select clave, salon, cupo_total, cupo_no_docentes,
+       cupo_total - cupo_no_docentes as reserva_docentes,
+       libres_no_docentes, libres_docentes
+  from v_talleres order by clave;
+```
+
+Deben salir nueve filas en 35/30 con reserva 5, T10 en 30/30 con reserva 0, y T04
+y T12 con `cupo_no_docentes` nulo y los dos contadores iguales.
+
+**Lo que NO cierra.** `/registro` sigue sin comprobar que nadie sea docente, así
+que los 5 están tan reservados como honesto sea ese botón. La organización decidió
+avisar que el estatus se validará con la universidad y exigir que sea docente de la
+UPN U-212; la herramienta para actuar es `fn_eliminar_preregistro(folio)`
+(`20260929160000`), **y solo sirve antes del evento**: en cuanto esa persona entra
+por la puerta su asistencia es huella y ya no se la puede retirar.
+
+
 ### Eliminar un pre-registro que no dejó huella (`20260929160000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha

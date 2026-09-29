@@ -114,6 +114,11 @@ export interface FilaTaller {
   ocupados_previos: number;
   /** Ya contado por la vista: `ocupados_previos` más los inscritos. */
   cupo_ocupado: number;
+  /** El tope de alumnos y externos juntos. Ver `TallerBase.cupoNoDocentes`. */
+  cupo_no_docentes: number | null;
+  /** Los dos contadores de la vista, ya repartidos por perfil. */
+  libres_no_docentes: number;
+  libres_docentes: number;
   costo: number;
   activo: boolean;
   dias: Dia[];
@@ -432,6 +437,19 @@ export const aTallerBase = (f: FilaTaller): TallerBase => ({
   ocupadosPrevios: f.ocupados_previos,
   // Contado por la vista, no por el navegador. Ver `TallerBase.cupoOcupado`.
   cupoOcupado: Number(f.cupo_ocupado),
+  /*
+   * El reparto por perfil, tal como lo deriva la vista. `Number(...)` por lo
+   * mismo que arriba: los `count()` de PostgreSQL son `bigint` y alguna versión
+   * de PostgREST los manda como texto.
+   *
+   * `?? null` y `?? 0` no son adornos: una base a la que todavía no se le haya
+   * aplicado `20260929180000` no trae estas tres columnas, y sin el respaldo el
+   * catálogo entero se quedaría con `NaN` lugares libres. Sin partición, los dos
+   * contadores caen al de siempre.
+   */
+  cupoNoDocentes: f.cupo_no_docentes ?? null,
+  libresNoDocentes: Number(f.libres_no_docentes ?? f.cupo_total - f.cupo_ocupado),
+  libresDocentes: Number(f.libres_docentes ?? f.cupo_total - f.cupo_ocupado),
   costo: Number(f.costo),
   activo: f.activo,
 });
