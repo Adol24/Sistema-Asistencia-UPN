@@ -6,7 +6,7 @@ import { PerfilBadge } from "@/components/estado-badges";
 import { EsperaDelPortal } from "@/components/acceso";
 import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { avanceTexto } from "@/dominio/catalogos";
-import { fechaLimiteTexto, fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
+import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -406,9 +406,27 @@ function ComprobanteContenido() {
             </section>
           ) : null}
 
+          {/*
+           * Aquí decía «haz tu depósito y entrega tu voucher antes del viernes 9 de
+           * octubre», y se quitó porque desmentía a la tarjeta de arriba.
+           *
+           * Este renglón se dibuja SIEMPRE, y la tarjeta de la cita solo cuando hay
+           * una. Así que un alumno con cita estricta leía, en dos frases seguidas,
+           * «es ese día y solo ese: no puedes ir antes ni después» y a renglón
+           * seguido una fecha distinta y más tardía para lo mismo. Ganaba la
+           * segunda, que es la que suena a instrucción y da más margen.
+           *
+           * El 9 de octubre no era un error: es `fecha_limite`, el corte tras el
+           * cual el pre-registro sin pago expira. Pero es un dato administrativo, y
+           * presentado como «entrega tu voucher antes del» se lee como un día de
+           * entrega, que es justo lo que decide `dia_entrega_voucher`. Dos fechas
+           * ciertas sobre el mismo acto es una de más: se queda la que le dice a
+           * esta persona qué día presentarse.
+           *
+           * No deja a nadie sin el plazo. `/pago` lo sigue enseñando, y ahí es
+           * donde se va a depositar.
+           */}
           <p className="mt-6 text-center text-sm text-muted-foreground lg:mt-4 lg:text-left">
-            Siguiente paso: haz tu depósito y entrega tu voucher antes del{" "}
-            {fechaLimiteTexto(evento.fechaLimite)}.{" "}
             <Link to="/portal" className="font-semibold text-primary underline">
               Consulta tu estado en el portal
             </Link>
