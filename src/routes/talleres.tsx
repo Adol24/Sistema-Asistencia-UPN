@@ -6,7 +6,7 @@ import { RequiereBorrador } from "@/components/requiere-borrador";
 import { EstadoVacio, Rotulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { fechaLarga, fechaLimiteTexto, fechasEnTexto } from "@/lib/formato";
+import { fechaLarga, fechasEnTexto } from "@/lib/formato";
 import { toast } from "sonner";
 import { usePrototipo } from "@/lib/prototipo";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -263,13 +263,28 @@ function CatalogoTalleres() {
           : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
       }
     >
+      {/*
+        El aviso ya no nombra ninguna fecha.
+
+        Decía «queda apartado hasta el viernes, 9 de octubre», que es
+        `fecha_limite`: el corte tras el cual expira el pre-registro sin pagar,
+        uno solo para todo el evento. Puesto aquí se leía como el día de
+        entrega, y ese es OTRO —lo dice `fn_cita_de_pago`, por cohorte y sede, y
+        cae entre el 28 de septiembre y el 8 de octubre—. Quien apartaba un
+        taller y leía el 9 llegaba a la ventanilla con su lugar ya liberado.
+
+        No se sustituye por la cita: esta pantalla es del pre-registro y el día
+        se lo dicen el comprobante y el portal, que es donde puede volver a
+        mirarlo. Aquí basta la regla, que no caduca.
+      */}
       {seleccion ? (
         <Alert className="mb-5">
           <Info className="size-4" />
-          <AlertTitle>
-            Tu lugar queda apartado hasta el {fechaLimiteTexto(configuracion.fechaLimite)}
-          </AlertTitle>
-          <AlertDescription>Si no entregas tu comprobante antes, se libera.</AlertDescription>
+          <AlertTitle>Tu lugar queda apartado</AlertTitle>
+          <AlertDescription>
+            Se confirma cuando entregues tu comprobante de pago el día que te toca. Si no lo
+            entregas, se libera.
+          </AlertDescription>
         </Alert>
       ) : null}
 

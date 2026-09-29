@@ -155,42 +155,24 @@ const unirConY = (partes: string[]) =>
     ? (partes[0] ?? "")
     : `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 
-/**
- * El mismo instante, con la hora: «viernes 9 de octubre · 18:00 hrs».
+/*
+ * Aquí vivía `fechaYHoraTexto`, que daba «viernes 9 de octubre · 18:00 hrs», y
+ * se borra en vez de dejarse sin llamar.
  *
- * `fechaLimiteTexto` deja fuera la hora a propósito, y ese razonamiento sigue
- * valiendo donde se usa: cuando lo que se promete es un plazo, «antes del
- * viernes 9» es una instrucción y «antes del viernes 9 a las 18:00» invita a
- * llegar a las 17:55 a una ventanilla con cola.
+ * Existía para UN sitio: la tarjeta «Día y hora de entrega» de `/pago`. Y el
+ * argumento con el que nació —la entrega es un día con su hora, y quien no la
+ * sepa se presenta cuando no hay nadie— era bueno; lo que estaba mal era el
+ * dato que se le pasaba. Recibía `configuracion_evento.fecha_limite`, que es el
+ * corte del pre-registro y es UNO para todo el evento, así que a los alumnos se
+ * les anunciaba como cita un día que no es de nadie: los de
+ * `dia_entrega_voucher` van del 28 de septiembre al 8 de octubre.
  *
- * Aquí es al revés. La entrega del voucher no es un plazo que vence: es UN día
- * con SU hora, y quien no la sepa se presenta cuando no hay nadie. Ocultarla
- * obligaría a preguntarla por WhatsApp.
- *
- * La hora se fija en la zona de México y no en la del aparato. Un plazo de un
- * día aguanta que el teléfono esté en otro huso; una hora, no: la misma cita
- * saldría a las 17:00 o a las 19:00 según cómo tenga configurado el reloj quien
- * la lee.
+ * La cita de verdad la da `fn_cita_de_pago` y viene SIN hora, porque el
+ * calendario oficial se declara por día. Mientras no haya una hora real que
+ * decir, una función que sabe formatear horas es una invitación a volver a
+ * inventarla. El día que exista —una columna, no una constante— se escribe otra
+ * vez, y el razonamiento de arriba sigue aquí para quien la escriba.
  */
-export const fechaYHoraTexto = (iso: string) => {
-  if (!iso.trim()) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const zona = "America/Mexico_City";
-  const dia = d.toLocaleDateString("es-MX", {
-    timeZone: zona,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const hora = d.toLocaleTimeString("es-MX", {
-    timeZone: zona,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  return `${dia} · ${hora} hrs`;
-};
 
 /**
  * De un `timestamptz` de la base al valor que espera un `<input

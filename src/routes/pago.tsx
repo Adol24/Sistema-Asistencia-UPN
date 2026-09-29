@@ -10,9 +10,9 @@ import { AccionesDelPase, CodigoParaPagar } from "@/components/pase";
 import { EsperaDelPortal } from "@/components/acceso";
 import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { IMAGEN_INSTRUCCIONES_VOUCHER } from "@/lib/imagenes";
-import { fechaYHoraTexto, moneda } from "@/lib/formato";
+import { moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
-import { useParticipanteDelPortal, usePortal } from "@/lib/portal";
+import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { abreLaPuerta } from "@/lib/pagos-logica";
 import { depositoDe } from "@/lib/deposito";
@@ -25,7 +25,9 @@ export const Route = createFileRoute("/pago")({
       // Sin nombrar el departamento: una `meta` se arma antes de que llegue la
       // configuración, así que no puede leer `ventanilla_lugar` y cualquier
       // nombre escrito aquí envejece con el primer cambio de sitio.
-      "Datos bancarios, monto único, concepto, fecha límite y entrega del voucher en ventanilla para completar tu registro al XIV Encuentro Internacional de Educación.",
+      // Sin «fecha límite»: la pantalla ya no dice ninguna, y una descripción
+      // que la promete manda a buscarla dentro.
+      "Datos bancarios, monto único, concepto y entrega del voucher en ventanilla para completar tu registro al XIV Encuentro Internacional de Educación.",
     ),
   component: Pago,
 });
@@ -129,6 +131,27 @@ function PagoContenido() {
   // Un solo depósito y un solo voucher, con el concepto que le toca. La regla
   // vive en `lib/deposito.ts`; aquí solo se dibuja.
   const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  /*
+   * El día que le toca a ESTA persona. Nunca la fecha límite del evento.
+   *
+   * Aquí se pintaba `fecha_limite` con su hora —«viernes, 9 de octubre · 18:00
+   * hrs»— bajo el rótulo «Día y hora de entrega». Era la última pantalla que lo
+   * hacía: `/portal/qr` lo dejó de hacer el 2026-09-25 y el comprobante en
+   * `dec206d`, y el comentario que quedó en `portal.qr.tsx` decía «la fecha
+   * sigue en /pago», que es exactamente lo que se corrige ahora.
+   *
+   * `fecha_limite` es UNA sola para todo el evento —el corte tras el cual
+   * expira el pre-registro sin pagar— y esta tarjeta no tenía condición
+   * ninguna, así que todos leían el 9 de octubre como su cita. No es la de
+   * nadie: los días de `dia_entrega_voucher` van del 28 de septiembre al 8 de
+   * octubre. A quien le tocaba el 2 lo mandaba una semana tarde, y para
+   * entonces su lugar ya se había liberado.
+   *
+   * La hora se va con ella y no se sustituye: `fn_cita_de_pago` devuelve un día
+   * sin hora, y `ventanilla_horario` está vacío a propósito en la base. Inventar
+   * una aquí sería volver a poner el dato que causó el problema.
+   */
+  const cita = useCitaDePago(borrador.matricula ?? ficha?.matricula);
   const [ampliada, setAmpliada] = useState<string | null>(null);
   const [copiadoFolio, setCopiadoFolio] = useState(false);
   const [copiadoConcepto, setCopiadoConcepto] = useState(false);
@@ -417,23 +440,35 @@ function PagoContenido() {
             ninguna pared— y no hay semana de entrega: hay UN día, con SU hora.
 
             Por eso la segunda tarjeta deja de titularse «Fecha límite»: no es
-            un plazo que vence, es la cita. Y por eso enseña la hora, que un
-            plazo se puede dar sin ella y una cita no.
+            un plazo que vence, es la cita —y por eso la dice `fn_cita_de_pago`,
+            que sabe de quién es, y no `fecha_limite`, que es de todos y por eso
+            no es de nadie—.
+
+            Sin cita no se dibuja. Docentes y externos no están en el calendario
+            oficial, y a ellos la tarjeta anterior les daba una fecha que no era
+            suya: el mismo razonamiento que dejó escrito `portal.qr.tsx`.
 
             El horario de atención ya no se dibuja. La migración
             `20260924200000` lo dejó vacío, y además se quita de aquí para que
             el día que alguien vuelva a llenarlo no reaparezca contradiciendo a
             la tarjeta de al lado.
           */}
-          <section className="mt-6 grid gap-3 sm:grid-cols-2">
+          <section className={`mt-6 grid gap-3 ${cita ? "sm:grid-cols-2" : ""}`}>
             <div className="rounded-lg border border-border bg-card p-4 lg:p-5">
               <h2 className="text-sm font-semibold">Entrega de vouchers</h2>
               <p className="mt-1 text-sm text-muted-foreground">{evento.ventanilla.lugar}</p>
             </div>
-            <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
-              <h2 className="text-sm font-semibold">Día y hora de entrega</h2>
-              <p className="mt-1 text-lg font-bold">{fechaYHoraTexto(evento.fechaLimite)}</p>
-            </div>
+            {cita ? (
+              <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
+                <h2 className="text-sm font-semibold">Tu día para entregar</h2>
+                <p className="mt-1 text-lg font-bold">{cita.cuando}</p>
+                {cita.estricto ? (
+                  <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
+                    Es ese día y solo ese: no puedes ir antes ni después.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </section>
 
           <section className="mt-4 rounded-lg border border-border bg-card p-4 lg:p-5">
