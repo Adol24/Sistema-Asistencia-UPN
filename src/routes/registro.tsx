@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { AlertTriangle, CalendarClock, Loader2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Loader2, ShieldAlert } from "lucide-react";
 import { PantallaPublica } from "@/components/layouts";
 import { AvisoDePrivacidad } from "@/components/aviso-privacidad";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,20 @@ export const Route = createFileRoute("/registro")({
     ),
   component: RegistroExterno,
 });
+
+/**
+ * La institución de un docente no se teclea: **es** la UPN U-212.
+ *
+ * Desde el 2026-09-29 el perfil `docente` significa «profesor de la UPN U-212» —es
+ * quien entra gratis y quien tiene los 5 lugares reservados en cada aula—, así que
+ * un docente que escribiera otra universidad sería una contradicción que nadie
+ * comprueba nunca. Quien da clase en otra institución es `externo`.
+ *
+ * `UPN U-212` y no «UPN 212»: es la grafía que usa el resto del sistema —los doce
+ * talleres y las tres sedes— y un valor único hace que el listado de docentes se
+ * pueda agrupar de verdad en vez de tener veinte formas de escribir lo mismo.
+ */
+const INSTITUCION_DOCENTE = "UPN U-212";
 
 interface Campos {
   nombres: string;
@@ -147,7 +161,10 @@ function RegistroExterno() {
       const falta = faltanDigitos(c.celular, LARGO.celular, "el celular");
       if (falta) e.celular = falta;
     }
-    if (!c.institucion.trim()) e.institucion = "Escribe tu institución de procedencia.";
+    // Al docente no se le pide: su institución es la unidad, y el campo es de
+    // lectura. Exigírsela sería pedirle que llene algo que no puede escribir.
+    if (perfil !== "docente" && !c.institucion.trim())
+      e.institucion = "Escribe tu institución de procedencia.";
     setErrores(e);
     if (Object.keys(e).length) return;
 
@@ -201,7 +218,7 @@ function RegistroExterno() {
       perfil,
       ...porConfirmar!,
       celular: c.celular.trim(),
-      institucion: c.institucion.trim(),
+      institucion: perfil === "docente" ? INSTITUCION_DOCENTE : c.institucion.trim(),
       aceptoAviso: true,
       /*
        * El externo no contesta esta pregunta y paga igual que antes, así que
@@ -276,22 +293,54 @@ function RegistroExterno() {
         }}
       >
         <p className="text-sm font-semibold">Tipo de participante</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {(["docente", "externo"] as const).map((p) => (
+        {/*
+         * Los botones dejan de ser una palabra, y esto arregla más que el aviso.
+         *
+         * Decían «Docente» y «Externo», a secas. Desde el 2026-09-29 el perfil
+         * decide dinero —el docente entra gratis— y lugares —los 5 reservados de
+         * cada aula son suyos—, y con esos rótulos un profesor de otra universidad
+         * pulsa «Docente» **de buena fe**: es docente, es cierto. Se lleva un
+         * lugar reservado y la exención sin habérselo propuesto.
+         *
+         * El aviso de abajo disuade a quien quiere colarse; el rótulo evita el
+         * error de quien no. Nombrar la unidad es lo que hace que el botón
+         * pregunte lo que de verdad se está preguntando.
+         */}
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              {
+                valor: "docente",
+                titulo: "Docente de la UPN U-212",
+                detalle: "Doy clase en esta unidad.",
+              },
+              {
+                valor: "externo",
+                titulo: "Externo",
+                detalle: "Cualquier otra institución, o público en general.",
+              },
+            ] as const
+          ).map((o) => (
             <button
-              key={p}
+              key={o.valor}
               type="button"
+              aria-pressed={perfil === o.valor}
               onClick={() => {
-                setPerfil(p);
+                setPerfil(o.valor);
                 setQuiereConstancia(null);
                 setErrorConstancia("");
               }}
-              className={cn(
-                "min-h-12 rounded-md border text-sm font-semibold capitalize",
-                opcion(perfil === p),
-              )}
+              className={cn("min-h-12 rounded-md border p-3 text-left", opcion(perfil === o.valor))}
             >
-              {p}
+              <span className="block text-sm font-semibold">{o.titulo}</span>
+              <span
+                className={cn(
+                  "mt-0.5 block text-xs leading-snug",
+                  perfil === o.valor ? "text-primary-foreground/80" : "text-muted-foreground",
+                )}
+              >
+                {o.detalle}
+              </span>
             </button>
           ))}
         </div>
@@ -309,6 +358,35 @@ function RegistroExterno() {
             <AlertTitle>Todavía no es tu turno</AlertTitle>
             <AlertDescription>
               {fueraDeVentana} Mientras tanto no se puede completar este registro.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {/*
+         * Lo que se le dice al docente, y es lo único que sostiene los 5 lugares.
+         *
+         * No hay forma técnica de comprobar quién da clase en la UPN: el dominio
+         * institucional está vacío en producción y la única barrera real es que el
+         * correo no sea de un alumno ya registrado, que un Gmail cualquiera
+         * esquiva. Así que la organización decidió el 2026-09-29 comprarlo con
+         * aviso y con consecuencia.
+         *
+         * **La consecuencia va escrita, no insinuada.** Una advertencia que no
+         * dice qué pasa no disuade a nadie, y es además lo que hace defendible
+         * retirarle el lugar tres semanas después: se le dijo.
+         *
+         * Va aquí y no al final del formulario porque es lo que acaba de elegir.
+         * Y debajo del aviso de ventana porque ese bloquea el registro entero: lo
+         * primero que hay que leer es si hoy es su turno.
+         */}
+        {perfil === "docente" ? (
+          <Alert className="mt-4 border-2 border-estado-discrepancia/40 bg-estado-discrepancia-bg">
+            <ShieldAlert className="size-4" />
+            <AlertTitle>Vamos a validar que seas docente de la UPN U-212</AlertTitle>
+            <AlertDescription>
+              Lo comprobamos con la universidad antes del evento. Si no eres docente de esta unidad,
+              tu registro se cancela y pierdes tu lugar. Si das clase en otra institución, entra
+              como <span className="font-semibold">Externo</span>.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -418,17 +496,35 @@ function RegistroExterno() {
             ] as [keyof Campos, string, string][]
           ).map(([k, label, ph]) => (
             <div key={k}>
-              <Label htmlFor={k}>{label}</Label>
+              <Label htmlFor={k}>
+                {k === "institucion" && perfil === "docente" ? "Institución" : label}
+              </Label>
+              {/*
+               * El campo se queda —no se quita— y esa es la razón de que siga
+               * habiendo seis.
+               *
+               * La rejilla de dos columnas funciona porque son SEIS exactos: tres
+               * renglones justos, sin huecos. Quitarle uno al docente dejaría un
+               * hueco, y este dato hay que enseñárselo de todos modos: es lo que
+               * va a quedar registrado de él.
+               *
+               * `readOnly` y no `disabled`: un campo deshabilitado se salta con el
+               * tabulador y se pinta como si no existiera, y esto sí existe y sí
+               * se lee.
+               */}
               <Input
                 id={k}
-                value={c[k]}
+                value={k === "institucion" && perfil === "docente" ? INSTITUCION_DOCENTE : c[k]}
                 onChange={set(k)}
+                readOnly={k === "institucion" && perfil === "docente"}
                 placeholder={ph}
-                className={
-                  k === "correo"
-                    ? "mt-1 h-12 md:h-11 text-base"
-                    : "mt-1 h-12 md:h-11 text-base uppercase"
-                }
+                className={cn(
+                  "mt-1 h-12 md:h-11 text-base",
+                  k !== "correo" && "uppercase",
+                  k === "institucion" &&
+                    perfil === "docente" &&
+                    "bg-muted text-muted-foreground cursor-default",
+                )}
                 {...(k === "correo" || k === "celular" ? {} : CAMPO_MAYUSCULAS)}
                 aria-invalid={!!errores[k]}
                 {...(k === "celular"
