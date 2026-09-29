@@ -1723,15 +1723,22 @@ export async function preregistrarAlumno(datos: {
    */
   aceptoAviso: boolean;
   tallerId?: string | undefined;
-  /**
-   * Si quiere constancia. Solo el docente puede decir que no; la base rechaza
-   * un `false` de cualquier otro perfil.
+  /*
+   * AQUÍ NO VA `quiereConstancia`, y no es un olvido.
    *
-   * Se manda siempre, también cuando es `true`: el valor por omisión de la
-   * función es el que COBRA, así que omitirlo nunca regala nada, pero mandarlo
-   * explícito hace que la petición diga qué se le preguntó a esa persona.
+   * La exención del 2026-09-29 es del MAESTRO. `chk_exento_solo_docente` lo dice
+   * en la tabla y `fn_sincronizar_exencion` lo repite con un mensaje; un alumno
+   * paga su cuota siempre, así que no hay pregunta que trasladar. La migración
+   * `20260929130000` solo le cambió la firma a `fn_preregistrar_externo`: esta
+   * función sigue recibiendo cinco parámetros y ninguno se llama así.
+   *
+   * Estuvo aquí unas horas, copiado del alta de externo, y rompió el
+   * pre-registro de TODOS los alumnos con la ventana abierta: PostgREST resuelve
+   * la sobrecarga por los nombres de los parámetros, así que mandar uno de más
+   * no lo ignora —no encuentra ninguna función con esa combinación y contesta
+   * `PGRST202 · Could not find the function public.fn_preregistrar_alumno(...)`
+   * antes de llegar a Postgres—. Un parámetro de sobra no es inocuo aquí.
    */
-  quiereConstancia?: boolean | undefined;
 }) {
   const sb = exigirBase();
   return llamar<{ id: string; folio: string; dia: Dia }>("fn_preregistrar_alumno", {
@@ -1740,7 +1747,6 @@ export async function preregistrarAlumno(datos: {
     p_celular: datos.celular,
     p_acepto_aviso: datos.aceptoAviso,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
-    p_quiere_constancia: datos.quiereConstancia ?? true,
   });
 }
 

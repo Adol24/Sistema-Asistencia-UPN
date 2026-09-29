@@ -345,7 +345,43 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### El docente no paga, salvo constancia (`20260929120000` y `20260929130000`) — SIN APLICAR
+### El docente no paga, salvo constancia (`20260929120000` y `20260929130000`) — aplicadas
+
+**Comprobadas el 2026-09-29 con la clave anónima**: `fn_preregistrar_externo`
+con los nueve parámetros —`p_quiere_constancia` incluido— contesta `23514 · Hay
+que aceptar el aviso de privacidad para continuar`. O sea que la firma nueva
+existe y se entró a ejecutar su cuerpo. La sonda manda el aviso en `false` justo
+para morir en la primera línea y no escribir nada. Y que la `130000` corriera
+prueba también la `120000`: su primera sentencia se detiene si el valor `exento`
+no está en el enum.
+
+#### Y al aplicarlas se cayó el pre-registro de TODOS los alumnos
+
+Durante unas horas del 2026-09-29, cualquier alumno que cerrara su pre-registro
+—con taller o sin él— recibía:
+
+```
+Could not find the function public.fn_preregistrar_alumno(
+  p_acepto_aviso, p_celular, p_correo, p_matricula, p_quiere_constancia, p_taller
+) in the schema cache
+```
+
+**La migración no tenía la culpa; el cliente sí.** `preregistrarAlumno` en
+`datos.ts` mandaba `p_quiere_constancia`, copiado del alta de externo. Esa
+migración solo le cambió la firma a `fn_preregistrar_externo`; el alta de alumno
+sigue recibiendo cinco parámetros y la exénción nunca fue suya —
+`chk_exento_solo_docente` lo dice en la tabla—.
+
+**La trampa, y hay que recordarla:** PostgREST resuelve la sobrecarga **por los
+nombres de los parámetros**. Un parámetro de más no se ignora: no encuentra
+NINGUNA función con esa combinación y contesta `PGRST202` antes de llegar a
+Postgres. Mandar de más rompe igual que mandar de menos, y el mensaje habla de
+«schema cache», que hace pensar en un caché sucio cuando lo que sobra es un
+argumento.
+
+Arreglado quitándolo del cliente. Comprobado contra la base: con los cinco de
+ahora contesta `P0002 · Esa matrícula no está en nuestros registros`, y con el
+sexto reproduce el `PGRST202` exacto.
 
 **SON DOS ARCHIVOS Y VAN EN DOS CORRIDAS SEPARADAS.** Primero
 `20260929120000_un_estado_de_pago_para_quien_no_debe_nada.sql`, que es **una sola
@@ -423,6 +459,18 @@ Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
 contestado**. Se cambia a «aplicada» cuando `fn_asignar_taller` acepte una baja
 sobre un folio con depósito del evento y sin cobro del taller, y siga rechazando
 las otras dos.
+
+**Y esta no se puede sondear desde fuera**, por lo mismo que la del aforo:
+`fn_asignar_taller` está revocada al anónimo, así que contesta `42501` con el
+cuerpo viejo y con el nuevo por igual. Existir y estar al día se ven idénticos.
+Desde el editor SQL, la pregunta que sí distingue —la guardia nueva es la única
+que nombra el concepto del taller—:
+
+```sql
+select prosrc like '%concepto = ''taller''%' as tiene_la_guardia_nueva
+  from pg_proc
+ where proname = 'fn_asignar_taller';
+```
 
 **Qué cambia.** `fn_asignar_taller` deja de rechazar un caso: quitarle el taller
 a quien ya depositó pero cuyo taller no tiene ninguna fila en `pagos`. Poner o
