@@ -297,6 +297,29 @@ export interface Ctx {
   asignarTaller: (folio: string, clave: string | null) => Promise<void>;
 
   /**
+   * Elimina un pre-registro que no dejó huella. **No se deshace.**
+   *
+   * Solo administración. Lo rechaza cualquier depósito, entrada por la puerta o
+   * evidencia entregada: esos tres son hechos que ocurrieron. Con la persona se
+   * van sus avisos del portal y sus casos de soporte.
+   *
+   * Propaga el error por lo mismo que `asignarTaller`: el motivo del rechazo
+   * —«tiene 1 depósito registrado», «entró por la puerta»— es lo que quien borra
+   * necesita leer antes de insistir, y no algo que se arregle recargando.
+   *
+   * Nada que liberar a mano: el lugar del taller y el del aforo se cuentan en
+   * vivo, así que vuelven al desaparecer la fila.
+   *
+   * @returns Qué se eliminó, para poder decirlo en voz alta.
+   */
+  eliminarPreregistro: (folio: string) => Promise<{
+    folio: string;
+    nombre: string;
+    taller: string | null;
+    casos: number;
+  }>;
+
+  /**
    * Guarda el padrón en la base y dice qué aceptó y qué no.
    *
    * Separada de `aplicarPadron` —que actualiza la pantalla— porque escribir

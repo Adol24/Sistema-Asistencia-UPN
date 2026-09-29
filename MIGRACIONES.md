@@ -367,6 +367,72 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Eliminar un pre-registro que no dejó huella (`20260929160000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando `fn_eliminar_preregistro` exista y
+rechace, con su propio mensaje, a un folio con depósito.
+
+**Qué cambia.** Nace `fn_eliminar_preregistro(folio)`, **solo para
+administración**: la primera y única forma de retirar del sistema a alguien que
+se pre-registró y ya no va a venir. Antes no había ninguna, y la única salida
+era pegar SQL a mano contra la tabla de producción con el registro abierto.
+
+**La regla no se inventó: ya estaba en las llaves foráneas.** Cuatro de las cinco
+que apuntan a `participantes` son `on delete restrict` desde el 7 de septiembre,
+así que la base YA rechazaba borrar a quien dejó rastro. La función no la relaja
+—la comprueba antes, para poder decir CUÁL de las tres es y a dónde va esa
+persona—:
+
+| Huella | Qué dice |
+| --- | --- |
+| `pagos` | hay dinero suyo registrado → Servicios Financieros |
+| `asistencias` | entró por la puerta; quién estuvo no se reescribe |
+| `evidencias` | entregó trabajo ya recibido |
+
+Se cuentan en vez de comprobar existencia porque el número es lo que hace
+creíble el rechazo: «tiene 1 depósito» se verifica en la ficha, «tiene
+depósitos» se discute.
+
+**Las dos que sí se van con la persona.** `avisos_participante` por su
+`on delete cascade` de siempre. Y `casos_soporte`, que es `restrict` y aquí se
+borra a propósito ANTES —esa es la única decisión de esta migración—: un caso
+no es huella de la persona sino una anotación SOBRE su registro. Lo dice el
+comentario de su propia tabla —«un caso de nombre abierto es lo que señala al
+participante en el listado de elegibles»— y lo confirma quién los crea:
+`fn_abrir_caso_nombre`, que se dispara sola cuando alguien corrige cómo viene
+escrito su nombre. Bloquear por eso haría inútil la función para cualquiera que
+haya tocado su nombre, a cambio de conservar un renglón que apunta a un folio
+inexistente.
+
+Van primero porque su disparador `trg_caso_marca_nombre` actualiza
+`participantes.nombre_en_revision`, sobre una fila que en ese instante sigue
+viva.
+
+**No hay nada que liberar, y por eso no se toca ninguna consulta.** Los dos cupos
+se CUENTAN, no se reservan: `fn_exigir_lugar_en_taller` y `v_talleres` hacen
+`ocupados_previos + count(p.id)`, la guardia del aforo hace `count(p.id)`, y
+`ya_registrado` del padrón es un `exists` vivo. Al desaparecer la fila, los dos
+lugares vuelven y esa persona puede volver a pre-registrarse.
+
+**Solo `admin`, y no el par de siempre.** `fn_asignar_taller` admite `admin` y
+`soporte`; esta no. Mover a alguien de taller se deshace moviendo otra vez;
+hacer desaparecer su folio, no. Da igual para la pantalla —`/admin/preinscritos`
+ya es de `administrador` solo, porque `ROLES_POR_AREA.admin` no incluye a
+soporte— pero la guardia que manda es la de la función: la pantalla se puede
+saltar.
+
+**Lo que NO resuelve, y hay que decirlo.** Al que ya depositó no lo toca, y es el
+caso más probable: alguien paga y luego no puede ir. Eso pedía un estado de baja
+en `participantes` y revisar TODO lo que cuenta gente —los dos cupos, el padrón,
+la vista de pagos, los elegibles, el torniquete y los reportes—, y olvidar uno
+deja un lugar fantasma o a alguien dado de baja entrando por la puerta. Se dejó
+fuera a conciencia, no por descuido.
+
+**Cómo comprobarla.** La migración termina contando a cuánta gente alcanza hoy:
+cuántos no tienen huella, y cuántos quedan fuera por cada uno de los tres
+motivos.
+
 ### El docente no paga, salvo constancia (`20260929120000` y `20260929130000`) — aplicadas
 
 **Comprobadas el 2026-09-29 con la clave anónima**: `fn_preregistrar_externo`

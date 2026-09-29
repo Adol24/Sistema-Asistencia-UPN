@@ -2081,6 +2081,43 @@ export async function asignarTaller(
 }
 
 /**
+ * Elimina un pre-registro que no dejó huella. **No se deshace.**
+ *
+ * Solo administración, y la guardia que manda está en la base: la pantalla se
+ * puede saltar, `fn_eliminar_preregistro` no. Lo rechaza cualquier depósito,
+ * entrada por la puerta o evidencia entregada —esos tres son hechos que
+ * ocurrieron y no se reescriben—, y cada uno contesta con su propio mensaje
+ * diciendo cuántos hay y a dónde va esa persona.
+ *
+ * Con la persona se van sus avisos del portal (`on delete cascade`) y sus casos
+ * de soporte, que son anotaciones sobre este registro y no huella suya.
+ *
+ * **No hay que liberar nada.** El lugar del taller y el del aforo del día se
+ * cuentan en vivo sobre `participantes` —`count(p.id)` en
+ * `fn_exigir_lugar_en_taller`, en `v_talleres` y en la guardia del alta— y
+ * `ya_registrado` del padrón es un `exists` vivo. Al desaparecer la fila, los
+ * dos lugares vuelven y esa persona puede volver a pre-registrarse.
+ *
+ * Propaga el error, como `asignarTaller`: los rechazos son justo lo que quien
+ * borra necesita leer antes de insistir.
+ *
+ * @returns Qué se eliminó, para poder decirlo: su nombre, su día, el taller que
+ * dejó libre —o nulo— y cuántos casos de soporte se fueron con él.
+ */
+export async function eliminarPreregistro(folio: string): Promise<{
+  folio: string;
+  nombre: string;
+  dia: Dia;
+  taller: string | null;
+  casos: number;
+}> {
+  return llamar<{ folio: string; nombre: string; dia: Dia; taller: string | null; casos: number }>(
+    "fn_eliminar_preregistro",
+    { p_folio: folio },
+  );
+}
+
+/**
  * Da de alta a UN alumno en el padrón con lo que declara en la mesa de registro.
  *
  * Para los de nuevo ingreso, que se pre-registran el 27 y el 28 y cuyo padrón la

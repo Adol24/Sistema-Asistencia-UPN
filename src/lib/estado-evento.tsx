@@ -1882,6 +1882,40 @@ export function EstadoEventoProvider({
     [talleres],
   );
 
+  /**
+   * Quita a alguien del sistema, y de la pantalla.
+   *
+   * Se toca `participantesBase` y no `ajustesParticipante`, que es lo que usa
+   * todo lo demás de este archivo: los ajustes MEZCLAN campos sobre una fila
+   * —`{...p, ...ajuste}`— y no hay ningún campo que signifique «esta fila ya no
+   * está». Filtrar la base es la única forma de que la persona desaparezca de
+   * verdad de la tabla, del buscador y de las cuentas de arriba.
+   *
+   * Y se limpia también su ajuste, aunque la fila ya no esté: si no, un folio
+   * reutilizado —la secuencia no los reutiliza hoy, pero eso es una propiedad de
+   * la secuencia y no de este archivo— heredaría el taller del anterior.
+   *
+   * Solo después de que la base dijo que sí. El orden importa: la función
+   * rechaza a quien tenga depósito, entrada o evidencia, y adelantarse a borrar
+   * la fila de la pantalla dejaría a esa persona invisible y viva.
+   */
+  const eliminarPreregistro = useCallback<Ctx["eliminarPreregistro"]>(async (folio) => {
+    if (!hayBaseDeDatos)
+      throw new Error("Sin base de datos configurada no se puede eliminar un pre-registro.");
+    const d = await import("@/lib/datos");
+    const r = await d.eliminarPreregistro(folio);
+    setParticipantesBase((prev) => prev.filter((p) => p.folio !== r.folio));
+    setAjustesParticipante((prev) => {
+      if (!(r.folio in prev)) return prev;
+      const { [r.folio]: _, ...resto } = prev;
+      return resto;
+    });
+    // La bitácora NO se escribe aquí: `fn_eliminar_preregistro` la anota con
+    // `auth.uid()` dentro de la misma transacción que borra la fila, que es la
+    // única forma de que no pueda existir el borrado sin su renglón.
+    return r;
+  }, []);
+
   const altaAsistidaPadron = useCallback<Ctx["altaAsistidaPadron"]>(async (datos) => {
     if (!hayBaseDeDatos)
       throw new Error("Sin base de datos configurada no se puede dar de alta a nadie.");
@@ -2031,6 +2065,7 @@ export function EstadoEventoProvider({
       reasignarDia,
       asignarDiaAVarios,
       asignarTaller,
+      eliminarPreregistro,
       /*
        * Lo de esta sesión primero y lo ya anotado debajo, que es el orden en
        * que se busca: se entra a la bitácora a comprobar lo que se acaba de
@@ -2108,6 +2143,7 @@ export function EstadoEventoProvider({
       reasignarDia,
       asignarDiaAVarios,
       asignarTaller,
+      eliminarPreregistro,
       bitacoraDeVista,
       registrarBitacora,
       usuarioActual,

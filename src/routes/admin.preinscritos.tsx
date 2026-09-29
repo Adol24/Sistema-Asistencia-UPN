@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Pencil, UserSearch } from "lucide-react";
+import { Download, Pencil, Trash2, UserSearch } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { AsignarTaller } from "@/components/asignar-taller";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { Buscador } from "@/components/buscador";
 import { Campo } from "@/components/tipografia";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
@@ -12,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { descargarCsv } from "@/lib/exportar";
+import { mensajeDeError } from "@/lib/errores";
 import { usePaginacion } from "@/lib/paginacion";
+import { sinDeposito } from "@/lib/pagos-logica";
 import { avanceTexto } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
 import type { Dia, EstadoPago, Participante, Perfil } from "@/dominio/tipos";
@@ -71,8 +74,15 @@ function enDoceHoras(fechaHora: string): string {
 }
 
 function Preinscritos() {
-  const { participantes, configuracion, infoDia, registrarBitacora, talleres, asignarTaller } =
-    useEstadoEvento();
+  const {
+    participantes,
+    configuracion,
+    infoDia,
+    registrarBitacora,
+    talleres,
+    asignarTaller,
+    eliminarPreregistro,
+  } = useEstadoEvento();
   /*
    * A quién se le está asignando el taller, o nulo si el diálogo está cerrado.
    *
@@ -82,6 +92,12 @@ function Preinscritos() {
    * ahora —la que acaba de cambiar el guardado incluida—.
    */
   const [asignando, setAsignando] = useState<string | null>(null);
+  /*
+   * A quién se está eliminando, por folio y por lo mismo que `asignando`: el
+   * objeto se rehace en cada carga, y uno guardado aquí quedaría congelado.
+   */
+  const [borrando, setBorrando] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState(false);
   const [q, setQ] = useState("");
   const [perfil, setPerfil] = useState<"todos" | Perfil>("todos");
   const [dia, setDia] = useState<"todos" | Dia>("todos");
@@ -167,6 +183,23 @@ function Preinscritos() {
    */
   const aAsignar: Participante | null =
     (asignando ? participantes.find((p) => p.folio === asignando) : undefined) ?? null;
+  const aBorrar: Participante | null =
+    (borrando ? participantes.find((p) => p.folio === borrando) : undefined) ?? null;
+  /*
+   * Lo único que esta pantalla puede anticipar del rechazo.
+   *
+   * `fn_eliminar_preregistro` rechaza por tres motivos —depósito, entrada por la
+   * puerta, evidencia entregada— y de los tres solo el primero viaja en el
+   * participante. Los otros dos llegan como mensaje de la base al pulsar, y el
+   * diálogo lo dice en voz alta en vez de fingir que no existen.
+   *
+   * Se pregunta con `sinDeposito` sobre los DOS conceptos, igual que
+   * `AsignarTaller`: `expirado` también significa cero filas de pago.
+   */
+  const conDeposito =
+    !!aBorrar &&
+    (!sinDeposito(aBorrar.estadoPagoEvento) ||
+      (aBorrar.estadoPagoTaller !== undefined && !sinDeposito(aBorrar.estadoPagoTaller)));
 
   const conPagoConfirmado = visibles.filter((p) => p.estadoPagoEvento === "pagado").length;
   const conTaller = visibles.filter((p) => p.tallerId).length;
@@ -388,6 +421,7 @@ function Preinscritos() {
           "Día y sede",
           "Taller",
           "Pago",
+          "",
         ]}
         vacio={
           visibles.length === 0 ? (
@@ -492,6 +526,30 @@ function Preinscritos() {
                   <EstadoPagoBadge className="mt-1" estado={p.estadoPagoTaller} etiqueta="Taller" />
                 ) : null}
               </td>
+              {/*
+               * Eliminar, al final de la fila y sin texto.
+               *
+               * Va aquí y no junto a «Cambiar» a propósito: son dos gestos de
+               * gravedad muy distinta y la mano que busca uno no debe encontrar
+               * el otro. Sin etiqueta visible por lo mismo —un botón que dice
+               * «Eliminar» once veces en la pantalla invita a pulsarlo— y con
+               * `sr-only` para quien navega con lector.
+               *
+               * Tampoco se desactiva a quien ya depositó: el motivo lo explica el
+               * diálogo con el folio delante, y un botón apagado en una tabla de
+               * doce columnas no tiene sitio donde contar por qué.
+               */}
+              <td className="whitespace-nowrap px-3 py-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-muted-foreground hover:text-estado-discrepancia"
+                  onClick={() => setBorrando(p.folio)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
+                  <span className="sr-only">Eliminar el pre-registro {p.folio}</span>
+                </Button>
+              </td>
             </Fila>
           );
         })}
@@ -515,6 +573,70 @@ function Preinscritos() {
           alCerrar={() => setAsignando(null)}
         />
       ) : null}
+
+      {/*
+       * Eliminar no se deshace, así que el diálogo dice las tres cosas que hacen
+       * falta para decidir: QUIÉN es —folio y nombre, que es lo que se compara
+       * con lo que hay al otro lado del teléfono—, QUÉ se libera, y que no hay
+       * vuelta atrás.
+       *
+       * A quien ya depositó no se le ofrece el botón. Es la misma razón que en
+       * `AsignarTaller`: un botón que al pulsarse contesta «no se puede» invita a
+       * intentarlo otra vez creyendo que fue un fallo.
+       */}
+      <DialogoConfirmar
+        abierto={!!aBorrar}
+        alCerrar={() => {
+          if (!eliminando) setBorrando(null);
+        }}
+        titulo={
+          conDeposito
+            ? `${aBorrar?.folio} ya tiene un depósito registrado`
+            : `¿Eliminar el pre-registro ${aBorrar?.folio}?`
+        }
+        descripcion={
+          conDeposito ? (
+            <>
+              Hay dinero suyo en la cuenta, así que desde aquí no se elimina. Mándalo a Servicios
+              Financieros: es donde está y quien puede decidir sobre él.
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-foreground">{aBorrar?.nombre}</span>
+              {aBorrar?.matricula ? ` · ${aBorrar.matricula}` : ""} desaparece del sistema: su
+              folio, sus avisos del portal y sus casos de soporte. Se libera su lugar del día{" "}
+              {aBorrar?.dia}
+              {aBorrar?.tallerId ? ` y su lugar en el taller ${aBorrar.tallerId}` : ""}, y podrá
+              volver a pre-registrarse si quiere.{" "}
+              <span className="font-semibold text-foreground">Esto no se deshace.</span> Y si entró
+              por la puerta o entregó alguna evidencia, la base lo va a rechazar: eso ocurrió y no
+              se reescribe.
+            </>
+          )
+        }
+        confirmar={conDeposito ? "Entendido" : eliminando ? "Eliminando…" : "Sí, eliminar"}
+        deshabilitado={eliminando}
+        alConfirmar={() => {
+          if (conDeposito) {
+            setBorrando(null);
+            return;
+          }
+          const p = aBorrar;
+          if (!p) return;
+          setEliminando(true);
+          void eliminarPreregistro(p.folio)
+            .then((r) => {
+              toast.success(
+                `${r.folio} eliminado.${r.taller ? ` Liberó su lugar en ${r.taller}.` : ""}`,
+              );
+              setBorrando(null);
+            })
+            // La bitácora NO se anota aquí: `fn_eliminar_preregistro` la escribe
+            // dentro de la misma transacción que borra la fila.
+            .catch((e: unknown) => toast.error(mensajeDeError(e)))
+            .finally(() => setEliminando(false));
+        }}
+      />
     </PantallaPanel>
   );
 }
