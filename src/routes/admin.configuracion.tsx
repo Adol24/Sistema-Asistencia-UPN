@@ -794,26 +794,37 @@ function SeccionVentanas({
   const setVentana = (i: number, patch: Partial<VentanaPreregistro>) =>
     cambiar(ventanas.map((v, k) => (k === i ? { ...v, ...patch } : v)));
 
-  const alternar = (i: number, programaId: string) => {
+  /*
+   * Un programa puede estar en la misma ventana con VARIOS avances, y por eso se
+   * marca avance por avance y no programa por programa.
+   *
+   * Aquí había dos manejadores —`alternar` por programa y `setAvance` con un
+   * solo número— y entre los dos hacían invisible media tabla. La ventana del
+   * 27 tiene a Pedagogía en 1, 3 y 5 y a cada maestría en 1 y 3; el editor
+   * pintaba UNA casilla con UN avance, así que enseñaba el 1 y callaba el resto.
+   * Quien la abría concluía, con razones, que esas generaciones no estaban
+   * declaradas.
+   *
+   * Y no era solo cosmético: `setAvance` aplicaba el número a TODAS las filas de
+   * ese programa, así que tocar el avance de Pedagogía dejaba tres filas idénticas.
+   * `guardarVentanas` borra las cohortes de la ventana y después las inserta, en
+   * dos peticiones sin transacción: las tres idénticas chocan contra la llave
+   * primaria `(ventana_id, programa_id, avance)`, el `insert` falla y el `delete`
+   * ya está hecho. La ventana se quedaba SIN NINGUNA cohorte, que es la forma de
+   * que no admita a nadie.
+   *
+   * Con un interruptor por avance eso no se puede escribir: cada botón añade o
+   * quita exactamente una fila, y no hay estado intermedio que colapsar.
+   */
+  const alternarAvance = (i: number, programaId: string, avance: number) => {
     const v = ventanas[i]!;
-    const dentro = v.cohortes.some((c) => c.programaId === programaId);
+    const dentro = v.cohortes.some((c) => c.programaId === programaId && c.avance === avance);
     setVentana(i, {
       cohortes: dentro
-        ? v.cohortes.filter((c) => c.programaId !== programaId)
-        : // Entra sin avance a propósito. Poner uno por omisión sería inventar
-          // la regla que la migración 44 se negó a inventar: la organización
-          // invitó al 7 de las licenciaturas —el penúltimo— y al 13 de las
-          // modulares —el último—, y no hay forma de deducir cuál toca.
-          [...v.cohortes, { programaId, avance: null }],
+        ? v.cohortes.filter((c) => !(c.programaId === programaId && c.avance === avance))
+        : [...v.cohortes, { programaId, avance }],
     });
   };
-
-  const setAvance = (i: number, programaId: string, avance: number | null) =>
-    setVentana(i, {
-      cohortes: ventanas[i]!.cohortes.map((c) =>
-        c.programaId === programaId ? { ...c, avance } : c,
-      ),
-    });
 
   const alternarPerfil = (i: number, perfil: PerfilSinPadron) => {
     const v = ventanas[i]!;
@@ -871,6 +882,7 @@ function SeccionVentanas({
             {ventanas.map((v, i) => {
               const estado = estadoDeVentana(v);
               const problemas = problemasDeVentana(v, programas);
+              const programasDeVentana = new Set(v.cohortes.map((c) => c.programaId)).size;
               return (
                 <div key={v.id || `nueva-${i}`} className="rounded-lg border border-border p-4">
                   <div className="grid gap-3 lg:grid-cols-[1fr_14rem_14rem]">
@@ -928,10 +940,16 @@ function SeccionVentanas({
                           ? "Todavía no abre"
                           : "Ya cerró"}
                     </span>{" "}
+                    {/*
+                      Generaciones y programas se cuentan aparte porque no son lo
+                      mismo. Esto decía «21 programas» de una ventana con nueve:
+                      contaba filas de `cohortes`, y un programa aporta una por
+                      cada avance invitado.
+                    */}
                     <span className="text-muted-foreground">
-                      {v.cohortes.length} programa{v.cohortes.length === 1 ? "" : "s"} y{" "}
-                      {v.perfiles.length} perfil{v.perfiles.length === 1 ? "" : "es"} declarado
-                      {v.cohortes.length + v.perfiles.length === 1 ? "" : "s"}.
+                      {v.cohortes.length} generación{v.cohortes.length === 1 ? "" : "es"} de{" "}
+                      {programasDeVentana} programa{programasDeVentana === 1 ? "" : "s"}, y{" "}
+                      {v.perfiles.length} perfil{v.perfiles.length === 1 ? "" : "es"}.
                     </span>
                   </p>
 
@@ -979,49 +997,71 @@ function SeccionVentanas({
                     </div>
 
                     <p className="mb-2 mt-3 text-xs text-muted-foreground">
-                      Los alumnos se marcan programa por programa y con el avance exacto: la
-                      invitación es a una generación, no a «del 7 en adelante». Sin avance, la
-                      ventana no se guarda.
+                      Los alumnos se marcan generación por generación: la invitación es a quienes
+                      van en un avance concreto, no a «del 7 en adelante». Un programa puede llevar
+                      varias —Pedagogía entra con 1, 3 y 5 en la misma ventana—, así que se pulsa
+                      cada número que entra.
                     </p>
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {programas.map((p) => {
-                        const cohorte = v.cohortes.find((c) => c.programaId === p.id);
+                        const avances = v.cohortes
+                          .filter((c) => c.programaId === p.id)
+                          .map((c) => c.avance)
+                          .filter((a): a is number => a !== null)
+                          .sort((a, b) => a - b);
+                        const dentro = avances.length > 0;
+                        /*
+                         * El tope se estira hasta el mayor avance GUARDADO, no
+                         * hasta `totalAvance`.
+                         *
+                         * Si en la base hubiera una cohorte por encima del tope
+                         * del programa —un módulo 9 en una carrera de 8—, una
+                         * rejilla que se detuviera en 8 la volvería invisible, que
+                         * es el mismo defecto que este arreglo viene a quitar.
+                         * Se dibuja, se ve marcada y `problemasDeVentana` la
+                         * denuncia por su nombre debajo.
+                         */
+                        const tope = Math.max(p.totalAvance, ...avances);
                         return (
                           <div
                             key={p.id}
                             className={cn(
-                              "flex items-center gap-2 rounded-md border p-2",
-                              cohorte ? "border-primary/50 bg-primary/5" : "border-border",
+                              "rounded-md border p-2",
+                              dentro ? "border-primary/50 bg-primary/5" : "border-border",
                             )}
                           >
-                            <Checkbox
-                              id={`v${i}-p${p.id}`}
-                              checked={Boolean(cohorte)}
-                              onCheckedChange={() => alternar(i, p.id)}
-                            />
-                            <label
-                              htmlFor={`v${i}-p${p.id}`}
-                              className="min-w-0 flex-1 cursor-pointer text-xs leading-tight"
-                            >
-                              <span className="block font-medium">{p.nombre}</span>
-                              <span className="text-muted-foreground">
-                                {p.nivel} · {p.etiquetaAvance.toLowerCase()} 1 a {p.totalAvance}
-                              </span>
-                            </label>
-                            {cohorte && (
-                              <Input
-                                aria-label={`${p.etiquetaAvance} invitado de ${p.nombre}`}
-                                inputMode="numeric"
-                                maxLength={2}
-                                placeholder={`1–${p.totalAvance}`}
-                                value={cohorte.avance === null ? "" : String(cohorte.avance)}
-                                onChange={(e) => {
-                                  const d = soloDigitos(e.target.value, 2);
-                                  setAvance(i, p.id, d ? Number(d) : null);
-                                }}
-                                className="h-9 w-16 shrink-0 text-center"
-                              />
-                            )}
+                            <p className="text-xs font-medium leading-tight">{p.nombre}</p>
+                            <p className="text-xs leading-tight text-muted-foreground">
+                              {p.nivel} ·{" "}
+                              {dentro
+                                ? `${p.etiquetaAvance.toLowerCase()} ${avances.join(", ")}`
+                                : "no entra en esta ventana"}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {Array.from({ length: tope }, (_, k) => k + 1).map((a) => {
+                                const puesto = avances.includes(a);
+                                const fuera = a > p.totalAvance;
+                                return (
+                                  <button
+                                    key={a}
+                                    type="button"
+                                    aria-pressed={puesto}
+                                    aria-label={`${p.etiquetaAvance} ${a} de ${p.nombre}`}
+                                    onClick={() => alternarAvance(i, p.id, a)}
+                                    className={cn(
+                                      "h-8 min-w-8 rounded-md border px-2 text-xs font-semibold tabular-nums transition-colors",
+                                      puesto
+                                        ? fuera
+                                          ? "border-amber-600 bg-amber-500/20 text-amber-700"
+                                          : "border-primary bg-primary text-primary-foreground"
+                                        : "border-border text-muted-foreground hover:border-primary/60",
+                                    )}
+                                  >
+                                    {a}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })}
