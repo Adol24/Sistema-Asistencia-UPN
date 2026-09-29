@@ -1859,10 +1859,19 @@ export function EstadoEventoProvider({
           tallerId: t?.id,
           montoEsperadoTaller: t?.costo,
           /*
-           * `pre_registrado`, y se puede afirmar: la función rechaza si existe
-           * cualquier pago, así que quien llega aquí no tiene ninguno y su
-           * concepto nuevo nace donde nace el del evento de quien no ha
-           * depositado. Al quitar el taller no queda concepto que tenga estado.
+           * `pre_registrado`, y se puede afirmar para el caso en que se PONE un
+           * taller: esa rama la sigue rechazando la función en cuanto existe
+           * cualquier pago, así que quien llega aquí con `t` no tiene ninguno y
+           * su concepto nuevo nace donde nace el del evento de quien no ha
+           * depositado.
+           *
+           * Al QUITARLO no queda concepto que tenga estado, y eso vale también
+           * desde el 2026-09-29, que es cuando la baja dejó de estar cerrada
+           * para quien ya depositó sin cobro del taller: `undefined` es
+           * exactamente lo que deja de existir. De paso arregla lo que esa
+           * persona veía —`estadoDelDeposito` enseña lo menos avanzado de los
+           * dos conceptos, así que su depósito pagado se leía «pre_registrado»
+           * por culpa de un taller que nadie cobró—.
            */
           estadoPagoTaller: t ? "pre_registrado" : undefined,
         },

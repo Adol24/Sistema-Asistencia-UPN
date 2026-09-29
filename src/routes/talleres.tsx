@@ -488,6 +488,12 @@ function CatalogoTalleres() {
          * en cuanto deposita, el taller viaja en ese mismo depósito y su concepto
          * ya está escrito en el voucher que entregó.
          *
+         * Habla de CAMBIARLO, y eso sigue siendo exacto: desde el 2026-09-29 el
+         * panel sí puede QUITARLO después del depósito mientras el taller no
+         * tenga cobro propio. No se dice aquí a propósito —ofrecerle la baja a
+         * quien todavía está eligiendo es invitar a un trámite que nadie pidió—,
+         * y quien la necesite la va a pedir igual por el WhatsApp de soporte.
+         *
          * Se calla sin talleres: advertir de una elección que no se ofreció hace
          * dudar de si uno se perdió un paso.
          */}

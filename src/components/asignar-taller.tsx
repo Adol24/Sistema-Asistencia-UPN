@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Info, Loader2, Wallet } from "lucide-react";
+import { Info, Loader2, TriangleAlert, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { Campo } from "@/components/tipografia";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { mensajeDeError } from "@/lib/errores";
 import { moneda } from "@/lib/formato";
@@ -26,21 +27,34 @@ import type { Participante, Taller } from "@/dominio/tipos";
  * tampoco nada que pulsar.
  *
  * ---------------------------------------------------------------------------
- * El depósito lo cierra, y se dice ANTES de ofrecer el formulario
+ * El depósito cierra PONER, no QUITAR
  * ---------------------------------------------------------------------------
  * Desde el 2026-09-25 el depósito es uno solo, y el concepto que la persona
  * escribe a mano en su hoja depende de si lleva taller. Así que añadirle un
  * taller a quien ya depositó no le cambia una cifra: le invalida el papel que ya
- * entregó en ventanilla, y deja el costo del taller sin cobrar.
+ * entregó en ventanilla, y deja el costo del taller sin cobrar. Eso sigue
+ * cerrado, y lo cierra cualquier depósito.
  *
- * `fn_asignar_taller` lo rechaza, así que esto no es la guardia —la guardia está
- * en la base—. Es no hacer perder el tiempo: un formulario que se puede llenar y
- * que al enviarse contesta «no se puede» invita a intentarlo otra vez creyendo
- * que fue un fallo. Se enseña el motivo y a dónde ir, y no se dibuja el selector.
+ * Quitarlo es el caso contrario, y hasta el 2026-09-29 esta pantalla lo trataba
+ * igual. Quien se pre-registró con evento y taller, luego decidió venir solo al
+ * evento y depositó los 500 tiene una fila de pago del evento y NINGUNA del
+ * taller. Su voucher dice 500 y nada más; quitarle el taller no contradice ese
+ * papel, lo confirma, y no hay cobro que perder porque ese cobro no existió. Lo
+ * que sí había era un lugar apartado que nadie iba a usar y un depósito que el
+ * portal le enseñaba como si no lo hubiera hecho —`estadoDelDeposito` enseña lo
+ * menos avanzado de los dos conceptos—.
  *
- * La pregunta se hace con `sinDeposito` sobre los DOS conceptos y no con
- * `estadoPagoEvento === "pre_registrado"`: `expirado` también significa cero
- * filas de pago, y a esa persona sí se le puede asignar.
+ * Así que la baja queda abierta mientras el taller no tenga cobro propio, y es
+ * `fn_asignar_taller` quien manda: esto es su reflejo, no la guardia.
+ *
+ * ---------------------------------------------------------------------------
+ * Lo único que la base no puede comprobar
+ * ---------------------------------------------------------------------------
+ * Que no haya fila de pago del taller significa que nadie lo REGISTRÓ, no que
+ * nadie lo depositara. Entre que la persona deposita 600 y que quien cobra
+ * confirma los dos conceptos, la base ve exactamente lo mismo que en el caso de
+ * arriba. Ese dato está en el voucher, en papel, y por eso la baja pide una
+ * confirmación explícita en vez de ofrecerse como un botón más.
  *
  * ---------------------------------------------------------------------------
  * Los llenos se enseñan, no se esconden
@@ -82,24 +96,41 @@ export function AsignarTaller({
    */
   const [clave, setClave] = useState(participante.tallerId ?? "");
   const [guardando, setGuardando] = useState(false);
+  /** La baja sobre un depósito ya hecho no se pulsa sin haber mirado el voucher. */
+  const [comprobado, setComprobado] = useState(false);
 
-  const yaDeposito =
-    !sinDeposito(participante.estadoPagoEvento) ||
-    (participante.estadoPagoTaller !== undefined && !sinDeposito(participante.estadoPagoTaller));
+  /*
+   * Las dos preguntas, y son distintas.
+   *
+   * `sinDeposito` sobre los DOS conceptos y no `estadoPagoEvento ===
+   * "pre_registrado"`: `expirado` también significa cero filas de pago, y a esa
+   * persona sí se le puede mover el taller.
+   *
+   * `estadoPagoTaller` indefinido es «no tiene taller», no «su taller no está
+   * pagado» —`estadoDePagos` lo deja así cuando `tallerId` es nulo—, y para la
+   * pregunta que aquí importa cuentan igual: ninguna de las dos es una fila de
+   * pago del taller.
+   */
+  const sinPagoTaller =
+    participante.estadoPagoTaller === undefined || sinDeposito(participante.estadoPagoTaller);
+  const yaDeposito = !sinDeposito(participante.estadoPagoEvento) || !sinPagoTaller;
 
   const actual = participante.tallerId ?? "";
+  /** Ya depositó, pero de su taller no entró un peso: la baja sigue abierta. */
+  const soloQuitar = yaDeposito && actual !== "" && sinPagoTaller;
   const activos = talleres.filter((t) => t.activo);
   const elegido = talleres.find((t) => t.id === clave);
   const sinCambio = clave === actual;
+  const suyo = talleres.find((t) => t.id === actual);
 
-  const guardar = async () => {
+  const aplicar = async (destino: string | null) => {
     setGuardando(true);
     try {
-      await asignar(participante.folio, clave === "" ? null : clave);
+      await asignar(participante.folio, destino);
       toast.success(
-        clave === ""
+        destino === null
           ? `${participante.folio} se queda sin taller.`
-          : `${participante.folio} queda en ${clave}. Su depósito ahora es de ${moneda(
+          : `${participante.folio} queda en ${destino}. Su depósito ahora es de ${moneda(
               participante.montoEsperadoEvento + (elegido?.costo ?? 0),
             )}.`,
       );
@@ -118,7 +149,13 @@ export function AsignarTaller({
     <Dialog open onOpenChange={(abierto) => (abierto ? null : alCerrar())}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{actual ? "Cambiar su taller" : "Asignarle un taller"}</DialogTitle>
+          <DialogTitle>
+            {soloQuitar
+              ? "Quitarle el taller"
+              : actual
+                ? "Cambiar su taller"
+                : "Asignarle un taller"}
+          </DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
@@ -126,15 +163,71 @@ export function AsignarTaller({
           {participante.nombre}
         </p>
 
-        {yaDeposito ? (
+        {soloQuitar ? (
+          <>
+            <Alert className="mt-4 border-primary/30">
+              <Info className="size-4" />
+              <AlertTitle>Ya depositó, y el taller no entró en ese depósito</AlertTitle>
+              <AlertDescription>
+                De su taller {actual}
+                {suyo ? ` (${moneda(suyo.costo)})` : ""} no hay ningún cobro registrado, así que
+                quitárselo no mueve dinero: deja el registro como quedó su depósito y devuelve su
+                lugar al cupo. Cambiárselo por otro taller sí pasa por Servicios Financieros, y
+                desde aquí ya no se puede.
+              </AlertDescription>
+            </Alert>
+
+            {/*
+             * El aviso que la base no puede dar. Ver la nota de la cabecera: sin
+             * fila de pago del taller, «no lo depositó» y «todavía no se lo han
+             * confirmado» se ven idénticos desde cualquier consulta.
+             */}
+            <Alert variant="destructive" className="mt-4">
+              <TriangleAlert className="size-4" />
+              <AlertTitle>Mira su voucher antes de pulsar</AlertTitle>
+              <AlertDescription>
+                Si depositó el taller y lo que falta es que Servicios Financieros lo confirme, esto
+                se ve igual desde aquí. En ese caso no se lo quites: mándalo a confirmar el cobro. Y
+                la baja no se deshace desde este panel —volver a ponérselo lo cierra el depósito que
+                ya hizo—, así que se hace una vez.
+              </AlertDescription>
+            </Alert>
+
+            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm">
+              <Checkbox
+                className="mt-0.5"
+                checked={comprobado}
+                onCheckedChange={(v) => setComprobado(v === true)}
+              />
+              <span>
+                Comprobé que su depósito no incluye el taller y que quiere quedarse solo con el
+                evento.
+              </span>
+            </label>
+          </>
+        ) : yaDeposito ? (
           <Alert variant="destructive" className="mt-4">
             <Wallet className="size-4" />
-            <AlertTitle>Este folio ya tiene un depósito registrado</AlertTitle>
-            <AlertDescription>
-              El taller va en ese mismo depósito y su concepto ya está escrito en el voucher que
-              entregó, así que desde aquí ya no se toca. Mándalo a Servicios Financieros: es donde
-              está el dinero y quien puede decidir sobre él.
-            </AlertDescription>
+            {actual ? (
+              <>
+                <AlertTitle>Su taller ya tiene un cobro registrado</AlertTitle>
+                <AlertDescription>
+                  El costo del taller entró con su depósito, así que quitárselo es decidir qué pasa
+                  con ese dinero. Mándalo a Servicios Financieros: es donde está y quien puede
+                  decidir sobre él.
+                </AlertDescription>
+              </>
+            ) : (
+              <>
+                <AlertTitle>Este folio ya tiene un depósito registrado</AlertTitle>
+                <AlertDescription>
+                  El taller va en ese mismo depósito y su concepto ya está escrito en el voucher que
+                  entregó, así que añadírselo desde aquí le invalidaría el papel y dejaría el costo
+                  sin cobrar. Mándalo a Servicios Financieros: es donde está el dinero y quien puede
+                  decidir sobre él.
+                </AlertDescription>
+              </>
+            )}
           </Alert>
         ) : (
           <>
@@ -188,12 +281,22 @@ export function AsignarTaller({
 
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <Button variant="outline" className="h-11" onClick={alCerrar} disabled={guardando}>
-            {yaDeposito ? "Cerrar" : "Cancelar"}
+            {yaDeposito && !soloQuitar ? "Cerrar" : "Cancelar"}
           </Button>
-          {yaDeposito ? null : (
+          {soloQuitar ? (
+            <Button
+              variant="destructive"
+              className="h-11"
+              onClick={() => void aplicar(null)}
+              disabled={guardando || !comprobado}
+            >
+              {guardando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+              {guardando ? "Quitando…" : "Quitarle el taller"}
+            </Button>
+          ) : yaDeposito ? null : (
             <Button
               className="h-11"
-              onClick={() => void guardar()}
+              onClick={() => void aplicar(clave === "" ? null : clave)}
               disabled={guardando || sinCambio}
             >
               {guardando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}

@@ -105,8 +105,14 @@ export const porVencer = (e: EstadoPago): boolean =>
  *
  * Sirve para anticipar lo que `fn_asignar_taller` va a rechazar: el taller viaja
  * en el mismo depósito desde el 2026-09-25, así que en cuanto existe una fila de
- * pago el taller deja de poder moverse desde el panel. Preguntarlo así evita
- * ofrecer un formulario que la base va a rechazar al enviarlo.
+ * pago ya no se le puede PONER un taller a esa persona desde el panel.
+ * Preguntarlo así evita ofrecer un formulario que la base va a rechazar al
+ * enviarlo.
+ *
+ * Quitárselo es otra pregunta y se hace sobre el concepto del taller, no sobre
+ * los dos: desde el 2026-09-29 la baja sigue abierta mientras el taller no tenga
+ * una fila de pago suya, porque ahí no hay dinero que mover. Ver la cabecera de
+ * `AsignarTaller`.
  *
  * NO se usa `sinAcreditar` para esto, aunque se parezca: incluye `cancelado`,
  * que `v_estado_pago` no produce nunca, y excluye `expirado`, que sí significa

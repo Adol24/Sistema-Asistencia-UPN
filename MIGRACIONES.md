@@ -345,6 +345,60 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Quitar el taller que nadie pagó (`20260929140000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando `fn_asignar_taller` acepte una baja
+sobre un folio con depósito del evento y sin cobro del taller, y siga rechazando
+las otras dos.
+
+**Qué cambia.** `fn_asignar_taller` deja de rechazar un caso: quitarle el taller
+a quien ya depositó pero cuyo taller no tiene ninguna fila en `pagos`. Poner o
+cambiar de taller siguen cerrados por cualquier depósito, igual que los dejó
+`20260926160000`.
+
+**El caso que lo pide.** Alguien se pre-registró con evento y taller —500 y
+100—, decidió venir solo al evento y depositó 500. Servicios Financieros
+confirmó ese depósito: una fila con `concepto = 'evento'`, ninguna con
+`'taller'`. Desde ahí el sistema describía algo que no pasó: el lugar del taller
+seguía ocupado, `estadoDelDeposito` enseñaba lo menos avanzado de los dos
+conceptos y le pintaba «pre_registrado» a quien ya había pagado, y el panel
+contestaba «ve a Servicios Financieros» en un asunto donde no hay dinero que
+mover.
+
+**Por qué quitar no es poner.** La guardia de `20260926160000` protege la
+dirección contraria y ahí sigue haciendo falta: añadirle un taller a quien ya
+depositó le invalida el concepto que escribió a mano y deja 100 sin cobrar.
+Quitarlo cuando el taller no tiene fila de pago no hace ninguna de las dos
+cosas: el voucher que entregó dice el importe del evento y nada más, así que la
+baja lo confirma en vez de contradecirlo, y no hay cobro que perder porque ese
+cobro no existió.
+
+Si el taller **sí** tiene fila de pago, sigue cerrado y ahora con su propio
+mensaje: ahí entró dinero por ese concepto y qué se hace con él es de Servicios
+Financieros.
+
+**Lo que la base no puede saber.** Que no haya fila de pago del taller significa
+que nadie lo *registró*, no que nadie lo depositara. Entre que la persona
+deposita 600 y que quien cobra confirma los dos conceptos, la consulta ve
+exactamente lo mismo. Ese dato está en el voucher, en papel. Por eso la baja no
+se automatiza: la ejecuta admin o soporte, la pantalla avisa de qué mirar antes
+de pulsar y exige marcar una casilla, y la bitácora anota el folio, el taller y
+que iba sobre un depósito ya registrado.
+
+**Por qué no delega la baja en `fn_cambiar_taller`.** Porque a esa la llaman
+también las altas públicas del pre-registro, que son reentrantes y le pasan NULL
+en cuanto alguien vuelve a entrar su matrícula y pulsa «Continuar sin taller».
+Relajarla ahí haría que quien ya pagó su taller lo perdiera en silencio por ese
+camino. Lo que se retranscribe es un `update` de dos columnas, no lógica: el
+cupo con su cerrojo, el catálogo, el monto y la salida temprana siguen enteros
+en `fn_cambiar_taller`, que atiende todos los demás caminos de la función.
+
+**Cómo comprobarla.** La migración termina contando, con `raise notice`, a
+cuánta gente desatasca hoy: los que tienen taller, ya depositaron y no tienen
+cobro del taller. Antes de aplicarla ese número era, para el panel,
+inalcanzable.
+
 ### Las maestrías también entran en módulo 4 (`20260928120000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha

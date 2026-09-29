@@ -457,10 +457,12 @@ function Preinscritos() {
                * cerró su pre-registro sin elegir ninguno: `/talleres` se cierra en
                * cuanto hay folio y no había ninguna pantalla interna que lo hiciera.
                *
-               * El botón no dice si se va a poder —el depósito ya hecho lo cierra—
-               * porque eso lo explica el diálogo con el motivo delante. Un botón
-               * desactivado en una tabla de once columnas no tiene sitio donde
-               * contar por qué, y sin el motivo se lee como un fallo.
+               * El botón no dice si se va a poder —y desde el 2026-09-29 eso ya
+               * no es una sola pregunta: el depósito cierra PONER siempre, y
+               * QUITAR solo cuando el taller tiene cobro propio— porque eso lo
+               * explica el diálogo con el motivo delante. Un botón desactivado en
+               * una tabla de once columnas no tiene sitio donde contar por qué, y
+               * sin el motivo se lee como un fallo.
                */}
               <td className="whitespace-nowrap px-3 py-2">
                 <div className="flex items-center gap-2">
