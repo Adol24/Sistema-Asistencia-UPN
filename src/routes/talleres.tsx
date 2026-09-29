@@ -113,6 +113,17 @@ function CatalogoTalleres() {
   const enviando = useRef(false);
 
   /*
+   * El maestro que dijo que no quiere constancia: ni el Encuentro ni el taller le
+   * cuestan nada, así que ni la descripción de esta pantalla ni el destino del
+   * botón pueden hablarle de un depósito.
+   *
+   * Se lee del borrador porque el participante todavía no existe: se crea en
+   * `cerrarPreregistro`, unas líneas más abajo. La respuesta solo la trae el
+   * docente; para el alumno y el externo es `undefined` y esto es falso.
+   */
+  const exentoDePago = borrador.perfil === "docente" && borrador.quiereConstancia === false;
+
+  /*
    * Aquí se cierra el pre-registro: es el último paso donde se conocen los
    * cuatro datos que la base necesita —matrícula, correo, celular y taller—.
    *
@@ -150,6 +161,7 @@ function CatalogoTalleres() {
               dia: borrador.dia ?? 1,
               aceptoAviso: borrador.aceptoAviso === true,
               tallerId,
+              quiereConstancia: borrador.quiereConstancia,
             })
           : await d.preregistrarAlumno({
               matricula: borrador.matricula ?? "",
@@ -186,7 +198,19 @@ function CatalogoTalleres() {
       } else {
         setBorrador({ tallerId });
       }
-      navigate({ to: "/pago" });
+      /*
+       * A quien no debe nada no se le abre la pantalla de cómo pagar.
+       *
+       * `/pago` son los datos del banco, el concepto que hay que escribir a mano,
+       * los ejemplos de voucher y la ventanilla: la pantalla más larga del
+       * recorrido, y para el maestro exento entera de más. Va directo a su
+       * comprobante, que es lo único que le queda por llevarse.
+       *
+       * `/pago` sigue siendo alcanzable —el mapa de pantallas la enlaza, y quien
+       * vuelva al portal puede entrar— y allí también se mira la exención: esto
+       * evita el paso, no lo sustituye.
+       */
+      navigate({ to: exentoDePago ? "/comprobante" : "/pago" });
     } catch (e) {
       // El mensaje de la base es específico —matrícula fuera del padrón, taller
       // sin cupo, correo con dominio equivocado— y ayuda más que uno genérico.
@@ -260,7 +284,9 @@ function CatalogoTalleres() {
       descripcion={
         sinTalleres
           ? "Continúa: tu registro al Encuentro no depende de esto."
-          : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
+          : exentoDePago
+            ? "Puedes elegir máximo uno, de cualquier día, y no te cuesta nada: elegiste asistir sin constancia. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
+            : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
       }
     >
       {/*

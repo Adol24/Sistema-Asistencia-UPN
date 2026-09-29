@@ -1,7 +1,22 @@
 export type Perfil = "alumno" | "docente" | "externo";
 
+/**
+ * Los estados de un concepto de pago, tal como los deriva `v_estado_pago`.
+ *
+ * `exento` es el único que no habla de dinero recibido: significa «no debe nada
+ * y no va a depositar». Lo produce la base cuando el monto esperado es cero y no
+ * hay filas en `pagos`, y hoy eso solo le pasa al maestro que dijo que no quiere
+ * constancia. La puerta lo admite igual que `pagado`; `v_elegibles` no, y por eso
+ * el exento entra al evento pero no sale en el listado de constancias.
+ */
 export type EstadoPago =
-  "pre_registrado" | "comprobante_recibido" | "pagado" | "discrepancia" | "expirado" | "cancelado";
+  | "pre_registrado"
+  | "comprobante_recibido"
+  | "pagado"
+  | "exento"
+  | "discrepancia"
+  | "expirado"
+  | "cancelado";
 
 export type EstadoEvidencia = "pendiente" | "aprobada" | "rechazada" | "no_entregada";
 

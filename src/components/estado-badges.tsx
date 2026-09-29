@@ -9,6 +9,7 @@ import {
   Clock,
   FileClock,
   ImageOff,
+  Ticket,
   ThumbsDown,
   ThumbsUp,
   TimerOff,
@@ -29,6 +30,18 @@ const pago: Record<EstadoPago, { texto: string; clase: string; Icono: typeof Clo
     texto: "Pagado",
     clase: "bg-estado-pagado-bg text-estado-pagado border-estado-pagado/30",
     Icono: CheckCircle2,
+  },
+  /*
+   * Verde como `pagado`, porque para la puerta significan lo mismo: no hay nada
+   * que cobrarle y pasa. El icono es el que cambia —un pase, no una palomita— y
+   * ahí está toda la diferencia que hay que ver de un vistazo en ventanilla: a
+   * este nadie le va a recibir un voucher, así que buscarle el depósito es
+   * perder el turno de la fila.
+   */
+  exento: {
+    texto: "Exento",
+    clase: "bg-estado-pagado-bg text-estado-pagado border-estado-pagado/30",
+    Icono: Ticket,
   },
   discrepancia: {
     texto: "Discrepancia",

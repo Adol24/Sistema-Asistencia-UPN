@@ -42,9 +42,24 @@ import { Button } from "@/components/ui/button";
 export function CodigoParaPagar({
   folio,
   lugar,
+  variante = "pago",
   children,
 }: {
   folio: string;
+  /**
+   * Para qué sirve este código, que no es lo mismo para todos.
+   *
+   * `"pago"` es el caso de siempre: se enseña en la ventanilla al entregar el
+   * voucher, y todavía no abre la puerta. `"entrada"` es el del maestro exento
+   * —el que dijo que no quiere constancia—: no debe nada, no tiene voucher que
+   * entregar, y este mismo código **ya** lo admite en el torniquete, porque
+   * `fn_evaluar_escaneo` trata `exento` igual que `pagado`.
+   *
+   * Es una variante cerrada y no un texto: el rótulo sigue viviendo aquí, así que
+   * las pantallas no pueden inventarse una tercera forma de decirlo. Lo que se
+   * evitaba con «no se le pasa como prop» era eso, no que existan dos hechos.
+   */
+  variante?: "pago" | "entrada";
   /**
    * Dónde se entrega, de `configuracion_evento.ventanilla_lugar`. El respaldo es
    * «ventanilla» y no un nombre: sin dato configurado, una palabra genérica es
@@ -55,6 +70,7 @@ export function CodigoParaPagar({
   children?: React.ReactNode;
 }) {
   const donde = lugar?.trim() || "ventanilla";
+  const paraEntrar = variante === "entrada";
   const [descargando, setDescargando] = useState(false);
 
   /*
@@ -70,7 +86,7 @@ export function CodigoParaPagar({
     setDescargando(true);
     try {
       const { pngDelCodigoDePago } = await import("@/components/qr");
-      const blob = await pngDelCodigoDePago(folio, { lugar: donde });
+      const blob = await pngDelCodigoDePago(folio, { lugar: donde, variante });
       if (!blob) throw new Error("El navegador no pudo generar la imagen");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -78,7 +94,7 @@ export function CodigoParaPagar({
       // El nombre importa: `pase-*.png` es el otro archivo, el que sí abre la
       // puerta. Dos imágenes del mismo folio en la misma galería tienen que
       // poder distinguirse por el nombre, sin abrirlas.
-      a.download = `codigo-pago-${folio}.png`;
+      a.download = `codigo-${paraEntrar ? "entrada" : "pago"}-${folio}.png`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Descargamos tu código.");
@@ -100,7 +116,9 @@ export function CodigoParaPagar({
         <CodigoQR valor={folio} size={176} />
       </div>
 
-      <p className="mt-3 text-sm font-bold">Código para tu pago</p>
+      <p className="mt-3 text-sm font-bold">
+        {paraEntrar ? "Código para tu entrada" : "Código para tu pago"}
+      </p>
 
       {/*
         La frase invariante, la que tiene que sonar igual en las tres pantallas.
@@ -108,7 +126,9 @@ export function CodigoParaPagar({
         «a su manera», volvemos a tener tres versiones de un solo hecho.
       */}
       <p className="mx-auto mt-1 max-w-xs text-pretty text-xs text-muted-foreground">
-        Muéstralo en {donde} cuando entregues tu voucher: con él te atienden sin dictar tu folio.
+        {paraEntrar
+          ? "Muéstralo en la entrada el día que te toca: con él te registran sin dictar tu folio. No tienes que pasar por ventanilla."
+          : `Muéstralo en ${donde} cuando entregues tu voucher: con él te atienden sin dictar tu folio.`}
       </p>
 
       <p className="mt-2 text-xs text-muted-foreground">
@@ -128,7 +148,8 @@ export function CodigoParaPagar({
       */}
       <p className="mx-auto mt-3 flex max-w-xs items-start gap-2 rounded-md bg-muted p-2.5 text-left text-xs print:hidden">
         <Camera className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-        Toma una captura de pantalla: en la fila no necesitas internet para mostrar tu código.
+        Toma una captura de pantalla: {paraEntrar ? "en la entrada" : "en la fila"} no necesitas
+        internet para mostrar tu código.
       </p>
 
       <div className="mt-2 flex justify-center print:hidden">

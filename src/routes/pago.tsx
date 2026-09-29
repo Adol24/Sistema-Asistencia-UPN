@@ -152,9 +152,97 @@ function PagoContenido() {
    * una aquí sería volver a poner el dato que causó el problema.
    */
   const cita = useCitaDePago(borrador.matricula ?? ficha?.matricula);
+  /*
+   * A quien no debe nada, esta pantalla entera le sobra.
+   *
+   * `/pago` son los datos del banco, el concepto que hay que escribir a mano, los
+   * dos ejemplos de voucher, la ventanilla y los cuatro pasos del QR. Para el
+   * maestro que dijo que no quiere constancia no hay depósito, no hay concepto y
+   * no hay voucher: dejarle leer todo eso es pedirle que averigüe cuál de las seis
+   * secciones le aplica, y la respuesta es ninguna.
+   *
+   * Se pregunta por los DOS lados porque las dos son ciertas en momentos
+   * distintos. El borrador es lo único que hay recién cerrado el pre-registro —el
+   * participante existe pero su ficha aún no se ha vuelto a cargar—; el estado de
+   * la ficha es lo que queda cuando esa persona vuelve semanas después desde su
+   * portal, y entonces el borrador ya se fue con la pestaña.
+   *
+   * `=== "exento"` y no `abreLaPuerta`: aquí no se pregunta si pasa, se pregunta
+   * si debe. Un `pagado` también abre la puerta y a ese sí hay que enseñarle lo
+   * que depositó.
+   */
+  const exento =
+    (borrador.perfil === "docente" && borrador.quiereConstancia === false) ||
+    (!!ficha && estadoDe(ficha).evento === "exento");
   const [ampliada, setAmpliada] = useState<string | null>(null);
   const [copiadoFolio, setCopiadoFolio] = useState(false);
   const [copiadoConcepto, setCopiadoConcepto] = useState(false);
+
+  /*
+   * La salida temprana va DESPUÉS de todos los `useState`, no antes.
+   *
+   * Un `return` en medio de los hooks cambiaría cuántos se llaman según quién
+   * mire la pantalla, y React cuenta con que sean siempre los mismos. Cuesta tres
+   * estados que este camino no usa; equivocarlo cuesta la pantalla entera.
+   */
+  if (exento) {
+    return (
+      <PantallaPublica
+        titulo="No tienes nada que pagar"
+        descripcion="Elegiste asistir sin constancia, así que no hay depósito ni voucher."
+      >
+        <section className="rounded-lg border-2 border-estado-pagado/30 bg-estado-pagado-bg p-5 text-center">
+          <Rotulo>Tu folio</Rotulo>
+          <p className="mt-2 break-all font-mono text-2xl font-extrabold tracking-tight">{folio}</p>
+          {nombre ? <p className="mt-1 text-sm font-semibold">{nombre}</p> : null}
+        </section>
+
+        <section className="mt-4 rounded-lg border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold">Qué sigue</h2>
+          <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
+            <li>
+              Guarda tu folio: con él entras a tu portal y ahí está tu código para la entrada.
+            </li>
+            <li>El día que te toca, llega y escanea tu código. No pases por ventanilla.</li>
+            {taller ? (
+              <li>
+                Tu taller <span className="font-semibold text-foreground">{taller.nombre}</span>{" "}
+                tampoco se paga. Es por la tarde en {taller.lugar}.
+              </li>
+            ) : null}
+          </ul>
+          {/*
+           * Se le dice lo que NO tiene, y aquí es donde hay que decirlo.
+           *
+           * Es la única consecuencia de su respuesta que no se ve hasta el final
+           * del evento, cuando se reparten los documentos y ya no se puede hacer
+           * nada. Contestó esto en `/registro` hace tres pantallas; repetirlo aquí
+           * es la última vez que le sale gratis cambiar de opinión.
+           */}
+          <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            No vas a recibir constancia. Si la necesitas, escríbenos a soporte antes del evento:
+            para tenerla hay que pagar la cuota del Encuentro.
+          </p>
+        </section>
+
+        <div className="mt-6 grid gap-2 sm:grid-cols-2 print:hidden">
+          <Button
+            className="h-12 md:h-11 text-base"
+            onClick={() => navigate({ to: "/comprobante" })}
+          >
+            Ver mi comprobante
+          </Button>
+          <Button
+            variant="outline"
+            className="h-12 md:h-11 text-base"
+            onClick={() => navigate({ to: "/portal" })}
+          >
+            Entrar a mi portal
+          </Button>
+        </div>
+      </PantallaPublica>
+    );
+  }
 
   return (
     <PantallaPublica titulo="Instrucciones de pago" ancho="xl">

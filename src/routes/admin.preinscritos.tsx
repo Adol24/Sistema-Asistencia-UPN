@@ -343,6 +343,9 @@ function Preinscritos() {
             <option value="pre_registrado">Sin comprobante</option>
             <option value="comprobante_recibido">Comprobante recibido</option>
             <option value="pagado">Pagado</option>
+            {/* El maestro que no quiere constancia: no debe nada y nadie le va a
+                recibir un voucher. Sin este filtro no hay forma de listarlos. */}
+            <option value="exento">Exento</option>
             <option value="expirado">Expirado</option>
             <option value="cancelado">Cancelado</option>
           </select>

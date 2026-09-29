@@ -37,6 +37,7 @@ import {
   nombreEnRevisionActivo,
   useEntornoConstancias,
 } from "@/lib/elegibilidad";
+import { abreLaPuerta } from "@/lib/pagos-logica";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
 import { meta } from "@/lib/seo";
@@ -118,15 +119,42 @@ function Dashboard() {
     // El embudo es acumulado: quien pagó también entregó comprobante.
     const pagado = cuenta("pagado");
     const comprobante = pagado + cuenta("comprobante_recibido") + cuenta("discrepancia");
+    /*
+     * Los exentos salen de la base del embudo, y esto es lo que hace que el
+     * embudo siga significando algo.
+     *
+     * Es un embudo de COBRANZA: quien no debe nada no puede avanzar por él, así
+     * que contándolo en la primera etapa se queda ahí para siempre y el panel
+     * enseña un hueco entre «Pre-registrado» y «Comprobante» que parece gente
+     * que no paga. Desde el 2026-09-29 hay una audiencia entera así: los
+     * maestros que no quieren constancia.
+     *
+     * Van en su propia cifra y no borrados, porque cuántos son es un dato: es la
+     * gente que va a pasar la puerta sin dejar un peso en la caja.
+     */
+    const exentos = cuenta("exento");
     const embudo = [
-      { etapa: "Pre-registrado", n: participantes.length },
+      { etapa: "Por cobrar", n: participantes.length - exentos },
       { etapa: "Comprobante", n: comprobante },
       { etapa: "Pagado", n: pagado },
     ];
 
     const asistenciaPorDia = ([1, 2, 3] as Dia[]).map((dia) => {
+      /*
+       * Esperados es quien va a PASAR LA PUERTA, no quien pagó.
+       *
+       * Decía `=== "pagado"`, que era casi lo mismo mientras solo `pagado` y
+       * `discrepancia` abrían el torniquete y las discrepancias eran cuatro. Con
+       * los maestros exentos ya no: son una audiencia entera que entra sin haber
+       * depositado, y contarlos fuera dejaría el tablero del día del evento
+       * enseñando más entradas que asistentes esperados —o sea, avisando de un
+       * problema que no existe justo el día que no hay tiempo de comprobarlo—.
+       *
+       * `abreLaPuerta` es la misma pregunta que hace `fn_evaluar_escaneo`, y por
+       * eso la cifra de arriba y la puerta no pueden volver a discrepar.
+       */
       const esperados = participantes.filter(
-        (p) => p.dia === dia && estadoDe(p).evento === "pagado",
+        (p) => p.dia === dia && abreLaPuerta(estadoDe(p).evento),
       ).length;
       // Personas, no registros: desde que la puerta admite idas y vueltas, quien
       // sale al receso y vuelve deja dos entradas, y contarlas hacía que el

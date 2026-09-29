@@ -1,0 +1,38 @@
+-- =============================================================================
+-- Un estado de pago para quien no debe nada
+--
+-- Esta migración es `20260929120000_un_estado_de_pago_para_quien_no_debe_nada`.
+--
+-- ⚠ VA SOLA, Y ES UNA SOLA SENTENCIA. No se le añade nada, y la siguiente
+-- ⚠ (`20260929130000_el_docente_no_paga_salvo_que_quiera_constancia`) se pega
+-- ⚠ en una CORRIDA APARTE, después de que esta termine.
+--
+-- Por qué está partida en dos archivos
+-- ------------------------------------
+-- Postgres permite `alter type ... add value` dentro de una transacción, pero
+-- **prohíbe usar el valor nuevo en esa misma transacción**: el intento muere con
+-- «unsafe use of new value "exento" of enum type estado_pago». El editor SQL de
+-- Supabase manda todo el texto pegado como una sola orden, así que Postgres lo
+-- envuelve en una transacción implícita: poner aquí la vista que devuelve
+-- `'exento'::estado_pago` haría fallar el archivo entero.
+--
+-- No hay precedente en este repo —ninguna migración había añadido un valor a un
+-- enum— así que queda dicho aquí para la siguiente vez.
+--
+-- Qué es «exento», y qué NO es
+-- ----------------------------
+-- Es «esta persona no debe nada y nunca va a depositar». No es «ya pagó»:
+--
+--   · La puerta lo admite, igual que a `pagado`. Ver `fn_evaluar_escaneo`.
+--   · `v_elegibles` sigue exigiendo `pagado`, así que un exento **no** entra al
+--     listado de constancias. Esa es exactamente la regla que la organización
+--     dio el 2026-09-29: al maestro el evento y el taller le salen gratis, y si
+--     quiere constancia, paga.
+--
+-- Se coloca DESPUÉS de `pagado` en el orden del enum porque ahí es donde se lee:
+-- los dos significan «no hay nada que cobrarle». El orden del enum no gobierna
+-- ninguna consulta hoy —la urgencia de los estados la ordena `pagos-logica.ts`
+-- en el cliente— pero un `order by estado` futuro debería agruparlos.
+-- =============================================================================
+
+alter type estado_pago add value if not exists 'exento' after 'pagado';

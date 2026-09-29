@@ -82,7 +82,7 @@ function Comprobante() {
 function ComprobanteContenido() {
   const { borrador } = usePrototipo();
   const ficha = useParticipanteDelPortal();
-  const { configuracion: evento, getTaller, infoDia } = useEstadoEvento();
+  const { configuracion: evento, getTaller, infoDia, estadoDe } = useEstadoEvento();
   // Los datos académicos son del alumno: docentes y externos no los tienen.
   const nivel = borrador.nivel ?? ficha?.nivel;
   const programa = borrador.programa ?? ficha?.programa;
@@ -114,6 +114,20 @@ function ComprobanteContenido() {
    * ventanilla una hoja que hay que devolver.
    */
   const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  /*
+   * El maestro que no quiere constancia: este papel no le pide nada.
+   *
+   * Es el mismo par de preguntas que hace `/pago`, y por lo mismo: el borrador es
+   * lo único que hay recién cerrado el pre-registro, y el estado de la ficha es lo
+   * que queda cuando vuelve desde su portal semanas después.
+   *
+   * Lo que cambia aquí son tres cosas, y todas son cifras o promesas: el total, el
+   * concepto que iría escrito a mano en la hoja del banco, y el aviso de la
+   * constancia —que para él no es «todavía no», es «no»—.
+   */
+  const exento =
+    (perfil === "docente" && borrador.quiereConstancia === false) ||
+    (!!ficha && estadoDe(ficha).evento === "exento");
   /*
    * Los días del taller, en fechas.
    *
@@ -281,9 +295,11 @@ function ComprobanteContenido() {
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">
-                    Total por pagar (en un solo depósito)
+                    {exento ? "Total por pagar" : "Total por pagar (en un solo depósito)"}
                   </dt>
-                  <dd className="text-lg font-bold tabular-nums">{moneda(deposito.total)}</dd>
+                  <dd className="text-lg font-bold tabular-nums">
+                    {exento ? "Nada" : moneda(deposito.total)}
+                  </dd>
                 </div>
                 {/*
                  * El concepto también va en este papel, y no solo en `/pago`.
@@ -297,10 +313,26 @@ function ComprobanteContenido() {
                  * rejilla de datos cortos: en media columna se parte en cinco
                  * renglones.
                  */}
-                <div className="sm:col-span-2">
-                  <dt className="text-xs text-muted-foreground">Concepto que debes anotar</dt>
-                  <dd className="text-pretty font-medium leading-snug">{deposito.concepto}</dd>
-                </div>
+                {/*
+                 * El concepto solo existe si hay depósito: es la frase que se
+                 * escribe a mano DEBAJO del voucher, y quien no lleva voucher no
+                 * tiene dónde escribirla. Dejarla puesta mandaría al banco a quien
+                 * no tiene nada que depositar, y este es el papel que se imprime y
+                 * se lleva, o sea el que se obedece.
+                 */}
+                {exento ? (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-muted-foreground">Qué llevas el día del evento</dt>
+                    <dd className="text-pretty font-medium leading-snug">
+                      Solo tu código. No hay depósito ni voucher que entregar.
+                    </dd>
+                  </div>
+                ) : (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-muted-foreground">Concepto que debes anotar</dt>
+                    <dd className="text-pretty font-medium leading-snug">{deposito.concepto}</dd>
+                  </div>
+                )}
               </dl>
               {/*
                 El QR vuelve aquí, y este papel es el que lo necesita.
@@ -324,8 +356,22 @@ function ComprobanteContenido() {
                 anunciarlo como el pase, y de eso se encarga el rótulo de
                 `CodigoParaPagar`: habla de su pago y no menciona la entrada.
               */}
+              {/*
+               * Para el exento este código NO es «para su pago»: es su entrada.
+               *
+               * Es el mismo símbolo y el mismo folio, y la diferencia está en el
+               * rótulo: sin la variante, este papel —que se imprime y se lleva—
+               * le decía «muéstralo en ventanilla cuando entregues tu voucher»,
+               * o sea lo contrario de lo que la organización le prometió. Y el
+               * código ya lo admite de verdad: `fn_evaluar_escaneo` trata
+               * `exento` igual que `pagado`.
+               */}
               <div className="justify-self-center">
-                <CodigoParaPagar folio={folio ?? ""} lugar={evento.ventanilla.lugar} />
+                <CodigoParaPagar
+                  folio={folio ?? ""}
+                  lugar={evento.ventanilla.lugar}
+                  variante={exento ? "entrada" : "pago"}
+                />
               </div>
             </div>
           </div>
@@ -456,41 +502,67 @@ function ComprobanteContenido() {
            * qué se le va a pedir. Lo accionable vive donde se puede accionar: su
            * pago en `/portal/estado` y cada evidencia en `/portal/evidencias`.
            */}
-          <section className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
-            <h2 className="flex items-center gap-2 text-sm font-semibold">
-              <Info className="size-4 shrink-0 text-primary" aria-hidden />
-              El pre-registro no da derecho a la constancia
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Para aparecer en el listado de elegibles necesitas, además de este registro:
-            </p>
-            <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
-              <li className="flex gap-2">
-                <span aria-hidden className="text-primary">
-                  1.
-                </span>
-                Tu pago del evento registrado como pagado.
-              </li>
-              <li className="flex gap-2">
-                <span aria-hidden className="text-primary">
-                  2.
-                </span>
-                Tu entrada registrada el día {dia.etiqueta}.
-              </li>
-              {perfil === "alumno" ? (
+          {/*
+           * Para el exento este bloque no es una advertencia, es un hecho.
+           *
+           * «El pre-registro no da derecho a la constancia» y la lista de tres
+           * requisitos le dirían que le falta cumplirlos, cuando lo que pasa es que
+           * el primero no está en su mano: eligió no pagar. Enumerárselos lo
+           * mandaría a intentar cumplir algo que su propia respuesta cerró, y a
+           * descubrirlo el día del reparto.
+           */}
+          {exento ? (
+            <section className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Info className="size-4 shrink-0 text-primary" aria-hidden />
+                No vas a recibir constancia
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Elegiste asistir sin constancia, y por eso el Encuentro y tu taller no te cuestan
+                nada. Tu entrada el día {dia.etiqueta} sí queda registrada.
+              </p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Si cambias de opinión, escríbenos a soporte antes del evento: para tener constancia
+                hay que pagar la cuota del Encuentro.
+              </p>
+            </section>
+          ) : (
+            <section className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Info className="size-4 shrink-0 text-primary" aria-hidden />
+                El pre-registro no da derecho a la constancia
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Para aparecer en el listado de elegibles necesitas, además de este registro:
+              </p>
+              <ul className="mt-3 grid gap-2 text-sm text-muted-foreground">
                 <li className="flex gap-2">
                   <span aria-hidden className="text-primary">
-                    3.
+                    1.
                   </span>
-                  Tus evidencias de los días en línea, aprobadas.
+                  Tu pago del evento registrado como pagado.
                 </li>
-              ) : null}
-            </ul>
-            <p className="mt-3 text-xs text-muted-foreground">
-              La universidad elabora el documento con ese listado; el sistema no lo emite. Puedes
-              seguir tu avance en el portal.
-            </p>
-          </section>
+                <li className="flex gap-2">
+                  <span aria-hidden className="text-primary">
+                    2.
+                  </span>
+                  Tu entrada registrada el día {dia.etiqueta}.
+                </li>
+                {perfil === "alumno" ? (
+                  <li className="flex gap-2">
+                    <span aria-hidden className="text-primary">
+                      3.
+                    </span>
+                    Tus evidencias de los días en línea, aprobadas.
+                  </li>
+                ) : null}
+              </ul>
+              <p className="mt-3 text-xs text-muted-foreground">
+                La universidad elabora el documento con ese listado; el sistema no lo emite. Puedes
+                seguir tu avance en el portal.
+              </p>
+            </section>
+          )}
         </div>
       </div>
     </PantallaPublica>

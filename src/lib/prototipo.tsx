@@ -35,6 +35,18 @@ interface Borrador {
    * hay dos pantallas más —el día y el taller— y el dato tiene que cruzarlas.
    */
   aceptoAviso?: boolean | undefined;
+  /**
+   * Si quiere constancia. **Solo se le pregunta al docente**, en `/registro`.
+   *
+   * La organización decidió el 2026-09-29 que al maestro el evento y el taller le
+   * salen gratis, y que la constancia se paga. Así que esta respuesta es la que
+   * fija su cuota, y por eso viaja igual que `aceptoAviso`: se contesta en la
+   * primera pantalla y el alta ocurre dos pantallas después, en `/talleres`.
+   *
+   * `undefined` para el alumno y el externo, a quienes no se les pregunta porque
+   * la regla no es suya. El alta lo trata como `true`, que es lo que se les cobra.
+   */
+  quiereConstancia?: boolean | undefined;
   /** El folio que devuelve la base al crear el pre-registro. Antes no existía:
    *  las pantallas de pago y comprobante enseñaban el del participante de
    *  contexto, o sea el de otra persona. */

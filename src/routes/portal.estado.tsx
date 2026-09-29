@@ -68,6 +68,19 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
   // La misma pregunta que ya decide la insignia de este cuadro, hecha una vez.
   const pagoConfirmado = estadoDelDeposito(estado) === "pagado";
+  /*
+   * A este no hay que cobrarle nada, y es la pantalla donde más importa.
+   *
+   * El portal es el sitio al que el maestro exento vuelve con su folio semanas
+   * después, cuando el borrador del pre-registro ya se fue con la pestaña. Sin
+   * esto leería «Total por pagar: $500.00» y «Concepto que debes anotar» junto a
+   * una insignia que dice «Exento»: la contradicción completa, en el mismo cuadro.
+   *
+   * Se lee del estado del depósito y no del perfil: `estadoDelDeposito` es lo que
+   * ya decide la insignia de arriba, y compartir la pregunta es lo que impide que
+   * el cuadro y su rótulo vuelvan a discrepar.
+   */
+  const exento = estadoDelDeposito(estado) === "exento";
   const avance = avanceTexto(evento.catalogoAcademico, p.nivel, p.avance, p.programa);
   /*
    * Los días del taller, en fechas.
@@ -353,9 +366,11 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             <EstadoPagoBadge estado={estadoDelDeposito(estado)} />
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            {estado.taller
-              ? "Un solo depósito, por el evento y el taller."
-              : "Un solo depósito, por el evento."}
+            {exento
+              ? "No tienes nada que depositar ni voucher que entregar."
+              : estado.taller
+                ? "Un solo depósito, por el evento y el taller."
+                : "Un solo depósito, por el evento."}
           </p>
           {/*
            * Cuánto y con qué concepto, que hasta ahora solo estaban en
@@ -378,11 +393,17 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
           <dl className="mt-3 grid gap-2 border-t border-border pt-3">
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-xs text-muted-foreground">
-                {pagoConfirmado ? "Tu depósito" : "Total por pagar"}
+                {exento ? "Tu cuota" : pagoConfirmado ? "Tu depósito" : "Total por pagar"}
               </dt>
-              <dd className="text-lg font-bold tabular-nums">{moneda(deposito.total)}</dd>
+              <dd className="text-lg font-bold tabular-nums">
+                {exento ? "Nada" : moneda(deposito.total)}
+              </dd>
             </div>
-            {pagoConfirmado ? null : (
+            {/*
+             * El concepto se calla en los dos extremos, y por razones distintas:
+             * quien ya pagó lo anotó, y quien no paga no tiene dónde anotarlo.
+             */}
+            {pagoConfirmado || exento ? null : (
               <div>
                 <dt className="text-xs text-muted-foreground">Concepto que debes anotar</dt>
                 <dd className="text-pretty text-sm font-medium leading-snug">

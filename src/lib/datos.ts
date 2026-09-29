@@ -1685,6 +1685,15 @@ export async function preregistrarExterno(datos: {
   dia: number;
   aceptoAviso: boolean;
   tallerId?: string | undefined;
+  /**
+   * Si quiere constancia. Solo el docente puede decir que no; la base rechaza
+   * un `false` de cualquier otro perfil.
+   *
+   * Se manda siempre, también cuando es `true`: el valor por omisión de la
+   * función es el que COBRA, así que omitirlo nunca regala nada, pero mandarlo
+   * explícito hace que la petición diga qué se le preguntó a esa persona.
+   */
+  quiereConstancia?: boolean | undefined;
 }) {
   const sb = exigirBase();
   // El error sube tal cual, como en el alta de alumno: el mensaje viene de un
@@ -1699,6 +1708,7 @@ export async function preregistrarExterno(datos: {
     p_dia: datos.dia,
     p_acepto_aviso: datos.aceptoAviso,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
+    p_quiere_constancia: datos.quiereConstancia ?? true,
   });
 }
 
@@ -1713,6 +1723,15 @@ export async function preregistrarAlumno(datos: {
    */
   aceptoAviso: boolean;
   tallerId?: string | undefined;
+  /**
+   * Si quiere constancia. Solo el docente puede decir que no; la base rechaza
+   * un `false` de cualquier otro perfil.
+   *
+   * Se manda siempre, también cuando es `true`: el valor por omisión de la
+   * función es el que COBRA, así que omitirlo nunca regala nada, pero mandarlo
+   * explícito hace que la petición diga qué se le preguntó a esa persona.
+   */
+  quiereConstancia?: boolean | undefined;
 }) {
   const sb = exigirBase();
   return llamar<{ id: string; folio: string; dia: Dia }>("fn_preregistrar_alumno", {
@@ -1721,6 +1740,7 @@ export async function preregistrarAlumno(datos: {
     p_celular: datos.celular,
     p_acepto_aviso: datos.aceptoAviso,
     p_taller: await uuidDelTaller(sb, datos.tallerId),
+    p_quiere_constancia: datos.quiereConstancia ?? true,
   });
 }
 

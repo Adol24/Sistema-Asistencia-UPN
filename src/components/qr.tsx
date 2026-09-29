@@ -294,14 +294,29 @@ export async function pngDelPase(
  * generó; si no, el día del evento alguien la enseñará en la puerta creyendo que
  * era su pase. Que la puerta lo rechace no quita que se lleve el chasco en la
  * fila equivocada.
+ *
+ * `variante` no es un estilo: son dos hechos distintos.
+ *
+ * `"pago"` es el original —el código que se enseña en la ventanilla al entregar
+ * el voucher— y `"entrada"` es el del maestro exento, que no tiene voucher que
+ * entregar ni ventanilla a la que ir, y para quien este código ya abre la puerta.
+ * Rotularle la imagen «muéstralo al entregar tu voucher en…» sería mandarlo a una
+ * fila que no le toca, con el papel impreso en la mano.
+ *
+ * Las dos frases viven aquí y no se reciben como texto, por lo mismo que en
+ * `CodigoParaPagar`: en cuanto una pantalla pueda decirlo a su manera hay tres
+ * versiones de un solo hecho. La unión va escrita a mano en la firma en vez de en
+ * un tipo exportado: este archivo exporta componentes, y un tipo suelto aquí le
+ * rompe el recargado en caliente.
  */
 // Comparte la codificación y el criterio de contraste con el componente y con
 // `pngDelPase`: separarlos obligaría a mantener tres veces la misma decisión.
 // eslint-disable-next-line react-refresh/only-export-components
 export async function pngDelCodigoDePago(
   valor: string,
-  datos: { lugar: string },
+  datos: { lugar: string; variante?: "pago" | "entrada" },
 ): Promise<Blob | null> {
+  const paraEntrar = datos.variante === "entrada";
   const qr = encode(valor, { ecc: "H", border: 4 });
   const n = qr.size;
 
@@ -320,7 +335,9 @@ export async function pngDelCodigoDePago(
    * Partido en dos, el lugar tiene el renglón entero para él y solo se recorta si
    * el nombre configurado es larguísimo.
    */
-  const alturaTexto = 222;
+  // Un renglón menos en la variante de entrada: no hay lugar que nombrar, y el
+  // hueco sobrante sería una franja blanca al pie de la imagen.
+  const alturaTexto = paraEntrar ? 190 : 222;
 
   const lienzo = document.createElement("canvas");
   lienzo.width = lado + margen * 2;
@@ -350,17 +367,26 @@ export async function pngDelCodigoDePago(
   y += 44;
   ctx.fillStyle = "#0047BB";
   ctx.font = "bold 26px ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText("CÓDIGO PARA TU PAGO", centro, y);
+  ctx.fillText(paraEntrar ? "CÓDIGO PARA TU ENTRADA" : "CÓDIGO PARA TU PAGO", centro, y);
 
   y += 36;
   ctx.fillStyle = "#334155";
   ctx.font = "23px ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText("Muéstralo al entregar tu voucher en", centro, y);
+  ctx.fillText(
+    paraEntrar
+      ? "Muéstralo en la entrada el día que te toca"
+      : "Muéstralo al entregar tu voucher en",
+    centro,
+    y,
+  );
 
-  y += 32;
-  ctx.fillStyle = "#0B1220";
-  ctx.font = "bold 23px ui-sans-serif, system-ui, sans-serif";
-  ctx.fillText(recortar(ctx, datos.lugar, lienzo.width - margen), centro, y);
+  // El lugar es la VENTANILLA, así que solo tiene sentido en la variante de pago.
+  if (!paraEntrar) {
+    y += 32;
+    ctx.fillStyle = "#0B1220";
+    ctx.font = "bold 23px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText(recortar(ctx, datos.lugar, lienzo.width - margen), centro, y);
+  }
 
   return new Promise((listo) => lienzo.toBlob((b) => listo(b), "image/png"));
 }

@@ -35,10 +35,21 @@ const TOPE = 200;
 
 type Filtro = "todos" | "por_cobrar" | "pagados";
 
+/*
+ * «Sin adeudo» y no «Pagados», y el rótulo cambió porque la regla cambió.
+ *
+ * El filtro pregunta por `alCorriente`, que desde el 2026-09-29 también es cierto
+ * del maestro exento: ese no pagó nada y no debe nada. Con el rótulo anterior, la
+ * lista «Pagados» contenía gente que nunca depositó, y quien la usara para cuadrar
+ * la caja no encontraría sus depósitos. La insignia de cada renglón sí dice
+ * «Exento», pero el rótulo del filtro es lo que se lee primero.
+ *
+ * La clave interna se queda en `pagados`: es un valor de estado, no un texto.
+ */
 const ETIQUETA: Record<Filtro, string> = {
   todos: "Todos",
   por_cobrar: "Por cobrar",
-  pagados: "Pagados",
+  pagados: "Sin adeudo",
 };
 
 function Ventanilla() {

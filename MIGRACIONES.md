@@ -345,6 +345,78 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### El docente no paga, salvo constancia (`20260929120000` y `20260929130000`) — SIN APLICAR
+
+**SON DOS ARCHIVOS Y VAN EN DOS CORRIDAS SEPARADAS.** Primero
+`20260929120000_un_estado_de_pago_para_quien_no_debe_nada.sql`, que es **una sola
+sentencia**; cuando termine, `20260929130000_el_docente_no_paga_salvo_que_quiera_constancia.sql`.
+
+**Por qué están partidas.** Postgres deja añadir un valor a un enum dentro de una
+transacción, pero **prohíbe usarlo en esa misma transacción**: el intento muere con
+«unsafe use of new value "exento" of enum type estado_pago». El editor SQL de
+Supabase manda todo el texto pegado como una sola orden, así que Postgres lo
+envuelve en una transacción implícita. Pegar los dos juntos hace fallar el archivo
+entero. Es la primera vez en este repo que se añade un valor a un enum, y por eso
+queda escrito aquí.
+
+La segunda comprueba en su primera sentencia que la primera esté puesta, y se
+detiene con instrucciones si falta. Leer `pg_enum` sí se puede; lo prohibido es
+usar el valor.
+
+**La regla.** La organización dijo el 2026-09-29 que al maestro el evento le sale
+gratis, y el taller también. Si quiere constancia paga igual que todos. Si no la
+quiere, entra gratis y **ya no tiene que traer voucher**. Hay que preguntárselo, y
+`/registro` lo pregunta justo debajo del botón «docente».
+
+**Qué cambia.**
+
+- `estado_pago` gana el valor `exento`, después de `pagado`.
+- `participantes.quiere_constancia boolean not null default true`, con
+  `chk_exento_solo_docente`: solo un docente puede tenerlo en `false`.
+- `v_estado_pago` devuelve `exento` cuando el monto esperado de ese concepto es
+  cero y no hay filas en `pagos`. La rama va **antes** de la de `fecha_limite` —si
+  no, el 9 de octubre todos los exentos pasarían a `expirado` y el torniquete los
+  rechazaría el día del evento— y **después** de las tres que dependen de `pagos`,
+  para que un depósito inesperado siga mandando.
+- `fn_evaluar_escaneo` admite `exento` igual que `pagado`.
+- `fn_sincronizar_exencion`, nueva: traduce la respuesta a los dos montos. Sale
+  temprano si la respuesta no cambió, porque el alta es reentrante y si no
+  reescribiría la cuota con la de HOY cada vez que alguien pulsa «atrás».
+- `fn_cambiar_taller` pone el monto del taller en cero para el exento, en vez de
+  copiar el del catálogo. Sin esto, cambiar de taller le devolvía la deuda.
+- `fn_preregistrar_externo` recibe `p_quiere_constancia boolean default true`. **Se
+  tira la firma de ocho parámetros**: añadir uno con valor por omisión crea una
+  función nueva y deja viva la vieja, y entonces el cliente recibe «function is not
+  unique». El valor por omisión es el que COBRA, así que un cliente sin actualizar
+  no regala nada.
+
+**Qué NO cambia, y es la mitad de la regla.** `v_elegibles` sigue exigiendo
+`estado = 'pagado'`. El exento entra al evento y **no aparece en el listado de
+constancias**. La segunda migración lo comprueba: si `v_elegibles` dejara de
+exigirlo, se detiene.
+
+**El hueco que esto NO cierra.** `/registro` no comprueba que nadie sea docente.
+Hasta ahora marcar «docente» solo evitaba las dos evidencias; a partir de aquí
+**vale dinero**. Sin padrón de docentes, cualquiera con un Gmail entra gratis
+diciendo que es maestro. Es una decisión de la organización, no un arreglo
+pendiente de código.
+
+**Para comprobar que quedaron**, con una sesión con permisos:
+
+```sql
+-- El valor existe
+select enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+ where t.typname = 'estado_pago' order by e.enumsortorder;
+
+-- La vista responde. Debe devolver «exento» para el maestro con cuota cero.
+select p.folio, p.perfil, p.quiere_constancia,
+       p.monto_esperado_evento, v.concepto, v.estado
+  from participantes p
+  join v_estado_pago v on v.participante_id = p.id
+ where p.perfil = 'docente' order by p.folio;
+```
+
+
 ### Quitar el taller que nadie pagó (`20260929140000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha

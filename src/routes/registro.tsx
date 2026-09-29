@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CAMPO_MAYUSCULAS, LARGO, faltanDigitos, soloDigitos } from "@/lib/campos";
-import { simularLatencia } from "@/lib/formato";
+import { moneda, simularLatencia } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { hayBaseDeDatos } from "@/lib/supabase-config";
@@ -39,6 +39,21 @@ function RegistroExterno() {
   const { borrador, setBorrador, reset } = usePrototipo();
   const { configuracion: evento } = useEstadoEvento();
   const [perfil, setPerfil] = useState<"docente" | "externo">("docente");
+  /*
+   * La pregunta que la organización pidió hacerle al maestro el 2026-09-29: el
+   * evento y el taller le salen gratis, y la constancia se paga.
+   *
+   * Arranca en `null` y **no** en `true` ni en `false`, y eso es deliberado. Un
+   * valor inicial cualquiera es una respuesta que esa persona no dio: `true` le
+   * cobra 500 sin haberle preguntado, y `false` la deja fuera del listado de
+   * constancias sin que se entere hasta que las repartan. Nulo obliga a
+   * contestar, y `enviar` no deja pasar sin respuesta.
+   *
+   * Solo aplica al docente. Si cambia a «externo» se limpia: dejar la respuesta
+   * puesta haría que volver a «docente» pareciera contestado cuando no lo está.
+   */
+  const [quiereConstancia, setQuiereConstancia] = useState<boolean | null>(null);
+  const [errorConstancia, setErrorConstancia] = useState("");
   const [c, setC] = useState<Campos>({
     nombres: "",
     paterno: "",
@@ -136,6 +151,18 @@ function RegistroExterno() {
     setErrores(e);
     if (Object.keys(e).length) return;
 
+    /*
+     * La constancia va ANTES del aviso porque está más arriba en la pantalla:
+     * el orden de las quejas sigue el orden de lectura, y saltárselo manda a esa
+     * persona al final del formulario por algo que tiene que corregir al
+     * principio.
+     */
+    if (perfil === "docente" && quiereConstancia === null) {
+      setErrorConstancia("Contesta si quieres constancia: de eso depende si pagas.");
+      return;
+    }
+    setErrorConstancia("");
+
     // Después de los campos: si algo de arriba falla, eso es lo que hay que
     // arreglar primero. El aviso está justo encima del botón, a la vista.
     if (!aceptoAviso) {
@@ -176,6 +203,13 @@ function RegistroExterno() {
       celular: c.celular.trim(),
       institucion: c.institucion.trim(),
       aceptoAviso: true,
+      /*
+       * El externo no contesta esta pregunta y paga igual que antes, así que
+       * viaja `true`: es lo que la base espera de él y lo que `chk_exento_solo_
+       * docente` le exige. `quiereConstancia` solo puede ser nulo aquí si el
+       * perfil es externo —`enviar` no deja pasar a un docente sin respuesta—.
+       */
+      quiereConstancia: perfil === "docente" ? quiereConstancia === true : true,
     });
     navigate({ to: "/mi-dia" });
   };
@@ -247,7 +281,11 @@ function RegistroExterno() {
             <button
               key={p}
               type="button"
-              onClick={() => setPerfil(p)}
+              onClick={() => {
+                setPerfil(p);
+                setQuiereConstancia(null);
+                setErrorConstancia("");
+              }}
               className={cn(
                 "min-h-12 rounded-md border text-sm font-semibold capitalize",
                 opcion(perfil === p),
@@ -273,6 +311,79 @@ function RegistroExterno() {
               {fueraDeVentana} Mientras tanto no se puede completar este registro.
             </AlertDescription>
           </Alert>
+        ) : null}
+
+        {/*
+         * La pregunta de la constancia, solo para el docente.
+         *
+         * Va aquí y no al final del formulario porque es lo único de esta
+         * pantalla que decide cuánto paga esa persona: leerla después de teclear
+         * seis campos convierte «¿quieres constancia?» en un trámite más, y no en
+         * la decisión que es.
+         *
+         * Las dos opciones dicen el precio y la consecuencia, no solo «sí» y
+         * «no». Un maestro que elige «no» y luego descubre que no hay constancia
+         * para él es un caso de soporte que llega el día que se reparten, cuando
+         * ya no se puede hacer nada. Aquí sí se puede.
+         *
+         * El importe sale de `cuotaEvento`, que es lo que administración tenga
+         * puesto, y no de un 500 escrito aquí. El taller se menciona sin cifra: su
+         * costo depende de cuál elija, y eso pasa dos pantallas más adelante.
+         */}
+        {perfil === "docente" ? (
+          <fieldset className="mt-5 rounded-md border border-primary/30 bg-primary/5 p-4">
+            <legend className="px-1 text-sm font-semibold">¿Quieres constancia?</legend>
+            <p className="text-sm text-muted-foreground">
+              Para los maestros el Encuentro y el taller son gratis. La constancia sí se paga.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  {
+                    valor: true,
+                    titulo: "Sí, quiero constancia",
+                    detalle: `Pagas ${moneda(evento.cuotaEvento)} del Encuentro, más el taller si eliges uno.`,
+                  },
+                  {
+                    valor: false,
+                    titulo: "No, solo voy a asistir",
+                    detalle: "Entras gratis y no tienes que llevar voucher. No recibes constancia.",
+                  },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={String(o.valor)}
+                  type="button"
+                  aria-pressed={quiereConstancia === o.valor}
+                  onClick={() => {
+                    setQuiereConstancia(o.valor);
+                    setErrorConstancia("");
+                  }}
+                  className={cn(
+                    "rounded-md border p-3 text-left",
+                    opcion(quiereConstancia === o.valor),
+                  )}
+                >
+                  <span className="block text-sm font-semibold">{o.titulo}</span>
+                  <span
+                    className={cn(
+                      "mt-1 block text-xs leading-snug",
+                      quiereConstancia === o.valor
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {o.detalle}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {errorConstancia ? (
+              <p className="mt-2 text-sm font-semibold text-estado-discrepancia">
+                {errorConstancia}
+              </p>
+            ) : null}
+          </fieldset>
         ) : null}
 
         {/*

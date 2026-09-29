@@ -50,9 +50,17 @@ export interface PagoRegistrado {
  * ---------------------------------------------------------------------------
  */
 
-/** Ese concepto ya no admite cobro: o se pagó, o hay que resolverlo aparte. */
+/**
+ * Ese concepto ya no admite cobro: o se pagó, o no se le cobra, o hay que
+ * resolverlo aparte.
+ *
+ * `exento` está aquí desde el 2026-09-29. No es una concesión al maestro que no
+ * quiere constancia: es que su monto esperado es CERO, así que no hay nada que
+ * cobrar y dejarlo en la lista de cobros pendientes lo pondría a la cola de una
+ * ventanilla que no tiene nada que hacer con él.
+ */
 export const resuelto = (e: EstadoPago): boolean =>
-  e === "pagado" || e === "discrepancia" || e === "cancelado";
+  e === "pagado" || e === "exento" || e === "discrepancia" || e === "cancelado";
 
 /** Queda dinero por cobrar de ese concepto. Lo contrario de `resuelto`. */
 export const porCobrar = (e: EstadoPago): boolean => !resuelto(e);
@@ -63,6 +71,13 @@ export const porCobrar = (e: EstadoPago): boolean => !resuelto(e);
  * `discrepancia` NO está aquí a propósito: esa persona sí depositó, solo que
  * por un importe que no cuadra. Se le deja pasar avisando y se le manda a
  * Servicios Financieros; devolverla sería castigarla por un error de cajero.
+ *
+ * `exento` tampoco, y es la misma línea que traza `fn_evaluar_escaneo` desde el
+ * 2026-09-29: al maestro que no quiere constancia no se le cobra nada, así que no
+ * hay pago que acreditarle y la puerta lo admite. Esta lista se enumera en vez de
+ * negar `pagado` justo para esto: un estado nuevo entra aquí solo si alguien lo
+ * escribe, y el que se olvide queda ABIERTO, no cerrado. El error que se evita es
+ * dejar fuera del evento a quien sí puede entrar.
  */
 export const sinAcreditar = (e: EstadoPago): boolean =>
   e === "pre_registrado" || e === "comprobante_recibido" || e === "expirado" || e === "cancelado";
@@ -97,11 +112,14 @@ export const porVencer = (e: EstadoPago): boolean =>
 /**
  * No hay NINGUNA fila de pago de ese concepto. No es lo mismo que «no pagó».
  *
- * Se lee directamente de cómo deriva `v_estado_pago`: sus cinco ramas dependen
- * de `count(pagos)`, y solo dos de ellas se alcanzan con cero filas —
- * `pre_registrado` antes de la fecha límite y `expirado` después—. Las otras
- * tres (`comprobante_recibido`, `pagado`, `discrepancia`) exigen al menos un
- * registro.
+ * Se lee directamente de cómo deriva `v_estado_pago`: sus seis ramas dependen
+ * de `count(pagos)`, y solo TRES de ellas se alcanzan con cero filas —
+ * `exento` cuando no debe nada, y si debe, `pre_registrado` antes de la fecha
+ * límite y `expirado` después—. Las otras tres (`comprobante_recibido`,
+ * `pagado`, `discrepancia`) exigen al menos un registro.
+ *
+ * `exento` entró aquí el 2026-09-29 y es lo que permite al panel seguir
+ * moviéndole el taller al maestro exento: no tiene depósito que invalidar.
  *
  * Sirve para anticipar lo que `fn_asignar_taller` va a rechazar: el taller viaja
  * en el mismo depósito desde el 2026-09-25, así que en cuanto existe una fila de
@@ -119,17 +137,20 @@ export const porVencer = (e: EstadoPago): boolean =>
  * cero filas. Son dos preguntas distintas —«¿pasa por la puerta?» y «¿hay
  * dinero registrado?»— y compartir la respuesta las haría divergir en silencio.
  */
-export const sinDeposito = (e: EstadoPago): boolean => e === "pre_registrado" || e === "expirado";
+export const sinDeposito = (e: EstadoPago): boolean =>
+  e === "pre_registrado" || e === "expirado" || e === "exento";
 
 /**
  * Debe TODO lo que se le puede cobrar. Al corriente es no deber nada: quien
  * tiene el evento pagado y el taller a medias sigue teniendo un cobro
  * pendiente, y contarlo entre los pagados es lo que haría que se le pasara.
  */
+const nadaQueDeber = (e: EstadoPago): boolean => e === "pagado" || e === "exento";
+
 export const alCorriente = (estado: {
   evento: EstadoPago;
   taller: EstadoPago | undefined;
-}): boolean => estado.evento === "pagado" && (!estado.taller || estado.taller === "pagado");
+}): boolean => nadaQueDeber(estado.evento) && (!estado.taller || nadaQueDeber(estado.taller));
 
 /**
  * El estado del DEPÓSITO, que desde el 2026-09-25 es uno solo.
@@ -161,6 +182,16 @@ const URGENCIA: Record<EstadoPago, number> = {
   pre_registrado: 3,
   comprobante_recibido: 2,
   pagado: 1,
+  /*
+   * El menos urgente de todos, y por debajo de `pagado` a propósito.
+   *
+   * Solo se enseña cuando los DOS conceptos son exentos, que es el caso del
+   * maestro al que la organización eximió del evento y del taller a la vez. Si
+   * uno de los dos está pagado —el maestro que sí quiso constancia y depositó,
+   * y a quien luego le regalan el taller— gana «Pagado», que es lo que esa
+   * persona hizo y lo que quiere leer.
+   */
+  exento: 0,
 };
 
 export const estadoDelDeposito = (estado: {
