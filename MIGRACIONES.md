@@ -475,24 +475,24 @@ select p.folio, p.perfil, p.quiere_constancia,
 ```
 
 
-### Quitar el taller que nadie pagó (`20260929140000`) — SIN APLICAR
+### Quitar el taller que nadie pagó (`20260929140000`) — aplicada
 
-Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
-contestado**. Se cambia a «aplicada» cuando `fn_asignar_taller` acepte una baja
-sobre un folio con depósito del evento y sin cobro del taller, y siga rechazando
-las otras dos.
-
-**Y esta no se puede sondear desde fuera**, por lo mismo que la del aforo:
-`fn_asignar_taller` está revocada al anónimo, así que contesta `42501` con el
-cuerpo viejo y con el nuevo por igual. Existir y estar al día se ven idénticos.
-Desde el editor SQL, la pregunta que sí distingue —la guardia nueva es la única
-que nombra el concepto del taller—:
+**Comprobada el 2026-09-29 desde el editor SQL**, y ahí hacía falta: esta no se
+puede sondear desde fuera, por lo mismo que la del aforo. `fn_asignar_taller`
+está revocada al anónimo, así que contesta `42501` con el cuerpo viejo y con el
+nuevo por igual —existir y estar al día se ven idénticos—. La pregunta que sí
+distingue mira el CUERPO VIVO, porque la guardia nueva es la única de esa
+función que nombra el concepto del taller:
 
 ```sql
 select prosrc like '%concepto = ''taller''%' as tiene_la_guardia_nueva
   from pg_proc
  where proname = 'fn_asignar_taller';
 ```
+
+Contestó `true`. La baja de un taller sin cobro propio ya está abierta para
+administración y soporte, y poner o cambiar de taller lo sigue cerrando
+cualquier depósito.
 
 **Qué cambia.** `fn_asignar_taller` deja de rechazar un caso: quitarle el taller
 a quien ya depositó pero cuyo taller no tiene ninguna fila en `pagos`. Poner o
