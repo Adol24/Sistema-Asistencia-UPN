@@ -471,7 +471,11 @@ cuánta gente desatasca hoy: los que tienen taller, ya depositaron y no tienen
 cobro del taller. Antes de aplicarla ese número era, para el panel,
 inalcanzable.
 
-### Las maestrías también entran en módulo 4 (`20260928120000`) — SIN APLICAR
+### Las maestrías también entran en módulo 4 (`20260928120000`) — aplicada
+
+**Comprobada el 2026-09-29 con la clave anónima**: `ventana_cohortes` devuelve
+tres filas con `avance = 4`, que son exactamente las tres maestrías que esta
+añade. El rótulo decía «SIN APLICAR» mientras la base ya contestaba que sí.
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
 contestado**. Se cambia a «aplicada» cuando la consulta del final devuelva
@@ -541,7 +545,12 @@ qué día abre una ventana hay que preguntarle a la base, igual que con todo lo
 demás en este documento.
 
 
-### La matrícula va de ocho a once dígitos (`20260927120000`) — SIN APLICAR
+### La matrícula va de ocho a once dígitos (`20260927120000`) — aplicada
+
+**Comprobada el 2026-09-29 con la clave anónima**: `fn_preregistrar_alumno` con
+una matrícula de NUEVE dígitos contesta `P0002 · Esa matrícula no está en
+nuestros registros`. O sea que pasó el formato y murió buscando en el padrón,
+que es justo lo que el rango viejo impedía. No escribe nada: falla antes.
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
 contestado**. Se cambia a «aplicada» cuando la regla viva del padrón diga
@@ -612,6 +621,16 @@ Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
 contestado**. Se cambia a «aplicada» cuando el cuerpo vivo de
 `fn_asignar_dia_a_varios` ya no nombre `dias_evento`.
 
+**Y esta es la única de las pendientes que no se puede sondear desde fuera.** El
+2026-09-29 se intentó: `fn_asignar_dia_a_varios` está concedida a
+`authenticated`, así que al anónimo le contesta `42501` tenga o no tenga el tope
+dentro. Existir y estar al día se ven igual. Hay que mirar el cuerpo con una
+sesión con permisos:
+
+```sql
+select prosrc from pg_proc where proname = 'fn_asignar_dia_a_varios';
+```
+
 **Es un retroceso que llevaba tres días vivo, no una regla nueva.**
 `20260921200000` le quitó el tope del aforo a `fn_asignar_dia_a_varios` el 21 de
 septiembre. El 23, `20260923140000` reescribió esa función entera para quitarle
@@ -656,7 +675,13 @@ select pg_get_functiondef(p.oid) not like '%dias_evento%' as sin_tope
 `supabase/utilidades/estado-de-migraciones.sql`, junto a las otras dos mitades de
 esta regla.
 
-### Asignar el taller desde el panel (`20260926160000`) — SIN APLICAR
+### Asignar el taller desde el panel (`20260926160000`) — aplicada
+
+**Comprobada el 2026-09-29 con la clave anónima**: llamar a `fn_asignar_taller`
+contesta `42501 · permission denied for function fn_asignar_taller`, y ese código
+solo se puede negar sobre algo que EXISTE —si no existiera sería `PGRST202`—.
+Lo que el anónimo no puede ver es su CUERPO, así que esto prueba que la función
+nació, no con qué guardia está hoy.
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
 contestado**. Se cambia a «aplicada» cuando `fn_asignar_taller` exista y rechace a

@@ -121,7 +121,32 @@ export function AsignarTaller({
   const activos = talleres.filter((t) => t.activo);
   const elegido = talleres.find((t) => t.id === clave);
   const sinCambio = clave === actual;
+
+  /*
+   * El maestro exento no paga el taller, y el catálogo no lo sabe.
+   *
+   * Desde el 2026-09-29 `fn_cambiar_taller` escribe `monto_esperado_taller =
+   * case when quiere_constancia then v_costo else 0 end`, así que a quien está
+   * exento le pone CERO por mucho que el taller cueste cien. Sumar aquí el costo
+   * del catálogo le diría a quien atiende una cifra que la base no va a
+   * esperarle nunca, y mandaría al banco a alguien que no debe nada.
+   *
+   * `quiere_constancia` no llega al cliente —`Participante` no la trae—, pero
+   * `monto_esperado_evento` sí, y es la MISMA columna que `fn_sincronizar_exencion`
+   * pone en cero al responder que no quiere constancia. Se pregunta por el dato
+   * con el que la base cobra, no por una derivación suya.
+   */
+  const noPagaCuota = participante.montoEsperadoEvento === 0;
+  const costoDelTaller = (t: Taller | undefined) => (noPagaCuota ? 0 : (t?.costo ?? 0));
+
+  /*
+   * Lo que la base tiene apuntado de SU taller, no lo que cuesta en el catálogo.
+   *
+   * Son la misma cifra para casi todo el mundo y distintas justo para el exento,
+   * que es quien tiene un taller de cien apuntado en cero.
+   */
   const suyo = talleres.find((t) => t.id === actual);
+  const costoApuntado = participante.montoEsperadoTaller ?? costoDelTaller(suyo);
 
   const aplicar = async (destino: string | null) => {
     setGuardando(true);
@@ -131,7 +156,7 @@ export function AsignarTaller({
         destino === null
           ? `${participante.folio} se queda sin taller.`
           : `${participante.folio} queda en ${destino}. Su depósito ahora es de ${moneda(
-              participante.montoEsperadoEvento + (elegido?.costo ?? 0),
+              participante.montoEsperadoEvento + costoDelTaller(elegido),
             )}.`,
       );
       alCerrar();
@@ -169,10 +194,9 @@ export function AsignarTaller({
               <Info className="size-4" />
               <AlertTitle>Ya depositó, y el taller no entró en ese depósito</AlertTitle>
               <AlertDescription>
-                De su taller {actual}
-                {suyo ? ` (${moneda(suyo.costo)})` : ""} no hay ningún cobro registrado, así que
-                quitárselo no mueve dinero: deja el registro como quedó su depósito y devuelve su
-                lugar al cupo. Cambiárselo por otro taller sí pasa por Servicios Financieros, y
+                De su taller {actual} ({moneda(costoApuntado)}) no hay ningún cobro registrado, así
+                que quitárselo no mueve dinero: deja el registro como quedó su depósito y devuelve
+                su lugar al cupo. Cambiárselo por otro taller sí pasa por Servicios Financieros, y
                 desde aquí ya no se puede.
               </AlertDescription>
             </Alert>
@@ -265,15 +289,22 @@ export function AsignarTaller({
             <Alert className="mt-4 border-primary/30">
               <Info className="size-4" />
               <AlertTitle>
-                Su depósito queda en{" "}
-                {moneda(participante.montoEsperadoEvento + (elegido?.costo ?? 0))}
+                {noPagaCuota
+                  ? "No tiene nada que depositar"
+                  : `Su depósito queda en ${moneda(
+                      participante.montoEsperadoEvento + costoDelTaller(elegido),
+                    )}`}
               </AlertTitle>
               <AlertDescription>
-                {elegido
-                  ? `${moneda(participante.montoEsperadoEvento)} del evento y ${moneda(
-                      elegido.costo,
-                    )} del taller, en un solo depósito. El concepto que escriba a mano cambia: tiene que incluir el taller.`
-                  : "Solo el evento, en un solo depósito. Si tenía taller, el concepto que escriba a mano ya no lo incluye."}
+                {noPagaCuota
+                  ? elegido
+                    ? `Está exento de la cuota, y el taller va con ella: ${elegido.id} tampoco le cuesta. Sigue sin depósito que hacer y sin voucher que entregar.`
+                    : "Está exento de la cuota. Sin depósito que hacer y sin voucher que entregar."
+                  : elegido
+                    ? `${moneda(participante.montoEsperadoEvento)} del evento y ${moneda(
+                        elegido.costo,
+                      )} del taller, en un solo depósito. El concepto que escriba a mano cambia: tiene que incluir el taller.`
+                    : "Solo el evento, en un solo depósito. Si tenía taller, el concepto que escriba a mano ya no lo incluye."}
               </AlertDescription>
             </Alert>
           </>
