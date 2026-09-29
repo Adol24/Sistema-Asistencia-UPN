@@ -345,6 +345,76 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### Las maestrías también entran en módulo 4 (`20260928120000`) — SIN APLICAR
+
+Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
+contestado**. Se cambia a «aplicada» cuando la consulta del final devuelva
+`1, 3, 4` para las tres maestrías.
+
+**Qué cambia.** Las tres maestrías ganan el módulo 4 en `ventana_cohortes`,
+`cita_cohortes` y `dia_entrega_voucher`, y **conservan el 3**. Quedan en 1, 3 y 4.
+
+**Por qué se añade en vez de sustituir.** La organización dijo el 2026-09-28 que
+los correctos son el 1 y el 4. `20260925140000` había puesto 1 y 3 tres días
+antes, anotando que eso mismo lo dijo la organización el 2026-09-25. Las dos
+cosas están escritas y se contradicen, y desde fuera no hay forma de comprobar
+cuál número trae el alumno: `padron_alumnos` no se lee sin sesión de personal.
+
+Sustituir apuesta a una versión con una consecuencia que no se deshace a tiempo:
+si el padrón guarda el módulo IV como 3, esa generación lee «Todavía no se
+anuncia la fecha de registro para tu grupo» y su ventana cierra el 29. Añadir no
+tiene ese riesgo. El costo es una cohorte que quizá no tenga a nadie, y una
+cohorte declarada solo ABRE puertas: una puerta que nadie cruza no molesta.
+
+**Se ancla en las filas del módulo 1, no en la etiqueta de la ventana.** Cada
+`insert` copia lo que ya existe para el módulo 1 del mismo programa, así que el 4
+hereda ventana, cita, sede y día sin volver a escribirlos. Nombrar la ventana por
+su etiqueta sería frágil: se edita desde `/admin/configuracion`, y de hecho **ya
+se editó** —ver el aviso de abajo—.
+
+**Las tres tablas a la vez**, porque tocar solo la ventana es el agujero que ya se
+abrió dos veces: la generación se registra y después no sabe qué día ir a pagar.
+Y la comprobación cruzada heredada de `20260924230000` exige que ninguna cohorte
+tenga ventana sin cita ni cita sin ventana.
+
+La migración comprueba su propio efecto con cinco guardias y se detiene si alguna
+falla. Al final imprime cuántos alumnos de maestría tienen avance 4 en el padrón:
+**cero no prueba que el 4 no exista**, puede ser que ese padrón no esté cargado.
+Es el número con el que volver sobre esto en vez de con dos versiones.
+
+**Con una sesión con permisos**, para saber si el 3 o el 4 sobra:
+
+```sql
+select p.nombre, a.avance, count(*)
+  from padron_alumnos a
+  join programas p on p.id = a.programa_id
+  join niveles_academicos n on n.id = p.nivel_id
+ where n.nivel = 'Maestría' group by 1, 2 order by 1, 2;
+```
+
+Si uno de los dos resulta vacío, se retira como se retiró Administración 1º y 3º
+en `20260925160000`: comprobado primero.
+
+### Aviso · las fechas vivas de las ventanas no son las de estos archivos
+
+Comprobado el 2026-09-28 contra el proyecto real con la clave anónima
+(`ventanas_preregistro` es de lectura pública):
+
+| Ventana | Las migraciones dicen | La base dice |
+|---|---|---|
+| 7º y módulos 9 y 13 | 25 → 26 sept | **24 → 28 sept** |
+| 1º/3º/5º y módulos 1/3/5 | 27 → 28 sept | **27 → 29 sept** |
+| Docentes y externos | 29 → 29 sept | 29 → 29 sept |
+
+Los segundos terminan en `:00` y no en `:59`, que es la huella del campo
+`datetime-local` de `/admin/configuracion`. Alguien las amplió desde el panel, que
+es para lo que existe. **No es un defecto, es la consecuencia de que las fechas se
+puedan editar:** desde que existe esa pantalla, `20260924120000` dejó de ser la
+fuente de verdad de las fechas y pasó a ser solo su punto de partida. Para saber
+qué día abre una ventana hay que preguntarle a la base, igual que con todo lo
+demás en este documento.
+
+
 ### La matrícula va de ocho a once dígitos (`20260927120000`) — SIN APLICAR
 
 Este rótulo dice lo que dice: el archivo existe y **la base todavía no lo ha
