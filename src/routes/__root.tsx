@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { PrototipoProvider } from "../lib/prototipo";
@@ -19,6 +19,7 @@ import { PortalProvider } from "../lib/portal";
 import { useAltoTeclado } from "../lib/teclado";
 import { useTrabajadorDeServicio } from "../lib/trabajador-de-servicio";
 import { useSelloDeVersion } from "../lib/sello-de-version";
+import { esPaqueteQueNoLlego, tocaRecargar } from "../lib/recarga-por-despliegue";
 /*
  * El Toaster llega tarde a propósito.
  *
@@ -76,37 +77,82 @@ function NotFoundComponent() {
   );
 }
 
+const BOTON_PRINCIPAL =
+  "inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90";
+const BOTON_SECUNDARIO =
+  "inline-flex min-h-11 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent";
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  /*
+   * Un paquete que no llegó no es un error de esta pantalla: es una pestaña
+   * abierta desde antes del último despliegue pidiendo un archivo cuyo nombre
+   * ya cambió. Se recarga sola una vez —el índice nuevo sabe los nombres
+   * nuevos— y solo si eso vuelve a fallar se le cuenta a la persona, que para
+   * entonces sí tiene algo que decidir. Ver `recarga-por-despliegue.ts`.
+   */
+  const desactualizada = esPaqueteQueNoLlego(error);
+  const [recargando, setRecargando] = useState(false);
+
+  useEffect(() => {
+    if (!desactualizada || !tocaRecargar()) return;
+    setRecargando(true);
+    window.location.reload();
+  }, [desactualizada]);
+
+  if (recargando) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Actualizando la aplicación…
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Salió una versión nueva mientras tenías esto abierto. Se está recargando sola; no
+            pierdes nada.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Esta pantalla del prototipo no pudo dibujarse
+          {desactualizada
+            ? "No se pudo cargar esta parte de la aplicación"
+            : "Esta pantalla del prototipo no pudo dibujarse"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          El error ocurrió al renderizar la vista, no al guardar datos: el prototipo no guarda nada
-          y el estado se reinicia al recargar. Puedes reintentar sin perder nada.
+          {desactualizada
+            ? "Falta un archivo del sitio. Suele ser una versión nueva recién publicada —ya se intentó recargar una vez— o la conexión cortada a medias. Vuelve a recargar; si insiste, revisa la red."
+            : "El error ocurrió al renderizar la vista, no al guardar datos: el prototipo no guarda nada y el estado se reinicia al recargar. Puedes reintentar sin perder nada."}
         </p>
         <p className="mt-3 rounded-md bg-muted p-3 text-left font-mono text-xs text-muted-foreground">
           {error.message || "Error sin mensaje"}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Reintentar
-          </button>
-          <a
-            href="/bienvenida"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
+          {desactualizada ? (
+            // Recargar y no `reset()`: lo que falta es un archivo del sitio, y
+            // volver a dibujar la misma pantalla lo volvería a pedir al mismo
+            // sitio donde no estaba.
+            <button onClick={() => window.location.reload()} className={BOTON_PRINCIPAL}>
+              Recargar
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                router.invalidate();
+                reset();
+              }}
+              className={BOTON_PRINCIPAL}
+            >
+              Reintentar
+            </button>
+          )}
+          <a href="/bienvenida" className={BOTON_SECUNDARIO}>
             Ir al inicio
           </a>
         </div>
