@@ -161,3 +161,78 @@ export function GraficaAvance({
     </ResponsiveContainer>
   );
 }
+
+/** Un grupo cualquiera del desglose: lo apuntado y lo cobrado dentro de él. */
+export interface BarraDesglose {
+  etiqueta: string;
+  preinscritos: number;
+  pagados: number;
+}
+
+/**
+ * Dos barras por grupo —apuntados y pagados— para cualquiera de los cortes de
+ * la hoja de avance: licenciatura, semestre, nivel, taller.
+ *
+ * Juntas y no apiladas, por lo mismo que `GraficaAvance`: los pagados son un
+ * subconjunto de los apuntados, no gente aparte, y apilarlas dibujaría el doble
+ * de personas de las que hay.
+ *
+ * `horizontal` existe para los nombres largos. «Licenciatura en Educación e
+ * Innovación Pedagógica» en el eje de abajo sale girado, recortado o encima del
+ * siguiente; tumbada la gráfica, el nombre se lee de corrido y lo que crece es
+ * el alto, que en papel es lo que sobra.
+ */
+export function GraficaDesglose({
+  datos,
+  colores,
+  alto = ALTO,
+  horizontal = false,
+  anchoEtiqueta = 150,
+}: {
+  datos: BarraDesglose[];
+  colores: { preinscritos: string; pagados: string };
+  alto?: number;
+  horizontal?: boolean;
+  /** Cuánto se reserva para el rótulo cuando la gráfica va tumbada. */
+  anchoEtiqueta?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={alto}>
+      <BarChart
+        data={datos}
+        layout={horizontal ? "vertical" : "horizontal"}
+        barGap={2}
+        margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+      >
+        {/*
+          Los cuatro ejes van sueltos y no envueltos en un fragmento por pareja.
+
+          `recharts` busca sus ejes recorriendo los hijos directos del gráfico y
+          mirando de qué componente son; metidos en un `<>…</>` deja de
+          encontrarlos y la gráfica sale sin ejes, sin avisar de nada.
+        */}
+        {horizontal ? (
+          <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} />
+        ) : (
+          <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={11} />
+        )}
+        {horizontal ? (
+          <YAxis
+            type="category"
+            dataKey="etiqueta"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={anchoEtiqueta}
+          />
+        ) : (
+          <YAxis type="number" tickLine={false} axisLine={false} fontSize={11} width={32} />
+        )}
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey="preinscritos" fill={colores.preinscritos} name="Pre-registrados" />
+        <Bar dataKey="pagados" fill={colores.pagados} name="Pagados" />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
