@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Ban, Check, CheckCircle2, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
+import { Ban, Check, CheckCircle2, Download, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -13,11 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { descargarCsv } from "@/lib/exportar";
 import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { alCorriente, resuelto } from "@/lib/pagos-logica";
+import { alCorriente, resuelto, yaPago } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago, Participante } from "@/dominio/tipos";
@@ -40,6 +41,21 @@ export const Route = createFileRoute("/financieros/")({
  * sin desplazar, que es donde se pulsa el botón de confirmar.
  */
 const POR_PAGINA = 10;
+
+/**
+ * Un nombre reducido a lo que decide si es el mismo nombre: sin acentos, sin
+ * mayúsculas y sin espacios de más.
+ *
+ * Se queda en esta pantalla y no en un módulo compartido a propósito. El
+ * proyecto ya tiene esta normalización en `catalogos.ts` y en
+ * `padron-importacion.ts`, y las dos comparan otra cosa —nombres de programa y
+ * columnas de un archivo— contra un catálogo cerrado. Aquí se agrupan nombres de
+ * personas, que es una comparación con otras consecuencias, y darles una sola
+ * implementación las ataría: afinar una para nombres compuestos cambiaría en
+ * silencio qué programa reconoce el importador del padrón.
+ */
+const claveDeNombre = (nombre: string) =>
+  nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
 
 type Filtro = "todos" | "por_cobrar" | "pagados";
 
@@ -149,6 +165,64 @@ function Ventanilla() {
    */
   const tramo = usePaginacion(lista, POR_PAGINA, `${q}|${filtro}`);
 
+  /*
+   * Quiénes ya pagaron, un renglón por nombre.
+   *
+   * Sale de `participantes` y no de `lista`: es la lista de pagados del evento,
+   * no de lo que haya en el buscador. Así el número del botón no cambia al
+   * teclear, que es lo que delata que la descarga no depende del filtro.
+   *
+   * Un nombre puede venir dos veces —quien se pre-registró dos veces tiene dos
+   * folios—, y ahí los dos folios se juntan en el mismo renglón en vez de
+   * quedarse uno fuera: si resultan ser dos personas distintas con el mismo
+   * nombre, el archivo lo enseña en la columna de folios y nadie desaparece.
+   */
+  const pagados = useMemo(() => {
+    const porNombre = new Map<string, { nombre: string; folios: string[]; matriculas: string[] }>();
+    for (const p of participantes) {
+      if (!yaPago(estadoDe(p))) continue;
+      const clave = claveDeNombre(p.nombre);
+      const suyo = porNombre.get(clave);
+      if (suyo) {
+        suyo.folios.push(p.folio);
+        if (p.matricula) suyo.matriculas.push(p.matricula);
+      } else {
+        porNombre.set(clave, {
+          nombre: p.nombre,
+          folios: [p.folio],
+          matriculas: p.matricula ? [p.matricula] : [],
+        });
+      }
+    }
+    // Por nombre y no por folio: el archivo se lee buscando a alguien.
+    return [...porNombre.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [participantes, estadoDe]);
+
+  /**
+   * Descarga la lista de quienes ya pagaron, un nombre por renglón.
+   *
+   * En CSV con BOM, que es lo que abre Excel de doble clic sin romper la Ñ de
+   * MUÑOZ; es el mismo formato de las demás descargas del panel. Ver
+   * `lib/exportar.ts`.
+   */
+  const descargarPagados = () => {
+    // El botón ya viene apagado con la lista vacía; esto solo evita que una
+    // llamada futura escriba un archivo con encabezados y ni una fila.
+    if (pagados.length === 0) return;
+    const n = descargarCsv(
+      "pagados.csv",
+      ["nombre", "folio", "matricula", "pre_registros"],
+      pagados.map((f) => [
+        f.nombre,
+        f.folios.join(" · "),
+        f.matriculas.join(" · "),
+        f.folios.length,
+      ]),
+    );
+    registrarBitacora("Descargó la lista de pagados", `${n} nombres`);
+    toast.success(`Descargamos ${n} nombres.`);
+  };
+
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -254,6 +328,20 @@ function Ventanilla() {
           dejaría de actualizar creyendo que no hace falta.
         */}
         <SelloEnVivo />
+        {/*
+          El número va en el botón porque es el dato que se quiere antes de
+          pulsarlo —cuántos llevan pagado— y porque no se mueve al teclear en el
+          filtro: eso dice sin explicarlo que la descarga es la lista entera.
+        */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={descargarPagados}
+          disabled={cargandoDatos || pagados.length === 0}
+          title="Un nombre por renglón, sin repetirse. Se abre en Excel."
+        >
+          <Download className="size-4" /> Pagados ({pagados.length})
+        </Button>
         <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
           <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
           Actualizar

@@ -153,6 +153,23 @@ export const alCorriente = (estado: {
 }): boolean => nadaQueDeber(estado.evento) && (!estado.taller || nadaQueDeber(estado.taller));
 
 /**
+ * Depositó de verdad y no debe nada.
+ *
+ * `alCorriente` no basta para contestar «¿quién ya pagó?»: desde el 2026-09-29
+ * también es cierto del maestro exento, que no debe nada porque su monto
+ * esperado es CERO y nunca hizo un depósito. Una lista de pagados armada con
+ * `alCorriente` mete a esa persona entre quienes sí pagaron, y quien la use
+ * para cuadrar la caja buscará un depósito que no existe. Es el mismo error que
+ * obligó a renombrar el filtro «Pagados» de la ventanilla a «Sin adeudo».
+ *
+ * `discrepancia` queda fuera, y no por descuido: esa persona depositó, pero por
+ * un importe que no cuadra y que hay que resolver en persona. Darla por pagada
+ * es cómo se pierde la diferencia.
+ */
+export const yaPago = (estado: { evento: EstadoPago; taller: EstadoPago | undefined }): boolean =>
+  alCorriente(estado) && (estado.evento === "pagado" || estado.taller === "pagado");
+
+/**
  * El estado del DEPÓSITO, que desde el 2026-09-25 es uno solo.
  *
  * Por dentro siguen existiendo dos conceptos y Servicios Financieros sigue
