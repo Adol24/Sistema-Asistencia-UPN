@@ -249,6 +249,36 @@ function RegistroExterno() {
             El nombre es con el que quedas registrado, y el correo es por donde soporte te contacta.
             Revísalos bien.
           </p>
+          {/*
+            Aquí sí va el importe, y solo aquí.
+
+            Es la segunda pantalla: a esta no se llega curioseando, hay que
+            haber elegido el perfil de docente y llenado el formulario entero.
+            Quien la ve es quien va a pagar, y tiene que saber cuánto ANTES de
+            que se guarde nada —«Corregirlos» lo devuelve a cambiar la
+            respuesta—. En la primera pantalla la cifra solo servía para que la
+            leyera quien no iba a pagarla.
+
+            El importe sale de `cuotaDocente`, la cuota propia del maestro desde
+            el 2026-09-30, que NO es `cuotaEvento`.
+          */}
+          {perfil === "docente" ? (
+            <p className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-center text-sm">
+              {quiereConstancia ? (
+                <>
+                  <span className="font-semibold">
+                    Con constancia pagas {moneda(evento.cuotaDocente)} en total
+                  </span>
+                  , con el taller que elijas incluido. Es el único pago, y lo depositas después.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">Sin constancia no pagas nada.</span> Entras al
+                  Encuentro y al taller, no llevas voucher y no recibes constancia.
+                </>
+              )}
+            </p>
+          ) : null}
           <div className="mt-5 grid gap-2 sm:grid-cols-2">
             <Button
               variant="outline"
@@ -399,15 +429,19 @@ function RegistroExterno() {
          * seis campos convierte «¿quieres constancia?» en un trámite más, y no en
          * la decisión que es.
          *
-         * Las dos opciones dicen el precio y la consecuencia, no solo «sí» y
-         * «no». Un maestro que elige «no» y luego descubre que no hay constancia
-         * para él es un caso de soporte que llega el día que se reparten, cuando
-         * ya no se puede hacer nada. Aquí sí se puede.
+         * Las dos opciones dicen la consecuencia, no solo «sí» y «no». Un
+         * maestro que elige «no» y luego descubre que no hay constancia para él
+         * es un caso de soporte que llega el día que se reparten, cuando ya no
+         * se puede hacer nada. Aquí sí se puede.
          *
-         * El importe sale de `cuotaDocente` —la cuota propia del maestro desde el
-         * 2026-09-30, que NO es `cuotaEvento`— y no de un 250 escrito aquí. El
-         * taller ya no se menciona como un «más»: le va incluido, y decirlo aquí
-         * evita que elija taller creyendo que le sube el depósito.
+         * **Pero el importe ya no se enseña aquí, y es a propósito.** Esta
+         * pantalla la comparten el docente y el externo —el selector de perfil
+         * está justo arriba—, así que cualquiera que pulse «Docente» por
+         * curiosidad leía cuánto paga el maestro y lo comparaba con lo suyo. La
+         * cifra no es un secreto, pero enseñársela a quien no le toca solo
+         * produce el agravio; a quien sí le toca se la decimos entera en la
+         * pantalla de confirmación, que es donde decide de verdad y a la que no
+         * se llega mirando.
          */}
         {perfil === "docente" ? (
           <fieldset className="mt-5 rounded-md border border-primary/30 bg-primary/5 p-4">
@@ -421,7 +455,8 @@ function RegistroExterno() {
                   {
                     valor: true,
                     titulo: "Sí, quiero constancia",
-                    detalle: `Pagas ${moneda(evento.cuotaDocente)} en total, con el taller que elijas incluido.`,
+                    detalle:
+                      "Tiene un costo, con el taller que elijas incluido. Te decimos cuánto antes de guardar tu registro.",
                   },
                   {
                     valor: false,
