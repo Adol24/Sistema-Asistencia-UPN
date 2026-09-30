@@ -210,4 +210,55 @@ select
      where n.nspname = 'public'
        and p.proname = 'fn_asignar_dia_a_varios'
        and pg_get_functiondef(p.oid) not like '%dias_evento%'
-  ) as "20260926180000_el_aforo_dejo_de_frenar_el_padron";
+  ) as "20260926180000_el_aforo_dejo_de_frenar_el_padron",
+
+  /*
+   * La cuota del maestro: 250, con el taller dentro.
+   *
+   * Cuatro huellas unidas por `and`, y hacen falta las cuatro. La columna sola
+   * no prueba nada: `add column if not exists` puede haber corrido y las tres
+   * funciones haberse quedado sin reescribir —o haber sido reescritas después
+   * por otra migración que se llevara por delante la rama del perfil, que es
+   * exactamente como se perdió el límite por IP de `fn_padron_confirmar`—.
+   *
+   * De cada función se busca la frase que SOLO trae esta regla:
+   *
+   *   · el alta y la sincronización leen `cuota_docente`, que antes no existía;
+   *   · `fn_cambiar_taller` pregunta por el perfil, no solo por la constancia.
+   *     Su versión anterior decía `case when v_p.quiere_constancia then v_costo
+   *     else 0 end` y no nombraba el perfil en ningún sitio, así que la frase
+   *     distingue las dos sin ambigüedad.
+   *
+   * `false` aquí significa que el maestro vuelve a pagar 500 más su taller por
+   * dentro mientras las pantallas le enseñan 250, y eso se ve en ventanilla
+   * como discrepancia en todo docente que depositó bien.
+   */
+  (
+    exists (
+      select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'configuracion_evento'
+         and column_name = 'cuota_docente'
+    )
+    and exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_preregistrar_externo'
+         and pg_get_functiondef(p.oid) like '%cuota_docente%'
+    )
+    and exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_sincronizar_exencion'
+         and pg_get_functiondef(p.oid) like '%cuota_docente%'
+    )
+    and exists (
+      select 1 from pg_proc p
+        join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public'
+         and p.proname = 'fn_cambiar_taller'
+         and pg_get_functiondef(p.oid) like '%v_p.perfil = ''docente''%'
+    )
+  ) as "20260930120000_el_maestro_paga_doscientos_cincuenta";
