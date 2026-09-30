@@ -357,23 +357,31 @@ function HojaDeAvance() {
           <ArrowLeft className="size-4" aria-hidden /> Volver a reportes
         </Link>
         {/*
-          Una instrucción y no un botón, y no es pereza.
+          El botón abre la impresión del navegador, y el letrero de al lado dice
+          lo único que el botón no puede decir.
 
-          Un botón de imprimir solo llamaría a `window.print()`, que es
-          exactamente lo que hace `Ctrl+P`; ya se retiraron dos de esos en
-          `/pago` y `/comprobante` por prometer algo propio y no hacer nada que
-          el navegador no hiciera. Lo que de verdad hace falta saber aquí es que
-          el destino de la impresión puede ser un archivo, y eso una instrucción
-          lo dice y un botón no.
+          Aquí vivía solo la instrucción de pulsar `Ctrl+P`, por la regla de la
+          casa: en `/pago` y `/comprobante` se retiraron dos botones que solo
+          llamaban a `window.print()` y prometían algo propio sin hacer nada que
+          el navegador no hiciera. Esta pantalla es el caso distinto —ES el
+          documento, y a eso se entra— y Adol lo pidió explícitamente el
+          2026-09-30. Pero el botón no fabrica ningún archivo: quien lo pulse
+          tiene que elegir «Guardar como PDF» como destino, y esa frase es la
+          que convierte una ventana de impresión en la descarga que esperaba.
+          Por eso el letrero se queda: sin él, el botón miente a medias.
         */}
-        <p className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2.5 text-sm text-neutral-700 shadow-sm">
-          <Printer className="size-4 shrink-0 text-neutral-500" aria-hidden />
-          <span>
-            Pulsa <kbd className="rounded border border-neutral-300 px-1 font-mono">Ctrl</kbd>+
-            <kbd className="rounded border border-neutral-300 px-1 font-mono">P</kbd> y elige{" "}
-            <strong className="font-semibold">Guardar como PDF</strong> como destino.
-          </span>
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs text-neutral-600">
+            Elige <strong className="font-semibold">Guardar como PDF</strong> como destino.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-neutral-900 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-neutral-700"
+          >
+            <Printer className="size-4" aria-hidden /> Descargar PDF
+          </button>
+        </div>
       </div>
 
       {/*
