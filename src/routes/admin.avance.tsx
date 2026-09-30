@@ -7,7 +7,8 @@
  * Cuatro cifras arriba —apuntados, pagados, pendientes y ocupación— y debajo el
  * mismo par de columnas repetido en cada corte: cuántos se apuntaron ahí y
  * cuántos de esos ya pagaron. Los cortes son sede, perfil, día, nivel,
- * licenciatura, semestre y plantel.
+ * licenciatura, semestre, grupo y plantel; el de grupo es el más fino y corta
+ * por los tres datos a la vez, porque «7A» a secas existe en tres carreras.
  *
  * NO lleva desglose de talleres ni tabla de dinero: los tuvo el 2026-09-30 y se
  * quitaron el mismo día porque sobraban. Esta hoja contesta cómo va el
@@ -86,7 +87,7 @@ export const Route = createFileRoute("/admin/avance")({
   head: () =>
     meta(
       "Hoja de avance",
-      "Avance del pre-registro del XIV Encuentro Internacional de Educación: contra el aforo de cada sede y desglosado por nivel, licenciatura, semestre y plantel, con gráficas, para imprimir o guardar como PDF.",
+      "Avance del pre-registro del XIV Encuentro Internacional de Educación: contra el aforo de cada sede y desglosado por nivel, licenciatura, semestre, grupo y plantel, con gráficas, para imprimir o guardar como PDF.",
     ),
   component: () => (
     <Protegido area="admin">
@@ -148,20 +149,32 @@ function Seccion({
 /**
  * La tabla de un corte cualquiera, con su fila de totales.
  *
- * Las mismas seis columnas en los cuatro cortes, y en el mismo orden. Un
- * documento que cuenta lo mismo de cuatro maneras distintas obliga a releer
- * cada encabezado; así, quien leyó la primera tabla ya sabe leer las otras.
+ * Las mismas cinco columnas de cuentas en todos los cortes, y en el mismo
+ * orden. Un documento que cuenta lo mismo de cinco maneras distintas obliga a
+ * releer cada encabezado; así, quien leyó la primera tabla ya sabe leer el
+ * resto.
+ *
+ * @param columna Cómo se identifica cada renglón. Varias cuando el corte es
+ *   por más de un dato —licenciatura, avance y grupo—: cada una toma su
+ *   columna, que se lee mucho mejor que los tres datos en una tira.
  */
-function TablaDesglose({ columna, grupos }: { columna: string; grupos: GrupoDesglosado[] }) {
+function TablaDesglose({
+  columna,
+  grupos,
+}: {
+  columna: string | string[];
+  grupos: GrupoDesglosado[];
+}) {
   if (grupos.length === 0)
     return <p className="mt-1 text-xs italic text-neutral-500">Todavía no hay nadie que contar.</p>;
 
+  const columnas = Array.isArray(columna) ? columna : [columna];
   const suma = sumaDelDesglose(grupos);
   return (
     <table className="mt-2 w-full border-collapse text-xs">
       <thead>
         <tr className="border-b-2 border-neutral-400 text-left">
-          {[columna, "Apuntados", "Pagados", "Exentos", "Faltan", "% pagado"].map((h) => (
+          {[...columnas, "Apuntados", "Pagados", "Exentos", "Faltan", "% pagado"].map((h) => (
             <th key={h} className="py-1.5 pr-2 font-semibold">
               {h}
             </th>
@@ -171,7 +184,11 @@ function TablaDesglose({ columna, grupos }: { columna: string; grupos: GrupoDesg
       <tbody>
         {grupos.map((g) => (
           <tr key={g.etiqueta} className="border-b border-neutral-200">
-            <td className="py-1.5 pr-2">{g.etiqueta}</td>
+            {columnas.map((c, i) => (
+              <td key={c} className="py-1.5 pr-2">
+                {g.partes[i] ?? ""}
+              </td>
+            ))}
             <td className="py-1.5 pr-2 font-semibold tabular-nums">{g.total}</td>
             <td className="py-1.5 pr-2 tabular-nums">{g.pagados}</td>
             <td className="py-1.5 pr-2 tabular-nums">{g.exentos}</td>
@@ -180,7 +197,9 @@ function TablaDesglose({ columna, grupos }: { columna: string; grupos: GrupoDesg
           </tr>
         ))}
         <tr className="border-t-2 border-neutral-400 font-bold">
-          <td className="py-1.5 pr-2">TOTAL</td>
+          <td className="py-1.5 pr-2" colSpan={columnas.length}>
+            TOTAL
+          </td>
           <td className="py-1.5 pr-2 tabular-nums">{suma.total}</td>
           <td className="py-1.5 pr-2 tabular-nums">{suma.pagados}</td>
           <td className="py-1.5 pr-2 tabular-nums">{suma.exentos}</td>
@@ -260,6 +279,22 @@ function HojaDeAvance() {
     // «Semestre 6» o «Módulo 13»: cómo se cuenta depende del programa, y esa
     // precedencia ya la resuelve el catálogo. Ver `cuentaDeAvance`.
     (p) => avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
+    estadoEvento,
+    "etiqueta",
+  );
+  /*
+   * El grupo no se identifica solo: «7A» existe en tres carreras, y un reporte
+   * que los junte suma alumnos que no comparten ni salón ni cita de pago. La
+   * clave son los tres datos —licenciatura, avance y grupo— y cada uno se
+   * enseña en su columna.
+   */
+  const porGrupo = desglosar(
+    alumnos,
+    (p) => [
+      p.programa ?? "",
+      avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
+      p.grupo ?? "",
+    ],
     estadoEvento,
     "etiqueta",
   );
@@ -501,6 +536,15 @@ function HojaDeAvance() {
             alto={200}
           />
           <TablaDesglose columna="Avance" grupos={porSemestre} />
+        </Seccion>
+
+        <Seccion
+          titulo="Por grupo"
+          nota="El corte más fino: cada grupo de cada carrera, con su avance. Es el mismo grupo con el que Servicios Escolares reparte las citas de pago."
+          junta={false}
+          nuevaPagina
+        >
+          <TablaDesglose columna={["Licenciatura", "Avance", "Grupo"]} grupos={porGrupo} />
         </Seccion>
 
         <Seccion

@@ -19,6 +19,15 @@ import type { EstadoPago, Participante } from "@/dominio/tipos";
 export interface GrupoDesglosado {
   /** La etiqueta, que es también la clave con la que se agrupó. */
   etiqueta: string;
+  /**
+   * La etiqueta partida, cuando el corte es por más de un dato a la vez.
+   *
+   * Un grupo académico no se identifica solo: «7A» existe en tres carreras. La
+   * clave real es la licenciatura, el avance y el grupo juntos, y la tabla
+   * quiere esos tres en columnas separadas en vez de una tira larga. Con un
+   * corte de un solo dato trae ese dato y ya.
+   */
+  partes: string[];
   /** Cuántos hay apuntados en este grupo. */
   total: number;
   alumnos: number;
@@ -44,6 +53,13 @@ export const SIN_DATO = "Sin dato";
  *   en «Sin dato», que se enseña al final de la tabla. Es deliberado — un
  *   reporte que deja fuera a los que les falta el programa no cuadra con su
  *   propio total, y quien lo lea no tiene forma de saber que faltan.
+ *
+ *   Devolviendo una lista se corta por varios datos a la vez: la clave es la
+ *   combinación y cada dato queda además en `partes`, para su columna. Ahí un
+ *   hueco se marca dato a dato —«Licenciatura X · Semestre 7 · Sin dato»— y
+ *   solo cae en el «Sin dato» del final quien no tenga ninguno de los tres,
+ *   porque decir que a esa fila le falta «el grupo» es más útil que mandarla
+ *   entera al cajón de lo desconocido.
  * @param estado Qué concepto se está mirando. Se recibe en vez de derivarse
  *   para poder desglosar el evento o el taller con la misma función, y para que
  *   la cuenta sea la MISMA que pinta la insignia de la ficha.
@@ -52,18 +68,23 @@ export const SIN_DATO = "Sin dato";
  */
 export function desglosar(
   participantes: Participante[],
-  etiquetaDe: (p: Participante) => string,
+  etiquetaDe: (p: Participante) => string | string[],
   estado: (p: Participante) => EstadoPago,
   orden: "cantidad" | "etiqueta" = "cantidad",
 ): GrupoDesglosado[] {
   const grupos = new Map<string, GrupoDesglosado>();
 
   for (const p of participantes) {
-    const etiqueta = etiquetaDe(p).trim() || SIN_DATO;
+    const crudo = etiquetaDe(p);
+    const partes = (Array.isArray(crudo) ? crudo : [crudo]).map((x) => x.trim());
+    const etiqueta = partes.some((x) => x)
+      ? partes.map((x) => x || SIN_DATO).join(" · ")
+      : SIN_DATO;
     let g = grupos.get(etiqueta);
     if (!g) {
       g = {
         etiqueta,
+        partes: partes.map((x) => x || SIN_DATO),
         total: 0,
         alumnos: 0,
         docentes: 0,
@@ -117,7 +138,9 @@ export function desglosar(
  * sumas —promediar porcentajes de grupos de tamaños distintos da un número que
  * no es el porcentaje de nada—.
  */
-export function sumaDelDesglose(grupos: GrupoDesglosado[]): Omit<GrupoDesglosado, "etiqueta"> {
+export function sumaDelDesglose(
+  grupos: GrupoDesglosado[],
+): Omit<GrupoDesglosado, "etiqueta" | "partes"> {
   const suma = (f: (g: GrupoDesglosado) => number) => grupos.reduce((n, g) => n + f(g), 0);
   const total = suma((g) => g.total);
   const pagados = suma((g) => g.pagados);
