@@ -21,6 +21,7 @@ import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RevisionRouteImport } from './routes/revision'
 import { Route as TalleresRouteImport } from './routes/talleres'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAvanceRouteImport } from './routes/admin.avance'
 import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
@@ -102,6 +103,11 @@ const TalleresRoute = TalleresRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAvanceRoute = AdminAvanceRouteImport.update({
+  id: '/admin/avance',
+  path: '/admin/avance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminBitacoraRoute = AdminBitacoraRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
@@ -410,6 +421,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
@@ -447,6 +459,7 @@ export interface RootRouteChildren {
   RegistroRoute: typeof RegistroRoute
   RevisionRoute: typeof RevisionRoute
   TalleresRoute: typeof TalleresRoute
+  AdminAvanceRoute: typeof AdminAvanceRoute
   AdminBitacoraRoute: typeof AdminBitacoraRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminElegiblesRoute: typeof AdminElegiblesRoute
@@ -556,6 +569,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/avance': {
+      id: '/admin/avance'
+      path: '/admin/avance'
+      fullPath: '/admin/avance'
+      preLoaderRoute: typeof AdminAvanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/bitacora': {
@@ -727,6 +747,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegistroRoute: RegistroRoute,
   RevisionRoute: RevisionRoute,
   TalleresRoute: TalleresRoute,
+  AdminAvanceRoute: AdminAvanceRoute,
   AdminBitacoraRoute: AdminBitacoraRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminElegiblesRoute: AdminElegiblesRoute,

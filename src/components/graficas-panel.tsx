@@ -18,6 +18,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -39,18 +40,27 @@ export interface BarraDia {
   externo: number;
 }
 
-/** El alto lo fija el panel; aquí solo se respeta, para que no salte al cargar. */
+/**
+ * El alto por omisión lo fija el panel, para que la tarjeta no salte al cargar.
+ *
+ * La hoja de avance lo sube: en papel hay sitio de sobra y una gráfica de 180 px
+ * estirada al ancho de un A4 sale con las barras aplastadas.
+ */
 const ALTO = 180;
 
 export function GraficaPerfiles({
   datos,
   color,
+  alto = ALTO,
+  ancho = "45%",
 }: {
   datos: RebanadaPerfil[];
   color: Record<string, string>;
+  alto?: number;
+  ancho?: string;
 }) {
   return (
-    <ResponsiveContainer width="45%" height={ALTO}>
+    <ResponsiveContainer width={ancho} height={alto}>
       <PieChart>
         <Pie
           data={datos}
@@ -73,12 +83,14 @@ export function GraficaPerfiles({
 export function GraficaPorDia({
   datos,
   color,
+  alto = ALTO,
 }: {
   datos: BarraDia[];
   color: Record<string, string>;
+  alto?: number;
 }) {
   return (
-    <ResponsiveContainer width="100%" height={ALTO}>
+    <ResponsiveContainer width="100%" height={alto}>
       <BarChart data={datos}>
         <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={12} />
         <YAxis tickLine={false} axisLine={false} fontSize={12} width={28} />
@@ -92,6 +104,59 @@ export function GraficaPorDia({
           name="Externos"
           radius={[4, 4, 0, 0]}
         />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/** Un día en la gráfica de avance: lo que cabe, lo apuntado y lo cobrado. */
+export interface BarraAvance {
+  etiqueta: string;
+  meta: number;
+  preinscritos: number;
+  pagados: number;
+}
+
+/**
+ * Avance contra la meta: tres barras por día, juntas y no apiladas.
+ *
+ * Apiladas serían una mentira aritmética. `meta` no se SUMA a los
+ * pre-registrados —es el techo contra el que se comparan—, y los pagados son un
+ * subconjunto de los pre-registrados, no gente aparte. Una pila de las tres
+ * dibujaría una columna de 1 800 personas donde hay 700 lugares.
+ *
+ * Juntas, la lectura es la que interesa de un vistazo: cuánto falta para llenar
+ * la sala, y cuánto de lo que ya está apuntado dejó el dinero.
+ */
+export function GraficaAvance({
+  datos,
+  colores,
+  alto = ALTO,
+}: {
+  datos: BarraAvance[];
+  /** En la pantalla son variables del tema; en el papel, colores escritos. */
+  colores: { meta: string; preinscritos: string; pagados: string };
+  alto?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={alto}>
+      <BarChart data={datos} barGap={4}>
+        <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={12} />
+        <YAxis tickLine={false} axisLine={false} fontSize={12} width={36} />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        {/*
+          La meta va primera y en gris: es el fondo contra el que se leen las
+          otras dos, no una cifra que compita con ellas.
+        */}
+        <Bar dataKey="meta" fill={colores.meta} name="Caben" radius={[3, 3, 0, 0]} />
+        <Bar
+          dataKey="preinscritos"
+          fill={colores.preinscritos}
+          name="Pre-registrados"
+          radius={[3, 3, 0, 0]}
+        />
+        <Bar dataKey="pagados" fill={colores.pagados} name="Pagados" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Table2 } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChartColumn, Download, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -424,9 +424,30 @@ function Reportes() {
       area="admin"
       titulo="Reportes"
       acciones={
-        <Button className="h-11" onClick={exportar}>
-          <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/*
+            La hoja con gráficas, y solo para el reporte de avance.
+
+            Los otros ocho son listas de cientos de filas: no hay gráfica que
+            dibujarles ni papel que las aguante. Enseñar el enlace en todos
+            prometería una hoja que para ellos no existe.
+
+            Es un enlace y no una descarga porque el archivo lo genera el
+            navegador: `Ctrl+P` → «Guardar como PDF». Ver la cabecera de
+            `admin.avance.tsx` — un PDF hecho aquí pediría medio mega de
+            librerías y saldría en mapa de bits.
+          */}
+          {activo === "avance" ? (
+            <Button asChild variant="outline" className="h-11">
+              <Link to="/admin/avance">
+                <ChartColumn className="size-4" /> Hoja con gráficas
+              </Link>
+            </Button>
+          ) : null}
+          <Button className="h-11" onClick={exportar}>
+            <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
+          </Button>
+        </div>
       }
     >
       <GrupoFiltro

@@ -5,8 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Asistencia } from "@/dominio/tipos";
-import { createFileRoute } from "@tanstack/react-router";
-import { Award, CreditCard, ImageUp, ScanLine, ShieldAlert, Target, Users } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Award,
+  ChartColumn,
+  CreditCard,
+  ImageUp,
+  ScanLine,
+  ShieldAlert,
+  Target,
+  Users,
+} from "lucide-react";
 /*
  * Las gráficas llegan tarde, y es lo que hace que el panel abra rápido.
  *
@@ -54,6 +63,20 @@ export const Route = createFileRoute("/admin/")({
   component: Dashboard,
 });
 
+/*
+ * El color de cada perfil, y se queda AQUÍ aunque la hoja de avance pinte lo
+ * mismo.
+ *
+ * Sacarlo a `graficas-panel.tsx` para compartirlo parece la limpieza obvia y es
+ * justo lo contrario: ese archivo importa `recharts`, y sus componentes se
+ * cargan tarde a propósito —375 de los 389 KB del trozo del panel—. Un `import`
+ * estático de una constante suya arrastra el módulo entero, así que quien abre
+ * `/admin` volvería a esperar los 375 KB antes de ver el primer indicador, y
+ * nada en la pantalla lo delataría.
+ *
+ * La hoja de avance no lo necesita: ahí los colores van escritos porque el papel
+ * no tiene tema. Ver la cabecera de `admin.avance.tsx`.
+ */
 const COLOR_PERFIL: Record<string, string> = {
   alumno: "var(--color-perfil-alumno)",
   docente: "var(--color-perfil-docente)",
@@ -280,14 +303,31 @@ function Dashboard() {
         comparándolas entre sí, no una debajo de otra.
       */}
       <section className="mt-4 rounded-lg border border-border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-sm font-bold">
-          <Target className="size-4 text-primary" aria-hidden />
-          Avance contra la meta
-        </h2>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Pre-registros contra el aforo de cada sede. Cuánta de esa gente ya pagó lo cuenta el
-          embudo de abajo.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-bold">
+              <Target className="size-4 text-primary" aria-hidden />
+              Avance contra la meta
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Pre-registros contra el aforo de cada sede. Cuánta de esa gente ya pagó lo cuenta el
+              embudo de abajo.
+            </p>
+          </div>
+          {/*
+            El atajo a la hoja con gráficas, desde donde se hace la pregunta.
+            El camino largo —Reportes, pestaña de avance, «Hoja con gráficas»—
+            sigue existiendo; esto es para quien ya está mirando estas barras y
+            lo que quiere es llevárselas a una junta.
+          */}
+          <Link
+            to="/admin/avance"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold"
+          >
+            <ChartColumn className="size-3.5" aria-hidden /> Hoja para imprimir
+          </Link>
+        </div>
+        <div className="mb-3" />
         <ul className="grid gap-4 sm:grid-cols-3">
           {datos.avanceMeta.map((d) => {
             const lleno = d.meta > 0 && d.total >= d.meta;
