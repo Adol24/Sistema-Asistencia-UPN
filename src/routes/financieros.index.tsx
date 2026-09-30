@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Ban, Check, CheckCircle2, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
-import { Fila, Tabla } from "@/components/tabla";
+import { Fila, Paginacion, Tabla } from "@/components/tabla";
 import { CamaraQR } from "@/components/camara-qr";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
+import { usePaginacion } from "@/lib/paginacion";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { alCorriente, resuelto } from "@/lib/pagos-logica";
@@ -30,8 +31,15 @@ export const Route = createFileRoute("/financieros/")({
   component: Ventanilla,
 });
 
-/** Cuántas filas se pintan de una vez. Ver el aviso del final antes de subirlo. */
-const TOPE = 200;
+/*
+ * Cuántas filas se pintan de una vez.
+ *
+ * Diez y no doscientas, y con páginas en vez de un recorte. El recorte anterior
+ * escondía a quien quedaba fuera detrás de una nota al pie; ahora la lista
+ * entera es alcanzable, y diez renglones caben en la pantalla de la ventanilla
+ * sin desplazar, que es donde se pulsa el botón de confirmar.
+ */
+const POR_PAGINA = 10;
 
 type Filtro = "todos" | "por_cobrar" | "pagados";
 
@@ -133,7 +141,13 @@ function Ventanilla() {
     return base.filter((p) => alCorriente(estadoDe(p)) === (filtro === "pagados"));
   }, [participantes, q, filtro, estadoDe]);
 
-  const visibles = lista.slice(0, TOPE);
+  /*
+   * La clave lleva el filtro y la búsqueda: acotar devuelve a la página 1, que
+   * es lo que se espera. No lleva la lista misma a propósito —confirmar un
+   * cobro genera un arreglo nuevo, y ahí saltar al principio sería perder el
+   * sitio a media fila. Ver `usePaginacion`.
+   */
+  const tramo = usePaginacion(lista, POR_PAGINA, `${q}|${filtro}`);
 
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
@@ -287,7 +301,7 @@ function Ventanilla() {
         ) : (
           <>
             <Tabla anchoMinimo="46rem" columnas={["Participante", "Evento", "Taller"]}>
-              {visibles.map((p) => {
+              {tramo.visibles.map((p) => {
                 const estado = estadoDe(p);
                 return (
                   <Fila key={p.folio} className="align-middle">
@@ -327,15 +341,17 @@ function Ventanilla() {
               })}
             </Tabla>
             {/*
-              El tope se dice, no se aplica en silencio. Una lista recortada sin
-              avisar se lee como «ya no hay más», y en ventanilla eso es dar por
-              atendido a quien nadie llegó a ver.
+              Cuántas se están viendo de cuántas, y el paso a la siguiente. Antes
+              aquí había una nota diciendo que la lista venía recortada: se leía
+              como «ya no hay más», y en ventanilla eso es dar por atendido a
+              quien nadie llegó a ver.
             */}
-            {lista.length > TOPE ? (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Se muestran {TOPE} de {lista.length}. Escribe en el filtro para acotar.
-              </p>
-            ) : null}
+            {/* La sugerencia de acotar solo aparece si hay más de una página: con
+                ocho resultados delante, pedir que filtre más sobra. */}
+            <Paginacion
+              tramo={tramo}
+              nota={tramo.totalPaginas > 1 ? "Escribe en el filtro para acotar." : undefined}
+            />
           </>
         )}
       </div>
