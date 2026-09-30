@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { avanceTexto } from "@/dominio/catalogos";
 import { descargarCsv } from "@/lib/exportar";
+import { avancePorDia, totalDelAvance } from "@/lib/avance";
 import {
   elegibilidadEvento,
   nombreConstancia,
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/admin/reportes")({
 });
 
 type IdReporte =
+  | "avance"
   | "padron"
   | "academicos"
   | "pagos"
@@ -59,13 +61,85 @@ function Reportes() {
     configuracion,
   } = useEstadoEvento();
   const entorno = useEntornoConstancias();
-  const [activo, setActivo] = useState<IdReporte>("pagos");
+  /*
+   * Arranca en el resumen y no en «Pagos registrados».
+   *
+   * Es el único reporte que contesta una pregunta en vez de listar filas, y es
+   * la primera pestaña: dejar seleccionada la segunda hace que la pantalla
+   * parezca abierta por la mitad. Los otros ocho están a un clic.
+   */
+  const [activo, setActivo] = useState<IdReporte>("avance");
   const [q, setQ] = useState("");
 
   // Todo sale del contexto compartido: un reporte generado después de registrar
   // pagos en la misma sesión los incluye, sin recargar.
   const reportes = useMemo<Reporte[]>(() => {
     return [
+      {
+        /*
+         * El único reporte AGREGADO: una fila por día, no por persona.
+         *
+         * Los otros ocho son listas —quién es quién, qué pagó, cuándo entró— y
+         * para contestar «cuántos llevamos del día 2 y cuántos de esos pagaron»
+         * había que bajarse uno y armar la tabla dinámica en Excel. Esto la trae
+         * hecha.
+         *
+         * `meta` sale de `dias_evento.cupo`, nunca de un 700 escrito aquí: el
+         * día 3 es otra sede con otro aforo, y administración los edita.
+         *
+         * Los EXENTOS van en su propia columna y se restan de «faltan», que es
+         * lo que hace que esa última cifra signifique algo. Son los maestros que
+         * eligieron asistir sin constancia: no deben un peso, así que contarlos
+         * como pendientes inventa una morosidad que no existe. Es la misma
+         * corrección que el embudo del tablero se hizo el 2026-09-29.
+         *
+         * La fila TOTAL va dentro del CSV a propósito. Quien abre esto en Excel
+         * quiere la suma delante, no volver a escribirla; y el buscador de arriba
+         * la filtra como a cualquier otra fila, que es lo esperable.
+         */
+        id: "avance",
+        titulo: "Avance contra la meta",
+        nota: "Una fila por día y una de totales. Los exentos no cuentan como pendientes de pago.",
+        encabezados: [
+          "dia",
+          "sede",
+          "meta",
+          "preinscritos",
+          "alumnos",
+          "docentes",
+          "externos",
+          "pagados",
+          "exentos",
+          "faltan_por_pagar",
+          "pct_de_la_meta",
+        ],
+        filas: (() => {
+          // La cuenta vive en `lib/avance.ts`, compartida con la tarjeta del
+          // tablero. Aquí solo se ordenan las columnas del archivo.
+          const porDia = avancePorDia(
+            configuracion.dias,
+            participantes,
+            (p) => entorno.estadoDe(p).evento,
+          );
+          const total = totalDelAvance(porDia);
+          const celdas = (x: (typeof porDia)[number] | typeof total, nombre: string | number) => [
+            nombre,
+            x.sede,
+            x.meta,
+            x.total,
+            x.alumnos,
+            x.docentes,
+            x.externos,
+            x.pagados,
+            x.exentos,
+            x.faltan,
+            // Sin aforo puesto no hay porcentaje que dar, y un «0%» ahí se lee
+            // como «no se ha registrado nadie».
+            x.meta > 0 ? `${x.pct}%` : "",
+          ];
+          return [...porDia.map((x) => celdas(x, x.dia)), celdas(total, "TOTAL")];
+        })(),
+      },
       {
         id: "padron",
         titulo: "Padrón de alumnos",
@@ -306,6 +380,7 @@ function Reportes() {
     entorno,
     casos,
     configuracion.catalogoAcademico,
+    configuracion.dias,
   ]);
 
   const r = reportes.find((x) => x.id === activo)!;

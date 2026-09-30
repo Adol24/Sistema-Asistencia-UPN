@@ -36,7 +36,8 @@ import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { estadoDelDeposito, referenciaValida, resultadoDe } from "@/lib/pagos-logica";
 import { costoTallerDe, cuotaDe, depositoDe, depositoDePersona } from "@/lib/deposito";
-import type { EstadoPago } from "@/dominio/tipos";
+import { avancePorDia, totalDelAvance } from "@/lib/avance";
+import type { Dia, EstadoPago, Participante, Perfil } from "@/dominio/tipos";
 import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
   estadoDeVentana,
@@ -670,6 +671,105 @@ console.log("\n=== LA CUOTA DEL MAESTRO, QUE NO ES LA DE TODOS ===\n");
   );
   igual("el maestro sin taller deposita lo mismo", depositoDePersona(cfg, "docente").total, 250);
   igual("y el alumno con taller sigue en 600", depositoDePersona(cfg, "alumno", 100).total, 600);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== EL AVANCE CONTRA LA META ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * La cuenta que contesta «cuántos llevamos de los que caben, y cuántos de esos
+ * ya pagaron». La comparten la tarjeta de `/admin` y el reporte descargable,
+ * así que un error aquí sale a la vez en la pantalla y en el archivo que se
+ * entrega.
+ *
+ * Lo que de verdad se vigila es la resta de los EXENTOS. Es el tipo de cuenta
+ * que se equivoca en silencio: nadie revisa un «faltan 38» que se ve razonable,
+ * y son treinta maestros que no deben un peso.
+ */
+{
+  const dias = [
+    { dia: 1 as Dia, etiqueta: "DÍA 1", fecha: "", lugar: "Salón SUTERM", puntos: [], cupo: 700 },
+    { dia: 2 as Dia, etiqueta: "DÍA 2", fecha: "", lugar: "Salón SUTERM", puntos: [], cupo: 700 },
+    {
+      dia: 3 as Dia,
+      etiqueta: "DÍA 3",
+      fecha: "",
+      lugar: "Teatro Victoria",
+      puntos: [],
+      cupo: 600,
+    },
+  ];
+  // Solo los tres campos que la cuenta mira. El resto de `Participante` no
+  // interviene, y rellenarlo entero escondería de qué depende de verdad.
+  const gente = (lista: [Dia, Perfil, EstadoPago][]) =>
+    lista.map(([dia, perfil], i) => ({ folio: `F${i}`, dia, perfil }) as unknown as Participante);
+  const estados = (lista: [Dia, Perfil, EstadoPago][]) => {
+    const mapa = new Map(lista.map(([, , e], i) => [`F${i}`, e]));
+    return (p: Participante) => mapa.get(p.folio)!;
+  };
+
+  const lista: [Dia, Perfil, EstadoPago][] = [
+    [1, "alumno", "pagado"],
+    [1, "alumno", "pre_registrado"],
+    [1, "docente", "exento"],
+    [1, "externo", "comprobante_recibido"],
+    [2, "alumno", "pagado"],
+    [2, "docente", "pagado"],
+    [3, "externo", "pre_registrado"],
+  ];
+  const filas = avancePorDia(dias, gente(lista), estados(lista));
+
+  igual("son tres días", filas.length, 3);
+  igual(
+    "la meta sale de la configuración, no de un 700 a mano",
+    filas.map((f) => f.meta),
+    [700, 700, 600],
+  );
+  igual("la sede del día 3 es la otra", filas[2]!.sede, "Teatro Victoria");
+  igual("el día 1 tiene cuatro pre-registrados", filas[0]!.total, 4);
+  igual(
+    "repartidos por perfil",
+    [filas[0]!.alumnos, filas[0]!.docentes, filas[0]!.externos],
+    [2, 1, 1],
+  );
+
+  // El corazón del asunto: el exento NO es un pendiente de pago.
+  igual("el día 1 tiene un pagado", filas[0]!.pagados, 1);
+  igual("y un exento", filas[0]!.exentos, 1);
+  igual("así que faltan DOS, no tres", filas[0]!.faltan, 2);
+  igual("4 de 700 es 1%", filas[0]!.pct, 1);
+  igual("un día sin exentos resta igual", filas[1]!.faltan, 0);
+
+  const total = totalDelAvance(filas);
+  igual("el total suma los pre-registrados", total.total, 7);
+  igual("y las metas", total.meta, 2000);
+  igual("y los pendientes de pago", total.faltan, 3);
+  /*
+   * El porcentaje del total se recalcula, no se promedia. Promediar 1%, 0% y 0%
+   * daría 0%; sobre las sumas, 7 de 2000 es 0% también, así que se comprueba con
+   * cifras donde los dos caminos difieren.
+   */
+  const gordo = avancePorDia(
+    [dias[0]!, dias[2]!],
+    gente([...Array(700)].map(() => [1 as Dia, "alumno" as Perfil, "pagado" as EstadoPago])),
+    () => "pagado" as EstadoPago,
+  );
+  igual("el día lleno va al 100%", gordo[0]!.pct, 100);
+  igual("el vacío al 0%", gordo[1]!.pct, 0);
+  igual(
+    "y el total es 700 de 1300, o sea 54% — no el promedio de 100 y 0",
+    totalDelAvance(gordo).pct,
+    54,
+  );
+
+  // Sin aforo configurado no hay porcentaje que inventar: `CONFIGURACION_VACIA`
+  // trae los tres días en cero y el primer día de uso no puede gritar sobrecupo.
+  const sinCupo = avancePorDia(
+    [{ ...dias[0]!, cupo: 0 }],
+    gente([[1, "alumno", "pagado"]]),
+    () => "pagado" as EstadoPago,
+  );
+  igual("sin aforo, el porcentaje es cero y no infinito", sinCupo[0]!.pct, 0);
 }
 
 /*

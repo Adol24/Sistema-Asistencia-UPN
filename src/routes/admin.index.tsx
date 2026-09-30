@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Asistencia } from "@/dominio/tipos";
 import { createFileRoute } from "@tanstack/react-router";
-import { Award, CreditCard, ImageUp, ScanLine, ShieldAlert, Users } from "lucide-react";
+import { Award, CreditCard, ImageUp, ScanLine, ShieldAlert, Target, Users } from "lucide-react";
 /*
  * Las gráficas llegan tarde, y es lo que hace que el panel abra rápido.
  *
@@ -38,6 +38,7 @@ import {
   useEntornoConstancias,
 } from "@/lib/elegibilidad";
 import { abreLaPuerta } from "@/lib/pagos-logica";
+import { avancePorDia } from "@/lib/avance";
 import { RelojEventoControl } from "@/components/reloj-evento";
 import { Indicador } from "@/components/indicador";
 import { meta } from "@/lib/seo";
@@ -114,6 +115,20 @@ function Dashboard() {
       externo: participantes.filter((p) => p.dia === dia && p.perfil === "externo").length,
     }));
 
+    /*
+     * El avance contra la meta, que es la pregunta de la organización.
+     *
+     * La cuenta vive en `lib/avance.ts` porque la comparten esta tarjeta y el
+     * reporte descargable de `/admin/reportes`. Escrita en los dos sitios, la
+     * primera corrección a uno los dejaría diciendo cifras distintas del mismo
+     * día — y el que se entrega es el archivo, no la pantalla.
+     *
+     * Cuenta PRE-REGISTRADOS contra el aforo, que es otra pregunta que la del
+     * embudo de abajo: aquí, cuánta gente llena la sala; allí, cuánta de esa
+     * gente dejó el dinero. Las dos hacen falta.
+     */
+    const avanceMeta = avancePorDia(configuracion.dias, participantes, (p) => estadoDe(p).evento);
+
     const estados = participantes.map((p) => estadoDe(p).evento);
     const cuenta = (e: string) => estados.filter((x) => x === e).length;
     // El embudo es acumulado: quien pagó también entregó comprobante.
@@ -175,6 +190,7 @@ function Dashboard() {
     return {
       porPerfil,
       porDia,
+      avanceMeta,
       embudo,
       pagado,
       porPagar: participantes.length - pagado,
@@ -184,7 +200,16 @@ function Dashboard() {
       enRevision,
       delReloj,
     };
-  }, [participantes, estadoDe, asistencias, evidencias, casos, entorno, reloj.dia]);
+  }, [
+    participantes,
+    estadoDe,
+    asistencias,
+    evidencias,
+    casos,
+    entorno,
+    reloj.dia,
+    configuracion.dias,
+  ]);
 
   // El día que manda es el del reloj, igual que en monitoreo.
   const hoy = datos.delReloj;
@@ -242,6 +267,85 @@ function Dashboard() {
           }
         />
       </div>
+
+      {/*
+        Va aquí y no dentro de la rejilla de abajo, y no es capricho de sitio.
+        Es la pregunta que hace la organización —«¿cuántos llevamos de los que
+        caben?»—, así que su lugar es debajo de las casillas de cada mañana. Y
+        la rejilla de abajo está cuadrada para CINCO tarjetas con el reparto de
+        talleres ocupando dos: meter una sexta deja un hueco en la fila de en
+        medio a partir de `xl`.
+
+        Ancho completo y los tres días en paralelo: son tres cifras que se leen
+        comparándolas entre sí, no una debajo de otra.
+      */}
+      <section className="mt-4 rounded-lg border border-border bg-card p-4">
+        <h2 className="flex items-center gap-2 text-sm font-bold">
+          <Target className="size-4 text-primary" aria-hidden />
+          Avance contra la meta
+        </h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Pre-registros contra el aforo de cada sede. Cuánta de esa gente ya pagó lo cuenta el
+          embudo de abajo.
+        </p>
+        <ul className="grid gap-4 sm:grid-cols-3">
+          {datos.avanceMeta.map((d) => {
+            const lleno = d.meta > 0 && d.total >= d.meta;
+            return (
+              <li key={d.dia}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium">{d.etiqueta}</span>
+                  {d.meta > 0 ? (
+                    <span className="text-sm text-muted-foreground">{d.pct}%</span>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">{d.sede}</p>
+                <p className="mt-1">
+                  <span
+                    className={cn(
+                      "text-2xl font-extrabold tabular-nums",
+                      lleno && "text-estado-discrepancia",
+                    )}
+                  >
+                    {d.total}
+                  </span>
+                  {/*
+                    Sin aforo configurado se enseña el conteo a secas. «de 0» es
+                    una meta que nadie puso, y pintarla como tal haría que el
+                    primer día de uso el tablero gritara sobrecupo.
+                  */}
+                  {d.meta > 0 ? (
+                    <span className="text-sm text-muted-foreground"> de {d.meta}</span>
+                  ) : null}
+                </p>
+                {d.meta > 0 ? (
+                  <>
+                    <Progress value={Math.min(100, d.pct)} className="mt-1 h-3" />
+                    <p
+                      className={cn(
+                        "mt-1 text-xs",
+                        lleno ? "font-semibold text-estado-discrepancia" : "text-muted-foreground",
+                      )}
+                    >
+                      {/*
+                        «612 de 600» no dice por sí solo que sobran doce, igual
+                        que en `/admin/padron`: el renglón lo dice con palabras.
+                      */}
+                      {d.total > d.meta
+                        ? `${d.total - d.meta} por encima del aforo`
+                        : lleno
+                          ? "Aforo completo"
+                          : `Faltan ${d.meta - d.total}`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">Sin aforo configurado</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {/*
         Esta alerta estaba muerta, y con ella la única forma de anular.
