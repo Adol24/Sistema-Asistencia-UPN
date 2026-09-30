@@ -15,7 +15,7 @@ import { usePrototipo } from "@/lib/prototipo";
 import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { abreLaPuerta } from "@/lib/pagos-logica";
-import { depositoDe } from "@/lib/deposito";
+import { depositoDePersona } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
 
 export const Route = createFileRoute("/pago")({
@@ -128,9 +128,19 @@ function PagoContenido() {
   // es sin tener que abrirla y leer el folio.
   const nombre = borrador.nombre ?? ficha?.nombre ?? "";
   const taller = getTaller(borrador.tallerId ?? ficha?.tallerId);
+  /*
+   * Quién es, porque desde el 2026-09-30 el importe depende de eso.
+   *
+   * El borrador primero y la ficha después, el mismo orden que el folio y el
+   * nombre de arriba: el borrador es lo único que hay recién cerrado el
+   * pre-registro, y la ficha es lo que queda cuando esa persona vuelve desde su
+   * portal. `"alumno"` de respaldo es el caso mayoritario y el más caro de los
+   * tres, así que equivocarse por ahí cobra de más, nunca de menos.
+   */
+  const perfil = borrador.perfil ?? ficha?.perfil ?? "alumno";
   // Un solo depósito y un solo voucher, con el concepto que le toca. La regla
   // vive en `lib/deposito.ts`; aquí solo se dibuja.
-  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  const deposito = depositoDePersona(evento, perfil, taller?.costo);
   /*
    * El día que le toca a ESTA persona. Nunca la fecha límite del evento.
    *
@@ -404,7 +414,15 @@ function PagoContenido() {
                     Taller
                     <span className="block text-xs">{taller.nombre}</span>
                   </dt>
-                  <dd className="tabular-nums">{moneda(deposito.costoTaller ?? 0)}</dd>
+                  {/*
+                    «Incluido» y no «$0.00» para el maestro.
+                    Su taller vale cero porque ya va dentro de su cuota, no
+                    porque el taller sea gratis, y un renglón de «$0.00» pegado
+                    a otro de «$250.00» se lee como un error de la pantalla.
+                  */}
+                  <dd className="tabular-nums">
+                    {deposito.costoTaller === 0 ? "Incluido" : moneda(deposito.costoTaller ?? 0)}
+                  </dd>
                 </div>
               </dl>
             ) : (

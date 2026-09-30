@@ -182,6 +182,10 @@ function Configuracion() {
     const campos: string[] = [];
     if (b.cuotaEvento !== configuracion.cuotaEvento)
       campos.push(`cuota ${configuracion.cuotaEvento} → ${b.cuotaEvento}`);
+    // Con los dos valores, igual que la otra y por lo mismo: es la cifra que
+    // acaba impresa en el voucher de todos los maestros.
+    if (b.cuotaDocente !== configuracion.cuotaDocente)
+      campos.push(`cuota de maestro ${configuracion.cuotaDocente} → ${b.cuotaDocente}`);
     if (b.fechaLimite !== configuracion.fechaLimite) campos.push("fecha límite");
     if (b.horasValidacion !== configuracion.horasValidacion) campos.push("horas de validación");
     if (JSON.stringify(b.catalogoAcademico) !== JSON.stringify(configuracion.catalogoAcademico))
@@ -454,7 +458,28 @@ function Configuracion() {
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Es el monto que Servicios Financieros espera y el que aparece en las instrucciones
-                de pago.
+                de pago. La pagan los alumnos y los externos; el maestro tiene la suya, abajo.
+              </p>
+            </div>
+            {/*
+              La cuota del maestro va aparte y no como un descuento sobre la
+              otra, porque así la guarda la base: son dos columnas que
+              administración mueve por separado. Desde el 2026-09-30 el maestro
+              paga 250 con el taller incluido.
+            */}
+            <div>
+              <Label htmlFor="cuota-docente">Cuota del docente (MXN)</Label>
+              <CampoNumero
+                id="cuota-docente"
+                min={0}
+                valor={b.cuotaDocente}
+                alCambiar={(cuotaDocente) => set({ cuotaDocente })}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Solo para el docente de la UPN U-212 que quiere constancia, y le incluye el taller.
+                El que eligió asistir sin constancia no paga nada, y eso no se edita aquí: lo decide
+                su respuesta en el registro.
               </p>
             </div>
             {/*

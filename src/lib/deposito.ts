@@ -18,6 +18,8 @@
  * ventanilla, al recibir ese voucher, confirma los dos conceptos.
  */
 
+import type { Perfil } from "@/dominio/tipos";
+
 /**
  * Lo que el alumno escribe debajo de su voucher cuando solo paga el evento.
  *
@@ -67,4 +69,68 @@ export function depositoDe(cuotaEvento: number, costoTaller?: number | null): De
     concepto: llevaTaller ? CONCEPTO_CON_TALLER : CONCEPTO_SOLO_EVENTO,
     llevaTaller,
   };
+}
+
+/**
+ * El depósito de una persona, que desde el 2026-09-30 depende de quién es.
+ *
+ * Esta es la que llaman las pantallas. `depositoDe` sigue siendo la de abajo:
+ * toma dos cifras y no sabe de perfiles, que es lo que la hace comprobable sin
+ * montar nada. Aquí se decide CUÁLES son esas dos cifras.
+ *
+ * Por qué hacía falta
+ * -------------------
+ * Hasta hoy había un solo precio y las tres pantallas —`/pago`,
+ * `/comprobante` y `/portal/estado`— podían leerlo de la configuración global.
+ * El maestro que no quería constancia no rompía eso porque su cero no se
+ * imprime: esas pantallas lo detectan antes y enseñan otra cosa. Un TERCER
+ * precio sí hay que imprimirlo, y con la cuota global las tres habrían dicho
+ * 500 mientras la base esperaba 250.
+ *
+ * Lo que NO hace
+ * --------------
+ * No sabe de la exención. Al maestro que respondió «no quiero constancia» esta
+ * función le devolvería su cuota igual que a cualquiera, y está bien: quien
+ * decide que a esa persona no se le enseña ningún importe es la pantalla, con
+ * la misma pregunta que ya usa para su insignia. Meter aquí la exención sería
+ * la cuarta copia de esa regla.
+ */
+export function depositoDePersona(
+  evento: { cuotaEvento: number; cuotaDocente: number },
+  perfil: Perfil,
+  costoTaller?: number | null,
+): Deposito {
+  return depositoDe(cuotaDe(evento, perfil), costoTallerDe(perfil, costoTaller));
+}
+
+/**
+ * La cuota que le toca a esta persona.
+ *
+ * El externo NO es docente aquí, y es deliberado: `cuota_docente` es del
+ * profesor de la UPN U-212. Un profesor de otra institución entra como externo
+ * y paga la cuota general. La misma línea la trazan `fn_preregistrar_externo` y
+ * `fn_exigir_lugar_en_taller`.
+ */
+export function cuotaDe(
+  evento: { cuotaEvento: number; cuotaDocente: number },
+  perfil: Perfil,
+): number {
+  return perfil === "docente" ? evento.cuotaDocente : evento.cuotaEvento;
+}
+
+/**
+ * Lo que le suma el taller, que al maestro no le suma nada.
+ *
+ * Devuelve CERO y no nulo para el docente con taller, y la diferencia importa:
+ * nulo significa «no lleva taller» y cambia el concepto que escribe a mano en
+ * la hoja del banco. El maestro sí lleva taller —ocupa su lugar y va a la lista
+ * de asistencia—, lo que pasa es que ya lo pagó dentro de su cuota. Un cero
+ * conserva el concepto largo, que es el que describe lo que va a recibir.
+ *
+ * Es la misma regla que `fn_cambiar_taller` escribe en `monto_esperado_taller`,
+ * y por eso el cero de aquí y el de allá son el mismo cero.
+ */
+export function costoTallerDe(perfil: Perfil, costo?: number | null): number | null {
+  if (costo === null || costo === undefined) return null;
+  return perfil === "docente" ? 0 : costo;
 }

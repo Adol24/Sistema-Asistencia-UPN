@@ -10,7 +10,7 @@ import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato"
 import { usePrototipo } from "@/lib/prototipo";
 import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { depositoDe } from "@/lib/deposito";
+import { depositoDePersona } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -113,7 +113,7 @@ function ComprobanteContenido() {
    * mismo: un papel que diga 600 con el concepto de solo evento manda a
    * ventanilla una hoja que hay que devolver.
    */
-  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  const deposito = depositoDePersona(evento, perfil, taller?.costo);
   /*
    * El maestro que no quiere constancia: este papel no le pide nada.
    *

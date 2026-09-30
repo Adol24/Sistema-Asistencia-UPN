@@ -303,7 +303,17 @@ function CatalogoTalleres() {
           ? "Continúa: tu registro al Encuentro no depende de esto."
           : exentoDePago
             ? "Puedes elegir máximo uno, de cualquier día, y no te cuesta nada: elegiste asistir sin constancia. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
-            : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
+            : /*
+               * Tres frases y no dos, desde el 2026-09-30.
+               *
+               * Al maestro que sí quiere constancia el taller le va incluido en su
+               * cuota, así que la frase de siempre —«con un costo adicional»— le
+               * decía que elegir taller le subía el depósito. No se lo sube, y el
+               * que se lo creyera no elegiría ninguno.
+               */
+              esDocente
+              ? "Puedes elegir máximo uno, de cualquier día, y va incluido en tu cuota: no te suma nada al depósito. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
+              : "Puedes elegir máximo uno, de cualquier día, con un costo adicional que se suma al mismo depósito del evento. Los talleres son en la UPN U-212 por la tarde, así que el día del taller que elijas no tiene que ser el día que te toca en el Encuentro."
       }
     >
       {/*

@@ -62,6 +62,10 @@ for (const [tabla, cols, minimo] of publicas) {
   const faltan = [
     "nombre",
     "cuota_evento",
+    // La cuota propia del maestro, de `20260930120000`. Sin ella el puente cae
+    // al respaldo —`cuota_evento`— y todo docente vuelve a pagar 500 sin que
+    // ninguna pantalla lo diga.
+    "cuota_docente",
     "fecha_limite",
     "horas_validacion",
     "dominio_institucional",

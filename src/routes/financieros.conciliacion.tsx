@@ -195,10 +195,17 @@ function Conciliacion() {
           detalle={`${pagos.length} pagos registrados`}
           destacada
         />
+        {/*
+          Las dos cuotas, porque desde el 2026-09-30 ya no hay una sola. Con
+          solo la general, quien concilia divide el total entre 500 para estimar
+          cuánta gente pagó y le sale un número que no cuadra.
+        */}
         <Indicador
           etiqueta="Evento"
           valor={moneda(cifras.totalEvento)}
-          detalle={`${cifras.nEvento} depósitos · cuota ${moneda(evento.cuotaEvento)}`}
+          detalle={`${cifras.nEvento} depósitos · cuota ${moneda(evento.cuotaEvento)}, maestro ${moneda(
+            evento.cuotaDocente,
+          )}`}
         />
         <Indicador
           etiqueta="Talleres"

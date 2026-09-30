@@ -8,7 +8,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
-import { depositoDe } from "@/lib/deposito";
+import { depositoDePersona } from "@/lib/deposito";
 import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
@@ -65,7 +65,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
   // El importe y el concepto del depósito. La regla vive en `lib/deposito.ts` y
   // aquí solo se dibuja: es la misma llamada de `/comprobante` y de `/pago`, y
   // que sea la misma es lo que impide que dos pantallas pidan cifras distintas.
-  const deposito = depositoDe(evento.cuotaEvento, taller?.costo);
+  const deposito = depositoDePersona(evento, p.perfil, taller?.costo);
   // La misma pregunta que ya decide la insignia de este cuadro, hecha una vez.
   const pagoConfirmado = estadoDelDeposito(estado) === "pagado";
   /*

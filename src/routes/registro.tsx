@@ -404,9 +404,10 @@ function RegistroExterno() {
          * para él es un caso de soporte que llega el día que se reparten, cuando
          * ya no se puede hacer nada. Aquí sí se puede.
          *
-         * El importe sale de `cuotaEvento`, que es lo que administración tenga
-         * puesto, y no de un 500 escrito aquí. El taller se menciona sin cifra: su
-         * costo depende de cuál elija, y eso pasa dos pantallas más adelante.
+         * El importe sale de `cuotaDocente` —la cuota propia del maestro desde el
+         * 2026-09-30, que NO es `cuotaEvento`— y no de un 250 escrito aquí. El
+         * taller ya no se menciona como un «más»: le va incluido, y decirlo aquí
+         * evita que elija taller creyendo que le sube el depósito.
          */}
         {perfil === "docente" ? (
           <fieldset className="mt-5 rounded-md border border-primary/30 bg-primary/5 p-4">
@@ -420,7 +421,7 @@ function RegistroExterno() {
                   {
                     valor: true,
                     titulo: "Sí, quiero constancia",
-                    detalle: `Pagas ${moneda(evento.cuotaEvento)} del Encuentro, más el taller si eliges uno.`,
+                    detalle: `Pagas ${moneda(evento.cuotaDocente)} en total, con el taller que elijas incluido.`,
                   },
                   {
                     valor: false,

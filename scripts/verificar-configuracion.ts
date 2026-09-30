@@ -35,7 +35,7 @@ import { asistenciaDe, estaDentro, movimientosDe } from "@/lib/escaneo";
 import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { estadoDelDeposito, referenciaValida, resultadoDe } from "@/lib/pagos-logica";
-import { depositoDe } from "@/lib/deposito";
+import { costoTallerDe, cuotaDe, depositoDe, depositoDePersona } from "@/lib/deposito";
 import type { EstadoPago } from "@/dominio/tipos";
 import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
@@ -631,6 +631,45 @@ console.log("\n=== UN SOLO DEPOSITO, UN SOLO CONCEPTO ===\n");
   igual("sin taller vale undefined igual que null", depositoDe(500, null), depositoDe(500));
   igual("un taller gratis sí cuenta como taller", depositoDe(500, 0).llevaTaller, true);
   igual("y su concepto sigue siendo el largo", depositoDe(500, 0).concepto, conTaller.concepto);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LA CUOTA DEL MAESTRO, QUE NO ES LA DE TODOS ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Desde el 2026-09-30 el docente de la UPN U-212 paga `cuota_docente` —250 en
+ * producción— y su taller le va incluido. Lo que se comprueba aquí es que las
+ * tres pantallas que llaman a `depositoDePersona` no puedan enseñarle la cuota
+ * general, y que el externo no se cuele por la puerta del maestro.
+ *
+ * Es el defecto que este cambio venía a evitar: la base esperaba un importe y
+ * la pantalla imprimía otro, así que ventanilla marcaba discrepancia a gente
+ * que había depositado bien.
+ */
+{
+  const cfg = { cuotaEvento: 500, cuotaDocente: 250 };
+
+  igual("el alumno paga la cuota general", cuotaDe(cfg, "alumno"), 500);
+  igual("el externo también: no es el maestro de la U-212", cuotaDe(cfg, "externo"), 500);
+  igual("el docente paga la suya", cuotaDe(cfg, "docente"), 250);
+
+  igual("al alumno el taller le suma", costoTallerDe("alumno", 100), 100);
+  igual("al externo también", costoTallerDe("externo", 100), 100);
+  igual("al docente no le suma nada", costoTallerDe("docente", 100), 0);
+  // Cero y nulo NO son lo mismo: el nulo cambia el concepto que escribe a mano.
+  igual("sin taller sigue siendo nulo, no cero", costoTallerDe("docente", null), null);
+  igual("y undefined se trata igual que null", costoTallerDe("docente", undefined), null);
+
+  const maestro = depositoDePersona(cfg, "docente", 100);
+  igual("el maestro con taller deposita 250", maestro.total, 250);
+  igual("su taller consta, aunque valga cero", maestro.llevaTaller, true);
+  igual(
+    "así que su concepto sigue nombrando el taller",
+    maestro.concepto,
+    "Cuota de recuperación Curso de Formación Continua y Taller de Formación Continua (XIV EIE)",
+  );
+  igual("el maestro sin taller deposita lo mismo", depositoDePersona(cfg, "docente").total, 250);
+  igual("y el alumno con taller sigue en 600", depositoDePersona(cfg, "alumno", 100).total, 600);
 }
 
 /*

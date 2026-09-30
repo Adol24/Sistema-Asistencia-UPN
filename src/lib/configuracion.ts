@@ -45,6 +45,18 @@ export interface ConfiguracionEvento {
   fechas: string;
   horario: string;
   cuotaEvento: number;
+  /**
+   * Lo que paga el docente de la UPN U-212 que quiere constancia, y le incluye
+   * el taller.
+   *
+   * Es una cuota aparte y no un descuento sobre `cuotaEvento` porque así la
+   * guarda la base: administración las mueve por separado desde
+   * `/admin/configuracion`. Al alumno y al externo no les aplica.
+   *
+   * Al maestro que dijo que no quiere constancia no le aplica NINGUNA: ese no
+   * paga nada, y eso no se deriva de aquí sino de su respuesta.
+   */
+  cuotaDocente: number;
   fechaLimite: string;
   /**
    * Cuánto tarda Servicios Financieros en validar un voucher entregado en
@@ -95,6 +107,7 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   fechas: "",
   horario: "",
   cuotaEvento: 0,
+  cuotaDocente: 0,
   fechaLimite: "",
   horasValidacion: 0,
   dominioInstitucional: "",

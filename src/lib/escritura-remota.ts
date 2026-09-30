@@ -55,6 +55,7 @@ const COLUMNA = {
   subtitulo: "subtitulo",
   fechas: "fechas",
   cuotaEvento: "cuota_evento",
+  cuotaDocente: "cuota_docente",
   fechaLimite: "fecha_limite",
   horasValidacion: "horas_validacion",
   dominioInstitucional: "dominio_institucional",

@@ -39,6 +39,15 @@ export interface FilaConfiguracion {
   subtitulo: string;
   fechas: string;
   cuota_evento: number;
+  /**
+   * La cuota propia del docente, que le incluye el taller.
+   *
+   * Opcional aquí y no en la tabla, donde es `not null`: esto describe lo que la
+   * API DEVUELVE, y una base a la que todavía no se le aplicó
+   * `20260930120000` no devuelve la columna. Declararla obligatoria haría que el
+   * puente mintiera justo en la ventana en la que se despliega.
+   */
+  cuota_docente?: number | null;
   fecha_limite: string;
   horas_validacion: number;
   dominio_institucional: string | null;
@@ -352,6 +361,16 @@ export function aConfiguracion(
     fechas: f.fechas,
     horario: `${f.registro_entrada} a ${f.registro_salida}`,
     cuotaEvento: Number(f.cuota_evento),
+    /*
+     * La cuota del maestro, que desde el 2026-09-30 no es la de todos.
+     *
+     * `?? f.cuota_evento` y no `?? 0`: si la columna todavía no existe en la
+     * base que responde, el respaldo tiene que ser el precio de siempre. Con
+     * cero, una base sin migrar le diría a todo maestro que no debe nada, y eso
+     * no se descubre hasta el torniquete; con la cuota general, lo peor que
+     * pasa es que se le sigue cobrando lo de ayer.
+     */
+    cuotaDocente: Number(f.cuota_docente ?? f.cuota_evento),
     /*
      * Crudo, tal como lo guarda la base.
      *

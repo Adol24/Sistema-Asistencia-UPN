@@ -123,21 +123,29 @@ export function AsignarTaller({
   const sinCambio = clave === actual;
 
   /*
-   * El maestro exento no paga el taller, y el catálogo no lo sabe.
+   * Al maestro el taller no le cuesta, y el catálogo no lo sabe.
    *
-   * Desde el 2026-09-29 `fn_cambiar_taller` escribe `monto_esperado_taller =
-   * case when quiere_constancia then v_costo else 0 end`, así que a quien está
-   * exento le pone CERO por mucho que el taller cueste cien. Sumar aquí el costo
-   * del catálogo le diría a quien atiende una cifra que la base no va a
-   * esperarle nunca, y mandaría al banco a alguien que no debe nada.
+   * `fn_cambiar_taller` escribe `monto_esperado_taller` en CERO para todo
+   * docente desde el 2026-09-30 —antes solo para el exento—, por mucho que el
+   * taller cueste cien. Sumar aquí el costo del catálogo le diría a quien
+   * atiende una cifra que la base no va a esperarle nunca, y mandaría al banco
+   * a alguien con un importe que ventanilla va a rechazar.
    *
-   * `quiere_constancia` no llega al cliente —`Participante` no la trae—, pero
-   * `monto_esperado_evento` sí, y es la MISMA columna que `fn_sincronizar_exencion`
-   * pone en cero al responder que no quiere constancia. Se pregunta por el dato
-   * con el que la base cobra, no por una derivación suya.
+   * Son DOS preguntas y no una, porque son dos hechos distintos:
+   *
+   *   · `noPagaCuota` es la exención de ayer: quien respondió que no quiere
+   *     constancia no debe nada, ni del evento ni del taller. Se lee de
+   *     `monto_esperado_evento` —la MISMA columna que `fn_sincronizar_exencion`
+   *     pone en cero— y no de una derivación: `quiere_constancia` no llega al
+   *     cliente, `Participante` no la trae.
+   *   · `esDocente` es la cuota de hoy: el maestro que SÍ quiere constancia
+   *     paga `cuota_docente`, que ya incluye el taller. Ese tiene
+   *     `monto_esperado_evento` en 250, así que la primera pregunta no lo ve.
    */
   const noPagaCuota = participante.montoEsperadoEvento === 0;
-  const costoDelTaller = (t: Taller | undefined) => (noPagaCuota ? 0 : (t?.costo ?? 0));
+  const esDocente = participante.perfil === "docente";
+  const costoDelTaller = (t: Taller | undefined) =>
+    noPagaCuota || esDocente ? 0 : (t?.costo ?? 0);
 
   /*
    * Lo que la base tiene apuntado de SU taller, no lo que cuesta en el catálogo.
@@ -326,9 +334,13 @@ export function AsignarTaller({
                     ? `Está exento de la cuota, y el taller va con ella: ${elegido.id} tampoco le cuesta. Sigue sin depósito que hacer y sin voucher que entregar.`
                     : "Está exento de la cuota. Sin depósito que hacer y sin voucher que entregar."
                   : elegido
-                    ? `${moneda(participante.montoEsperadoEvento)} del evento y ${moneda(
-                        elegido.costo,
-                      )} del taller, en un solo depósito. El concepto que escriba a mano cambia: tiene que incluir el taller.`
+                    ? esDocente
+                      ? `Su cuota de maestro ya incluye el taller, así que ${elegido.id} no le suma nada: sigue depositando ${moneda(
+                          participante.montoEsperadoEvento,
+                        )}. El concepto que escriba a mano sí cambia: tiene que incluir el taller.`
+                      : `${moneda(participante.montoEsperadoEvento)} del evento y ${moneda(
+                          elegido.costo,
+                        )} del taller, en un solo depósito. El concepto que escriba a mano cambia: tiene que incluir el taller.`
                     : "Solo el evento, en un solo depósito. Si tenía taller, el concepto que escriba a mano ya no lo incluye."}
               </AlertDescription>
             </Alert>
