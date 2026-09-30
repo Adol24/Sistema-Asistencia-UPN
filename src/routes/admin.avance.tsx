@@ -4,10 +4,15 @@
  * ---------------------------------------------------------------------------
  * Qué lleva dentro
  * ---------------------------------------------------------------------------
- * Seis cifras arriba —apuntados, pagados, pendientes, ocupación y el dinero—, y
- * debajo el mismo par de columnas repetido en cada corte: cuántos se apuntaron
- * ahí y cuántos de esos ya pagaron. Los cortes son sede, perfil, día, nivel,
- * licenciatura, semestre, plantel y taller.
+ * Cuatro cifras arriba —apuntados, pagados, pendientes y ocupación— y debajo el
+ * mismo par de columnas repetido en cada corte: cuántos se apuntaron ahí y
+ * cuántos de esos ya pagaron. Los cortes son sede, perfil, día, nivel,
+ * licenciatura, semestre y plantel.
+ *
+ * NO lleva desglose de talleres ni tabla de dinero: los tuvo el 2026-09-30 y se
+ * quitaron el mismo día porque sobraban. Esta hoja contesta cómo va el
+ * pre-registro, y el dinero tiene sus propias pantallas en Servicios
+ * Financieros.
  *
  * Todos cuentan con `desglosar`, que devuelve siempre las mismas columnas. No
  * es solo por no repetir seis `filter`: la resta de `faltan` descuenta a los
@@ -72,8 +77,7 @@ import { avancePorDia, totalDelAvance } from "@/lib/avance";
 import { desglosar, sumaDelDesglose, type GrupoDesglosado } from "@/lib/desglose";
 import { avanceTexto } from "@/dominio/catalogos";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { fechaHora, moneda } from "@/lib/formato";
-import { porCobrar } from "@/lib/pagos-logica";
+import { fechaHora } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia, Participante } from "@/dominio/tipos";
@@ -82,7 +86,7 @@ export const Route = createFileRoute("/admin/avance")({
   head: () =>
     meta(
       "Hoja de avance",
-      "Avance del pre-registro del XIV Encuentro Internacional de Educación: contra el aforo de cada sede y desglosado por nivel, licenciatura, semestre, plantel y taller, con gráficas, para imprimir o guardar como PDF.",
+      "Avance del pre-registro del XIV Encuentro Internacional de Educación: contra el aforo de cada sede y desglosado por nivel, licenciatura, semestre y plantel, con gráficas, para imprimir o guardar como PDF.",
     ),
   component: () => (
     <Protegido area="admin">
@@ -202,18 +206,17 @@ const aBarras = (grupos: GrupoDesglosado[]) =>
 const altoTumbada = (grupos: number) => Math.max(120, 26 * grupos + 40);
 
 function HojaDeAvance() {
-  const { participantes, configuracion, estadoDe, talleres } = useEstadoEvento();
+  const { participantes, configuracion, estadoDe } = useEstadoEvento();
 
   /*
-   * El estado de cada concepto, en una función cada uno.
+   * El estado del evento, en una función.
    *
-   * `desglosar` los recibe así para poder cortar el evento o el taller con la
-   * misma cuenta, y para que esa cuenta sea LA MISMA que pinta la insignia de
-   * una ficha: este reporte no puede decir de alguien algo distinto de lo que
-   * dice su ficha.
+   * `avancePorDia` y `desglosar` lo reciben así en vez de derivarlo por su
+   * cuenta, y no es ceremonia: es LA MISMA función que pinta la insignia de
+   * una ficha, así que este reporte no puede decir de alguien algo distinto de
+   * lo que dice su ficha.
    */
   const estadoEvento = (p: Participante) => estadoDe(p).evento;
-  const estadoTaller = (p: Participante) => estadoDe(p).taller ?? "pre_registrado";
 
   // La misma cuenta que la tarjeta del tablero y el CSV. Ver `lib/avance.ts`:
   // vive fuera para que las tres no puedan discrepar.
@@ -262,62 +265,6 @@ function HojaDeAvance() {
   );
   const porPlantel = desglosar(alumnos, (p) => p.plantel ?? "", estadoEvento);
 
-  /*
-   * El taller se cuenta por SU concepto de pago, no por el del evento.
-   *
-   * Son dos cobros —aunque el depósito sea uno solo desde el 2026-09-25—, y
-   * alguien puede tener el evento pagado y el taller no. Contar aquí el estado
-   * del evento daría por cobrados talleres que nadie pagó.
-   *
-   * Los apuntados salen de los participantes y no del `cupoOcupado` del
-   * catálogo: ese lo cuenta la base incluyendo cortesías que no pasan por el
-   * sistema, así que no cuadraría con las columnas de al lado.
-   */
-  const nombreDeTaller = new Map(talleres.map((t) => [t.id, `${t.id} · ${t.nombre}`]));
-  const cupoDeTaller = new Map(talleres.map((t) => [`${t.id} · ${t.nombre}`, t.cupoTotal]));
-  const porTaller = desglosar(
-    participantes.filter((p) => p.tallerId),
-    (p) => (p.tallerId ? (nombreDeTaller.get(p.tallerId) ?? p.tallerId) : ""),
-    estadoTaller,
-    "etiqueta",
-  );
-  const totalTalleres = sumaDelDesglose(porTaller);
-
-  /*
-   * El dinero, al importe ESPERADO de cada concepto confirmado.
-   *
-   * No se suma lo depositado. Lo que se cobra en ventanilla se registra por el
-   * importe esperado —quien cobra tiene el voucher delante y confirma que
-   * coincide—, y lo que no coincide queda en `discrepancia`, que aquí se aparta
-   * en su propia columna en vez de contarse como cobrado. Así esta sección no
-   * puede contradecir a la de arriba: cada peso cobrado corresponde a una
-   * persona contada como pagada.
-   */
-  const dineroDe = (concepto: "evento" | "taller") => {
-    let cobrado = 0;
-    let pendiente = 0;
-    let enRevision = 0;
-    for (const p of participantes) {
-      const e = estadoDe(p);
-      const estado = concepto === "evento" ? e.evento : e.taller;
-      if (!estado) continue;
-      const monto = concepto === "evento" ? p.montoEsperadoEvento : (p.montoEsperadoTaller ?? 0);
-      if (estado === "pagado") cobrado += monto;
-      else if (estado === "discrepancia") enRevision += monto;
-      else if (porCobrar(estado)) pendiente += monto;
-    }
-    return { cobrado, pendiente, enRevision };
-  };
-  const dinero = [
-    { concepto: "Evento", ...dineroDe("evento") },
-    { concepto: "Taller", ...dineroDe("taller") },
-  ];
-  const dineroTotal = {
-    cobrado: dinero.reduce((n, d) => n + d.cobrado, 0),
-    pendiente: dinero.reduce((n, d) => n + d.pendiente, 0),
-    enRevision: dinero.reduce((n, d) => n + d.enRevision, 0),
-  };
-
   const tarjetas = [
     { etiqueta: "Pre-registrados", valor: String(total.total), pie: `de ${total.meta} lugares` },
     {
@@ -335,8 +282,6 @@ function HojaDeAvance() {
       valor: total.meta > 0 ? `${total.pct}%` : "—",
       pie: total.meta > 0 ? "del aforo de las sedes" : "sin aforo configurado",
     },
-    { etiqueta: "Cobrado", valor: moneda(dineroTotal.cobrado), pie: "a importe esperado" },
-    { etiqueta: "Por cobrar", valor: moneda(dineroTotal.pendiente), pie: "de quien todavía debe" },
   ];
 
   return (
@@ -408,7 +353,7 @@ function HojaDeAvance() {
           <p className="mt-0.5 text-xs text-neutral-500">Generado el {fechaHora()}</p>
         </header>
 
-        <section className="mt-5 grid grid-cols-3 gap-4 break-inside-avoid">
+        <section className="mt-5 grid grid-cols-4 gap-4 break-inside-avoid">
           {tarjetas.map((c) => (
             <div key={c.etiqueta} className="rounded-lg border border-neutral-300 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -517,39 +462,6 @@ function HojaDeAvance() {
         </Seccion>
 
         <Seccion
-          titulo="El dinero"
-          nota="Al importe esperado de cada concepto. Lo que no cuadra no se cuenta como cobrado: espera en revisión."
-        >
-          <table className="mt-2 w-full border-collapse text-xs">
-            <thead>
-              <tr className="border-b-2 border-neutral-400 text-left">
-                {["Concepto", "Cobrado", "Por cobrar", "En revisión"].map((h) => (
-                  <th key={h} className="py-1.5 pr-2 font-semibold">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dinero.map((d) => (
-                <tr key={d.concepto} className="border-b border-neutral-200">
-                  <td className="py-1.5 pr-2">{d.concepto}</td>
-                  <td className="py-1.5 pr-2 font-semibold tabular-nums">{moneda(d.cobrado)}</td>
-                  <td className="py-1.5 pr-2 tabular-nums">{moneda(d.pendiente)}</td>
-                  <td className="py-1.5 tabular-nums">{moneda(d.enRevision)}</td>
-                </tr>
-              ))}
-              <tr className="border-t-2 border-neutral-400 font-bold">
-                <td className="py-1.5 pr-2">TOTAL</td>
-                <td className="py-1.5 pr-2 tabular-nums">{moneda(dineroTotal.cobrado)}</td>
-                <td className="py-1.5 pr-2 tabular-nums">{moneda(dineroTotal.pendiente)}</td>
-                <td className="py-1.5 tabular-nums">{moneda(dineroTotal.enRevision)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </Seccion>
-
-        <Seccion
           titulo="Por nivel académico"
           nota={`De los ${alumnos.length} alumnos apuntados. El docente y el externo no traen datos del padrón.`}
           nuevaPagina
@@ -597,58 +509,6 @@ function HojaDeAvance() {
           junta={false}
         >
           <TablaDesglose columna="Plantel" grupos={porPlantel} />
-        </Seccion>
-
-        <Seccion
-          titulo="Por taller"
-          nota="El taller es un cobro aparte: aquí se cuenta su propio pago, no el del evento."
-          junta={false}
-          nuevaPagina
-        >
-          <GraficaDesglose
-            datos={aBarras(porTaller)}
-            colores={{ preinscritos: TINTA.alumno, pagados: TINTA.pagado }}
-            alto={altoTumbada(porTaller.length)}
-            horizontal
-            anchoEtiqueta={200}
-          />
-          <table className="mt-2 w-full border-collapse text-xs">
-            <thead>
-              <tr className="border-b-2 border-neutral-400 text-left">
-                {["Taller", "Caben", "Apuntados", "Pagados", "Exentos", "Faltan", "% pagado"].map(
-                  (h) => (
-                    <th key={h} className="py-1.5 pr-2 font-semibold">
-                      {h}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {porTaller.map((g) => (
-                <tr key={g.etiqueta} className="border-b border-neutral-200">
-                  <td className="py-1.5 pr-2">{g.etiqueta}</td>
-                  <td className="py-1.5 pr-2 tabular-nums">
-                    {cupoDeTaller.get(g.etiqueta) ?? "—"}
-                  </td>
-                  <td className="py-1.5 pr-2 font-semibold tabular-nums">{g.total}</td>
-                  <td className="py-1.5 pr-2 tabular-nums">{g.pagados}</td>
-                  <td className="py-1.5 pr-2 tabular-nums">{g.exentos}</td>
-                  <td className="py-1.5 pr-2 tabular-nums">{g.faltan}</td>
-                  <td className="py-1.5 tabular-nums">{g.pct}%</td>
-                </tr>
-              ))}
-              <tr className="border-t-2 border-neutral-400 font-bold">
-                <td className="py-1.5 pr-2">TOTAL</td>
-                <td className="py-1.5 pr-2" />
-                <td className="py-1.5 pr-2 tabular-nums">{totalTalleres.total}</td>
-                <td className="py-1.5 pr-2 tabular-nums">{totalTalleres.pagados}</td>
-                <td className="py-1.5 pr-2 tabular-nums">{totalTalleres.exentos}</td>
-                <td className="py-1.5 pr-2 tabular-nums">{totalTalleres.faltan}</td>
-                <td className="py-1.5 tabular-nums">{totalTalleres.pct}%</td>
-              </tr>
-            </tbody>
-          </table>
         </Seccion>
 
         {/*
