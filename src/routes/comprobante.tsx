@@ -183,7 +183,7 @@ function ComprobanteContenido() {
     perfil,
     estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
     remota: citaRemota,
-    fechaTope: evento.fechaPagoDocentesExternos,
+    fechaPago: evento.fechaPagoDocentesExternos,
   });
 
   return (

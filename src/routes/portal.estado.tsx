@@ -137,7 +137,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
     perfil: p.perfil,
     estado: estadoDelDeposito(estado),
     remota: citaRemota,
-    fechaTope: evento.fechaPagoDocentesExternos,
+    fechaPago: evento.fechaPagoDocentesExternos,
   });
   const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 

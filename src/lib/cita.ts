@@ -20,15 +20,17 @@
  *   o después no sirve, porque su sede abre para él ese día.
  * - **Reposición**: la cita de quien se le pasó la suya. No se puede llamar «tu
  *   inscripción» sin mentir, porque no lo fue.
- * - **Tope**: el último día del docente y del externo. Puede ir cualquier día
- *   antes, así que «no puedes ir antes» sería falso para él.
+ * - **Pago de externos**: el día del docente y del externo. También es uno solo
+ *   y tampoco se mueve, pero no se llama «tu inscripción»: ellos no se están
+ *   inscribiendo a un semestre, van a pagar el Encuentro.
  *
  * Darles el mismo rótulo es como empezó esto: «antes del 9 de octubre» se leyó
  * durante días como la cita de cada quien, y mandaba a la gente una semana tarde
  * con su lugar ya liberado.
  *
- * Vive suelto y sin React porque lo usan dos pantallas —`/comprobante` y
- * `/portal/estado`— y porque es justo el tipo de regla que no se puede probar a
+ * Vive suelto y sin React porque lo usan CUATRO pantallas —`/pago`,
+ * `/comprobante`, `/portal/estado` y `/portal/qr`— y porque es justo el tipo de
+ * regla que no se puede probar a
  * ojo: son seis estados de pago por tres perfiles, y el caso que importa —el de
  * quien ya pagó— es el que nadie va a mirar, porque esa persona ya no escribe a
  * soporte.
@@ -39,7 +41,7 @@ import type { CitaDePago } from "@/lib/datos";
 import { fechaLarga, hoyIso } from "@/lib/formato";
 
 /** De qué tipo es la fecha que se está enseñando. */
-export type ClaseDeCita = "cita" | "reposicion" | "tope" | "rango";
+export type ClaseDeCita = "cita" | "reposicion" | "pago_externos" | "rango";
 
 export interface CitaEnPantalla {
   /** Ya redactada: «jueves 8 de octubre», o «28 y 29 de septiembre». */
@@ -55,8 +57,8 @@ export interface CitaEnPantalla {
  *
  * - `pagado` · su depósito está validado. Es la regla que pidió la organización.
  * - `exento` · el maestro que eligió asistir sin constancia. No debe un peso.
- * - `comprobante_recibido` · entregó su voucher y espera la validación. Decirle
- *   «entrega antes del 8» a quien ya entregó es pedirle algo dos veces.
+ * - `comprobante_recibido` · entregó su voucher y espera la validación. Darle una
+ *   fecha de pago a quien ya pagó es pedirle lo mismo dos veces.
  * - `cancelado` · su registro no sigue en pie. No hay pago que programar.
  *
  * Los que SÍ la ven, y por qué:
@@ -90,32 +92,38 @@ export function citaEnPantalla(datos: {
   /** Lo que devolvió `fn_cita_de_pago`. Nulo para quien no está en el padrón. */
   remota: CitaDePago | null;
   /** `configuracion_evento.fecha_pago_docentes_externos`, en crudo. */
-  fechaTope: string;
+  fechaPago: string;
 }): CitaEnPantalla | null {
   if (SIN_FECHA_DE_PAGO.includes(datos.estado)) return null;
 
   if (datos.perfil === "docente" || datos.perfil === "externo") {
-    const iso = datos.fechaTope.trim();
+    const iso = datos.fechaPago.trim();
     /*
-     * Un tope que ya pasó no se enseña, y la comparación es `<` y no `<=`:
-     * el día del tope todavía cuenta.
+     * Una fecha que ya pasó no se enseña, y la comparación es `<` y no `<=`:
+     * el día en sí todavía cuenta, porque es SU día.
      *
      * Es al revés que con la cita del alumno, y la diferencia tiene motivo. Al
      * alumno se le mueve la cita cuando cae HOY porque entre registrarse y
-     * entregar hay una ida al banco que no cabe en el mismo día. El tope no es
-     * una sorpresa: esta persona lo tiene desde que se registró, así que su
-     * último día es suyo entero.
+     * entregar hay una ida al banco que no cabe en el mismo día. Aquí no: esta
+     * persona conoce su fecha desde que se registró, así que el día es suyo
+     * entero y mandarla a otro sitio en su propia fecha sería absurdo.
      *
      * Las cadenas `AAAA-MM-DD` se comparan bien tal cual, y `hoyIso` da el día
      * en la zona del equipo. Pasarlas por `new Date` sería el defecto de
      * siempre: una fecha sin hora se lee como medianoche UTC y en México pinta
      * el día anterior.
+     *
+     * Pasado ese día no se le enseña NINGUNA fecha, y no se le manda a la
+     * reposición del alumno: ese 12 de octubre lo fijó la organización para las
+     * cohortes del calendario, y mandar a un maestro a una fecha que nadie
+     * autorizó para él es un viaje perdido. Si debe aplicarles, se dice y se
+     * añade; inventárselo aquí no.
      */
     if (!iso || iso < hoyIso()) return null;
     const cuando = fechaLarga(iso);
     // Sin fecha legible no se inventa nada: `fechaLarga` devuelve vacío cuando
     // no reconoce la entrada, y media frase es peor que ninguna.
-    return cuando ? { cuando, clase: "tope" } : null;
+    return cuando ? { cuando, clase: "pago_externos" } : null;
   }
 
   if (!datos.remota) return null;
@@ -128,9 +136,11 @@ export function citaEnPantalla(datos: {
 /**
  * Cómo se nombra cada clase de fecha en pantalla.
  *
- * El aviso del tope no dice «no puedes ir antes», que es lo que se le dice al
- * alumno: para el docente ir antes es exactamente lo que se espera de él. Y el
- * de la reposición no repite «ni antes ni después» porque para esa persona
+ * El aviso del día de pago es el mismo que el de la cita —uno solo y no se
+ * mueve— pero el título NO: «Tu inscripción» se le dice a quien se está
+ * inscribiendo a un semestre, y el docente va a pagar el Encuentro.
+ *
+ * El de la reposición no repite «ni antes ni después» porque para esa persona
  * «antes» ya pasó; lo único que importa es que después no hay nada.
  */
 export function rotulosDeLaCita(cita: CitaEnPantalla): {
@@ -138,10 +148,10 @@ export function rotulosDeLaCita(cita: CitaEnPantalla): {
   aviso: string | null;
 } {
   switch (cita.clase) {
-    case "tope":
+    case "pago_externos":
       return {
-        titulo: `Tu último día para pagar: ${cita.cuando}`,
-        aviso: "Puedes ir cualquier día antes, pero no después.",
+        titulo: `Tu día para pagar: ${cita.cuando}`,
+        aviso: "Es ese día y solo ese: no puedes ir antes ni después.",
       };
     case "reposicion":
       return {

@@ -93,7 +93,7 @@ function MiQrContenido({ p }: { p: Participante }) {
     perfil: p.perfil,
     estado: estadoDelDeposito(estado),
     remota: citaRemota,
-    fechaTope: evento.fechaPagoDocentesExternos,
+    fechaPago: evento.fechaPagoDocentesExternos,
   });
   /*
    * Quién tiene código, y no se decide aquí.

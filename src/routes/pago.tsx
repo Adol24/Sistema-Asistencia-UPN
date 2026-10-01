@@ -179,7 +179,7 @@ function PagoContenido() {
     perfil,
     estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
     remota: citaRemota,
-    fechaTope: evento.fechaPagoDocentesExternos,
+    fechaPago: evento.fechaPagoDocentesExternos,
   });
   /*
    * A quien no debe nada, esta pantalla entera le sobra.

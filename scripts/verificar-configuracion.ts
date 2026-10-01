@@ -782,9 +782,9 @@ console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
  * 1. A quien YA PAGÓ no se le enseña ninguna fecha. El bloque se pintaba solo
  *    con que existiera la cita, así que un alumno con su depósito validado
  *    seguía leyendo «Tu inscripción: jueves 1 de octubre» semanas después.
- * 2. El docente y el externo tienen TOPE, no cita. No tenían ninguna fecha
- *    —`fn_cita_de_pago` busca la matrícula en el padrón y ellos no están ahí— y
- *    ahora tienen la suya, redactada como un límite y no como una cita.
+ * 2. El docente y el externo tienen su propia fecha, y es UN día. No tenían
+ *    ninguna —`fn_cita_de_pago` busca la matrícula en el padrón y ellos no están
+ *    ahí—, y ahora leen la suya con su propio título.
  * 3. La cita vencida se sustituye por la reposición, y se DICE que lo es.
  *
  * El caso que más importa es el primero, y es el que nadie iba a mirar: quien ya
@@ -798,7 +798,7 @@ console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
       perfil: "alumno",
       estado: "pre_registrado",
       remota: { cuando: "jueves 1 de octubre", estricto: true },
-      fechaTope: DIA,
+      fechaPago: DIA,
       ...parche,
     });
 
@@ -819,34 +819,44 @@ console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
     "cita",
   );
 
-  // ----------------------------------------------- 2 · el tope del docente ---
-  igual("el docente ve un tope, no una cita", cita({ perfil: "docente" })?.clase, "tope");
-  igual("y el externo igual", cita({ perfil: "externo" })?.clase, "tope");
+  // --------------------------------------- 2 · el día de pago del docente ---
+  igual(
+    "el docente tiene su propia clase de fecha",
+    cita({ perfil: "docente" })?.clase,
+    "pago_externos",
+  );
+  igual("y el externo la misma", cita({ perfil: "externo" })?.clase, "pago_externos");
   /*
    * Su fecha NO sale de `fn_cita_de_pago`: aunque el padrón contestara algo,
-   * manda el tope de la configuración. Es la línea que los separa del alumno, y
-   * la que impide que un docente herede la cita de una cohorte que no es suya.
+   * manda la de la configuración. Es la línea que los separa del alumno, y la
+   * que impide que un docente herede la cita de una cohorte que no es suya.
    */
   igual(
-    "el tope manda sobre lo que diga el padrón",
+    "su fecha manda sobre lo que diga el padrón",
     cita({ perfil: "docente", remota: { cuando: "jueves 1 de octubre", estricto: true } })?.cuando,
     "jueves 8 de octubre",
   );
   igual(
-    "sin tope configurado no se inventa fecha",
-    cita({ perfil: "docente", fechaTope: "" }),
+    "sin fecha configurada no se inventa nada",
+    cita({ perfil: "docente", fechaPago: "" }),
     null,
   );
   /*
-   * El día del tope todavía cuenta: es suyo entero. Al revés que la cita del
-   * alumno, que se mueve cuando cae hoy porque falta la ida al banco.
+   * Su día todavía cuenta cuando ES hoy: el día entero es suyo. Al revés que la
+   * cita del alumno, que se mueve cuando cae hoy porque falta la ida al banco.
    */
   igual(
-    "el día del tope sigue valiendo",
-    cita({ perfil: "docente", fechaTope: HOY })?.clase,
-    "tope",
+    "su propio día sigue valiendo",
+    cita({ perfil: "docente", fechaPago: HOY })?.clase,
+    "pago_externos",
   );
-  igual("un tope de ayer no se enseña", cita({ perfil: "docente", fechaTope: "2020-01-01" }), null);
+  /*
+   * Y pasado su día no se le enseña ninguna fecha: NO hereda la reposición del
+   * alumno. Ese 12 de octubre lo fijó la organización para las cohortes del
+   * calendario, y mandar a un maestro a una fecha que nadie autorizó para él es
+   * un viaje perdido.
+   */
+  igual("pasado su día, ninguna fecha", cita({ perfil: "docente", fechaPago: "2020-01-01" }), null);
 
   // ------------------------------- 3 · la cita, la reposición y el rango ---
   igual("sin cita y sin padrón, nada", cita({ remota: null }), null);
@@ -881,12 +891,17 @@ console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
       aviso: "El día que te tocaba ya pasó. Este es el día de reposición, y es el último.",
     },
   );
+  /*
+   * El docente comparte el aviso con el alumno —un día y no se mueve— pero no el
+   * título: «Tu inscripción» se le dice a quien se inscribe a un semestre, y él
+   * va a pagar el Encuentro.
+   */
   igual(
-    "el tope del docente invita a ir antes",
-    rotulosDeLaCita({ cuando: "jueves 8 de octubre", clase: "tope" }),
+    "el día del docente no se llama «tu inscripción»",
+    rotulosDeLaCita({ cuando: "jueves 8 de octubre", clase: "pago_externos" }),
     {
-      titulo: "Tu último día para pagar: jueves 8 de octubre",
-      aviso: "Puedes ir cualquier día antes, pero no después.",
+      titulo: "Tu día para pagar: jueves 8 de octubre",
+      aviso: "Es ese día y solo ese: no puedes ir antes ni después.",
     },
   );
   igual(

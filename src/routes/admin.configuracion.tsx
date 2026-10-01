@@ -183,7 +183,7 @@ function Configuracion() {
     if (b.fechaLimite !== configuracion.fechaLimite) campos.push("fecha límite");
     if (b.fechaPagoDocentesExternos !== configuracion.fechaPagoDocentesExternos)
       campos.push(
-        `último día de docentes y externos ${
+        `día de pago de docentes y externos ${
           configuracion.fechaPagoDocentesExternos || "—"
         } → ${b.fechaPagoDocentesExternos || "—"}`,
       );
@@ -556,33 +556,34 @@ function Configuracion() {
               </p>
             </div>
             {/*
-              El tope del docente y del externo, y va aparte del de los alumnos
+              La fecha del docente y del externo, y va aparte de la de los alumnos
               a propósito: son dos cosas distintas.
 
-              Lo del alumno es una CITA -un día concreto, por cohorte y sede, de
-              `dia_entrega_voucher`-. Lo del maestro es un TOPE: una sola fecha
-              para todos, y puede ir cualquier día antes. Un campo compartido
-              habría obligado a redactar un rótulo cierto para las dos, y no
-              existe.
+              Las dos son UN día que no se mueve, pero vienen de sitios
+              distintos: la del alumno de `dia_entrega_voucher`, por cohorte y
+              sede, y la del maestro de aquí, una sola para todos. Por eso son
+              dos campos y no uno — y por eso el maestro no hereda la reposición
+              del alumno cuando se le pasa.
 
               Nadie lo obliga por dentro: el vencimiento de la base es común a
               los tres perfiles, así que un docente que llegue después seguirá
               siendo aceptado. Quien lo hace cumplir es la ventanilla.
             */}
             <div>
-              <Label htmlFor="tope-externos">Último día de pago para docentes y externos</Label>
+              <Label htmlFor="dia-externos">Día de pago de docentes y externos</Label>
               <Input
-                id="tope-externos"
+                id="dia-externos"
                 type="date"
                 value={b.fechaPagoDocentesExternos}
                 onChange={(e) => set({ fechaPagoDocentesExternos: e.target.value })}
                 className="mt-1 h-11"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Ellos no tienen día asignado como los alumnos: pueden ir cualquier día antes de
-                éste. Se les enseña como «Tu último día para pagar».{" "}
+                Un solo día para todos ellos, y no se mueve: se les enseña como «Tu día para pagar»,
+                con el mismo aviso que al alumno de que no pueden ir antes ni después. Pasado ese
+                día no se les enseña nada —no heredan la reposición de los alumnos—.{" "}
                 <strong className="font-semibold">
-                  En blanco, no se les enseña ninguna fecha.
+                  En blanco, tampoco se les enseña ninguna fecha.
                 </strong>
               </p>
             </div>
