@@ -8,9 +8,11 @@ import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
-import { rotulosDeLaCita, useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
+import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
+import { citaEnPantalla, rotulosDeLaCita } from "@/lib/cita";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { depositoDePersona } from "@/lib/deposito";
+import { estadoDelDeposito } from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -167,7 +169,22 @@ function ComprobanteContenido() {
    * efecto: tres copias de la misma consulta es donde una se queda sin limpiar
    * la cita anterior y un docente hereda la del alumno que usó la pestaña antes.
    */
-  const cita = useCitaDePago(borrador.matricula ?? ficha?.matricula);
+  const citaRemota = useCitaDePago(borrador.matricula ?? ficha?.matricula);
+  /*
+   * La misma regla que el portal, en `lib/cita.ts`.
+   *
+   * El estado sale de la ficha cuando existe, y cuando no —el caso normal de
+   * esta pantalla, que se abre recién cerrado el pre-registro— es
+   * `pre_registrado`: esa persona acaba de registrarse y no puede haber pagado.
+   * Decirlo así es más honesto que pasar un estado inventado: el valor por
+   * omisión es justo el que esa situación tiene.
+   */
+  const cita = citaEnPantalla({
+    perfil,
+    estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
+    remota: citaRemota,
+    fechaTope: evento.fechaPagoDocentesExternos,
+  });
 
   return (
     <PantallaPublica titulo="Comprobante de pre-registro" ancho="xl">
@@ -419,7 +436,7 @@ function ComprobanteContenido() {
                 "mt-6 rounded-lg border p-4 lg:mt-4",
                 // El día único se pinta como advertencia y no como dato: quien
                 // lo lea de reojo tiene que llevarse que ahí no hay margen.
-                cita.estricto
+                cita.clase !== "rango"
                   ? "border-estado-discrepancia/50 bg-estado-discrepancia-bg"
                   : "border-primary/30 bg-primary/5",
               )}
@@ -428,7 +445,7 @@ function ComprobanteContenido() {
                 <CalendarClock
                   className={cn(
                     "size-4 shrink-0",
-                    cita.estricto ? "text-estado-discrepancia" : "text-primary",
+                    cita.clase !== "rango" ? "text-estado-discrepancia" : "text-primary",
                   )}
                   aria-hidden
                 />

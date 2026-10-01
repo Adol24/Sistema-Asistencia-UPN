@@ -30,14 +30,14 @@ import {
   columnasDeConfiguracion,
   DESTINO_DE_CAMPO,
 } from "@/lib/escritura-remota";
-import { fechaLimiteTexto, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
+import { fechaLimiteTexto, hoyIso, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
 import { asistenciaDe, estaDentro, movimientosDe } from "@/lib/escaneo";
 import { aAsistencia, aHora } from "@/lib/esquema";
 import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { estadoDelDeposito, referenciaValida, resultadoDe } from "@/lib/pagos-logica";
 import { costoTallerDe, cuotaDe, depositoDe, depositoDePersona } from "@/lib/deposito";
 import { avancePorDia, totalDelAvance } from "@/lib/avance";
-import { rotulosDeLaCita } from "@/lib/portal";
+import { citaEnPantalla, rotulosDeLaCita } from "@/lib/cita";
 import type { Dia, EstadoPago, Participante, Perfil } from "@/dominio/tipos";
 import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
@@ -774,57 +774,125 @@ console.log("\n=== EL AVANCE CONTRA LA META ===\n");
 }
 
 // ---------------------------------------------------------------------------
-console.log("\n=== LA CITA QUE YA PASÓ SE DICE, NO SE DISIMULA ===\n");
+console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
 // ---------------------------------------------------------------------------
 /*
- * Desde el 2026-09-30 `fn_cita_de_pago` sustituye la fecha vencida por la de
- * reposición. Lo que se vigila aquí es la mitad que vive en el navegador: que a
- * esa persona SE LE DIGA.
+ * Tres reglas en la misma función, y las tres fallaron en producción:
  *
- * El defecto que evita es silencioso. Con el rótulo de siempre —«Tu
- * inscripción: lunes 12 de octubre»— nadie se entera de que le cambiaron el
- * día; quien llegue a preguntar por qué se encontrará con que nadie se lo dijo,
- * y las dos pantallas que lo pintan habrían tenido que acordarse por separado.
+ * 1. A quien YA PAGÓ no se le enseña ninguna fecha. El bloque se pintaba solo
+ *    con que existiera la cita, así que un alumno con su depósito validado
+ *    seguía leyendo «Tu inscripción: jueves 1 de octubre» semanas después.
+ * 2. El docente y el externo tienen TOPE, no cita. No tenían ninguna fecha
+ *    —`fn_cita_de_pago` busca la matrícula en el padrón y ellos no están ahí— y
+ *    ahora tienen la suya, redactada como un límite y no como una cita.
+ * 3. La cita vencida se sustituye por la reposición, y se DICE que lo es.
+ *
+ * El caso que más importa es el primero, y es el que nadie iba a mirar: quien ya
+ * pagó no escribe a soporte.
  */
 {
-  const suya = rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true });
+  const DIA = "2026-10-08";
+  const HOY = hoyIso();
+  const cita = (parche: Partial<Parameters<typeof citaEnPantalla>[0]>) =>
+    citaEnPantalla({
+      perfil: "alumno",
+      estado: "pre_registrado",
+      remota: { cuando: "jueves 1 de octubre", estricto: true },
+      fechaTope: DIA,
+      ...parche,
+    });
+
+  // ------------------------------------------ 1 · quien ya pagó no ve nada ---
+  igual("pagado: ninguna fecha", cita({ estado: "pagado" }), null);
+  igual("exento: ninguna fecha", cita({ estado: "exento" }), null);
+  igual("ya entregó el voucher: ninguna fecha", cita({ estado: "comprobante_recibido" }), null);
+  igual("cancelado: ninguna fecha", cita({ estado: "cancelado" }), null);
+  // Y vale para los tres perfiles, que es lo que pidió la organización.
+  igual("el docente pagado tampoco la ve", cita({ perfil: "docente", estado: "pagado" }), null);
+  igual("ni el externo", cita({ perfil: "externo", estado: "pagado" }), null);
+
+  // Quien todavía debe SÍ la ve. Una discrepancia no es un pago hecho.
+  igual("pre-registrado: la ve", cita({})?.clase, "cita");
   igual(
-    "la cita propia se anuncia como siempre",
-    suya.titulo,
-    "Tu inscripción: jueves 1 de octubre",
-  );
-  igual(
-    "y conserva su advertencia de día único",
-    suya.aviso,
-    "Es ese día y solo ese: no puedes ir antes ni después.",
+    "discrepancia: la ve, porque todavía debe",
+    cita({ estado: "discrepancia" })?.clase,
+    "cita",
   );
 
-  const repuesta = rotulosDeLaCita({
-    cuando: "lunes 12 de octubre",
-    estricto: true,
-    repuesta: true,
+  // ----------------------------------------------- 2 · el tope del docente ---
+  igual("el docente ve un tope, no una cita", cita({ perfil: "docente" })?.clase, "tope");
+  igual("y el externo igual", cita({ perfil: "externo" })?.clase, "tope");
+  /*
+   * Su fecha NO sale de `fn_cita_de_pago`: aunque el padrón contestara algo,
+   * manda el tope de la configuración. Es la línea que los separa del alumno, y
+   * la que impide que un docente herede la cita de una cohorte que no es suya.
+   */
+  igual(
+    "el tope manda sobre lo que diga el padrón",
+    cita({ perfil: "docente", remota: { cuando: "jueves 1 de octubre", estricto: true } })?.cuando,
+    "jueves 8 de octubre",
+  );
+  igual(
+    "sin tope configurado no se inventa fecha",
+    cita({ perfil: "docente", fechaTope: "" }),
+    null,
+  );
+  /*
+   * El día del tope todavía cuenta: es suyo entero. Al revés que la cita del
+   * alumno, que se mueve cuando cae hoy porque falta la ida al banco.
+   */
+  igual(
+    "el día del tope sigue valiendo",
+    cita({ perfil: "docente", fechaTope: HOY })?.clase,
+    "tope",
+  );
+  igual("un tope de ayer no se enseña", cita({ perfil: "docente", fechaTope: "2020-01-01" }), null);
+
+  // ------------------------------- 3 · la cita, la reposición y el rango ---
+  igual("sin cita y sin padrón, nada", cita({ remota: null }), null);
+  igual(
+    "la reposición se distingue de la cita",
+    cita({ remota: { cuando: "lunes 12 de octubre", estricto: true, repuesta: true } })?.clase,
+    "reposicion",
+  );
+  igual(
+    "un rango ancho no es un día único",
+    cita({ remota: { cuando: "28 y 29 de septiembre", estricto: false } })?.clase,
+    "rango",
+  );
+}
+
+/*
+ * Y cómo se nombra cada una. Son cuatro frases y ninguna sirve para otra:
+ * decirle al docente «no puedes ir antes» sería falso —ir antes es lo que se
+ * espera de él— y llamar «tu inscripción» a una reposición es mentir, porque no
+ * lo fue.
+ */
+{
+  igual("la cita del alumno", rotulosDeLaCita({ cuando: "jueves 1 de octubre", clase: "cita" }), {
+    titulo: "Tu inscripción: jueves 1 de octubre",
+    aviso: "Es ese día y solo ese: no puedes ir antes ni después.",
   });
   igual(
-    "la reposición NO se llama «tu inscripción»",
-    repuesta.titulo,
-    "Tu nueva fecha: lunes 12 de octubre",
+    "la reposición dice que la suya pasó",
+    rotulosDeLaCita({ cuando: "lunes 12 de octubre", clase: "reposicion" }),
+    {
+      titulo: "Tu nueva fecha: lunes 12 de octubre",
+      aviso: "El día que te tocaba ya pasó. Este es el día de reposición, y es el último.",
+    },
   );
   igual(
-    "y dice que el día suyo ya pasó",
-    repuesta.aviso,
-    "El día que te tocaba ya pasó. Este es el día de reposición, y es el último.",
+    "el tope del docente invita a ir antes",
+    rotulosDeLaCita({ cuando: "jueves 8 de octubre", clase: "tope" }),
+    {
+      titulo: "Tu último día para pagar: jueves 8 de octubre",
+      aviso: "Puedes ir cualquier día antes, pero no después.",
+    },
   );
-
-  // El rango ancho del respaldo no es un día único, así que no lleva advertencia.
-  const rango = rotulosDeLaCita({ cuando: "28 y 29 de septiembre", estricto: false });
-  igual("un rango no advierte de nada", rango.aviso, null);
-
-  // Una base sin la migración no manda `repuesta`, y entonces se comporta como
-  // antes. Es el respaldo que importa: nunca inventar una reposición.
   igual(
-    "sin el campo, es una cita normal",
-    rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true }).titulo,
-    rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true, repuesta: false }).titulo,
+    "un rango no advierte de nada",
+    rotulosDeLaCita({ cuando: "28 y 29 de septiembre", clase: "rango" }).aviso,
+    null,
   );
 }
 

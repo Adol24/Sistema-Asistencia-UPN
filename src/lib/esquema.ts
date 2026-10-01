@@ -48,6 +48,13 @@ export interface FilaConfiguracion {
    * puente mintiera justo en la ventana en la que se despliega.
    */
   cuota_docente?: number | null;
+  /**
+   * El tope de docentes y externos, `AAAA-MM-DD`. De `20261001120000`.
+   *
+   * Opcional y nulable por lo mismo que la reposición: describe lo que la API
+   * DEVUELVE, y una base sin esa migración no manda la columna.
+   */
+  fecha_pago_docentes_externos?: string | null;
   fecha_limite: string;
   /**
    * El día de reposición para quien se le pasó el suyo. `AAAA-MM-DD`.
@@ -373,6 +380,7 @@ export function aConfiguracion(
     // que no está puesto, y un nulo suelto obligaría a cada pantalla a
     // distinguir dos formas de lo mismo.
     fechaRecuperacionVoucher: f.fecha_recuperacion_voucher ?? "",
+    fechaPagoDocentesExternos: f.fecha_pago_docentes_externos ?? "",
     /*
      * La cuota del maestro, que desde el 2026-09-30 no es la de todos.
      *

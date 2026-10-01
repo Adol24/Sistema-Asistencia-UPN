@@ -9,7 +9,8 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { depositoDePersona } from "@/lib/deposito";
-import { rotulosDeLaCita, useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import { citaEnPantalla, rotulosDeLaCita } from "@/lib/cita";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -123,7 +124,21 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
    * Solo lo tienen los alumnos: docentes y externos no traen matrícula, y a
    * ellos el calendario oficial no les da día de inscripción.
    */
-  const cita = useCitaDePago(p.matricula);
+  const citaRemota = useCitaDePago(p.matricula);
+  /*
+   * Qué fecha de pago le toca ver, que puede ser ninguna.
+   *
+   * La regla vive en `lib/cita.ts` y la comparte con el comprobante. Lo que
+   * cambia respecto a antes son dos cosas: a quien ya pagó no se le enseña
+   * nada —esta pantalla ya sabía si había pagado y no se lo preguntaba— y el
+   * docente y el externo por fin tienen fecha, que es un tope y no una cita.
+   */
+  const cita = citaEnPantalla({
+    perfil: p.perfil,
+    estado: estadoDelDeposito(estado),
+    remota: citaRemota,
+    fechaTope: evento.fechaPagoDocentesExternos,
+  });
   const avisos = (datos?.avisos ?? []).filter((a) => !descartados.includes(a.id));
 
   /*
@@ -152,7 +167,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
         <section
           className={cn(
             "mb-4 rounded-lg border p-4",
-            cita.estricto
+            cita.clase !== "rango"
               ? "border-estado-discrepancia/50 bg-estado-discrepancia-bg"
               : "border-primary/30 bg-primary/5",
           )}
@@ -161,7 +176,7 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
             <CalendarClock
               className={cn(
                 "size-4 shrink-0",
-                cita.estricto ? "text-estado-discrepancia" : "text-primary",
+                cita.clase !== "rango" ? "text-estado-discrepancia" : "text-primary",
               )}
               aria-hidden
             />

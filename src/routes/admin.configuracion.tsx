@@ -181,6 +181,12 @@ function Configuracion() {
     if (b.cuotaDocente !== configuracion.cuotaDocente)
       campos.push(`cuota de maestro ${configuracion.cuotaDocente} → ${b.cuotaDocente}`);
     if (b.fechaLimite !== configuracion.fechaLimite) campos.push("fecha límite");
+    if (b.fechaPagoDocentesExternos !== configuracion.fechaPagoDocentesExternos)
+      campos.push(
+        `último día de docentes y externos ${
+          configuracion.fechaPagoDocentesExternos || "—"
+        } → ${b.fechaPagoDocentesExternos || "—"}`,
+      );
     if (b.fechaRecuperacionVoucher !== configuracion.fechaRecuperacionVoucher)
       campos.push(
         `día de reposición ${configuracion.fechaRecuperacionVoucher || "—"} → ${
@@ -547,6 +553,37 @@ function Configuracion() {
                 </strong>
                 , que es preferible a enseñarles una vencida. Revisa que no quede después del corte
                 de arriba.
+              </p>
+            </div>
+            {/*
+              El tope del docente y del externo, y va aparte del de los alumnos
+              a propósito: son dos cosas distintas.
+
+              Lo del alumno es una CITA -un día concreto, por cohorte y sede, de
+              `dia_entrega_voucher`-. Lo del maestro es un TOPE: una sola fecha
+              para todos, y puede ir cualquier día antes. Un campo compartido
+              habría obligado a redactar un rótulo cierto para las dos, y no
+              existe.
+
+              Nadie lo obliga por dentro: el vencimiento de la base es común a
+              los tres perfiles, así que un docente que llegue después seguirá
+              siendo aceptado. Quien lo hace cumplir es la ventanilla.
+            */}
+            <div>
+              <Label htmlFor="tope-externos">Último día de pago para docentes y externos</Label>
+              <Input
+                id="tope-externos"
+                type="date"
+                value={b.fechaPagoDocentesExternos}
+                onChange={(e) => set({ fechaPagoDocentesExternos: e.target.value })}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ellos no tienen día asignado como los alumnos: pueden ir cualquier día antes de
+                éste. Se les enseña como «Tu último día para pagar».{" "}
+                <strong className="font-semibold">
+                  En blanco, no se les enseña ninguna fecha.
+                </strong>
               </p>
             </div>
             <div>

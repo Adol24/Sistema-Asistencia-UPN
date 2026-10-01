@@ -70,6 +70,8 @@ for (const [tabla, cols, minimo] of publicas) {
     // El día de reposición, de `20260930140000`. Sin él, a las cohortes cuya
     // fecha ya pasó se les sigue enseñando una fecha vencida.
     "fecha_recuperacion_voucher",
+    // El tope de docentes y externos, de `20261001120000`.
+    "fecha_pago_docentes_externos",
     "horas_validacion",
     "dominio_institucional",
     "ventanilla_lugar",

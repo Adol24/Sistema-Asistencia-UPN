@@ -70,6 +70,17 @@ export interface ConfiguracionEvento {
    */
   fechaRecuperacionVoucher: string;
   /**
+   * El último día en que un docente o un externo puede entregar su voucher.
+   *
+   * Es un TOPE y no una cita: puede ir cualquier día antes. El alumno no lo usa
+   * —el suyo es un día concreto, de `dia_entrega_voucher`—, y por eso son dos
+   * datos y no uno.
+   *
+   * Vacío significa que no se le enseña ninguna fecha. Nadie lo obliga por
+   * dentro: el vencimiento de la base sigue siendo común para los tres perfiles.
+   */
+  fechaPagoDocentesExternos: string;
+  /**
    * Cuánto tarda Servicios Financieros en validar un voucher entregado en
    * ventanilla. Es el plazo que se le promete al alumno antes de que su código
    * QR aparezca en el portal: nadie se lo envía, él lo descarga.
@@ -121,6 +132,7 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   cuotaDocente: 0,
   fechaLimite: "",
   fechaRecuperacionVoucher: "",
+  fechaPagoDocentesExternos: "",
   horasValidacion: 0,
   dominioInstitucional: "",
   catalogoAcademico: [],
