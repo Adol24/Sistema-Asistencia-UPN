@@ -37,6 +37,7 @@ import { elegibilidadEvento } from "@/lib/elegibilidad";
 import { estadoDelDeposito, referenciaValida, resultadoDe } from "@/lib/pagos-logica";
 import { costoTallerDe, cuotaDe, depositoDe, depositoDePersona } from "@/lib/deposito";
 import { avancePorDia, totalDelAvance } from "@/lib/avance";
+import { rotulosDeLaCita } from "@/lib/portal";
 import type { Dia, EstadoPago, Participante, Perfil } from "@/dominio/tipos";
 import { gemelasDe, gruposDuplicados } from "@/lib/revision";
 import {
@@ -770,6 +771,61 @@ console.log("\n=== EL AVANCE CONTRA LA META ===\n");
     () => "pagado" as EstadoPago,
   );
   igual("sin aforo, el porcentaje es cero y no infinito", sinCupo[0]!.pct, 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log("\n=== LA CITA QUE YA PASÓ SE DICE, NO SE DISIMULA ===\n");
+// ---------------------------------------------------------------------------
+/*
+ * Desde el 2026-09-30 `fn_cita_de_pago` sustituye la fecha vencida por la de
+ * reposición. Lo que se vigila aquí es la mitad que vive en el navegador: que a
+ * esa persona SE LE DIGA.
+ *
+ * El defecto que evita es silencioso. Con el rótulo de siempre —«Tu
+ * inscripción: lunes 12 de octubre»— nadie se entera de que le cambiaron el
+ * día; quien llegue a preguntar por qué se encontrará con que nadie se lo dijo,
+ * y las dos pantallas que lo pintan habrían tenido que acordarse por separado.
+ */
+{
+  const suya = rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true });
+  igual(
+    "la cita propia se anuncia como siempre",
+    suya.titulo,
+    "Tu inscripción: jueves 1 de octubre",
+  );
+  igual(
+    "y conserva su advertencia de día único",
+    suya.aviso,
+    "Es ese día y solo ese: no puedes ir antes ni después.",
+  );
+
+  const repuesta = rotulosDeLaCita({
+    cuando: "lunes 12 de octubre",
+    estricto: true,
+    repuesta: true,
+  });
+  igual(
+    "la reposición NO se llama «tu inscripción»",
+    repuesta.titulo,
+    "Tu nueva fecha: lunes 12 de octubre",
+  );
+  igual(
+    "y dice que el día suyo ya pasó",
+    repuesta.aviso,
+    "El día que te tocaba ya pasó. Este es el día de reposición, y es el último.",
+  );
+
+  // El rango ancho del respaldo no es un día único, así que no lleva advertencia.
+  const rango = rotulosDeLaCita({ cuando: "28 y 29 de septiembre", estricto: false });
+  igual("un rango no advierte de nada", rango.aviso, null);
+
+  // Una base sin la migración no manda `repuesta`, y entonces se comporta como
+  // antes. Es el respaldo que importa: nunca inventar una reposición.
+  igual(
+    "sin el campo, es una cita normal",
+    rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true }).titulo,
+    rotulosDeLaCita({ cuando: "jueves 1 de octubre", estricto: true, repuesta: false }).titulo,
+  );
 }
 
 /*

@@ -57,6 +57,7 @@ const COLUMNA = {
   cuotaEvento: "cuota_evento",
   cuotaDocente: "cuota_docente",
   fechaLimite: "fecha_limite",
+  fechaRecuperacionVoucher: "fecha_recuperacion_voucher",
   horasValidacion: "horas_validacion",
   dominioInstitucional: "dominio_institucional",
   registroEntrada: "registro_entrada",

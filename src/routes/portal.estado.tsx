@@ -9,7 +9,7 @@ import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { depositoDePersona } from "@/lib/deposito";
-import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
+import { rotulosDeLaCita, useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -165,11 +165,16 @@ function EstadoPortalContenido({ p }: { p: Participante }) {
               )}
               aria-hidden
             />
-            Tu inscripción: {cita.cuando}
+            {rotulosDeLaCita(cita).titulo}
           </h2>
-          {cita.estricto ? (
+          {/*
+            El rótulo y su aviso salen de `rotulosDeLaCita`, no de un `estricto`
+            leído aquí: a quien se le pasó el día hay que decírselo, y esa frase
+            tiene que ser la misma en esta pantalla y en el comprobante.
+          */}
+          {rotulosDeLaCita(cita).aviso ? (
             <p className="mt-2 text-sm font-semibold text-estado-discrepancia">
-              Es ese día y solo ese: no puedes ir antes ni después.
+              {rotulosDeLaCita(cita).aviso}
             </p>
           ) : null}
           <p className="mt-2 text-sm text-muted-foreground">

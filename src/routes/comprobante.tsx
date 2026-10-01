@@ -8,7 +8,7 @@ import { RecuperarPorFolio } from "@/components/acceso-por-folio";
 import { avanceTexto } from "@/dominio/catalogos";
 import { fechasEnTexto, isoAFecha, moneda, sitioDelTaller } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
-import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
+import { rotulosDeLaCita, useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { depositoDePersona } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
@@ -432,11 +432,16 @@ function ComprobanteContenido() {
                   )}
                   aria-hidden
                 />
-                Tu inscripción: {cita.cuando}
+                {rotulosDeLaCita(cita).titulo}
               </h2>
-              {cita.estricto ? (
+              {/*
+                La frase sale de `rotulosDeLaCita` y no de un `estricto` leído
+                aquí: cuando la fecha es una reposición hay que decir que la
+                suya pasó, y esta pantalla y el portal tienen que decirlo igual.
+              */}
+              {rotulosDeLaCita(cita).aviso ? (
                 <p className="mt-2 text-sm font-semibold text-estado-discrepancia">
-                  Es ese día y solo ese: no puedes ir antes ni después.
+                  {rotulosDeLaCita(cita).aviso}
                 </p>
               ) : null}
               <p className="mt-2 text-sm text-muted-foreground">

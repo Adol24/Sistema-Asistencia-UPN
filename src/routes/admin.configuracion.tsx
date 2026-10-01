@@ -187,6 +187,12 @@ function Configuracion() {
     if (b.cuotaDocente !== configuracion.cuotaDocente)
       campos.push(`cuota de maestro ${configuracion.cuotaDocente} → ${b.cuotaDocente}`);
     if (b.fechaLimite !== configuracion.fechaLimite) campos.push("fecha límite");
+    if (b.fechaRecuperacionVoucher !== configuracion.fechaRecuperacionVoucher)
+      campos.push(
+        `día de reposición ${configuracion.fechaRecuperacionVoucher || "—"} → ${
+          b.fechaRecuperacionVoucher || "—"
+        }`,
+      );
     if (b.horasValidacion !== configuracion.horasValidacion) campos.push("horas de validación");
     if (JSON.stringify(b.catalogoAcademico) !== JSON.stringify(configuracion.catalogoAcademico))
       campos.push("catálogo académico");
@@ -503,6 +509,37 @@ function Configuracion() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Al participante se le anuncia solo el día: «antes del{" "}
                 {fechaLimiteTexto(b.fechaLimite) || "…"}». La hora manda para el corte.
+              </p>
+            </div>
+            {/*
+              El día de reposición, y va JUNTO al límite a propósito.
+
+              Las dos fechas se mueven en pareja o no se mueven: a quien se le
+              pasó su día se le manda a la reposición, y si el límite queda
+              antes, esa persona figura como expirada días antes de su propia
+              cita — y el torniquete la rechaza el día del evento por no haber
+              entregado un voucher que el sistema no la dejaba entregar.
+
+              Solo fecha y sin hora: la ventanilla abre el día entero, y lo que
+              corta es el límite de arriba.
+            */}
+            <div>
+              <Label htmlFor="reposicion">Día de reposición para quien se le pasó el suyo</Label>
+              <Input
+                id="reposicion"
+                type="date"
+                value={b.fechaRecuperacionVoucher}
+                onChange={(e) => set({ fechaRecuperacionVoucher: e.target.value })}
+                className="mt-1 h-11"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                El calendario reparte un día a cada cohorte. A las que ya les pasó se les enseña
+                éste.{" "}
+                <strong className="font-semibold">
+                  Déjalo en blanco y no se les enseña ninguna fecha
+                </strong>
+                , que es preferible a enseñarles una vencida. Revisa que no quede después del corte
+                de arriba.
               </p>
             </div>
             <div>

@@ -339,6 +339,34 @@ export function useParticipanteDelPortal(): Participante | null {
  * cosas se pintan igual: sin bloque de cita. Que falle una consulta informativa
  * no puede dejar a nadie sin ver aquello a lo que venía.
  */
+/**
+ * Cómo se nombra una cita en pantalla, que no es igual si es una reposición.
+ *
+ * Vive aquí y no en cada pantalla porque son DOS las que la pintan —el
+ * comprobante y el portal— y ya se pareció demasiado una vez. Y vive suelta,
+ * sin React, para poder comprobarse sin montar nada: lo que se vigila es que a
+ * quien se le pasó el día se le DIGA, en vez de enseñarle la fecha nueva con el
+ * rótulo de siempre y dejar que se vaya creyendo que esa fue su cita desde el
+ * principio.
+ *
+ * El aviso de la reposición no repite «no puedes ir antes ni después». Para
+ * esta persona «antes» ya pasó, así que la mitad de esa frase sobra y la otra
+ * mitad es lo único que importa: después no hay nada.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function rotulosDeLaCita(cita: CitaDePago): { titulo: string; aviso: string | null } {
+  if (cita.repuesta) {
+    return {
+      titulo: `Tu nueva fecha: ${cita.cuando}`,
+      aviso: "El día que te tocaba ya pasó. Este es el día de reposición, y es el último.",
+    };
+  }
+  return {
+    titulo: `Tu inscripción: ${cita.cuando}`,
+    aviso: cita.estricto ? "Es ese día y solo ese: no puedes ir antes ni después." : null,
+  };
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useCitaDePago(matricula: string | undefined): CitaDePago | null {
   const [cita, setCita] = useState<CitaDePago | null>(null);

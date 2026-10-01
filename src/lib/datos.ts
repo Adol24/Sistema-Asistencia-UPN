@@ -1619,6 +1619,20 @@ export interface CitaDePago {
    * sede, módulo y grupo.
    */
   estricto: boolean;
+  /**
+   * Cierto cuando esta NO es la fecha que le tocaba: la suya pasó y esta es la
+   * reposición.
+   *
+   * Existe para que la pantalla no finja. Sin este campo, a quien se le pasó el
+   * día se le enseñaría el 12 de octubre con el mismo rótulo de siempre —«Tu
+   * inscripción»— y se iría creyendo que ese era su día desde el principio; el
+   * que llegue a preguntar por qué le cambiaron la fecha se encontrará con que
+   * nadie se la cambió, porque nadie se lo dijo.
+   *
+   * Opcional porque una base sin la migración `20260930140000` no lo manda, y
+   * entonces vale `false`: el comportamiento de antes, que es el seguro.
+   */
+  repuesta?: boolean | undefined;
 }
 
 /**
@@ -1640,7 +1654,7 @@ export async function citaDePagoRemota(matricula: string): Promise<CitaDePago | 
   } catch (e) {
     if ((e as { code?: string })?.code !== "PGRST202") throw e;
     const cuando = await citaDeInscripcionRemota(matricula);
-    return cuando ? { cuando, estricto: false } : null;
+    return cuando ? { cuando, estricto: false, repuesta: false } : null;
   }
 }
 

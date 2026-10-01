@@ -49,6 +49,14 @@ export interface FilaConfiguracion {
    */
   cuota_docente?: number | null;
   fecha_limite: string;
+  /**
+   * El día de reposición para quien se le pasó el suyo. `AAAA-MM-DD`.
+   *
+   * Nulo significa «no hay reposición», y la base lo admite: entonces a esa
+   * persona no se le enseña ninguna fecha. Opcional además porque una base sin
+   * `20260930140000` no devuelve la columna.
+   */
+  fecha_recuperacion_voucher?: string | null;
   horas_validacion: number;
   dominio_institucional: string | null;
   registro_entrada: string;
@@ -361,6 +369,10 @@ export function aConfiguracion(
     fechas: f.fechas,
     horario: `${f.registro_entrada} a ${f.registro_salida}`,
     cuotaEvento: Number(f.cuota_evento),
+    // Cadena vacía y no nulo: el resto de la configuración usa «vacío» para lo
+    // que no está puesto, y un nulo suelto obligaría a cada pantalla a
+    // distinguir dos formas de lo mismo.
+    fechaRecuperacionVoucher: f.fecha_recuperacion_voucher ?? "",
     /*
      * La cuota del maestro, que desde el 2026-09-30 no es la de todos.
      *

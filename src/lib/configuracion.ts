@@ -59,6 +59,17 @@ export interface ConfiguracionEvento {
   cuotaDocente: number;
   fechaLimite: string;
   /**
+   * El día al que se manda a quien se le pasó el suyo, en crudo (`AAAA-MM-DD`).
+   *
+   * El calendario de entrega reparte a cada cohorte un día entre el 28 de
+   * septiembre y el 8 de octubre. A partir del 29 hay cohortes cuya fecha ya
+   * quedó atrás, y a esas `fn_cita_de_pago` les devuelve ésta en su lugar.
+   *
+   * Vacío significa que no hay reposición declarada, y entonces no se enseña
+   * ninguna fecha: es preferible a enseñar una vencida.
+   */
+  fechaRecuperacionVoucher: string;
+  /**
    * Cuánto tarda Servicios Financieros en validar un voucher entregado en
    * ventanilla. Es el plazo que se le promete al alumno antes de que su código
    * QR aparezca en el portal: nadie se lo envía, él lo descarga.
@@ -109,6 +120,7 @@ export const CONFIGURACION_VACIA: ConfiguracionEvento = {
   cuotaEvento: 0,
   cuotaDocente: 0,
   fechaLimite: "",
+  fechaRecuperacionVoucher: "",
   horasValidacion: 0,
   dominioInstitucional: "",
   catalogoAcademico: [],
