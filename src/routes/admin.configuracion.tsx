@@ -535,9 +535,15 @@ function Configuracion() {
 
               Solo fecha y sin hora: la ventanilla abre el día entero, y lo que
               corta es el límite de arriba.
+
+              Y ya no es la única reposición. Desde el 2026-10-01 una cohorte
+              puede traer la suya en `dia_entrega_voucher.fecha_reposicion`, y
+              entonces manda la de ella; éste es el respaldo de todas las que no
+              la declaran. Se partió así para que un tercer grupo sea un dato y
+              no una columna nueva con la regla metida en el nombre.
             */}
             <div>
-              <Label htmlFor="reposicion">Día de reposición para quien se le pasó el suyo</Label>
+              <Label htmlFor="reposicion">Día de reposición general</Label>
               <Input
                 id="reposicion"
                 type="date"
@@ -547,9 +553,11 @@ function Configuracion() {
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 El calendario reparte un día a cada cohorte. A las que ya les pasó se les enseña
-                éste.{" "}
+                éste, <strong className="font-semibold">salvo las que tengan uno propio</strong>:
+                desde el 1 de octubre, el posgrado y la LEIP de Teziutlán reponen el 10 y eso vive
+                en el calendario, no aquí. Este campo gobierna a las demás.{" "}
                 <strong className="font-semibold">
-                  Déjalo en blanco y no se les enseña ninguna fecha
+                  Déjalo en blanco y a ésas no se les enseña ninguna fecha
                 </strong>
                 , que es preferible a enseñarles una vencida. Revisa que no quede después del corte
                 de arriba.
