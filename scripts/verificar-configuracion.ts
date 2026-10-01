@@ -842,8 +842,9 @@ console.log("\n=== QUÉ FECHA DE PAGO VE CADA QUIEN ===\n");
     null,
   );
   /*
-   * Su día todavía cuenta cuando ES hoy: el día entero es suyo. Al revés que la
-   * cita del alumno, que se mueve cuando cae hoy porque falta la ida al banco.
+   * Su día todavía cuenta cuando ES hoy: el día entero es suyo. Y desde el
+   * 2026-10-01 la cita del alumno hace lo mismo —antes se movía también en el
+   * día propio—, así que las dos comparaciones del sistema por fin coinciden.
    */
   igual(
     "su propio día sigue valiendo",

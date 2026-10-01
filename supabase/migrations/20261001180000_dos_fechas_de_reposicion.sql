@@ -44,6 +44,21 @@
 -- `configuracion_evento.fecha_recuperacion_voucher` y sigue editable desde el
 -- panel. Así los 96 renglones que van al 9 no se tocan: basta mover ese campo.
 --
+-- Cuándo aparece la reposición
+-- ----------------------------
+-- **Un día después, no el mismo día.** Quien abre su portal el sábado 3 y le
+-- toca el 3 lee el 3; el domingo 4 ya lee el 10.
+--
+-- Esto cambia lo que decidió `20260930140000`, que comparaba con `<=` y mandaba
+-- a la reposición también en el día propio. El argumento de entonces era la ida
+-- al banco de quien se pre-registra ese mismo día, y sigue siendo cierto para
+-- esos pocos; lo que no se vio es que vaciaba el día de todos los demás. Las 9
+-- cohortes de LEIP que entregan el 7 habrían leído «ve el 10» la mañana del 7,
+-- con la ventanilla abierta y el voucher en la mano.
+--
+-- Y de paso la regla del alumno coincide por fin con la del docente, que ya
+-- contaba su propio día entero desde `ee82255`.
+--
 -- Lo que esta migración NO toca
 -- -----------------------------
 -- **Ninguna fecha oficial de entrega.** El 3 de las maestrías, el 7 y el 8 de
@@ -311,14 +326,24 @@ begin
 
   if v_fecha is not null then
     /*
-     * Si su día ya pasó, se le da el de reposición.
+     * La reposición se enseña UN DÍA DESPUÉS, no el mismo día.
      *
-     * `<=` y no `<`: el día de hoy también cuenta como pasado. Entre
-     * pre-registrarse y entregar el voucher hay una ida al banco que no se puede
-     * saltar, así que una cita para hoy, dicha hoy, es un plazo vencido con otro
-     * nombre. Decidido el 2026-09-30.
+     * `<` y no `<=`: el día que le toca es suyo entero. Quien abre su portal el
+     * sábado 3 y le toca el 3 lee el 3; el domingo 4 ya lee la reposición.
+     *
+     * Esto se decidió al revés el 2026-09-30 y se corrigió el 2026-10-01. El
+     * argumento del `<=` era que entre pre-registrarse y entregar hay una ida al
+     * banco que no cabe en el mismo día, y es cierto — pero solo para quien se
+     * registra ESE día, que son unos pocos. A cambio, el `<=` vaciaba el día de
+     * todos los demás: las 9 cohortes de LEIP que entregan el 7 habrían leído
+     * «ve el 10» la mañana del 7, con su ventanilla abierta y su voucher en la
+     * mano.
+     *
+     * Con esto, la regla del alumno y la del docente coinciden por fin: a los
+     * dos les cuenta su propio día. Ver `citaEnPantalla` en `src/lib/cita.ts`,
+     * que ya lo hacía así para el docente desde el 2026-10-01.
      */
-    if v_fecha <= v_hoy then
+    if v_fecha < v_hoy then
       /*
        * La de su cohorte si la tiene; si no, la general.
        *

@@ -102,11 +102,11 @@ export function citaEnPantalla(datos: {
      * Una fecha que ya pasó no se enseña, y la comparación es `<` y no `<=`:
      * el día en sí todavía cuenta, porque es SU día.
      *
-     * Es al revés que con la cita del alumno, y la diferencia tiene motivo. Al
-     * alumno se le mueve la cita cuando cae HOY porque entre registrarse y
-     * entregar hay una ida al banco que no cabe en el mismo día. Aquí no: esta
-     * persona conoce su fecha desde que se registró, así que el día es suyo
-     * entero y mandarla a otro sitio en su propia fecha sería absurdo.
+     * Es la misma regla que la cita del alumno desde el 2026-10-01. Durante un
+     * día no lo fue —al alumno se le movía la cita también en su día propio, por
+     * la ida al banco de quien se registra esa misma mañana— y las dos
+     * comparaciones de este sistema decían cosas distintas. Ya no: a los tres
+     * perfiles les cuenta su día entero.
      *
      * Las cadenas `AAAA-MM-DD` se comparan bien tal cual, y `hoyIso` da el día
      * en la zona del equipo. Pasarlas por `new Date` sería el defecto de
