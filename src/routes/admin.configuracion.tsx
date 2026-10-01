@@ -25,13 +25,7 @@ import { CampoNumero } from "@/components/campo-numero";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import {
-  fechaAIso,
-  fechaLimiteTexto,
-  isoAMomentoLocal,
-  momentoLocalAIso,
-  simularLatencia,
-} from "@/lib/formato";
+import { fechaAIso, isoAMomentoLocal, momentoLocalAIso, simularLatencia } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import {
@@ -506,9 +500,22 @@ function Configuracion() {
                 onChange={(e) => set({ fechaLimite: momentoLocalAIso(e.target.value) })}
                 className="mt-1 h-11"
               />
+              {/*
+                Esta ayuda decía que al participante se le anuncia la fecha, y
+                hacía mucho que era falso.
+
+                Desde `97cd480` NO se le dice a nadie: `/pago` y `/talleres`
+                dejaron de pintarla porque se leía como la cita de cada quien
+                —el límite es uno para todos y el día de entrega lo decide la
+                cohorte— y mandaba a la gente una semana tarde, con su lugar ya
+                liberado. Quien edite este campo tiene que saber que mueve un
+                corte interno, no un anuncio: creer lo contrario es como volvió
+                a aparecer aquella vez.
+              */}
               <p className="mt-1 text-xs text-muted-foreground">
-                Al participante se le anuncia solo el día: «antes del{" "}
-                {fechaLimiteTexto(b.fechaLimite) || "…"}». La hora manda para el corte.
+                <strong className="font-semibold">Al participante no se le dice esta fecha.</strong>{" "}
+                Es el corte interno: pasada esa hora, quien no haya entregado su voucher queda como
+                expirado. El día que le toca ir se lo dice su cohorte, no esto.
               </p>
             </div>
             {/*
