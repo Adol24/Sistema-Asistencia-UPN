@@ -14,7 +14,8 @@ import { moneda } from "@/lib/formato";
 import { usePrototipo } from "@/lib/prototipo";
 import { useCitaDePago, useParticipanteDelPortal, usePortal } from "@/lib/portal";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { abreLaPuerta } from "@/lib/pagos-logica";
+import { abreLaPuerta, estadoDelDeposito } from "@/lib/pagos-logica";
+import { citaEnPantalla, rotulosDeLaCita } from "@/lib/cita";
 import { depositoDePersona } from "@/lib/deposito";
 import { meta } from "@/lib/seo";
 
@@ -161,7 +162,25 @@ function PagoContenido() {
    * sin hora, y `ventanilla_horario` está vacío a propósito en la base. Inventar
    * una aquí sería volver a poner el dato que causó el problema.
    */
-  const cita = useCitaDePago(borrador.matricula ?? ficha?.matricula);
+  const citaRemota = useCitaDePago(borrador.matricula ?? ficha?.matricula);
+  /*
+   * Qué fecha de pago le toca ver, que puede ser ninguna.
+   *
+   * Esta pantalla se quedó fuera cuando la regla se centralizó, y era la peor
+   * de las cuatro para quedarse fuera: es la que explica CÓMO pagar, así que es
+   * donde el docente iba a buscar su fecha y donde no la encontraba. Ahora
+   * pregunta lo mismo que `/comprobante` y `/portal/estado`.
+   *
+   * El estado sale de la ficha cuando existe; recién cerrado el pre-registro no
+   * la hay, y entonces es `pre_registrado`, que es exactamente lo que esa
+   * persona es.
+   */
+  const cita = citaEnPantalla({
+    perfil,
+    estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
+    remota: citaRemota,
+    fechaTope: evento.fechaPagoDocentesExternos,
+  });
   /*
    * A quien no debe nada, esta pantalla entera le sobra.
    *
@@ -564,13 +583,20 @@ function PagoContenido() {
               <h2 className="text-sm font-semibold">Entrega de vouchers</h2>
               <p className="mt-1 text-sm text-muted-foreground">{evento.ventanilla.lugar}</p>
             </div>
+            {/*
+              El título y el aviso salen de `rotulosDeLaCita`, no escritos aquí.
+
+              Para el alumno es «Tu inscripción» y para el docente «Tu último día
+              para pagar», y la diferencia no es de estilo: al maestro ir antes
+              es lo que se espera de él, así que «no puedes ir antes» sería falso.
+              Dos pantallas no pueden redactarlo cada una a su manera.
+            */}
             {cita ? (
               <div className="rounded-lg border-2 border-primary/30 bg-secondary p-4">
-                <h2 className="text-sm font-semibold">Tu día para entregar</h2>
-                <p className="mt-1 text-lg font-bold">{cita.cuando}</p>
-                {cita.estricto ? (
+                <p className="text-lg font-bold">{rotulosDeLaCita(cita).titulo}</p>
+                {rotulosDeLaCita(cita).aviso ? (
                   <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
-                    Es ese día y solo ese: no puedes ir antes ni después.
+                    {rotulosDeLaCita(cita).aviso}
                   </p>
                 ) : null}
               </div>

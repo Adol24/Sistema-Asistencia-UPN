@@ -13,7 +13,8 @@ import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
-import { abreLaPuerta } from "@/lib/pagos-logica";
+import { abreLaPuerta, estadoDelDeposito } from "@/lib/pagos-logica";
+import { citaEnPantalla, rotulosDeLaCita } from "@/lib/cita";
 
 export const Route = createFileRoute("/portal/qr")({
   head: () =>
@@ -78,7 +79,22 @@ function MiQrContenido({ p }: { p: Participante }) {
    * grupo con el calendario oficial. Sin matrícula —docentes y externos— no hay
    * cita, y esta pantalla no dice ninguna fecha: ver el bloque de abajo.
    */
-  const cita = useCitaDePago(p.matricula);
+  const citaRemota = useCitaDePago(p.matricula);
+  /*
+   * La misma pregunta que las otras tres pantallas, y aquí corrige dos sesgos.
+   *
+   * Este bloque vive en la rama de «todavía no tienes código», o sea bajo
+   * `abreLaPuerta`, y esa frontera no es la de la fecha de pago. Resultado:
+   * quien YA entregó su voucher y espera validación seguía leyendo su día de
+   * entrega —ya entregó—, y quien está en discrepancia no lo veía nunca, aunque
+   * todavía deba. La regla de `lib/cita.ts` sí traza esa línea.
+   */
+  const cita = citaEnPantalla({
+    perfil: p.perfil,
+    estado: estadoDelDeposito(estado),
+    remota: citaRemota,
+    fechaTope: evento.fechaPagoDocentesExternos,
+  });
   /*
    * Quién tiene código, y no se decide aquí.
    *
@@ -167,10 +183,10 @@ function MiQrContenido({ p }: { p: Participante }) {
                */}
               {cita ? (
                 <>
-                  <p className="mt-2 text-sm font-semibold">Tu día para entregar: {cita.cuando}</p>
-                  {cita.estricto ? (
+                  <p className="mt-2 text-sm font-semibold">{rotulosDeLaCita(cita).titulo}</p>
+                  {rotulosDeLaCita(cita).aviso ? (
                     <p className="mt-1 text-xs font-semibold text-estado-discrepancia">
-                      Es ese día y solo ese: no puedes ir antes ni después.
+                      {rotulosDeLaCita(cita).aviso}
                     </p>
                   ) : null}
                 </>
