@@ -11,11 +11,11 @@
 -- fecha de reposición. Hasta hoy era UNA sola, el 12 de octubre. La
 -- organización la partió en dos:
 --
---   · **viernes 9 de octubre** — todos. Las cinco licenciaturas en cualquier
---     sede, la LEIP de las seis sedes que no son Teziutlán, y las tres
---     maestrías de las sedes que no son Teziutlán.
+--   · **viernes 9 de octubre** — todos los demás: las cinco licenciaturas en
+--     cualquier sede, la LEIP de las SIETE sedes que no son Teziutlán, y las
+--     tres maestrías de las ocho sedes que no son Teziutlán. 146 renglones.
 --   · **sábado 10 de octubre** — quien estudia en **Teziutlán** y es de
---     **posgrado o de LEIP**.
+--     **posgrado o de LEIP**. 26 renglones: 9 de maestrías y 17 de LEIP.
 --
 -- Y el 12 se descarta: ya no es la reposición de nadie.
 --
@@ -42,7 +42,7 @@
 --
 -- `null` significa «usa la general», que vive donde siempre, en
 -- `configuracion_evento.fecha_recuperacion_voucher` y sigue editable desde el
--- panel. Así los 96 renglones que van al 9 no se tocan: basta mover ese campo.
+-- panel. Así los 146 renglones que van al 9 no se tocan: basta mover ese campo.
 --
 -- Cuándo aparece la reposición
 -- ----------------------------
@@ -92,9 +92,15 @@ comment on column dia_entrega_voucher.fecha_reposicion is
 -- ---------------------------------------------------------------------------
 -- 2 · La general pasa del 12 al 9
 --
--- Se escribe aquí y no se deja al panel porque es la fecha que van a leer 96 de
--- las 122 cohortes: si quedara pendiente de que alguien la cambie a mano,
--- seguirían leyendo un 12 que ya no es de nadie.
+-- Se escribe aquí y no se deja al panel porque es la fecha que van a leer 146 de
+-- los 172 renglones del calendario: si quedara pendiente de que alguien la
+-- cambie a mano, seguirían leyendo un 12 que ya no es de nadie.
+--
+-- Las cuentas, porque es fácil confundirlas: el calendario tiene **172
+-- renglones** —25 de licenciaturas (22 con comodín de grupo más las 3 de
+-- Intervención 5.º, donde el grupo decide el día), 66 de LEIP y 81 de maestrías
+-- (3 programas × módulos 1, 3 y 4 × 9 sedes)—. No son 122: ésa es la cuenta de
+-- GRUPOS, que es otra cosa, porque un renglón con grupo comodín cubre varios.
 -- ---------------------------------------------------------------------------
 update configuracion_evento
    set fecha_recuperacion_voucher = date '2026-10-09'
