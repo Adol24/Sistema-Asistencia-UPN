@@ -297,6 +297,24 @@ export interface Ctx {
   asignarTaller: (folio: string, clave: string | null) => Promise<void>;
 
   /**
+   * Le da plazo a un alumno para completar su depósito, hasta el instante que
+   * se le indique.
+   *
+   * Mientras no complete, su concepto queda en `parcial`: **no se le genera el
+   * código de entrada y la puerta lo rechaza**, pero sigue apareciendo en la
+   * lista de cobros pendientes con lo que falta. Es la regla que puso la
+   * organización el 2026-10-02.
+   *
+   * Solo administración y Servicios Financieros, y solo alumnos; las dos cosas
+   * las comprueba la base. Propaga el error por lo mismo que `asignarTaller`:
+   * el motivo del rechazo es la información que hace falta en el momento.
+   */
+  autorizarProrroga: (folio: string, hasta: string) => Promise<void>;
+
+  /** Retira el plazo. La base lo niega si ya hay algún pago suyo registrado. */
+  quitarProrroga: (folio: string) => Promise<void>;
+
+  /**
    * Elimina un pre-registro que no dejó huella. **No se deshace.**
    *
    * Solo administración. Lo rechaza cualquier depósito, entrada por la puerta o

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   FileClock,
+  HandCoins,
   ImageOff,
   Ticket,
   ThumbsDown,
@@ -25,6 +26,21 @@ const pago: Record<EstadoPago, { texto: string; clase: string; Icono: typeof Clo
     texto: "Comprobante recibido",
     clase: "bg-estado-comprobante-bg text-estado-comprobante border-estado-comprobante/30",
     Icono: FileClock,
+  },
+  /*
+   * Ámbar, como «comprobante recibido», y no verde: hay dinero suyo pero NO
+   * pasa la puerta todavía. El color es lo que se lee de lejos en una fila, y
+   * un abono en verde haría que quien cobra lo dejara ir sin pedirle el resto.
+   *
+   * Dice «Abonó a cuenta» y no «Parcial» a secas: el rótulo tiene que servirle
+   * a quien atiende para abrir la boca, y lo que sigue es pedirle lo que falta.
+   * Tampoco dice «la mitad», porque los abonos son libres: lo habitual es el
+   * 50%, pero nada impide que alguien traiga trescientos.
+   */
+  parcial: {
+    texto: "Abonó a cuenta",
+    clase: "bg-estado-comprobante-bg text-estado-comprobante border-estado-comprobante/30",
+    Icono: HandCoins,
   },
   pagado: {
     texto: "Pagado",

@@ -12,6 +12,16 @@ export type Perfil = "alumno" | "docente" | "externo";
 export type EstadoPago =
   | "pre_registrado"
   | "comprobante_recibido"
+  /**
+   * Hay dinero suyo registrado, pero no alcanza todavía.
+   *
+   * Solo lo produce una prórroga autorizada: la universidad le dio plazo a un
+   * alumno para completar el depósito. Cae del lado de «todavía no» en todas
+   * las fronteras —no se le genera el código, la puerta lo rechaza, no entra al
+   * listado de constancias— pero sigue en la lista de cobros pendientes, que es
+   * justo lo que un depósito incompleto NO hacía antes. Ver `pagos-logica.ts`.
+   */
+  | "parcial"
   | "pagado"
   | "exento"
   | "discrepancia"
@@ -81,6 +91,16 @@ export interface Participante {
   aceptoAvisoEn?: string | undefined;
   montoEsperadoEvento: number;
   montoEsperadoTaller?: number | undefined;
+  /**
+   * Hasta cuándo tiene plazo para completar su depósito, en ISO y sin
+   * formatear.
+   *
+   * Indefinido en casi todo el mundo: solo lo tiene el alumno al que la
+   * universidad le autorizó pagar en abonos. Se guarda crudo y no como texto
+   * —a diferencia de `creadoEn`— porque además de pintarse hay que compararlo
+   * con ahora para saber si el plazo ya venció.
+   */
+  prorrogaHasta?: string | undefined;
   referenciaEvento?: string | undefined;
   creadoEn: string;
 }

@@ -138,7 +138,10 @@ export function analizarArchivo(
       referencia: referencia.trim(),
       fechaDeposito: fecha,
       origen: "carga_masiva" as const,
-      resultado: resultadoDe(monto, esperado),
+      // Con prórroga autorizada, quedarse corto es un abono y no un error. Lo
+      // decide la base igual —`fn_resultado_pago` mira al participante—, pero
+      // la vista previa tiene que enseñar lo mismo que va a quedar guardado.
+      resultado: resultadoDe(monto, esperado, Boolean(p.prorrogaHasta)),
     };
 
     if (concepto === "taller" && taller && taller.cupoOcupado > taller.cupoTotal)
@@ -151,7 +154,10 @@ export function analizarArchivo(
       };
     if (monto !== esperado) {
       const dif = monto - esperado;
-      const motivo = `Monto ${dif > 0 ? "mayor" : "menor"} al esperado por ${moneda(Math.abs(dif))}. Entrará como discrepancia.`;
+      const esAbono = Boolean(p.prorrogaHasta) && dif < 0;
+      const motivo = esAbono
+        ? `Abono de ${moneda(monto)} a cuenta de ${moneda(esperado)}. Le quedan ${moneda(-dif)} y tiene prórroga.`
+        : `Monto ${dif > 0 ? "mayor" : "menor"} al esperado por ${moneda(Math.abs(dif))}. Entrará como discrepancia.`;
       return {
         ...base,
         semaforo: "advertencia",

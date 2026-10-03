@@ -186,6 +186,7 @@ export interface FilaParticipante {
   monto_esperado_taller: number | null;
   creado_en: string;
   acepto_aviso_en?: string | null;
+  prorroga_hasta?: string | null;
   programas: ProgramaConNivel | null;
   planteles: { nombre: string } | null;
 }
@@ -226,6 +227,7 @@ export interface FilaVistaParticipante {
   estado_pago_taller: EstadoPago | null;
   creado_en: string;
   acepto_aviso_en: string | null;
+  prorroga_hasta: string | null;
 }
 
 export interface FilaPago {
@@ -235,7 +237,7 @@ export interface FilaPago {
   monto_esperado: string | number;
   referencia: string;
   fecha_deposito: string;
-  resultado: "pagado" | "discrepancia";
+  resultado: "pagado" | "parcial" | "discrepancia";
   origen: "ventanilla" | "carga_masiva";
   nota: string | null;
   registrado_en: string;
@@ -620,6 +622,9 @@ export function aParticipante(
     // Sin `?? ""`: vacío y «no consta» no son lo mismo, y la pantalla tiene que
     // poder distinguirlos para decirlo.
     aceptoAvisoEn: f.acepto_aviso_en ? aFechaHora(f.acepto_aviso_en) : undefined,
+    // Crudo y sin formatear, a diferencia de los otros dos instantes de arriba:
+    // hay pantallas que lo pintan y otras que preguntan si ya venció.
+    prorrogaHasta: f.prorroga_hasta ?? undefined,
   };
 }
 

@@ -42,7 +42,7 @@ const nodos = ["Pre-registrado", "Comprobante recibido", "Pagado", "QR disponibl
  * código, para que las dos pantallas no puedan volver a discrepar.
  */
 const indiceDe = (estado: EstadoPago) =>
-  abreLaPuerta(estado) ? 3 : estado === "comprobante_recibido" ? 1 : 0;
+  abreLaPuerta(estado) ? 3 : estado === "comprobante_recibido" || estado === "parcial" ? 1 : 0;
 
 /*
  * Se parte en dos porque la comprobación tiene que ocurrir DESPUÉS de todos los

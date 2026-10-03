@@ -1883,6 +1883,40 @@ export function EstadoEventoProvider({
   );
 
   /**
+   * Le da plazo a un alumno para completar su depósito.
+   *
+   * El estado local se mueve DESPUÉS de que la base dice que sí, igual que en
+   * `asignarTaller`, y por el mismo motivo: la base es quien comprueba el rol,
+   * el perfil y que la fecha no haya pasado ya. Adelantarse aquí dejaría la
+   * pantalla diciendo que hay prórroga donde no la hay.
+   *
+   * Solo se guarda la fecha. Quién la autorizó y cuándo viven en la base y en
+   * la bitácora, que es donde se consultan; traerlos a la pantalla obligaría a
+   * recargar la lista entera para enseñar un dato que nadie mira en la fila.
+   */
+  const autorizarProrroga = useCallback<Ctx["autorizarProrroga"]>(async (folio, hasta) => {
+    if (!hayBaseDeDatos)
+      throw new Error("Sin base de datos configurada no se puede autorizar una prórroga.");
+    const d = await import("@/lib/datos");
+    await d.autorizarProrrogaRemota(folio, hasta);
+    setAjustesParticipante((prev) => ({
+      ...prev,
+      [folio]: { ...(prev[folio] ?? {}), prorrogaHasta: hasta },
+    }));
+  }, []);
+
+  const quitarProrroga = useCallback<Ctx["quitarProrroga"]>(async (folio) => {
+    if (!hayBaseDeDatos)
+      throw new Error("Sin base de datos configurada no se puede quitar una prórroga.");
+    const d = await import("@/lib/datos");
+    await d.quitarProrrogaRemota(folio);
+    setAjustesParticipante((prev) => ({
+      ...prev,
+      [folio]: { ...(prev[folio] ?? {}), prorrogaHasta: undefined },
+    }));
+  }, []);
+
+  /**
    * Quita a alguien del sistema, y de la pantalla.
    *
    * Se toca `participantesBase` y no `ajustesParticipante`, que es lo que usa
@@ -2065,6 +2099,8 @@ export function EstadoEventoProvider({
       reasignarDia,
       asignarDiaAVarios,
       asignarTaller,
+      autorizarProrroga,
+      quitarProrroga,
       eliminarPreregistro,
       /*
        * Lo de esta sesión primero y lo ya anotado debajo, que es el orden en
@@ -2143,6 +2179,8 @@ export function EstadoEventoProvider({
       reasignarDia,
       asignarDiaAVarios,
       asignarTaller,
+      autorizarProrroga,
+      quitarProrroga,
       eliminarPreregistro,
       bitacoraDeVista,
       registrarBitacora,

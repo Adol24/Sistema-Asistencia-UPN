@@ -18,7 +18,14 @@ import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { alCorriente, resuelto, yaPago } from "@/lib/pagos-logica";
+import {
+  alCorriente,
+  faltaDe,
+  indexarPagos,
+  resuelto,
+  resultadoDe,
+  yaPago,
+} from "@/lib/pagos-logica";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago, Participante } from "@/dominio/tipos";
@@ -166,6 +173,17 @@ function Ventanilla() {
   const tramo = usePaginacion(lista, POR_PAGINA, `${q}|${filtro}`);
 
   /*
+   * Lo depositado por persona y concepto, de una sola pasada.
+   *
+   * Hace falta para cobrar el SALDO y no la cuota: quien abonó 250 de 500 con
+   * una prórroga tiene que poder entregar 250, y un botón que ofreciera 500 le
+   * cobraría 750 en total y dejaría su depósito en discrepancia. Se calcula una
+   * vez por cambio de la lista de pagos y no una por fila, que es el mismo
+   * cuello de botella que ya documentó `indexarPagos`.
+   */
+  const indicePagos = useMemo(() => indexarPagos(pagos), [pagos]);
+
+  /*
    * Quiénes ya pagaron, un renglón por nombre.
    *
    * Sale de `participantes` y no de `lista`: es la lista de pagados del evento,
@@ -252,24 +270,37 @@ function Ventanilla() {
    * La fecha es la de hoy, que es cuando se atiende la ventanilla. Para un
    * depósito de otro día, la carga masiva del banco trae la suya.
    */
-  const confirmar = (p: Participante, concepto: "evento" | "taller", montoEsperado: number) => {
-    const clave = `${p.folio}:${concepto}`;
+  const confirmar = (
+    p: Participante,
+    concepto: "evento" | "taller",
+    /** Lo que entrega hoy: la cuota entera, o el saldo si ya abonó. */
+    monto: number,
+    /** La cuota del concepto, que es contra lo que se compara. */
+    montoEsperado: number,
+  ) => {
+    // El importe entra en la clave del guardia: dos clics seguidos sobre el
+    // mismo botón siguen siendo uno solo, y un segundo abono por otra cantidad
+    // —que con una prórroga es legítimo— ya no queda bloqueado por el primero.
+    const clave = `${p.folio}:${concepto}:${monto}`;
     if (confirmados.current.has(clave)) return;
     confirmados.current.add(clave);
     registrarPago({
       folio: p.folio,
       concepto,
-      monto: montoEsperado,
+      monto,
       montoEsperado,
       fechaDeposito: isoAFecha(hoyIso()),
-      resultado: "pagado",
+      // La misma cuenta que hace la base al guardar: un saldo que cierra la
+      // cuota no es «pagado» en su fila —no coincide con lo esperado— sino otro
+      // abono, y lo que completa el concepto es la suma. Ver `fn_resultado_pago`.
+      resultado: resultadoDe(monto, montoEsperado, Boolean(p.prorrogaHasta)),
       origen: "ventanilla",
     });
     registrarBitacora(
       "Confirmó un pago en ventanilla",
-      `${p.folio} · ${concepto} · ${moneda(montoEsperado)}`,
+      `${p.folio} · ${concepto} · ${moneda(monto)}`,
     );
-    toast.success(`${p.nombre}: ${concepto} pagado.`);
+    toast.success(`${p.nombre}: ${concepto} cobrado.`);
   };
 
   const abrirFicha = (p: Participante) => {
@@ -391,6 +422,14 @@ function Ventanilla() {
             <Tabla anchoMinimo="46rem" columnas={["Participante", "Evento", "Taller"]}>
               {tramo.visibles.map((p) => {
                 const estado = estadoDe(p);
+                // Lo que falta, que con un abono de por medio no es la cuota.
+                const faltaEvento = faltaDe(indicePagos, p.folio, "evento", p.montoEsperadoEvento);
+                const faltaTaller = faltaDe(
+                  indicePagos,
+                  p.folio,
+                  "taller",
+                  p.montoEsperadoTaller ?? 0,
+                );
                 return (
                   <Fila key={p.folio} className="align-middle">
                     <td className="px-3 py-2">
@@ -409,16 +448,20 @@ function Ventanilla() {
                     <td className="px-3 py-2">
                       <Celda
                         estado={estado.evento}
-                        monto={p.montoEsperadoEvento}
-                        onConfirmar={() => confirmar(p, "evento", p.montoEsperadoEvento)}
+                        monto={faltaEvento}
+                        onConfirmar={() =>
+                          confirmar(p, "evento", faltaEvento, p.montoEsperadoEvento)
+                        }
                       />
                     </td>
                     <td className="px-3 py-2">
                       {p.tallerId && estado.taller ? (
                         <Celda
                           estado={estado.taller}
-                          monto={p.montoEsperadoTaller ?? 0}
-                          onConfirmar={() => confirmar(p, "taller", p.montoEsperadoTaller ?? 0)}
+                          monto={faltaTaller}
+                          onConfirmar={() =>
+                            confirmar(p, "taller", faltaTaller, p.montoEsperadoTaller ?? 0)
+                          }
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground">Sin taller</span>
@@ -547,18 +590,48 @@ function Ventanilla() {
                 <ConceptoEscaneado
                   titulo="Evento"
                   estado={estadoDe(escaneadoP).evento}
-                  monto={escaneadoP.montoEsperadoEvento}
+                  monto={faltaDe(
+                    indicePagos,
+                    escaneadoP.folio,
+                    "evento",
+                    escaneadoP.montoEsperadoEvento,
+                  )}
                   onConfirmar={() =>
-                    confirmar(escaneadoP, "evento", escaneadoP.montoEsperadoEvento)
+                    confirmar(
+                      escaneadoP,
+                      "evento",
+                      faltaDe(
+                        indicePagos,
+                        escaneadoP.folio,
+                        "evento",
+                        escaneadoP.montoEsperadoEvento,
+                      ),
+                      escaneadoP.montoEsperadoEvento,
+                    )
                   }
                 />
                 {escaneadoP.tallerId && estadoDe(escaneadoP).taller ? (
                   <ConceptoEscaneado
                     titulo="Taller"
                     estado={estadoDe(escaneadoP).taller!}
-                    monto={escaneadoP.montoEsperadoTaller ?? 0}
+                    monto={faltaDe(
+                      indicePagos,
+                      escaneadoP.folio,
+                      "taller",
+                      escaneadoP.montoEsperadoTaller ?? 0,
+                    )}
                     onConfirmar={() =>
-                      confirmar(escaneadoP, "taller", escaneadoP.montoEsperadoTaller ?? 0)
+                      confirmar(
+                        escaneadoP,
+                        "taller",
+                        faltaDe(
+                          indicePagos,
+                          escaneadoP.folio,
+                          "taller",
+                          escaneadoP.montoEsperadoTaller ?? 0,
+                        ),
+                        escaneadoP.montoEsperadoTaller ?? 0,
+                      )
                     }
                   />
                 ) : (
@@ -608,6 +681,10 @@ function Ventanilla() {
  *
  * El botón lleva el importe escrito. Confirmar a ciegas y confirmar $650 no son
  * el mismo gesto, y esta pantalla registra un cobro con un solo clic.
+ *
+ * @param monto Lo que se va a cobrar AHORA, que con un abono de por medio es el
+ *   saldo y no la cuota. El rótulo cambia con el estado para que quien atiende
+ *   sepa cuál de las dos cosas está pulsando.
  */
 function Celda({
   estado,
@@ -626,7 +703,9 @@ function Celda({
     <div className="flex flex-wrap items-center gap-2">
       <Button size="sm" className="h-9" onClick={onConfirmar}>
         <Check className="size-4" />
-        Confirmar {moneda(monto)}
+        {estado === "parcial"
+          ? `Cobrar los ${moneda(monto)} que faltan`
+          : `Confirmar ${moneda(monto)}`}
       </Button>
       <EstadoPagoBadge estado={estado} />
     </div>
@@ -662,7 +741,10 @@ function ConceptoEscaneado({
         <EstadoPagoBadge estado={estado} />
       ) : (
         <Button size="sm" className="h-9" onClick={onConfirmar}>
-          <Check className="size-4" /> Confirmar {moneda(monto)}
+          <Check className="size-4" />
+          {estado === "parcial"
+            ? `Cobrar los ${moneda(monto)} que faltan`
+            : `Confirmar ${moneda(monto)}`}
         </Button>
       )}
     </div>

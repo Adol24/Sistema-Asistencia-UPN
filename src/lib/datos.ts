@@ -117,7 +117,7 @@ export interface Instantanea {
 const COLS_PARTICIPANTE = `
   id, folio, perfil, matricula, nombre, nombre_en_revision, correo, celular,
   institucion, avance, grupo, dia, taller_id, monto_esperado_evento,
-  monto_esperado_taller, creado_en,
+  monto_esperado_taller, creado_en, prorroga_hasta,
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
 `;
 
@@ -693,6 +693,15 @@ export async function guardarPago(p: {
        * la restricción no pueda volver a tragarse un depósito por un campo
        * vacío.
        */
+      /*
+       * El texto vale para las dos lecturas, y por eso no se personaliza.
+       *
+       * Un depósito corto es un error de ventanilla o un abono de una prórroga,
+       * y quien escribe esta línea no lo sabe: lo decide `fn_resultado_pago` al
+       * mirar si esa persona tiene plazo. «Depositó 250 contra 500 esperados»
+       * es cierto en los dos casos; inventar aquí la palabra «abono» sería
+       * afirmar algo que no se ha comprobado.
+       */
       nota:
         p.nota?.trim() ||
         (resultadoDe(p.monto, p.montoEsperado) === "discrepancia"
@@ -1129,6 +1138,28 @@ export async function guardarVentanas(ventanas: VentanaPreregistro[]): Promise<v
  * `usuario_texto` queda para lo que no hace una persona —el pre-registro en
  * línea, un cierre automático—, que si no aparecería sin autor.
  */
+/**
+ * Le da plazo a un alumno para completar su depósito.
+ *
+ * La bitácora la escribe la función dentro de la misma transacción, con quién
+ * la autorizó. Aquí no se anota nada: dos renglones para un solo hecho es como
+ * se empieza a dudar de cuál de los dos pasó.
+ *
+ * @param hasta El instante en que vence, en ISO. Lo arma la pantalla con el
+ *   final del día que eligió quien autoriza, en su propia zona horaria.
+ */
+export async function autorizarProrrogaRemota(folio: string, hasta: string): Promise<void> {
+  await llamar<unknown>("fn_autorizar_prorroga", { p_folio: folio, p_hasta: hasta });
+}
+
+/**
+ * Retira el plazo. La base lo niega si ya hay un peso suyo registrado: ver
+ * `fn_quitar_prorroga`.
+ */
+export async function quitarProrrogaRemota(folio: string): Promise<void> {
+  await llamar<unknown>("fn_quitar_prorroga", { p_folio: folio });
+}
+
 export async function anotarEnBitacora(
   accion: string,
   detalle: string,

@@ -11,6 +11,7 @@ import { EstadoPagoBadge } from "@/components/estado-badges";
 import { useCitaDePago, usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
+import { fechaLimiteTexto } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { abreLaPuerta, estadoDelDeposito } from "@/lib/pagos-logica";
@@ -40,6 +41,17 @@ export const Route = createFileRoute("/portal/qr")({
 const faltantesDe = (horas: number, lugar: string): Record<string, string> => ({
   pre_registrado: `Falta que hagas tu depósito y entregues el voucher en ${lugar}.`,
   comprobante_recibido: `Ya recibimos tu comprobante. Servicios Financieros tarda unas ${horas} horas en validarlo; vuelve a esta pantalla y tu código estará aquí.`,
+  /*
+   * El abono de una prórroga. Se dice lo que falta y lo que eso significa, sin
+   * rodeos: el código NO se genera hasta que complete, y sin código no entra.
+   *
+   * No se dice cuánto le falta en pesos, y no es un olvido: el portal no puede
+   * leer la tabla `pagos` —es del personal—, así que esta pantalla no conoce la
+   * cifra. Inventar una resta con lo que sí tiene a mano daría un número
+   * equivocado en cuanto hubiera dos abonos, y un número equivocado sobre
+   * dinero es peor que mandar a preguntar.
+   */
+  parcial: `Recibimos un abono a cuenta, pero todavía falta el resto. En cuanto completes el pago en ${lugar} aparece aquí tu código: sin él no puedes entrar al Encuentro. Si no sabes cuánto te falta, pregúntalo ahí mismo.`,
   // `discrepancia` ya NO está en este mapa: esa persona tiene código —la puerta
   // la admite— así que nunca llega a esta rama. Su aviso se da junto al código,
   // que es donde le sirve. Ver `abreLaPuerta`.
@@ -110,6 +122,9 @@ function MiQrContenido({ p }: { p: Participante }) {
    * puerta que le estaba abierta.
    */
   const tieneCodigo = abreLaPuerta(estado.evento);
+  // El plazo que le dieron, dicho en su pantalla. Es lo único que esta persona
+  // puede hacer todavía, y la fecha es la mitad de la instrucción.
+  const plazo = estado.evento === "parcial" ? p.prorrogaHasta : undefined;
   const faltantes = faltantesDe(evento.horasValidacion, evento.ventanilla.lugar || "ventanilla");
   const [ampliado, setAmpliado] = useState(false);
 
@@ -164,6 +179,11 @@ function MiQrContenido({ p }: { p: Participante }) {
               <p className="mt-3 text-sm font-medium">
                 {faltantes[estado.evento] ?? "Consulta tu estado en la línea de tiempo."}
               </p>
+              {plazo ? (
+                <p className="mt-3 rounded-md border border-estado-discrepancia/40 bg-estado-discrepancia-bg p-3 text-sm font-semibold text-estado-discrepancia">
+                  Tienes hasta el {fechaLimiteTexto(plazo)} para completarlo.
+                </p>
+              ) : null}
               {/*
                * Sin cita no se dice ninguna fecha, y eso es una decisión de Adol
                * del 2026-09-25.

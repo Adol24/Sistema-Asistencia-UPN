@@ -27,8 +27,15 @@ export interface PagoRegistrado {
   referencia?: string | undefined;
   fechaDeposito: string;
   nota?: string | undefined;
-  /** Resultado con el que quedó el concepto tras registrar este pago. */
-  resultado: Extract<EstadoPago, "pagado" | "discrepancia">;
+  /**
+   * Qué es este depósito.
+   *
+   * `parcial` es un abono de una prórroga autorizada, y lo decide la base
+   * —`fn_resultado_pago`— mirando si esa persona tiene plazo. No es lo mismo
+   * que `discrepancia`: ahí el dinero no cuadra y alguien se equivocó; aquí
+   * falta dinero y es lo acordado.
+   */
+  resultado: Extract<EstadoPago, "pagado" | "parcial" | "discrepancia">;
   origen: "ventanilla" | "carga_masiva";
   registradoEn: string;
 }
@@ -80,7 +87,11 @@ export const porCobrar = (e: EstadoPago): boolean => !resuelto(e);
  * dejar fuera del evento a quien sí puede entrar.
  */
 export const sinAcreditar = (e: EstadoPago): boolean =>
-  e === "pre_registrado" || e === "comprobante_recibido" || e === "expirado" || e === "cancelado";
+  e === "pre_registrado" ||
+  e === "comprobante_recibido" ||
+  e === "parcial" ||
+  e === "expirado" ||
+  e === "cancelado";
 
 /**
  * Servicios Financieros ya reconoció su depósito, así que la puerta lo admite.
@@ -105,9 +116,14 @@ export const sinAcreditar = (e: EstadoPago): boolean =>
  */
 export const abreLaPuerta = (e: EstadoPago): boolean => !sinAcreditar(e);
 
-/** Su lugar sigue apartado pero puede perderlo si no entrega a tiempo. */
+/**
+ * Su lugar sigue apartado pero puede perderlo si no entrega a tiempo.
+ *
+ * `parcial` entra aquí: dejó la mitad, y lo que le queda vence el día de su
+ * prórroga. Es exactamente la gente a la que hay que llamar antes de esa fecha.
+ */
 export const porVencer = (e: EstadoPago): boolean =>
-  e === "pre_registrado" || e === "comprobante_recibido";
+  e === "pre_registrado" || e === "comprobante_recibido" || e === "parcial";
 
 /**
  * No hay NINGUNA fila de pago de ese concepto. No es lo mismo que «no pagó».
@@ -193,11 +209,19 @@ export const yaPago = (estado: { evento: EstadoPago; taller: EstadoPago | undefi
  * seis estados enseñar.
  */
 const URGENCIA: Record<EstadoPago, number> = {
-  discrepancia: 6,
-  cancelado: 5,
-  expirado: 4,
-  pre_registrado: 3,
-  comprobante_recibido: 2,
+  discrepancia: 7,
+  cancelado: 6,
+  expirado: 5,
+  pre_registrado: 4,
+  comprobante_recibido: 3,
+  /*
+   * Por debajo de «comprobante recibido» y por encima de «pagado».
+   *
+   * Lo que ordena esta lista es qué tan avanzado está el cobro, y un abono está
+   * MÁS avanzado que un voucher entregado: aquí el dinero ya se contó. Pero
+   * sigue debiendo, así que nunca puede tapar a un concepto pagado.
+   */
+  parcial: 2,
   pagado: 1,
   /*
    * El menos urgente de todos, y por debajo de `pagado` a propósito.
@@ -231,8 +255,13 @@ export const estadoDelDeposito = (estado: {
 export const resultadoDe = (
   monto: number,
   esperado: number,
-): Extract<EstadoPago, "pagado" | "discrepancia"> =>
-  monto === esperado ? "pagado" : "discrepancia";
+  /**
+   * Si esa persona tiene una prórroga autorizada. Con ella, quedarse corto es
+   * un abono y no un error; pasarse sigue siendo un error.
+   */
+  conProrroga = false,
+): Extract<EstadoPago, "pagado" | "parcial" | "discrepancia"> =>
+  monto === esperado ? "pagado" : conProrroga && monto < esperado ? "parcial" : "discrepancia";
 
 /** Convierte el texto de un campo de monto a número. Devuelve null si no es válido. */
 export function parsearMonto(texto: string): number | null {
@@ -262,8 +291,24 @@ export function pagosIniciales(): PagoRegistrado[] {
   return [];
 }
 
-/** El último pago de cada persona y concepto, listo para consultar. */
-export type IndicePagos = ReadonlyMap<string, PagoRegistrado>;
+/**
+ * Lo que hay registrado de una persona en UN concepto.
+ *
+ * El último pago ya no basta desde que existen los abonos: dos depósitos de 250
+ * no se leen mirando el segundo, se leen sumándolos. Se guardan las tres cosas
+ * de una pasada para no recorrer la lista otra vez por cada fila de la tabla.
+ */
+export interface PagosDeUnConcepto {
+  /** El más reciente, que es quien manda cuando NO hay abonos. */
+  ultimo: PagoRegistrado;
+  /** Todo lo depositado en este concepto. */
+  suma: number;
+  /** Si alguno es un abono de prórroga. */
+  hayAbono: boolean;
+}
+
+/** Lo registrado por persona y concepto, listo para consultar. */
+export type IndicePagos = ReadonlyMap<string, PagosDeUnConcepto>;
 
 const clave = (folio: string, concepto: Concepto) => `${folio}|${concepto}`;
 
@@ -285,10 +330,77 @@ const clave = (folio: string, concepto: Concepto) => `${folio}|${concepto}`;
  * reciente, y ese orden es el que garantiza `cargarTodo` al pedirla.
  */
 export function indexarPagos(pagos: PagoRegistrado[]): IndicePagos {
-  const indice = new Map<string, PagoRegistrado>();
-  for (const g of pagos) indice.set(clave(g.folio, g.concepto), g);
+  const indice = new Map<string, PagosDeUnConcepto>();
+  for (const g of pagos) {
+    const k = clave(g.folio, g.concepto);
+    const previo = indice.get(k);
+    indice.set(k, {
+      ultimo: g,
+      suma: (previo?.suma ?? 0) + g.monto,
+      hayAbono: (previo?.hayAbono ?? false) || g.resultado === "parcial",
+    });
+  }
   return indice;
 }
+
+/**
+ * Un céntimo de tolerancia al comparar importes.
+ *
+ * En la base los montos son `numeric` y la suma es exacta; aquí son `number`,
+ * y sumar decimales en coma flotante puede dejar 499.99999999 donde debería
+ * haber 500. Sin esta holgura, alguien que pagó completo en abonos seguiría
+ * figurando como que debe un céntimo —y la puerta lo rechazaría—.
+ */
+const CENTIMO = 0.005;
+
+/**
+ * El estado de UN concepto a partir de lo que hay registrado.
+ *
+ * Dos reglas, y la primera es la de siempre: sin abonos de por medio manda el
+ * último pago, igual que antes de que existieran las prórrogas. Con abonos
+ * manda la SUMA, que es la misma cuenta que hace `v_estado_pago` en la base.
+ * Tienen que coincidir: esta decide lo que se ve mientras la pestaña está
+ * abierta, y aquella lo que se ve al recargar.
+ */
+function estadoDeUnConcepto(
+  filas: PagosDeUnConcepto | undefined,
+  esperado: number,
+  respaldo: EstadoPago | undefined,
+): EstadoPago | undefined {
+  if (!filas) return respaldo;
+  if (!filas.hayAbono) return filas.ultimo.resultado;
+  if (filas.suma > esperado + CENTIMO) return "discrepancia";
+  if (filas.suma >= esperado - CENTIMO) return "pagado";
+  return "parcial";
+}
+
+/**
+ * Lo registrado de una persona en un concepto, o `undefined` si no hay nada.
+ *
+ * Existe para no publicar la forma de la clave del índice: es un detalle de
+ * aquí dentro, y las pantallas que necesitan saber cuánto lleva abonado alguien
+ * —la ventanilla, para ofrecer lo que FALTA en vez de la cuota entera— no
+ * tienen por qué armar `folio|concepto` a mano.
+ */
+export const pagosDe = (
+  indice: IndicePagos,
+  folio: string,
+  concepto: Concepto,
+): PagosDeUnConcepto | undefined => indice.get(clave(folio, concepto));
+
+/**
+ * Cuánto le falta a alguien en un concepto, nunca negativo.
+ *
+ * Con esto la ventanilla cobra el saldo y no la cuota: quien abonó 250 de 500
+ * tiene que poder entregar 250, y el botón que ofreciera 500 le cobraría 750 en
+ * total y dejaría su depósito en discrepancia.
+ */
+export const faltaDe = (
+  indice: IndicePagos,
+  folio: string,
+  concepto: Concepto,
+  esperado: number,
+): number => Math.max(0, esperado - (pagosDe(indice, folio, concepto)?.suma ?? 0));
 
 /**
  * Estado de pago efectivo de un participante: el que trae él —derivado por
@@ -308,7 +420,9 @@ export function estadoDePagos(
   const ev = indice.get(clave(p.folio, "evento"));
   const ta = indice.get(clave(p.folio, "taller"));
   return {
-    evento: ev ? ev.resultado : p.estadoPagoEvento,
-    taller: p.tallerId ? (ta ? ta.resultado : p.estadoPagoTaller) : undefined,
+    evento: estadoDeUnConcepto(ev, p.montoEsperadoEvento, p.estadoPagoEvento) ?? "pre_registrado",
+    taller: p.tallerId
+      ? estadoDeUnConcepto(ta, p.montoEsperadoTaller ?? 0, p.estadoPagoTaller)
+      : undefined,
   };
 }
