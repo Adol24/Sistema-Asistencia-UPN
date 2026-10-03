@@ -114,39 +114,28 @@ export interface Instantanea {
  * `programas` sí enlaza con `niveles_academicos` por su propia `nivel_id`, así
  * que el nivel se alcanza en dos saltos y la consulta vuelve a resolver.
  */
+/*
+ * `prorroga_hasta` se pide sin red desde que se aplicó
+ * `20261002120000_la_prorroga_del_alumno`, el 2026-10-02.
+ *
+ * Aquí hubo un reintento que quitaba la columna si la base contestaba 42703.
+ * Existió exactamente el tiempo que tardó el despliegue en adelantarse a la
+ * migración: el código sale solo al empujar y las migraciones se pegan a mano,
+ * y pedir una columna que no está no devuelve un hueco sino un error que, en
+ * un `Promise.all`, se lleva por delante la carga ENTERA del panel.
+ *
+ * Se retiró al comprobar contra la base viva que la columna está —`select=
+ * prorroga_hasta` contesta permiso denegado, 42501, mientras que una columna
+ * inventada contesta 42703—. Dejar el reintento puesto tenía un coste que no
+ * se ve: si algún día la columna desapareciera, el panel seguiría funcionando
+ * sin prórrogas en vez de decirlo.
+ */
 const COLS_PARTICIPANTE = `
   id, folio, perfil, matricula, nombre, nombre_en_revision, correo, celular,
   institucion, avance, grupo, dia, taller_id, monto_esperado_evento,
-  monto_esperado_taller, creado_en,
+  monto_esperado_taller, creado_en, prorroga_hasta,
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
 `;
-
-/*
- * La columna de la prórroga, que puede no existir todavía.
- *
- * El código se despliega solo al empujar y las migraciones se pegan a mano,
- * así que entre una cosa y la otra hay una ventana —minutos u horas— en la que
- * esta versión corre contra una base que aún no tiene `prorroga_hasta`. Pedir
- * una columna inexistente no devuelve un hueco: PostgREST contesta 42703, la
- * consulta lanza, y como la carga del panel va en un `Promise.all`, **se cae
- * entera**. El panel se quedaría sin participantes, sin pagos y sin padrón por
- * una columna que nadie está mirando.
- *
- * Así que se pide, y si la base dice que no existe se reintenta sin ella una
- * sola vez y se recuerda para el resto de la sesión. En cuanto la migración
- * esté aplicada esto no cuesta nada: el primer intento acierta siempre.
- *
- * Se puede borrar —junto con `columnasDeParticipante`— cuando
- * `20261002120000_la_prorroga_del_alumno` esté aplicada en todos los entornos.
- */
-let hayColumnaProrroga = true;
-
-const columnasDeParticipante = () =>
-  hayColumnaProrroga ? `${COLS_PARTICIPANTE}, prorroga_hasta` : COLS_PARTICIPANTE;
-
-/** El 42703 de PostgreSQL: «la columna no existe». */
-const esColumnaInexistente = (e: unknown): boolean =>
-  typeof e === "object" && e !== null && (e as { code?: string }).code === "42703";
 
 /**
  * El pago guarda `participante_id`, pero todo lo demás en la aplicación habla
@@ -374,24 +363,9 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
     bitacora,
   ] = conSesion
     ? await Promise.all([
-        (async () => {
-          const pedir = () =>
-            porTramos((desde, hasta) =>
-              sb
-                .from("participantes")
-                .select(columnasDeParticipante())
-                .order("folio")
-                .range(desde, hasta),
-            );
-          try {
-            return await pedir();
-          } catch (e) {
-            // Ver `hayColumnaProrroga`: la base todavía no tiene la columna.
-            if (!hayColumnaProrroga || !esColumnaInexistente(e)) throw e;
-            hayColumnaProrroga = false;
-            return await pedir();
-          }
-        })(),
+        porTramos((desde, hasta) =>
+          sb.from("participantes").select(COLS_PARTICIPANTE).order("folio").range(desde, hasta),
+        ),
         /*
          * El estado derivado, que puede leer cualquier miembro del personal.
          * Sostiene el semáforo de la puerta sin enseñarle al capturista cuánto

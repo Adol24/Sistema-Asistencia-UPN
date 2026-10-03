@@ -367,9 +367,33 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
-### La prórroga del alumno (`20261002120000` y `20261002130000`) — SIN APLICAR
+### La prórroga del alumno (`20261002120000` y `20261002130000`) — aplicadas
 
-**Van en DOS corridas**, y en este orden:
+Aplicadas el 2026-10-02, las dos. Comprobado contra la base viva con la clave
+anónima, y con controles para no leer mal un código de error:
+
+| Sonda | Respuesta | Qué prueba |
+| --- | --- | --- |
+| `rpc/fn_no_existe_de_verdad_xyz` | 404 `PGRST202` | así contesta lo que NO está |
+| `rpc/fn_autorizar_prorroga` | 401 `42501` | existe, y está cerrada al anónimo |
+| `rpc/fn_quitar_prorroga` | 401 `42501` | igual |
+| `participantes?select=columna_que_no_existe` | 400 `42703` | así contesta una columna que no está |
+| `participantes?select=prorroga_hasta` | 401 `42501` | la columna está (resuelve antes del permiso) |
+| `v_participantes?select=columna_que_no_existe` | 400 `42703` | el mismo control, en la vista |
+| `v_participantes?select=prorroga_hasta` | 401 `42501` | la vista la expone |
+
+Lo que NO se puede comprobar desde fuera —el cuerpo del disparador, la rama de
+la suma en la vista y los valores del enum— lo comprobó la propia migración al
+aplicarse: su bloque final aborta si la vista no quedó con `parcial`, si
+`fn_evaluar_escaneo` dejó de rechazar lo que no sea pagado, discrepancia o
+exento, o si `v_elegibles` dejó de exigir `pagado`. Terminó sin error, así que
+las tres se cumplían.
+
+Queda sin probar **el camino completo con dinero de verdad**: autorizar,
+abonar la mitad, ver que no se genera el código, completar y ver que aparece.
+Eso solo lo dice hacerlo.
+
+**Iban en DOS corridas**, en este orden:
 
 1. `20261002120000_la_prorroga_del_alumno.sql` — añade `parcial` a los tipos
    `estado_pago` y `resultado_pago`, y las tres columnas de la prórroga en
