@@ -20,7 +20,7 @@ import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { hora, isoAFecha } from "@/lib/formato";
+import { hoyIso, isoAFecha } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
 
@@ -67,12 +67,25 @@ function MisEvidencias() {
 }
 
 function MisEvidenciasContenido({ p }: { p: Participante }) {
-  const { asistenciasDe, evidencias: evidenciasCtx, revisiones, infoDia } = useEstadoEvento();
-  const mias = evidenciasCtx.filter((e) => e.folio === p.folio);
-  const [subidas, setSubidas] = useState<Record<number, { estado: EstadoEvidencia; hora: string }>>(
-    {},
-  );
-  const [intentos, setIntentos] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0 });
+  const { infoDia } = useEstadoEvento();
+  /*
+   * Sus evidencias salen del PORTAL, no del almacén del personal.
+   *
+   * Esta pantalla leía `useEstadoEvento().evidencias`, que es la lista que
+   * carga una sesión interna y que para un aspirante llega SIEMPRE vacía. El
+   * efecto era que su entrega desaparecía al recargar —la tarjeta volvía a
+   * «Subir evidencia» como si no existiera— y que **el motivo de un rechazo no
+   * le llegaba nunca**, aunque el revisor lo hubiera escrito.
+   *
+   * El dato estaba descargado desde el principio: `fn_portal_estado` lo
+   * devuelve y `DatosPortal.evidencias` lo guarda con su `motivo_rechazo`. No
+   * lo leía nadie. Lo mismo con las asistencias, que son las que ponen la hora
+   * de entrada en la tarjeta de su día presencial.
+   */
+  const { datos } = usePortal();
+  const mias = datos?.evidencias ?? [];
+  const entradaDe = (dia: Dia) =>
+    datos?.asistencias.find((a) => a.dia === dia && a.tipo === "entrada")?.hora;
 
   if (p.perfil !== "alumno") {
     return (
@@ -89,27 +102,52 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
   }
 
   const tarjetaDe = (dia: Dia): Tarjeta => {
-    const subida = subidas[dia];
-    if (subida) return { tipo: "estado", estado: subida.estado, subidaEn: subida.hora };
     if (dia === p.dia) {
-      // Las horas salen de asistencias.ts, no se inventan: es el mismo registro
-      // que produce la app de captura, incluidos los cierres automáticos.
-      const delDia = asistenciasDe(p.folio, dia);
-      const entrada = delDia.find((a) => a.tipo === "entrada");
-      return { tipo: "presencial", entrada: entrada?.hora };
+      // La hora sale del registro de la puerta, no se inventa: es el mismo que
+      // produce la app de captura, incluidos los cierres automáticos.
+      return { tipo: "presencial", entrada: entradaDe(dia) };
     }
+
     const ev = mias.find((e) => e.dia === dia);
-    if (ev)
+    /*
+     * `no_entregada` NO es un estado que enseñar: es la fila que reserva el
+     * paso 1 de la subida cuando el archivo todavía no llegó. Si la subida se
+     * cortó a medias, lo que esa persona necesita es el botón para reintentar,
+     * no un rótulo. Antes esa rama decía «Venció el plazo», que era falso.
+     */
+    if (ev && ev.estado !== "no_entregada")
       return {
         tipo: "estado",
-        estado: ev.estado,
-        motivo: ev.motivoRechazo,
-        subidaEn: ev.subidaEn,
-        revisor: ev.revisor,
-        revisadaEn: revisiones[ev.id]?.en,
+        estado: ev.estado as EstadoEvidencia,
+        ...(ev.motivo_rechazo ? { motivo: ev.motivo_rechazo } : {}),
       };
-    if (dia === 3)
-      return { tipo: "bloqueada", texto: "Podrás subirla el 16/10 de 8:00 a 16:00 hrs" };
+
+    /*
+     * La evidencia de un día se habilita ESE día.
+     *
+     * Aquí había un `if (dia === 3)` con un literal —«Podrás subirla el 16/10
+     * de 8:00 a 16:00 hrs»— y ninguna comprobación de fecha detrás: nunca se
+     * abría. Como el alumno entrega los DOS días que no le tocan, eso dejaba
+     * a los del día 1 y los del día 2 con una sola evidencia posible de las
+     * dos que exige `v_elegibles`: sin constancia, y sin forma de saber por
+     * qué. Solo los del día 3 podían completar.
+     *
+     * Ahora la fecha sale de `dias_evento` y la comparación es entre cadenas
+     * AAAA-MM-DD: `new Date("2026-10-17")` se interpreta en UTC y en México
+     * abriría el día anterior a las 18:00.
+     *
+     * Se abre el mismo día y no al terminarlo porque la foto es de la sesión
+     * en línea, que ocurre DURANTE ese día. Y no se vuelve a cerrar: quien no
+     * pudo subirla esa tarde tiene que poder hacerlo después, que es de lo que
+     * depende su constancia.
+     */
+    const fecha = infoDia(dia).fecha;
+    if (fecha && hoyIso() < fecha)
+      return {
+        tipo: "bloqueada",
+        texto: `Podrás subirla el ${isoAFecha(fecha)}, que es el día de esa sesión.`,
+      };
+
     return { tipo: "disponible" };
   };
 
@@ -125,8 +163,6 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
         {([1, 2, 3] as Dia[]).map((dia) => {
           const info = infoDia(dia);
           const t = tarjetaDe(dia);
-          const usados = intentos[dia] ?? 0;
-          const restantes = 3 - usados;
 
           return (
             <li key={dia} className="overflow-hidden rounded-lg border border-border bg-card">
@@ -187,35 +223,14 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
                         <p className="rounded-md bg-estado-cancelado-bg p-3 text-sm text-estado-cancelado">
                           Motivo: {t.motivo ?? "Imagen ilegible o muy oscura"}
                         </p>
-                        <SubirEvidencia
-                          dia={dia}
-                          restantes={restantes}
-                          onSubida={(estado) => {
-                            setIntentos((prev) => ({ ...prev, [dia]: usados + 1 }));
-                            setSubidas((prev) => ({ ...prev, [dia]: { estado, hora: hora() } }));
-                          }}
-                          etiqueta="Volver a subir evidencia"
-                        />
+                        <SubirEvidencia dia={dia} etiqueta="Volver a subir evidencia" />
                       </>
-                    ) : null}
-                    {t.estado === "no_entregada" ? (
-                      <p className="text-sm text-muted-foreground">
-                        Venció el plazo para subir la evidencia de este día.
-                      </p>
                     ) : null}
                   </div>
                 ) : null}
 
                 {t.tipo === "disponible" ? (
-                  <SubirEvidencia
-                    dia={dia}
-                    restantes={restantes}
-                    onSubida={(estado) => {
-                      setIntentos((prev) => ({ ...prev, [dia]: usados + 1 }));
-                      setSubidas((prev) => ({ ...prev, [dia]: { estado, hora: hora() } }));
-                    }}
-                    etiqueta="Subir evidencia"
-                  />
+                  <SubirEvidencia dia={dia} etiqueta="Subir evidencia" />
                 ) : null}
               </div>
             </li>
@@ -226,17 +241,7 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
   );
 }
 
-function SubirEvidencia({
-  dia,
-  restantes,
-  onSubida,
-  etiqueta,
-}: {
-  dia: number;
-  restantes: number;
-  onSubida: (estado: EstadoEvidencia) => void;
-  etiqueta: string;
-}) {
+function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
   const { sesion, refrescar } = usePortal();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -267,7 +272,6 @@ function SubirEvidencia({
       setProgreso(40);
       await subirEvidenciaRemota(sesion.folio, sesion.credencial, dia, archivo);
       setProgreso(100);
-      onSubida("pendiente");
       toast.success("Tu evidencia quedó en revisión.");
       // Los intentos y el estado los lleva la base: se vuelven a pedir en vez
       // de suponerlos aquí, que es como el contador acabó viviendo en memoria.
@@ -281,12 +285,16 @@ function SubirEvidencia({
     }
   };
 
-  if (restantes <= 0)
-    return (
-      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-        Ya usaste tus 3 intentos de este día. Contacta a soporte si necesitas ayuda.
-      </p>
-    );
+  /*
+   * Aquí había un «Ya usaste tus 3 intentos» que decidía un contador de
+   * memoria: arrancaba en cero y se reiniciaba en cada recarga, así que ni
+   * frenaba a quien ya los había gastado ni le decía la verdad a nadie.
+   *
+   * El tope lo lleva la base —`evidencias.intentos`, que comprueba
+   * `fn_evidencia_preparar`— y el cuarto intento vuelve con su mensaje exacto:
+   * «Ya usaste tus 3 intentos del día N». Enseñar eso cuando ocurre es más
+   * honesto que adivinarlo antes; el portal todavía no descarga el contador.
+   */
 
   return (
     <div className="grid gap-3">
@@ -317,7 +325,8 @@ function SubirEvidencia({
       ) : null}
       {subiendo || progreso === 100 ? <Progress value={progreso} className="h-2" /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Intentos restantes: {restantes} de 3</p>
+        {/* La regla, no un contador: el que había mentía en cada recarga. */}
+        <p className="text-xs text-muted-foreground">Máximo 3 intentos por día</p>
         <Button className="h-11" disabled={!preview || subiendo} onClick={() => void subir()}>
           {subiendo ? "Subiendo…" : etiqueta}
         </Button>
