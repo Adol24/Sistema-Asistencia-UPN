@@ -175,9 +175,17 @@ function PagoContenido() {
    * la hay, y entonces es `pre_registrado`, que es exactamente lo que esa
    * persona es.
    */
+  /*
+   * El estado de su depósito, una sola vez.
+   *
+   * Recién cerrado el pre-registro no hay ficha y es `pre_registrado`, que es
+   * exactamente lo que esa persona es. Lo miran dos cosas: la cita de pago y
+   * el aviso de abajo para quien ya abonó.
+   */
+  const estadoDeposito = ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado";
   const cita = citaEnPantalla({
     perfil,
-    estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
+    estado: estadoDeposito,
     remota: citaRemota,
     fechaPago: evento.fechaPagoDocentesExternos,
   });
@@ -422,6 +430,24 @@ function PagoContenido() {
           <article className="mt-4 rounded-lg border border-border bg-card p-4 lg:p-5">
             <Rotulo>Cuánto depositar</Rotulo>
             <p className="mt-2 text-4xl font-extrabold tracking-tight">{moneda(deposito.total)}</p>
+            {/*
+              A quien ya abonó, esa cifra grande le miente por omisión.
+              ---------------------------------------------------------------
+              Es su total, no su saldo, y con una prórroga encima ya entregó
+              una parte. Depositarla otra vez lo dejaría pagando de más y su
+              concepto en discrepancia, que es peor que no haber pagado.
+
+              No se dice cuánto le falta porque esta pantalla no lo sabe: la
+              tabla `pagos` es del personal y aquí no se puede leer. Antes que
+              una resta inventada, se le manda a preguntar donde sí lo saben.
+            */}
+            {estadoDeposito === "parcial" ? (
+              <p className="mt-3 rounded-md border border-estado-comprobante/40 bg-estado-comprobante-bg p-3 text-sm font-semibold text-estado-comprobante">
+                Ya tienes un abono registrado, así que este es tu total y no lo que te falta.
+                Pregunta tu saldo en {evento.ventanilla.lugar || "la ventanilla"} y deposita solo
+                esa diferencia.
+              </p>
+            ) : null}
             {deposito.llevaTaller && taller ? (
               <dl className="mt-3 space-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
                 <div className="flex justify-between gap-4">

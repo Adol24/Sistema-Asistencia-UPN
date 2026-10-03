@@ -179,9 +179,10 @@ function ComprobanteContenido() {
    * Decirlo así es más honesto que pasar un estado inventado: el valor por
    * omisión es justo el que esa situación tiene.
    */
+  const estadoDeposito = ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado";
   const cita = citaEnPantalla({
     perfil,
-    estado: ficha ? estadoDelDeposito(estadoDe(ficha)) : "pre_registrado",
+    estado: estadoDeposito,
     remota: citaRemota,
     fechaPago: evento.fechaPagoDocentesExternos,
   });
@@ -317,6 +318,19 @@ function ComprobanteContenido() {
                   <dd className="text-lg font-bold tabular-nums">
                     {exento ? "Nada" : moneda(deposito.total)}
                   </dd>
+                  {/*
+                    Con un abono de por medio, esa cifra es el total y no el
+                    saldo. Este papel se imprime y se lleva al banco, así que
+                    es el peor sitio donde dejar que se lea como «deposita
+                    esto»: pagaría de más y su concepto quedaría en
+                    discrepancia. El saldo no se puede calcular aquí —`pagos`
+                    es del personal—, así que se le manda a preguntarlo.
+                  */}
+                  {estadoDeposito === "parcial" ? (
+                    <p className="mt-1 text-xs font-semibold text-estado-comprobante">
+                      Ya abonaste una parte: pregunta tu saldo antes de depositar.
+                    </p>
+                  ) : null}
                 </div>
                 {/*
                  * El concepto también va en este papel, y no solo en `/pago`.

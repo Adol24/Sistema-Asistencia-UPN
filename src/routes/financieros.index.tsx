@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { descargarCsv } from "@/lib/exportar";
-import { hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
+import { fechaHora, hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
 import { usePrototipo } from "@/lib/prototipo";
 import { useEstadoEvento } from "@/lib/estado-evento";
@@ -64,7 +64,7 @@ const POR_PAGINA = 10;
 const claveDeNombre = (nombre: string) =>
   nombre.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
 
-type Filtro = "todos" | "por_cobrar" | "pagados";
+type Filtro = "todos" | "por_cobrar" | "pagados" | "prorroga";
 
 /*
  * «Sin adeudo» y no «Pagados», y el rótulo cambió porque la regla cambió.
@@ -81,6 +81,16 @@ const ETIQUETA: Record<Filtro, string> = {
   todos: "Todos",
   por_cobrar: "Por cobrar",
   pagados: "Sin adeudo",
+  /*
+   * Quiénes tienen plazo para completar, hayan abonado o no.
+   *
+   * Es la lista que hay que llamar antes de que venza: esa gente NO entra al
+   * evento mientras deba, y a diferencia del resto de los morosos se le
+   * prometió algo. Filtra por el permiso y no por el estado a propósito —quien
+   * ya completó también sale—, porque lo que se revisa en esta pantalla es a
+   * quién se le dio plazo y cómo va, no solo quién sigue debiendo.
+   */
+  prorroga: "Con prórroga",
 };
 
 function Ventanilla() {
@@ -161,6 +171,7 @@ function Ventanilla() {
   const lista = useMemo(() => {
     const base = q.trim() ? buscarEnParticipantes(participantes, q) : participantes;
     if (filtro === "todos") return base;
+    if (filtro === "prorroga") return base.filter((p) => Boolean(p.prorrogaHasta));
     return base.filter((p) => alCorriente(estadoDe(p)) === (filtro === "pagados"));
   }, [participantes, q, filtro, estadoDe]);
 
@@ -443,6 +454,16 @@ function Ventanilla() {
                           {p.folio}
                           {p.matricula ? ` · ${p.matricula}` : ""}
                         </span>
+                        {/*
+                          El plazo, en la fila y no solo en la ficha: quien
+                          atiende tiene que saber que a esta persona se le
+                          prometió algo ANTES de decirle que no puede entrar.
+                        */}
+                        {p.prorrogaHasta ? (
+                          <span className="block text-xs font-semibold text-estado-comprobante">
+                            Prórroga al {fechaHora(new Date(p.prorrogaHasta))}
+                          </span>
+                        ) : null}
                       </button>
                     </td>
                     <td className="px-3 py-2">

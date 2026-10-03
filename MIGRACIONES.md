@@ -367,6 +367,74 @@ del torniquete cuando era la 31, y todo lo que se numeró encima heredó el erro
 
 ## Qué hicieron las últimas
 
+### La prórroga del alumno (`20261002120000` y `20261002130000`) — SIN APLICAR
+
+**Van en DOS corridas**, y en este orden:
+
+1. `20261002120000_la_prorroga_del_alumno.sql` — añade `parcial` a los tipos
+   `estado_pago` y `resultado_pago`, y las tres columnas de la prórroga en
+   `participantes`.
+2. Cuando esa termine, en otra corrida:
+   `20261002130000_los_abonos_de_la_prorroga.sql` — el disparador, la vista del
+   estado, la columna nueva de `v_participantes` y las dos funciones.
+
+Es la misma razón de siempre: Postgres deja crear un valor de enum dentro de una
+transacción pero **prohíbe usarlo en esa misma transacción**, y el editor SQL de
+Supabase manda el archivo entero como una sola orden. La segunda se niega a
+empezar si la primera no está, así que invertirlas no rompe nada: avisa.
+
+**Qué resuelve.** La universidad le da plazo a un alumno para depositar la mitad
+ahora y el resto antes de una fecha. Hasta hoy eso no se podía registrar: cada
+abono entra como `discrepancia` por no cuadrar con lo esperado, y
+`v_estado_pago` usaba `bool_or(resultado = 'discrepancia')`, o sea que **una
+discrepancia se queda pegada para siempre**. Esa persona pagaba completo en dos
+partes y seguía figurando en discrepancia: sin constancia —`v_elegibles` exige
+`pagado`—, fuera de la lista de cobros de ventanilla —`resuelto(discrepancia)`
+es cierto— y sin más salida que reescribir una fila, que es falsificar el libro.
+
+**La regla que la hace barata.** La organización decidió el 2026-10-02 que
+mientras no complete **no se le genera el código y no entra**. Con eso, el
+estado nuevo cae del lado de «todavía no» en las fronteras que ya existen y no
+hay que tocar ni el torniquete ni las constancias:
+
+- `fn_evaluar_escaneo` admite `pagado`, `discrepancia` y `exento`. `parcial` no
+  está en esa lista, así que la puerta lo rechaza sin una línea nueva.
+- `v_elegibles` sigue exigiendo `pagado`.
+- El código que ya tiene para pagar se sigue dibujando: nunca fue el pase, y lo
+  necesita para ir a dejar el resto.
+
+Las dos reglas están comprobadas **dentro** de la segunda migración, leyendo la
+definición viva de la función y de la vista. Si alguna hubiera cambiado, la
+migración se detiene.
+
+**Qué cambia, y para quién.** Solo para quien tenga una prórroga autorizada
+manda la SUMA de sus abonos; para todos los demás la expresión de la vista es la
+de antes, carácter por carácter. Es deliberado: con la suma aplicada a todo el
+mundo, dos filas de 500 registradas por error —hoy `pagado`— pasarían a sumar
+1 000 y a leerse como discrepancia, y la puerta se le cerraría el día del evento
+a alguien que sí pagó.
+
+**Aplicarla no cambia nada visible.** Nadie tiene prórroga hasta que Servicios
+Financieros autorice la primera desde la ficha del participante, y es solo para
+alumnos: `chk_prorroga_solo_alumno` lo impide en la base.
+
+**Cómo saber que quedó.** La segunda imprime al terminar
+`Prórrogas vigentes ahora mismo: 0`. Y desde fuera, con la clave publicable, el
+tipo tiene que conocer el valor nuevo:
+
+```sql
+select enumlabel from pg_enum e
+  join pg_type t on t.oid = e.enumtypid
+ where t.typname = 'estado_pago' order by e.enumsortorder;
+-- pre_registrado, comprobante_recibido, parcial, pagado, exento, discrepancia, expirado, cancelado
+```
+
+**Lo que NO lleva, y hay que saberlo.** El portal no puede decirle a la persona
+cuánto le falta en pesos: la tabla `pagos` es del personal y la vista del portal
+corre con `security_invoker`, así que ahí la resta daría cero. El mensaje la
+manda a preguntar su saldo en Aportaciones. Si algún día hace falta la cifra,
+hay que exponerla con una función `security definer`, no abriendo la tabla.
+
 ### Los cinco lugares del docente (`20260929180000`) — SIN APLICAR
 
 **Va DESPUÉS de `20260929120000` y `20260929130000`**, que a su vez van en dos
