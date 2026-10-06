@@ -347,6 +347,10 @@ function ReactivoLikert({
  * instrumento siguen en `lib/encuesta.ts` enteros y comprobados. Lo que
  * cambió es quién los lee —la coordinación, sobre el agregado— y no si
  * existen.
+ *
+ * Y el acuse se quedó en dos renglones por lo mismo que no lleva puntaje: esta
+ * pantalla no tiene nada que pedirle ni que enseñarle. Lo único que le hace
+ * falta saber es que sus respuestas no se leen como suyas.
  */
 function Resultado({ onReiniciar }: { onReiniciar: () => void }) {
   return (
@@ -354,9 +358,16 @@ function Resultado({ onReiniciar }: { onReiniciar: () => void }) {
       <Tarjeta className="text-center">
         <CheckCircle2 className="mx-auto size-8 text-estado-pagado" aria-hidden />
         <p className="mt-3 text-lg font-bold tracking-tight">Gracias por responder</p>
+        {/*
+          Una línea, y la que queda es la que informa.
+
+          Decía antes «Terminaste las doce afirmaciones» y eso lo acaba de
+          hacer: contárselo es ocupar el renglón más visible de la pantalla con
+          algo que ya sabe. Lo que NO sabe, y es lo único que le concierne, es
+          que nadie va a leer sus respuestas como suyas.
+        */}
         <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
-          Terminaste las doce afirmaciones. Lo que contestaste se analiza junto con lo de los demás
-          asistentes para evaluar el Encuentro, no de forma individual.
+          Tus respuestas se analizan en conjunto para evaluar el Encuentro, no una por una.
         </p>
       </Tarjeta>
 
