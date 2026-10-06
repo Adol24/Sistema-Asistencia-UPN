@@ -8,11 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   ESCALA,
   INSTRUMENTOS,
-  NIVELES,
   PREGUNTAS,
-  PUNTAJE_MAXIMO,
-  maximoDe,
-  nivelDeLogro,
   preguntasDe,
   type Instrumento,
   type ValorEscala,
@@ -35,11 +31,14 @@ export const Route = createFileRoute("/encuesta")({
  * La encuesta de evaluación y seguimiento académico. **Vista de demostración.**
  *
  * Está aparte del flujo público a propósito y no se enlaza desde ninguna barra:
- * sirve para enseñar el instrumento ya dibujado —cómo se ve, cómo se contesta y
- * qué devuelve— sin tocar el pre-registro, los paneles ni la base. Nada de lo
- * que se marca aquí se guarda: el puntaje se calcula en el navegador y se
- * pierde al recargar, y la pantalla lo dice antes de pedir la primera respuesta
- * para que nadie crea que ya entregó su evaluación.
+ * sirve para enseñar el instrumento ya dibujado —cómo se ve y cómo se
+ * contesta— sin tocar el pre-registro, los paneles ni la base. Nada de lo que
+ * se marca aquí se guarda: se pierde al recargar, y la pantalla lo dice antes
+ * de pedir la primera respuesta para que nadie crea que ya entregó su
+ * evaluación.
+ *
+ * Quien contesta no ve ningún puntaje ni nivel de logro —ver `Resultado`—. El
+ * cálculo existe igual, en `lib/encuesta.ts`, y es para el agregado.
  *
  * Lo que sí es definitivo son las preguntas, la escala y los rangos de
  * interpretación, que viven en `lib/encuesta.ts` tal como están impresos.
@@ -53,7 +52,7 @@ function Encuesta() {
    *
    * No se marcan desde el principio: una pantalla con doce avisos en rojo antes
    * de que la persona toque nada regaña por adelantado. El resaltado aparece
-   * solo después de pulsar «Ver mi resultado», que es cuando el hueco importa.
+   * solo al pulsar «Enviar mis respuestas», que es cuando el hueco importa.
    */
   const [faltantes, setFaltantes] = useState<Set<number>>(new Set());
   /*
@@ -64,8 +63,6 @@ function Encuesta() {
 
   const contestadas = Object.keys(respuestas).length;
   const completa = contestadas === PREGUNTAS.length;
-
-  const total = PREGUNTAS.reduce((suma, p) => suma + (respuestas[p.numero] ?? 0), 0);
 
   function responder(numero: number, valor: ValorEscala) {
     setRespuestas((previas) => ({ ...previas, [numero]: valor }));
@@ -120,13 +117,12 @@ function Encuesta() {
         <ClipboardList className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
           <strong className="font-semibold text-foreground">Vista de demostración.</strong> Las
-          respuestas no se guardan en ninguna parte: el puntaje se calcula aquí mismo y se pierde al
-          recargar la página.
+          respuestas no se guardan en ninguna parte: se pierden al recargar la página.
         </span>
       </p>
 
       {enviada ? (
-        <Resultado total={total} respuestas={respuestas} onReiniciar={reiniciar} />
+        <Resultado onReiniciar={reiniciar} />
       ) : (
         <>
           <Tarjeta className="mt-6 p-4" padding="none">
@@ -160,7 +156,7 @@ function Encuesta() {
 
           <div className="mt-8 flex flex-col items-center gap-3">
             <Button size="lg" className="w-full sm:w-auto" onClick={enviar}>
-              Ver mi resultado
+              Enviar mis respuestas
             </Button>
             {faltantes.size > 0 ? (
               <p className="text-sm font-medium text-destructive" role="alert">
@@ -172,7 +168,7 @@ function Encuesta() {
               <Ayuda>
                 {completa
                   ? "Ya contestaste las doce."
-                  : "Contesta las doce afirmaciones para ver tu nivel de logro."}
+                  : "Contesta las doce afirmaciones para poder enviarlas."}
               </Ayuda>
             )}
           </div>
@@ -334,110 +330,35 @@ function ReactivoLikert({
   );
 }
 
-/** El puntaje, el nivel de logro y la tabla de interpretación. */
-function Resultado({
-  total,
-  respuestas,
-  onReiniciar,
-}: {
-  total: number;
-  respuestas: Record<number, ValorEscala>;
-  onReiniciar: () => void;
-}) {
-  const nivel = nivelDeLogro(total);
-  const parcial = (instrumento: Instrumento) =>
-    preguntasDe(instrumento).reduce((suma, p) => suma + (respuestas[p.numero] ?? 0), 0);
-
+/**
+ * Lo que se ve al terminar: un acuse, y nada más.
+ *
+ * Aquí estaban el puntaje sobre 60, el nivel de logro con su interpretación,
+ * el desglose por instrumento y la tabla de la escala, y se quitaron los
+ * cuatro. No fue por sitio: **la calificación no es para quien contesta.**
+ *
+ * El instrumento mide el evento, no a la persona, y devolverle un «Bajo — el
+ * impacto académico fue limitado» a quien acaba de dedicarle diez minutos
+ * convierte una evaluación en un veredicto sobre ella. Y lo que hace al
+ * contestar la siguiente —si la hay— es acomodar las respuestas para no
+ * volver a salir en rojo, que es justo el dato que se estaba buscando.
+ *
+ * El cálculo no se borró: `nivelDeLogro`, los rangos y los máximos por
+ * instrumento siguen en `lib/encuesta.ts` enteros y comprobados. Lo que
+ * cambió es quién los lee —la coordinación, sobre el agregado— y no si
+ * existen.
+ */
+function Resultado({ onReiniciar }: { onReiniciar: () => void }) {
   return (
     <div className="mt-6">
       <Tarjeta className="text-center">
         <CheckCircle2 className="mx-auto size-8 text-estado-pagado" aria-hidden />
-        <p className="mt-3 text-sm text-muted-foreground">Puntaje obtenido</p>
-        <p className="mt-1 text-5xl font-extrabold tabular-nums tracking-tight">
-          {total}
-          <span className="text-2xl font-bold text-muted-foreground"> / {PUNTAJE_MAXIMO}</span>
-        </p>
-        <p
-          className={cn(
-            "mt-4 inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-semibold",
-            nivel.clase,
-          )}
-        >
-          Nivel de logro: {nivel.nombre}
-        </p>
-        <p className="mx-auto mt-3 max-w-prose text-pretty text-sm text-muted-foreground">
-          {nivel.interpretacion}
+        <p className="mt-3 text-lg font-bold tracking-tight">Gracias por responder</p>
+        <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
+          Terminaste las doce afirmaciones. Lo que contestaste se analiza junto con lo de los demás
+          asistentes para evaluar el Encuentro, no de forma individual.
         </p>
       </Tarjeta>
-
-      {/*
-       * El desglose por instrumento. El total sobre 60 no distingue entre un
-       * evento que gustó pero no deja trabajo después y uno al revés, y esa
-       * diferencia es justo la que el instrumento se propone medir.
-       */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        {(["impacto", "seguimiento"] as const).map((instrumento) => {
-          const preguntas = preguntasDe(instrumento);
-          return (
-            <Tarjeta key={instrumento} padding="sm">
-              <Rotulo>{INSTRUMENTOS[instrumento].titulo}</Rotulo>
-              <p className="mt-2 text-2xl font-extrabold tabular-nums tracking-tight">
-                {parcial(instrumento)}
-                <span className="text-base font-bold text-muted-foreground">
-                  {" "}
-                  / {maximoDe(instrumento)}
-                </span>
-              </p>
-              <Ayuda className="mt-1">
-                {preguntas.length} afirmaciones ({preguntas[0]!.numero} a{" "}
-                {preguntas[preguntas.length - 1]!.numero})
-              </Ayuda>
-            </Tarjeta>
-          );
-        })}
-      </div>
-
-      <section className="mt-8">
-        <Rotulo className="text-primary">Escala de interpretación</Rotulo>
-        <Tarjeta className="mt-3 overflow-hidden" padding="none">
-          <ul>
-            {NIVELES.map((n) => {
-              const actual = n.nombre === nivel.nombre;
-              return (
-                <li
-                  key={n.nombre}
-                  className={cn(
-                    "flex flex-col gap-1 border-b border-border p-4 last:border-0 sm:flex-row sm:items-baseline sm:gap-4",
-                    actual && "bg-muted",
-                  )}
-                >
-                  <span className="flex shrink-0 items-baseline gap-2 sm:w-44">
-                    <span className="text-sm font-semibold tabular-nums">
-                      {n.min}–{n.max}
-                    </span>
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 text-xs font-semibold",
-                        actual ? n.clase : "text-muted-foreground",
-                      )}
-                    >
-                      {n.nombre}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "text-sm",
-                      actual ? "font-medium text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {n.interpretacion}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </Tarjeta>
-      </section>
 
       <div className="mt-8 flex justify-center">
         <Button variant="outline" size="lg" onClick={onReiniciar}>
