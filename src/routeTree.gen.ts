@@ -26,6 +26,7 @@ import { Route as AdminAvanceRouteImport } from './routes/admin.avance'
 import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
+import { Route as AdminLeipRouteImport } from './routes/admin.leip'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
 import { Route as AdminPadronRouteImport } from './routes/admin.padron'
 import { Route as AdminPreinscritosRouteImport } from './routes/admin.preinscritos'
@@ -129,6 +130,11 @@ const AdminConfiguracionRoute = AdminConfiguracionRouteImport.update({
 const AdminElegiblesRoute = AdminElegiblesRouteImport.update({
   id: '/admin/elegibles',
   path: '/admin/elegibles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLeipRoute = AdminLeipRouteImport.update({
+  id: '/admin/leip',
+  path: '/admin/leip',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminMonitoreoRoute = AdminMonitoreoRouteImport.update({
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
@@ -321,6 +329,7 @@ export interface FileRoutesById {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
@@ -361,6 +370,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
     | '/admin/preinscritos'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
     | '/admin/preinscritos'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
     | '/admin/preinscritos'
@@ -476,6 +488,7 @@ export interface RootRouteChildren {
   AdminBitacoraRoute: typeof AdminBitacoraRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminElegiblesRoute: typeof AdminElegiblesRoute
+  AdminLeipRoute: typeof AdminLeipRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
   AdminPadronRoute: typeof AdminPadronRoute
   AdminPreinscritosRoute: typeof AdminPreinscritosRoute
@@ -617,6 +630,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/elegibles'
       fullPath: '/admin/elegibles'
       preLoaderRoute: typeof AdminElegiblesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/leip': {
+      id: '/admin/leip'
+      path: '/admin/leip'
+      fullPath: '/admin/leip'
+      preLoaderRoute: typeof AdminLeipRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/monitoreo': {
@@ -772,6 +792,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBitacoraRoute: AdminBitacoraRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminElegiblesRoute: AdminElegiblesRoute,
+  AdminLeipRoute: AdminLeipRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
   AdminPadronRoute: AdminPadronRoute,
   AdminPreinscritosRoute: AdminPreinscritosRoute,

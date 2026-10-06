@@ -219,3 +219,52 @@ export function totalLeip(filas: FilaLeip[]): Omit<FilaLeip, "sede" | "grupo" | 
     pct: enPadron > 0 ? Math.round((preinscritos / enPadron) * 100) : 0,
   };
 }
+
+/** Una sede entera de LEIP: la suma de sus grupos. */
+export interface SedeLeip extends Omit<FilaLeip, "grupo" | "modulos"> {
+  /** Cuántos grupos tiene esa sede, que es parte de lo que se quiere ver. */
+  grupos: number;
+}
+
+/**
+ * El mismo dato, pero por sede.
+ *
+ * Suma las filas ya calculadas en vez de recorrer otra vez al padrón y a los
+ * participantes, por lo mismo que `totalLeip`: la hoja enseña las dos tablas
+ * una debajo de la otra, y si cada una contara por su cuenta bastaría un
+ * criterio distinto —un alumno sin grupo, un programa escrito raro— para que
+ * la suma de los grupos no diera el total de su sede.
+ *
+ * El orden lo hereda de las filas, que ya vienen alfabéticas por sede.
+ */
+export function porSedeLeip(filas: FilaLeip[]): SedeLeip[] {
+  const sedes = new Map<string, SedeLeip>();
+  for (const f of filas) {
+    let s = sedes.get(f.sede);
+    if (!s) {
+      s = {
+        sede: f.sede,
+        grupos: 0,
+        enPadron: 0,
+        preinscritos: 0,
+        pagados: 0,
+        exentos: 0,
+        faltan: 0,
+        pct: 0,
+      };
+      sedes.set(f.sede, s);
+    }
+    s.grupos += 1;
+    s.enPadron += f.enPadron;
+    s.preinscritos += f.preinscritos;
+    s.pagados += f.pagados;
+    s.exentos += f.exentos;
+    s.faltan += f.faltan;
+  }
+  // El porcentaje se recalcula al final, sobre las sumas. Promediar los de
+  // grupos de tamaños distintos da un número que no es el porcentaje de nada.
+  for (const s of sedes.values()) {
+    s.pct = s.enPadron > 0 ? Math.round((s.preinscritos / s.enPadron) * 100) : 0;
+  }
+  return [...sedes.values()];
+}

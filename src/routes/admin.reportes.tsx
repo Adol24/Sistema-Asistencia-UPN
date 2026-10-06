@@ -494,27 +494,24 @@ function Reportes() {
   };
 
   /*
-   * El atajo a la estadística de LEIP, desde cualquier pestaña.
+   * El atajo a la hoja de LEIP, desde cualquier pestaña.
    *
    * Lo pidió la coordinación del programa y por eso no es «un reporte más»:
    * quien lo usa entra a esta pantalla a buscar una sola cosa, y obligarlo a
-   * encontrar su pestaña entre diez para luego pulsar exportar es tres pasos
-   * para un archivo que siempre es el mismo.
+   * encontrar su pestaña entre diez es un paso de más para algo que siempre es
+   * lo mismo.
    *
-   * Se lleva la tabla COMPLETA, sin el buscador de arriba, porque el buscador
-   * filtra el reporte activo —que aquí casi nunca va a ser este— y un atajo que
-   * descargara un recorte de otra pantalla sería imposible de explicar.
+   * **Lleva a la hoja con gráficas y no descarga un CSV**, que es lo que hacía
+   * antes. Un CSV es texto separado por comas: no lleva gráficas y no se
+   * imprime. Lo que se pidió es un documento, y el documento vive en
+   * `/admin/leip` —`Ctrl+P` → «Guardar como PDF»—. El CSV sigue estando, en su
+   * pestaña de aquí al lado, para quien quiera cruzarlo en Excel.
    *
-   * No se enseña cuando ya estás en su pestaña: ahí el botón de exportar de al
-   * lado dice «Exportar LEIP por sede y grupo» y hace exactamente esto. Es el
-   * mismo criterio con que la hoja de gráficas solo aparece en «avance».
+   * Se enseña también estando en su pestaña, al revés que la hoja de gráficas
+   * del avance: ahí el botón de exportar de al lado baja el CSV, que ya no es
+   * lo mismo que este enlace.
    */
   const leip = reportes.find((x) => x.id === "leip")!;
-  const exportarLeip = () => {
-    const n = descargarCsv("estadistica-leip.csv", leip.encabezados, leip.filas);
-    registrarBitacora("Exportó la estadística de LEIP", `${n} filas por sede y grupo`);
-    toast.success(`Exportamos la estadística de LEIP: ${n} filas por sede y grupo.`);
-  };
 
   return (
     <PantallaPanel
@@ -541,11 +538,11 @@ function Reportes() {
               </Link>
             </Button>
           ) : null}
-          {activo === "leip" ? null : (
-            <Button variant="secondary" className="h-11" onClick={exportarLeip}>
-              <GraduationCap className="size-4" /> Estadística LEIP ({leip.filas.length})
-            </Button>
-          )}
+          <Button asChild variant="secondary" className="h-11">
+            <Link to="/admin/leip">
+              <GraduationCap className="size-4" /> Hoja de LEIP ({leip.filas.length - 1})
+            </Link>
+          </Button>
           <Button className="h-11" onClick={exportar}>
             <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
           </Button>

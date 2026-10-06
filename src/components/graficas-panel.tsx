@@ -109,6 +109,13 @@ export function GraficaPorDia({
   );
 }
 
+/** Los rótulos de siempre: los del aforo del evento. */
+const NOMBRES_AVANCE = {
+  meta: "Caben",
+  preinscritos: "Pre-registrados",
+  pagados: "Pagados",
+};
+
 /** Un día en la gráfica de avance: lo que cabe, lo apuntado y lo cobrado. */
 export interface BarraAvance {
   etiqueta: string;
@@ -132,31 +139,69 @@ export function GraficaAvance({
   datos,
   colores,
   alto = ALTO,
+  horizontal = false,
+  anchoEtiqueta = 150,
+  nombres = NOMBRES_AVANCE,
 }: {
   datos: BarraAvance[];
   /** En la pantalla son variables del tema; en el papel, colores escritos. */
   colores: { meta: string; preinscritos: string; pagados: string };
   alto?: number;
+  /** Tumbada, para rótulos largos. Mismo motivo que en `GraficaDesglose`. */
+  horizontal?: boolean;
+  /** Cuánto se reserva para el rótulo cuando va tumbada. */
+  anchoEtiqueta?: number;
+  /**
+   * Cómo se llaman las tres series en la leyenda.
+   *
+   * El techo no siempre es un aforo: en la hoja de LEIP es cuánta gente
+   * entregó Servicios Escolares para ese grupo, y una leyenda que dijera
+   * «Caben» ahí estaría hablando de sillas donde se habla de matrícula.
+   */
+  nombres?: { meta: string; preinscritos: string; pagados: string };
 }) {
+  // Tumbada no se redondean las esquinas de arriba: ahí la barra crece hacia la
+  // derecha y el redondeo le tocaría al costado, no a la punta.
+  const punta: [number, number, number, number] = horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0];
   return (
     <ResponsiveContainer width="100%" height={alto}>
-      <BarChart data={datos} barGap={4}>
-        <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={12} />
-        <YAxis tickLine={false} axisLine={false} fontSize={12} width={36} />
+      <BarChart data={datos} layout={horizontal ? "vertical" : "horizontal"} barGap={4}>
+        {/*
+          Los ejes van sueltos y no envueltos por pareja en un fragmento:
+          `recharts` los busca entre los hijos directos del gráfico y, metidos
+          en un `<>…</>`, la gráfica sale sin ejes y sin avisar.
+        */}
+        {horizontal ? (
+          <XAxis type="number" tickLine={false} axisLine={false} fontSize={12} />
+        ) : (
+          <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={12} />
+        )}
+        {horizontal ? (
+          <YAxis
+            type="category"
+            dataKey="etiqueta"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={anchoEtiqueta}
+          />
+        ) : (
+          <YAxis tickLine={false} axisLine={false} fontSize={12} width={36} />
+        )}
         <Tooltip />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         {/*
           La meta va primera y en gris: es el fondo contra el que se leen las
           otras dos, no una cifra que compita con ellas.
         */}
-        <Bar dataKey="meta" fill={colores.meta} name="Caben" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="meta" fill={colores.meta} name={nombres.meta} radius={punta} />
         <Bar
           dataKey="preinscritos"
           fill={colores.preinscritos}
-          name="Pre-registrados"
-          radius={[3, 3, 0, 0]}
+          name={nombres.preinscritos}
+          radius={punta}
         />
-        <Bar dataKey="pagados" fill={colores.pagados} name="Pagados" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="pagados" fill={colores.pagados} name={nombres.pagados} radius={punta} />
       </BarChart>
     </ResponsiveContainer>
   );
