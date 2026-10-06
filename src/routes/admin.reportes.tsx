@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChartColumn, Download, Table2 } from "lucide-react";
+import { ChartColumn, Download, GraduationCap, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -11,6 +11,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { avanceTexto } from "@/dominio/catalogos";
 import { descargarCsv } from "@/lib/exportar";
 import { avancePorDia, totalDelAvance } from "@/lib/avance";
+import { estadisticaLeip, nombreOficialLeip, totalLeip } from "@/lib/leip";
 import {
   elegibilidadEvento,
   nombreConstancia,
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/admin/reportes")({
 
 type IdReporte =
   | "avance"
+  | "leip"
   | "padron"
   | "academicos"
   | "pagos"
@@ -138,6 +140,78 @@ function Reportes() {
             x.meta > 0 ? `${x.pct}%` : "",
           ];
           return [...porDia.map((x) => celdas(x, x.dia)), celdas(total, "TOTAL")];
+        })(),
+      },
+      {
+        /*
+         * El otro reporte AGREGADO, y el único que mira un solo programa.
+         *
+         * LEIP se imparte en varias sedes a la vez, cada una con sus grupos, y
+         * su coordinación pregunta por grupo, no por día: de este grupo de esta
+         * sede, cuántos hay en el padrón, cuántos se pre-registraron y cuántos
+         * pagaron. Con los otros reportes esa respuesta salía bajando dos CSV y
+         * cruzándolos en Excel por matrícula.
+         *
+         * `en_padron` es el denominador y sale de Servicios Escolares, no de
+         * los pre-registros: sin él, un grupo con tres apuntados se ve igual de
+         * bien que uno con treinta, y la pregunta era precisamente cuál de los
+         * dos hay que ir a buscar.
+         *
+         * Los exentos se restan de «faltan» por lo mismo que en el avance: un
+         * exento no va a aparecer nunca como pagado y se quedaría en pendiente
+         * para siempre, inventando una morosidad que no existe.
+         *
+         * La cuenta vive en `lib/leip.ts`, suelta y comprobable sin montar la
+         * aplicación. Aquí solo se ordenan las columnas del archivo.
+         */
+        id: "leip",
+        titulo: "LEIP por sede y grupo",
+        nota: (() => {
+          const oficial = nombreOficialLeip(configuracion.catalogoAcademico);
+          return oficial
+            ? `${oficial}. Una fila por sede y grupo, más la de totales; el porcentaje es cuánto de cada grupo ya se pre-registró.`
+            : "El catálogo académico no tiene ningún programa de Innovación Pedagógica dado de alta. Si esta tabla sale vacía es por eso, no porque nadie se haya pre-registrado.";
+        })(),
+        encabezados: [
+          "sede",
+          "grupo",
+          "modulos",
+          "en_padron",
+          "preinscritos",
+          "pct_preinscritos",
+          "pagados",
+          "exentos",
+          "faltan_por_pagar",
+        ],
+        filas: (() => {
+          const porGrupo = estadisticaLeip(
+            padron,
+            participantes,
+            (p) => entorno.estadoDe(p).evento,
+          );
+          const total = totalLeip(porGrupo);
+          const celdas = (
+            x: Omit<(typeof porGrupo)[number], "sede" | "grupo" | "modulos">,
+            sede: string,
+            grupo: string,
+            modulos: string,
+          ) => [
+            sede,
+            grupo,
+            modulos,
+            x.enPadron,
+            x.preinscritos,
+            // Sin nadie en el padrón no hay porcentaje que dar, y un «0%» ahí
+            // se leería como «de este grupo no se apuntó nadie».
+            x.enPadron > 0 ? `${x.pct}%` : "",
+            x.pagados,
+            x.exentos,
+            x.faltan,
+          ];
+          return [
+            ...porGrupo.map((x) => celdas(x, x.sede, x.grupo, x.modulos)),
+            celdas(total, "TOTAL", "", ""),
+          ];
         })(),
       },
       {
@@ -419,6 +493,29 @@ function Reportes() {
     toast.success(`Exportamos ${n} registros de «${r.titulo}».`);
   };
 
+  /*
+   * El atajo a la estadística de LEIP, desde cualquier pestaña.
+   *
+   * Lo pidió la coordinación del programa y por eso no es «un reporte más»:
+   * quien lo usa entra a esta pantalla a buscar una sola cosa, y obligarlo a
+   * encontrar su pestaña entre diez para luego pulsar exportar es tres pasos
+   * para un archivo que siempre es el mismo.
+   *
+   * Se lleva la tabla COMPLETA, sin el buscador de arriba, porque el buscador
+   * filtra el reporte activo —que aquí casi nunca va a ser este— y un atajo que
+   * descargara un recorte de otra pantalla sería imposible de explicar.
+   *
+   * No se enseña cuando ya estás en su pestaña: ahí el botón de exportar de al
+   * lado dice «Exportar LEIP por sede y grupo» y hace exactamente esto. Es el
+   * mismo criterio con que la hoja de gráficas solo aparece en «avance».
+   */
+  const leip = reportes.find((x) => x.id === "leip")!;
+  const exportarLeip = () => {
+    const n = descargarCsv("estadistica-leip.csv", leip.encabezados, leip.filas);
+    registrarBitacora("Exportó la estadística de LEIP", `${n} filas por sede y grupo`);
+    toast.success(`Exportamos la estadística de LEIP: ${n} filas por sede y grupo.`);
+  };
+
   return (
     <PantallaPanel
       area="admin"
@@ -444,6 +541,11 @@ function Reportes() {
               </Link>
             </Button>
           ) : null}
+          {activo === "leip" ? null : (
+            <Button variant="secondary" className="h-11" onClick={exportarLeip}>
+              <GraduationCap className="size-4" /> Estadística LEIP ({leip.filas.length})
+            </Button>
+          )}
           <Button className="h-11" onClick={exportar}>
             <Download className="size-4" /> Exportar {r.titulo.toLowerCase()} ({filas.length})
           </Button>
