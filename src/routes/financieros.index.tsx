@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { desglosar, sumaDelDesglose } from "@/lib/desglose";
 import { descargarCsv } from "@/lib/exportar";
 import { fechaHora, hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
@@ -26,6 +27,7 @@ import {
   resultadoDe,
   yaPago,
 } from "@/lib/pagos-logica";
+import { avanceTexto } from "@/dominio/catalogos";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { EstadoPago, Participante } from "@/dominio/tipos";
@@ -107,6 +109,7 @@ function Ventanilla() {
     recargar,
     cargadoEn,
     enVivo,
+    configuracion,
   } = useEstadoEvento();
   const ref = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
@@ -252,6 +255,131 @@ function Ventanilla() {
     toast.success(`Descargamos ${n} nombres.`);
   };
 
+  /**
+   * Los alumnos que todavía deben algo del evento o del taller, con su
+   * sede, licenciatura, módulo o semestre y grupo.
+   *
+   * Solo alumnos, y no los tres perfiles como `pagados`: la sede, la
+   * licenciatura y el módulo o semestre vienen del padrón de Servicios
+   * Escolares, y ese padrón no tiene al docente ni al externo. Quien deba de
+   * esos dos perfiles sigue viéndose con el filtro «Por cobrar» de la lista de
+   * arriba; lo que no tiene es un desglose académico, porque no hay de dónde
+   * sacarlo.
+   *
+   * `alCorriente` ya cuenta como pagado al exento —su monto esperado es
+   * cero—, así que no hace falta descartarlo aparte: nunca entra aquí.
+   */
+  const pendientesDePago = useMemo(
+    () =>
+      participantes
+        .filter((p) => p.perfil === "alumno" && !alCorriente(estadoDe(p)))
+        .sort(
+          (a, b) =>
+            (a.plantel ?? "").localeCompare(b.plantel ?? "", "es") ||
+            (a.programa ?? "").localeCompare(b.programa ?? "", "es") ||
+            a.nombre.localeCompare(b.nombre, "es"),
+        ),
+    [participantes, estadoDe],
+  );
+
+  /**
+   * El mismo adeudo, contado por sede, licenciatura y módulo o semestre.
+   *
+   * Reutiliza `desglosar` —la misma cuenta que la hoja de avance— sobre la
+   * lista YA filtrada a quien debe, así que `total` en cada corte es
+   * directamente cuántos alumnos faltan ahí, sin importar qué estado traigan.
+   *
+   * Lo único que se usa de cada grupo es `partes` y `total`. Sus columnas de
+   * pagados, exentos y faltan NO se leen, y es a propósito: `desglosar` las
+   * calcula mirando solo el estado del EVENTO —ver el tercer argumento—, y
+   * `pendientesDePago` entra por deber el evento O el taller. Quien tiene el
+   * evento pagado y solo el taller pendiente —Elia, en las pruebas— cuenta ahí
+   * como «pagada» para esas tres columnas aunque siga debiendo, así que no son
+   * una segunda fuente de verdad sobre el adeudo: la fuente es la lista de
+   * entrada, y `total` es lo único que de verdad la refleja.
+   */
+  const resumenPendientes = useMemo(
+    () =>
+      desglosar(
+        pendientesDePago,
+        (p) => [
+          p.plantel ?? "",
+          p.programa ?? "",
+          avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
+        ],
+        (p) => estadoDe(p).evento,
+        "etiqueta",
+      ),
+    [pendientesDePago, configuracion.catalogoAcademico, estadoDe],
+  );
+
+  /**
+   * Descarga el detalle: un alumno por renglón, con cuánto le falta.
+   *
+   * El monto pendiente suma lo que debe del evento y lo que debe del taller,
+   * como un solo número. Por dentro siguen siendo dos conceptos —ver
+   * `faltaDe`—, pero quien paga en ventanilla entrega un depósito, no dos, y
+   * este archivo habla en esos términos.
+   */
+  const descargarPendientes = () => {
+    if (pendientesDePago.length === 0) return;
+    const n = descargarCsv(
+      "faltan-por-pagar.csv",
+      [
+        "folio",
+        "matricula",
+        "nombre",
+        "nivel",
+        "licenciatura",
+        "modulo_o_semestre",
+        "grupo",
+        "sede",
+        "correo",
+        "celular",
+        "estado_evento",
+        "estado_taller",
+        "monto_pendiente",
+      ],
+      pendientesDePago.map((p) => {
+        const estado = estadoDe(p);
+        const faltaEvento = faltaDe(indicePagos, p.folio, "evento", p.montoEsperadoEvento);
+        const faltaTaller = p.tallerId
+          ? faltaDe(indicePagos, p.folio, "taller", p.montoEsperadoTaller ?? 0)
+          : 0;
+        return [
+          p.folio,
+          p.matricula ?? "",
+          p.nombre,
+          p.nivel ?? "",
+          p.programa ?? "",
+          avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
+          p.grupo ?? "",
+          p.plantel ?? "",
+          p.correo,
+          p.celular,
+          estado.evento,
+          p.tallerId ? (estado.taller ?? "") : "sin taller",
+          (faltaEvento + faltaTaller).toFixed(2),
+        ];
+      }),
+    );
+    registrarBitacora("Descargó quiénes faltan por pagar", `${n} alumnos`);
+    toast.success(`Exportamos ${n} alumnos que faltan por pagar.`);
+  };
+
+  /** Descarga el resumen: cuántos faltan en cada sede, licenciatura y módulo o semestre. */
+  const descargarResumenPendientes = () => {
+    if (resumenPendientes.length === 0) return;
+    const total = sumaDelDesglose(resumenPendientes).total;
+    const n = descargarCsv(
+      "faltan-por-pagar-por-grupo.csv",
+      ["sede", "licenciatura", "modulo_o_semestre", "alumnos_que_faltan"],
+      [...resumenPendientes.map((g) => [...g.partes, g.total]), ["TOTAL", "", "", total]],
+    );
+    registrarBitacora("Descargó el resumen de pendientes por grupo", `${n} filas`);
+    toast.success(`Exportamos el resumen de pendientes: ${n} filas.`);
+  };
+
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -383,6 +511,30 @@ function Ventanilla() {
           title="Un nombre por renglón, sin repetirse. Se abre en Excel."
         >
           <Download className="size-4" /> Pagados ({pagados.length})
+        </Button>
+        {/*
+          Dos descargas y no una, porque son dos preguntas distintas: quiénes
+          son —el detalle, para llamarles o perseguirlos— y cuántos son en cada
+          sede, licenciatura y módulo o semestre —el resumen, para repartir el
+          trabajo de cobro—. Solo alumnos: ver por qué en `pendientesDePago`.
+        */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={descargarPendientes}
+          disabled={cargandoDatos || pendientesDePago.length === 0}
+          title="Un alumno por renglón: sede, licenciatura, módulo o semestre y cuánto le falta. Se abre en Excel."
+        >
+          <Download className="size-4" /> Faltan por pagar ({pendientesDePago.length})
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={descargarResumenPendientes}
+          disabled={cargandoDatos || resumenPendientes.length === 0}
+          title="Cuántos alumnos faltan por pagar en cada sede, licenciatura y módulo o semestre."
+        >
+          <Download className="size-4" /> Resumen por grupo ({resumenPendientes.length})
         </Button>
         <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
           <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />
