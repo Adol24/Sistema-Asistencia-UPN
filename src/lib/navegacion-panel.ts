@@ -19,6 +19,7 @@ import {
   BookOpenCheck,
   CalendarCog,
   ClipboardList,
+  Contact,
   FileSpreadsheet,
   GraduationCap,
   LayoutDashboard,
@@ -69,6 +70,12 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
       enlaces: [
         { to: "/admin/padron", label: "Padrón", icono: Upload },
         { to: "/admin/preinscritos", label: "Preinscritos", icono: UserCheck },
+        /*
+         * «Alumnos» y no «Directorio»: en una columna de 16rem se busca por la
+         * palabra que uno ya tiene en la cabeza, y quien entra aquí viene
+         * pensando «necesito el correo de un alumno», no «abro el directorio».
+         */
+        { to: "/admin/alumnos", label: "Alumnos", icono: Contact },
         { to: "/admin/elegibles", label: "Elegibles", icono: UserSearch },
         { to: "/admin/soporte", label: "Soporte", icono: LifeBuoy },
       ],

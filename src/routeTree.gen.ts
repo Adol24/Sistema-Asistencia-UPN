@@ -22,6 +22,7 @@ import { Route as RegistroRouteImport } from './routes/registro'
 import { Route as RevisionRouteImport } from './routes/revision'
 import { Route as TalleresRouteImport } from './routes/talleres'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminAlumnosRouteImport } from './routes/admin.alumnos'
 import { Route as AdminAvanceRouteImport } from './routes/admin.avance'
 import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
@@ -110,6 +111,11 @@ const TalleresRoute = TalleresRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAlumnosRoute = AdminAlumnosRouteImport.update({
+  id: '/admin/alumnos',
+  path: '/admin/alumnos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAvanceRoute = AdminAvanceRouteImport.update({
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/alumnos': typeof AdminAlumnosRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/alumnos': typeof AdminAlumnosRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -325,6 +333,7 @@ export interface FileRoutesById {
   '/registro': typeof RegistroRoute
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
+  '/admin/alumnos': typeof AdminAlumnosRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/alumnos'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/alumnos'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/registro'
     | '/revision'
     | '/talleres'
+    | '/admin/alumnos'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -484,6 +496,7 @@ export interface RootRouteChildren {
   RegistroRoute: typeof RegistroRoute
   RevisionRoute: typeof RevisionRoute
   TalleresRoute: typeof TalleresRoute
+  AdminAlumnosRoute: typeof AdminAlumnosRoute
   AdminAvanceRoute: typeof AdminAvanceRoute
   AdminBitacoraRoute: typeof AdminBitacoraRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
@@ -602,6 +615,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/alumnos': {
+      id: '/admin/alumnos'
+      path: '/admin/alumnos'
+      fullPath: '/admin/alumnos'
+      preLoaderRoute: typeof AdminAlumnosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/avance': {
@@ -788,6 +808,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegistroRoute: RegistroRoute,
   RevisionRoute: RevisionRoute,
   TalleresRoute: TalleresRoute,
+  AdminAlumnosRoute: AdminAlumnosRoute,
   AdminAvanceRoute: AdminAvanceRoute,
   AdminBitacoraRoute: AdminBitacoraRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,
