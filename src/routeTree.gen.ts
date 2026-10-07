@@ -43,6 +43,7 @@ import { Route as FinancierosIndexRouteImport } from './routes/financieros.index
 import { Route as FinancierosCargaMasivaRouteImport } from './routes/financieros.carga-masiva'
 import { Route as FinancierosConciliacionRouteImport } from './routes/financieros.conciliacion'
 import { Route as FinancierosFichaRouteImport } from './routes/financieros.ficha'
+import { Route as FinancierosPendientesRouteImport } from './routes/financieros.pendientes'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalEstadoRouteImport } from './routes/portal.estado'
 import { Route as PortalEvidenciasRouteImport } from './routes/portal.evidencias'
@@ -218,6 +219,11 @@ const FinancierosFichaRoute = FinancierosFichaRouteImport.update({
   path: '/financieros/ficha',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FinancierosPendientesRoute = FinancierosPendientesRouteImport.update({
+  id: '/financieros/pendientes',
+  path: '/financieros/pendientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
   id: '/portal/',
   path: '/portal/',
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/financieros/carga-masiva': typeof FinancierosCargaMasivaRoute
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
+  '/financieros/pendientes': typeof FinancierosPendientesRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -311,6 +318,7 @@ export interface FileRoutesByTo {
   '/financieros/carga-masiva': typeof FinancierosCargaMasivaRoute
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
+  '/financieros/pendientes': typeof FinancierosPendientesRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/financieros/carga-masiva': typeof FinancierosCargaMasivaRoute
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
+  '/financieros/pendientes': typeof FinancierosPendientesRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -394,6 +403,7 @@ export interface FileRouteTypes {
     | '/financieros/carga-masiva'
     | '/financieros/conciliacion'
     | '/financieros/ficha'
+    | '/financieros/pendientes'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -434,6 +444,7 @@ export interface FileRouteTypes {
     | '/financieros/carga-masiva'
     | '/financieros/conciliacion'
     | '/financieros/ficha'
+    | '/financieros/pendientes'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/financieros/carga-masiva'
     | '/financieros/conciliacion'
     | '/financieros/ficha'
+    | '/financieros/pendientes'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -515,6 +527,7 @@ export interface RootRouteChildren {
   FinancierosCargaMasivaRoute: typeof FinancierosCargaMasivaRoute
   FinancierosConciliacionRoute: typeof FinancierosConciliacionRoute
   FinancierosFichaRoute: typeof FinancierosFichaRoute
+  FinancierosPendientesRoute: typeof FinancierosPendientesRoute
   PortalEstadoRoute: typeof PortalEstadoRoute
   PortalEvidenciasRoute: typeof PortalEvidenciasRoute
   PortalQrRoute: typeof PortalQrRoute
@@ -764,6 +777,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FinancierosFichaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/financieros/pendientes': {
+      id: '/financieros/pendientes'
+      path: '/financieros/pendientes'
+      fullPath: '/financieros/pendientes'
+      preLoaderRoute: typeof FinancierosPendientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/': {
       id: '/portal/'
       path: '/portal'
@@ -827,6 +847,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinancierosCargaMasivaRoute: FinancierosCargaMasivaRoute,
   FinancierosConciliacionRoute: FinancierosConciliacionRoute,
   FinancierosFichaRoute: FinancierosFichaRoute,
+  FinancierosPendientesRoute: FinancierosPendientesRoute,
   PortalEstadoRoute: PortalEstadoRoute,
   PortalEvidenciasRoute: PortalEvidenciasRoute,
   PortalQrRoute: PortalQrRoute,

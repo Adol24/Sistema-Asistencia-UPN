@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Ban, Check, CheckCircle2, Download, Info, QrCode, RefreshCw, SearchX } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  Ban,
+  ChartColumn,
+  Check,
+  CheckCircle2,
+  Download,
+  Info,
+  QrCode,
+  RefreshCw,
+  SearchX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -15,6 +25,7 @@ import { EstadoPagoBadge } from "@/components/estado-badges";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { desglosar, sumaDelDesglose } from "@/lib/desglose";
 import { descargarCsv } from "@/lib/exportar";
+import { alumnosPendientes, montoPendienteDe } from "@/lib/pendientes";
 import { fechaHora, hora, hoyIso, isoAFecha, moneda } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
 import { usePrototipo } from "@/lib/prototipo";
@@ -255,30 +266,13 @@ function Ventanilla() {
     toast.success(`Descargamos ${n} nombres.`);
   };
 
-  /**
-   * Los alumnos que todavía deben algo del evento o del taller, con su
-   * sede, licenciatura, módulo o semestre y grupo.
-   *
-   * Solo alumnos, y no los tres perfiles como `pagados`: la sede, la
-   * licenciatura y el módulo o semestre vienen del padrón de Servicios
-   * Escolares, y ese padrón no tiene al docente ni al externo. Quien deba de
-   * esos dos perfiles sigue viéndose con el filtro «Por cobrar» de la lista de
-   * arriba; lo que no tiene es un desglose académico, porque no hay de dónde
-   * sacarlo.
-   *
-   * `alCorriente` ya cuenta como pagado al exento —su monto esperado es
-   * cero—, así que no hace falta descartarlo aparte: nunca entra aquí.
+  /*
+   * Quién falta por pagar y cuánto vive en `lib/pendientes.ts`, compartido con
+   * la hoja de gráficas en `/financieros/pendientes`: la misma lista y el
+   * mismo monto, para que las dos pantallas no puedan contar cosas distintas.
    */
   const pendientesDePago = useMemo(
-    () =>
-      participantes
-        .filter((p) => p.perfil === "alumno" && !alCorriente(estadoDe(p)))
-        .sort(
-          (a, b) =>
-            (a.plantel ?? "").localeCompare(b.plantel ?? "", "es") ||
-            (a.programa ?? "").localeCompare(b.programa ?? "", "es") ||
-            a.nombre.localeCompare(b.nombre, "es"),
-        ),
+    () => alumnosPendientes(participantes, estadoDe),
     [participantes, estadoDe],
   );
 
@@ -342,10 +336,6 @@ function Ventanilla() {
       ],
       pendientesDePago.map((p) => {
         const estado = estadoDe(p);
-        const faltaEvento = faltaDe(indicePagos, p.folio, "evento", p.montoEsperadoEvento);
-        const faltaTaller = p.tallerId
-          ? faltaDe(indicePagos, p.folio, "taller", p.montoEsperadoTaller ?? 0)
-          : 0;
         return [
           p.folio,
           p.matricula ?? "",
@@ -359,7 +349,7 @@ function Ventanilla() {
           p.celular,
           estado.evento,
           p.tallerId ? (estado.taller ?? "") : "sin taller",
-          (faltaEvento + faltaTaller).toFixed(2),
+          montoPendienteDe(indicePagos, p).toFixed(2),
         ];
       }),
     );
@@ -535,6 +525,17 @@ function Ventanilla() {
           title="Cuántos alumnos faltan por pagar en cada sede, licenciatura y módulo o semestre."
         >
           <Download className="size-4" /> Resumen por grupo ({resumenPendientes.length})
+        </Button>
+        {/*
+          La hoja con gráficas, aparte de las dos descargas. Es un enlace y no
+          una tercera descarga porque el archivo lo genera el navegador —
+          `Ctrl+P` → «Guardar como PDF»—, igual que `/admin/avance` y
+          `/admin/leip`: ver la cabecera de `financieros.pendientes.tsx`.
+        */}
+        <Button asChild variant="secondary" size="sm">
+          <Link to="/financieros/pendientes">
+            <ChartColumn className="size-4" /> Hoja con gráficas
+          </Link>
         </Button>
         <Button variant="outline" size="sm" onClick={recargar} disabled={cargandoDatos}>
           <RefreshCw className={cn("size-4", cargandoDatos && "animate-spin")} />

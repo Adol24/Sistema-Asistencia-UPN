@@ -281,3 +281,79 @@ export function GraficaDesglose({
     </ResponsiveContainer>
   );
 }
+
+/** Un corte cualquiera, con una sola cifra —sin pareja que compararle. */
+export interface BarraConteo {
+  etiqueta: string;
+  cantidad: number;
+}
+
+/**
+ * Una sola barra por corte, sin segunda serie.
+ *
+ * `GraficaDesglose` siempre dibuja dos —preinscritos y pagados— porque esa es
+ * la pregunta de la hoja de avance: de lo apuntado, cuánto ya se cobró. Hay
+ * reportes que no comparan nada, solo cuentan —cuántos alumnos faltan por
+ * pagar en cada sede—, y forzarlos por `GraficaDesglose` obligaría a inventar
+ * una segunda serie en cero solo para que el componente la ignore.
+ *
+ * Sin leyenda: con una sola serie, la leyenda repetiría el título de la
+ * sección sin añadir nada que el eje no diga ya.
+ */
+export function GraficaConteo({
+  datos,
+  color,
+  alto = ALTO,
+  horizontal = false,
+  anchoEtiqueta = 150,
+}: {
+  datos: BarraConteo[];
+  color: string;
+  alto?: number;
+  horizontal?: boolean;
+  /** Cuánto se reserva para el rótulo cuando va tumbada. */
+  anchoEtiqueta?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={alto}>
+      <BarChart
+        data={datos}
+        layout={horizontal ? "vertical" : "horizontal"}
+        margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+      >
+        {horizontal ? (
+          <XAxis
+            type="number"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            allowDecimals={false}
+          />
+        ) : (
+          <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={11} />
+        )}
+        {horizontal ? (
+          <YAxis
+            type="category"
+            dataKey="etiqueta"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={anchoEtiqueta}
+          />
+        ) : (
+          <YAxis
+            type="number"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={32}
+            allowDecimals={false}
+          />
+        )}
+        <Tooltip />
+        <Bar dataKey="cantidad" fill={color} radius={horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
