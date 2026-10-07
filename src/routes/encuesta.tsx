@@ -8,8 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   ESCALA,
   INSTRUMENTOS,
-  PREGUNTAS,
-  preguntasDe,
+  PREGUNTAS_VISIBLES,
+  preguntasVisibles,
   type Instrumento,
   type ValorEscala,
 } from "@/lib/encuesta";
@@ -50,19 +50,20 @@ function Encuesta() {
   /*
    * Qué preguntas quedaron sin contestar en el último intento de envío.
    *
-   * No se marcan desde el principio: una pantalla con doce avisos en rojo antes
-   * de que la persona toque nada regaña por adelantado. El resaltado aparece
-   * solo al pulsar «Enviar mis respuestas», que es cuando el hueco importa.
+   * No se marcan desde el principio: una pantalla con todas sus preguntas en
+   * rojo antes de que la persona toque nada regaña por adelantado. El
+   * resaltado aparece solo al pulsar «Enviar mis respuestas», que es cuando el
+   * hueco importa.
    */
   const [faltantes, setFaltantes] = useState<Set<number>>(new Set());
   /*
    * Para llevar el foco a la primera pregunta sin contestar. Decir «te faltan
-   * tres» al pie de una página de doce bloques obliga a buscarlas a mano.
+   * tres» al pie de una página larga obliga a buscarlas a mano.
    */
   const bloques = useRef(new Map<number, HTMLFieldSetElement>());
 
   const contestadas = Object.keys(respuestas).length;
-  const completa = contestadas === PREGUNTAS.length;
+  const completa = contestadas === PREGUNTAS_VISIBLES.length;
 
   function responder(numero: number, valor: ValorEscala) {
     setRespuestas((previas) => ({ ...previas, [numero]: valor }));
@@ -75,7 +76,9 @@ function Encuesta() {
   }
 
   function enviar() {
-    const sinContestar = PREGUNTAS.filter((p) => respuestas[p.numero] === undefined);
+    // Solo las VISIBLES pueden exigirse: una pregunta oculta no tiene dónde
+    // contestarse, y pedirla dejaría el botón de enviar roto para siempre.
+    const sinContestar = PREGUNTAS_VISIBLES.filter((p) => respuestas[p.numero] === undefined);
     if (sinContestar.length > 0) {
       setFaltantes(new Set(sinContestar.map((p) => p.numero)));
       bloques.current.get(sinContestar[0]!.numero)?.scrollIntoView({
@@ -105,13 +108,14 @@ function Encuesta() {
         </Titulo>
         <Texto className="mt-3">
           Esta evaluación mide la satisfacción, el impacto formativo y el acervo intelectual que
-          dejó el Encuentro. Son doce afirmaciones: marca en cada una qué tan de acuerdo estás.
+          dejó el Encuentro. Son {PREGUNTAS_VISIBLES.length} afirmaciones: marca en cada una qué tan
+          de acuerdo estás.
         </Texto>
       </header>
 
       {/*
        * El aviso de que esto no se guarda va arriba y no al pie. Abajo lo lee
-       * quien ya contestó las doce, que es justo cuando ya no sirve de nada.
+       * quien ya contestó todo, que es justo cuando ya no sirve de nada.
        */}
       <p className="mt-5 flex items-start gap-2 rounded-md border border-dashed border-border bg-muted px-4 py-3 text-xs text-muted-foreground">
         <ClipboardList className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -129,12 +133,12 @@ function Encuesta() {
             <div className="flex items-center justify-between gap-4">
               <Rotulo como="span">Avance</Rotulo>
               <span className="text-sm font-semibold tabular-nums">
-                {contestadas} de {PREGUNTAS.length}
+                {contestadas} de {PREGUNTAS_VISIBLES.length}
               </span>
             </div>
             <Progress
               className="mt-2"
-              value={(contestadas / PREGUNTAS.length) * 100}
+              value={(contestadas / PREGUNTAS_VISIBLES.length) * 100}
               aria-label="Preguntas contestadas"
             />
           </Tarjeta>
@@ -167,8 +171,8 @@ function Encuesta() {
             ) : (
               <Ayuda>
                 {completa
-                  ? "Ya contestaste las doce."
-                  : "Contesta las doce afirmaciones para poder enviarlas."}
+                  ? `Ya contestaste las ${PREGUNTAS_VISIBLES.length}.`
+                  : `Contesta las ${PREGUNTAS_VISIBLES.length} afirmaciones para poder enviarlas.`}
               </Ayuda>
             )}
           </div>
@@ -215,7 +219,7 @@ function Seccion({
       </ul>
 
       <Tarjeta className="mt-4 grid gap-6 p-5">
-        {preguntasDe(instrumento).map((pregunta) => (
+        {preguntasVisibles(instrumento).map((pregunta) => (
           <ReactivoLikert
             key={pregunta.numero}
             numero={pregunta.numero}

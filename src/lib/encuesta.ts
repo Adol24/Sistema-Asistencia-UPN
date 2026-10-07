@@ -7,6 +7,11 @@
  * demostración y no escribe en ninguna parte, pero el instrumento es el mismo
  * que habrá que guardar cuando se decida persistirlo. Separado, conectar el
  * envío no obliga a volver a teclear las preguntas ni los rangos.
+ *
+ * De esos doce, el 11 y el 12 están marcados `oculta: true` y hoy no se le
+ * presentan a quien contesta —ver `preguntasVisibles`—. El total de doce y la
+ * tabla de niveles de 0 a 60 siguen siendo los del papel: lo que cambió es
+ * cuántos de los doce se preguntan hoy, no el instrumento.
  */
 
 export type Instrumento = "impacto" | "seguimiento";
@@ -16,6 +21,16 @@ export interface Pregunta {
   numero: number;
   texto: string;
   instrumento: Instrumento;
+  /**
+   * Si esta pregunta NO se le presenta a quien contesta.
+   *
+   * Es una decisión de la vista, no del instrumento: el papel sigue teniendo
+   * doce reactivos y el 11 y el 12 siguen aquí, con su texto y su número,
+   * porque es lo que habrá que retomar si algún día se vuelven a preguntar.
+   * Borrarlos de este arreglo habría sido otra cosa —encoger el instrumento—
+   * y no lo que se pidió, que fue dejar de enseñarlos.
+   */
+  oculta?: boolean;
 }
 
 /**
@@ -107,17 +122,34 @@ export const PREGUNTAS: readonly Pregunta[] = [
     numero: 11,
     instrumento: "seguimiento",
     texto: "Identifiqué perspectivas y enfoques teóricos.",
+    oculta: true,
   },
   {
     numero: 12,
     instrumento: "seguimiento",
     texto: "El evento aportó elementos que pueden fortalecer mi trabajo de titulación.",
+    oculta: true,
   },
 ];
 
-/** Las preguntas de un instrumento, en orden. */
+/** Las preguntas de un instrumento, en orden. Incluye las ocultas. */
 export const preguntasDe = (instrumento: Instrumento) =>
   PREGUNTAS.filter((p) => p.instrumento === instrumento);
+
+/**
+ * Las preguntas que de verdad se le presentan a quien contesta: sin las
+ * marcadas `oculta`.
+ *
+ * Es lo que tiene que usar la pantalla para tres cosas a la vez —qué se
+ * dibuja, cuántas hacen falta para completar y cuáles exige `enviar`—, porque
+ * si una sola de las tres siguiera mirando `PREGUNTAS` a secas, la pantalla
+ * pediría contestar una pregunta que nunca llegó a mostrar.
+ */
+export const preguntasVisibles = (instrumento: Instrumento) =>
+  preguntasDe(instrumento).filter((p) => !p.oculta);
+
+/** Todas las preguntas visibles, de los dos instrumentos. */
+export const PREGUNTAS_VISIBLES: readonly Pregunta[] = PREGUNTAS.filter((p) => !p.oculta);
 
 /** 60: doce reactivos por cinco puntos. Es el techo de la tabla de niveles. */
 export const PUNTAJE_MAXIMO = PREGUNTAS.length * 5;
