@@ -310,8 +310,7 @@ function Dashboard() {
               Avance contra la meta
             </h2>
             <p className="text-xs text-muted-foreground">
-              Pre-registros contra el aforo de cada sede. Cuánta de esa gente ya pagó lo cuenta el
-              embudo de abajo.
+              Pre-registros contra el aforo de cada sede, y cuánta de esa gente ya pagó.
             </p>
           </div>
           {/*
@@ -381,6 +380,31 @@ function Dashboard() {
                 ) : (
                   <p className="mt-1 text-xs text-muted-foreground">Sin aforo configurado</p>
                 )}
+                {/*
+                  Lo que el subtítulo prometía que contaba «el embudo de
+                  abajo», y no era cierto: ese embudo suma los tres días en
+                  uno, así que nunca contestó «de los 597 de hoy, cuántos ya
+                  pagaron». Esta línea sí, día por día.
+
+                  Va fuera del `if` del aforo: hay pagos aunque la sede todavía
+                  no tenga cupo configurado, y esta pregunta no depende de esa
+                  otra.
+                */}
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  <span className="font-semibold text-estado-pagado">{d.pagados}</span> ya pagaron
+                  {d.exentos > 0 ? (
+                    <>
+                      {" "}
+                      · <span className="font-semibold">{d.exentos}</span> exentos
+                    </>
+                  ) : null}
+                  {d.faltan > 0 ? (
+                    <>
+                      {" "}
+                      · <span className="font-semibold">{d.faltan}</span> deben todavía
+                    </>
+                  ) : null}
+                </p>
               </li>
             );
           })}
