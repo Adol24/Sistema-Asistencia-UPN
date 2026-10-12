@@ -116,7 +116,7 @@ function ModoTaller() {
             <select
               value={tallerId}
               onChange={(e) => setTallerId(e.target.value)}
-              className="h-14 rounded-md border border-input bg-card px-3 text-base font-semibold"
+              className="h-14 w-full truncate rounded-md border border-input bg-card px-3 text-base font-semibold"
             >
               {delDia.map((t) => (
                 <option key={t.id} value={t.id}>
