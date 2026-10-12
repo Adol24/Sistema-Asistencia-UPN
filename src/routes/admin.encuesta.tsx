@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2, MessageSquareWarning, Star } from "lucide-react";
+import { Download, Loader2, MessageSquareWarning, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { Buscador } from "@/components/buscador";
 import { Campo, Rotulo } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
@@ -72,6 +73,8 @@ function PanelEncuesta() {
   const [conferencia, setConferencia] = useState<"todas" | string>("todas");
   const [perfil, setPerfil] = useState<"todos" | RespuestaEncuesta["perfil"]>("todos");
   const [abierta, setAbierta] = useState<RespuestaEncuesta | null>(null);
+  const [aBorrar, setABorrar] = useState<RespuestaEncuesta | null>(null);
+  const [eliminando, setEliminando] = useState(false);
 
   const porConferencia = useMemo(() => {
     const m = new Map<string, number>();
@@ -265,9 +268,19 @@ function PanelEncuesta() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">{r.creadoEn}</td>
                   <td className="px-3 py-2 text-right">
-                    <Button variant="outline" className="h-9" onClick={() => setAbierta(r)}>
-                      Ver respuestas
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" className="h-9" onClick={() => setAbierta(r)}>
+                        Ver respuestas
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-9 w-9 p-0 text-destructive hover:text-destructive"
+                        aria-label="Eliminar esta respuesta"
+                        onClick={() => setABorrar(r)}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </Button>
+                    </div>
                   </td>
                 </Fila>
               );
@@ -281,6 +294,40 @@ function PanelEncuesta() {
       )}
 
       {abierta ? <DetalleRespuesta r={abierta} onCerrar={() => setAbierta(null)} /> : null}
+
+      {/*
+       * Eliminar no se deshace, así que el diálogo dice quién es —nombre y
+       * conferencia— antes de pedir confirmación. Mismo patrón que
+       * `/admin/preinscritos`.
+       */}
+      <DialogoConfirmar
+        abierto={!!aBorrar}
+        alCerrar={() => {
+          if (!eliminando) setABorrar(null);
+        }}
+        titulo={`¿Eliminar la respuesta de ${aBorrar?.nombre}?`}
+        descripcion={`Evaluó "${conferenciaDe(aBorrar?.conferencia ?? "")?.titulo ?? aBorrar?.conferencia}". Esto no se puede deshacer.`}
+        confirmar={eliminando ? "Eliminando…" : "Sí, eliminar"}
+        deshabilitado={eliminando}
+        alConfirmar={() => {
+          const r = aBorrar;
+          if (!r) return;
+          setEliminando(true);
+          (async () => {
+            try {
+              const { eliminarRespuestaEncuesta } = await import("@/lib/datos");
+              await eliminarRespuestaEncuesta(r.id);
+              setRespuestas((previas) => (previas ?? []).filter((x) => x.id !== r.id));
+              toast.success(`Eliminamos la respuesta de ${r.nombre}.`);
+              setABorrar(null);
+            } catch (e) {
+              toast.error(mensajeDeError(e));
+            } finally {
+              setEliminando(false);
+            }
+          })();
+        }}
+      />
     </PantallaPanel>
   );
 }

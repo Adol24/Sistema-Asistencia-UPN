@@ -1874,6 +1874,23 @@ export async function obtenerRespuestasEncuesta(): Promise<RespuestaEncuesta[]> 
 }
 
 /**
+ * Borra una respuesta de la encuesta. SOLO administración, y no se deshace.
+ *
+ * Existe porque la unicidad por conferencia —ver
+ * `20261012130000_una_evaluacion_por_conferencia.sql`— puede dejar a alguien
+ * atrapado contra su propio error de captura: una matrícula mal tecleada, un
+ * correo con una letra de más. Sin esto, la única salida era pegar SQL a
+ * mano en el editor de Supabase.
+ */
+export async function eliminarRespuestaEncuesta(
+  id: string,
+): Promise<{ nombre: string; conferencia: string }> {
+  return llamar<{ nombre: string; conferencia: string }>("fn_eliminar_respuesta_encuesta", {
+    p_id: id,
+  });
+}
+
+/**
  * ¿Este folio va con esta credencial?
  *
  * `fn_autenticar_portal` compara dentro de Postgres y devuelve el identificador
