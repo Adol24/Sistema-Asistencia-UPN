@@ -454,21 +454,6 @@ function Seccion({
       <Rotulo className="text-primary">{titulo}</Rotulo>
       <Texto className="mt-1.5">{descripcion}</Texto>
 
-      {/*
-       * La leyenda de la escala, una vez por sección y solo en pantalla
-       * angosta. De `md:` en adelante cada botón lleva su etiqueta completa
-       * —como las columnas del cuestionario impreso— y repetirla aquí sería
-       * decir lo mismo dos veces; en el teléfono los botones solo caben con el
-       * número, así que el número necesita quien lo traduzca.
-       */}
-      <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground md:hidden">
-        {ESCALA.map((o) => (
-          <li key={o.valor}>
-            <span className="font-semibold text-foreground">{o.valor}</span> {o.etiqueta}
-          </li>
-        ))}
-      </ul>
-
       <Tarjeta className="mt-4 grid gap-6 p-5">
         {preguntasVisibles(instrumento).map((pregunta) => (
           <ReactivoLikert
@@ -502,8 +487,6 @@ function ReactivoLikert({
   onResponder: (numero: number, valor: ValorEscala) => void;
   bloques: React.RefObject<Map<number, HTMLFieldSetElement>>;
 }) {
-  const elegida = ESCALA.find((o) => o.valor === valor);
-
   return (
     <fieldset
       ref={(nodo) => {
@@ -526,17 +509,18 @@ function ReactivoLikert({
       {/*
        * Cinco columnas siempre, también en el teléfono: la escala se lee de una
        * punta a la otra, y apilada en vertical deja de verse como una escala.
-       * A 360 px de ancho le tocan unos 60 px por botón, que es más que el
-       * objetivo táctil mínimo.
+       * Sin el número —se quitó porque confundía, se leía como una nota— cada
+       * botón lleva su etiqueta completa a cualquier ancho: es lo único que
+       * dice qué se está marcando.
        */}
-      <div className="mt-3 grid grid-cols-5 gap-1.5 md:gap-2">
+      <div className="mt-3 grid grid-cols-5 gap-1 md:gap-2">
         {ESCALA.map((o) => {
           const activa = valor === o.valor;
           return (
             <label
               key={o.valor}
               className={cn(
-                "flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-center transition-colors focus-within:ring-2 focus-within:ring-ring md:min-h-24 md:gap-1.5 md:px-2",
+                "flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-center text-[10px] leading-tight transition-colors focus-within:ring-2 focus-within:ring-ring md:min-h-24 md:gap-1.5 md:px-2 md:text-xs",
                 opcion(activa),
               )}
             >
@@ -548,39 +532,11 @@ function ReactivoLikert({
                 onChange={() => onResponder(numero, o.valor)}
                 className="sr-only"
               />
-              <span className="text-lg font-bold leading-none tabular-nums md:text-xl">
-                {o.valor}
-              </span>
-              {/*
-               * La etiqueta completa solo de `md:` en adelante. El lector de
-               * pantalla la recibe siempre por el texto oculto de abajo, así
-               * que esconderla en el teléfono no deja a nadie sin ella.
-               */}
-              <span
-                aria-hidden
-                className={cn(
-                  "hidden text-[11px] leading-tight md:block",
-                  activa ? "text-primary-foreground/90" : "text-muted-foreground",
-                )}
-              >
-                {o.etiqueta}
-              </span>
-              <span className="sr-only">{o.etiqueta}</span>
+              <span>{o.etiqueta}</span>
             </label>
           );
         })}
       </div>
-
-      {/*
-       * En el teléfono, lo marcado escrito con palabras. El número por sí solo
-       * no confirma nada: quien eligió el 2 queriendo el 4 no lo nota hasta
-       * que lee «En desacuerdo».
-       */}
-      {elegida ? (
-        <p className="mt-2 text-xs font-medium text-primary md:hidden">
-          Elegiste: {elegida.etiqueta}
-        </p>
-      ) : null}
     </fieldset>
   );
 }
