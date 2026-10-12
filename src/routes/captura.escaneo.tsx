@@ -113,6 +113,12 @@ function PantallaEscaneo() {
   const [autorizando, setAutorizando] = useState<string | null>(null);
   const [nota, setNota] = useState("");
   const campo = useRef<HTMLInputElement>(null);
+  // Mismo antirrebote que la cámara (camara-qr.tsx), pero para el campo de
+  // texto: un lector de QR físico (pistola USB o Bluetooth) no habla con la
+  // app, le "teclea" el folio y un Intro al campo enfocado. Si queda apuntando
+  // al mismo código, dispara ráfagas de Intro igual que la cámara con el
+  // teléfono quieto frente al lente.
+  const ultimoAMano = useRef<{ valor: string; en: number }>({ valor: "", en: 0 });
 
   const escaneosSesion = historial.length;
 
@@ -130,6 +136,12 @@ function PantallaEscaneo() {
     opciones?: { autorizado?: boolean; nota?: string; aMano?: boolean },
   ) => {
     if (!valor.trim()) return;
+    if (opciones?.aMano) {
+      const limpio = valor.trim();
+      const ahora = Date.now();
+      if (limpio === ultimoAMano.current.valor && ahora - ultimoAMano.current.en < 5000) return;
+      ultimoAMano.current = { valor: limpio, en: ahora };
+    }
     const extra = {
       autorizado: opciones?.autorizado ?? false,
       ...(opciones?.nota ? { nota: opciones.nota, autorizadoPor: sesion.capturista } : {}),
