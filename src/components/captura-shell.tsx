@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { CloudOff, History, QrCode, RefreshCw, Settings2, Users, Wifi } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { useSesion } from "@/lib/sesion";
 import type { Modo } from "@/lib/escaneo";
 import { opcion } from "@/lib/estilos";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,11 @@ const RUTAS = [
  */
 export function BarraConexion() {
   const { enLinea, pendientes, alternarConexion, enVivo } = useEstadoEvento();
+  // Solo en modo prototipo, es decir, sin conexión real a Supabase. En
+  // producción esto ya vale `false` solo: con la base real conectada, un
+  // capturista de verdad no tiene por qué ver ni poder tocar un control de
+  // desarrollo que simula la caída de la red.
+  const { modoPrototipo } = useSesion();
   return (
     <div
       className={cn(
@@ -74,14 +80,16 @@ export function BarraConexion() {
           </span>
         ) : null}
       </span>
-      <button
-        onClick={alternarConexion}
-        title="Control de desarrollo: alterna la conexión para poder evaluar el modo sin red"
-        className="flex h-8 items-center gap-1 rounded-md bg-black/20 px-2 text-xs font-medium hover:bg-black/30"
-      >
-        <RefreshCw className="size-3.5" aria-hidden />
-        {enLinea ? "Simular caída" : "Reconectar"}
-      </button>
+      {modoPrototipo ? (
+        <button
+          onClick={alternarConexion}
+          title="Control de desarrollo: alterna la conexión para poder evaluar el modo sin red"
+          className="flex h-8 items-center gap-1 rounded-md bg-black/20 px-2 text-xs font-medium hover:bg-black/30"
+        >
+          <RefreshCw className="size-3.5" aria-hidden />
+          {enLinea ? "Simular caída" : "Reconectar"}
+        </button>
+      ) : null}
     </div>
   );
 }
