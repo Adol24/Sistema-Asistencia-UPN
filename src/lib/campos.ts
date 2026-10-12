@@ -15,6 +15,14 @@
 export const soloDigitos = (valor: string, maximo: number): string =>
   valor.replace(/\D/g, "").slice(0, maximo);
 
+/**
+ * Solo letras y espacios —incluye acentos y ñ—, recortado al máximo que
+ * acepta el campo. La misma razón que `soloDigitos`: descartar lo que no
+ * corresponde al escribirlo es mejor que reprochar un número al enviar.
+ */
+export const soloLetras = (valor: string, maximo: number): string =>
+  valor.replace(/[^A-Za-zÀ-ÿ\s]/g, "").slice(0, maximo);
+
 /** Largo de los campos numéricos que tienen uno solo. */
 export const LARGO = {
   celular: 10,

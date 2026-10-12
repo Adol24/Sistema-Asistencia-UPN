@@ -1822,6 +1822,35 @@ export async function preregistrarAlumno(datos: {
 }
 
 /**
+ * Evalúa una de las conferencias preliminares al XIV Encuentro.
+ *
+ * Es anónima e independiente del pre-registro: no identifica a nadie contra
+ * el padrón, solo guarda lo que la persona declaró. `fn_evaluar_conferencia`
+ * valida en el servidor que el perfil traiga sus campos obligatorios —ver la
+ * migración `20261002140000_evaluar_conferencias_preliminares.sql`—, así que
+ * esta capa manda lo que haya, sin filtrar.
+ */
+export async function evaluarConferencia(datos: {
+  conferencia: string;
+  perfil: "alumno" | "docente" | "externo";
+  nombre: string;
+  matricula?: string | undefined;
+  correo?: string | undefined;
+  programa?: string | undefined;
+  respuestas: Record<number, number>;
+}) {
+  return llamar<{ id: string }>("fn_evaluar_conferencia", {
+    p_conferencia: datos.conferencia,
+    p_perfil: datos.perfil,
+    p_nombre: datos.nombre,
+    p_matricula: datos.matricula ?? null,
+    p_correo: datos.correo ?? null,
+    p_programa: datos.programa ?? null,
+    p_respuestas: datos.respuestas,
+  });
+}
+
+/**
  * ¿Este folio va con esta credencial?
  *
  * `fn_autenticar_portal` compara dentro de Postgres y devuelve el identificador

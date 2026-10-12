@@ -1,10 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
-import { CheckCircle2, ClipboardList, RotateCcw } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { PantallaPublica } from "@/components/layouts";
 import { Ayuda, Rotulo, Tarjeta, Texto, Titulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  CAMPO_MAYUSCULAS,
+  MAX_MATRICULA,
+  esMatricula,
+  soloDigitos,
+  soloLetras,
+} from "@/lib/campos";
+import { CONFERENCIAS_PRELIMINARES, conferenciaDe } from "@/lib/conferencias";
 import {
   ESCALA,
   INSTRUMENTOS,
@@ -13,6 +24,8 @@ import {
   type Instrumento,
   type ValorEscala,
 } from "@/lib/encuesta";
+import { mensajeDeError } from "@/lib/errores";
+import { hayBaseDeDatos } from "@/lib/supabase-config";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { meta } from "@/lib/seo";
 import { opcion } from "@/lib/estilos";
@@ -21,41 +34,93 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/encuesta")({
   head: () =>
     meta(
-      "Encuesta de satisfacción — XIV Encuentro Internacional de Educación",
-      "Evaluación y seguimiento académico del XIV Encuentro Internacional de Educación UPN-212. Vista de demostración.",
+      "Evalúa una conferencia — XIV Encuentro Internacional de Educación",
+      "Evaluación de las conferencias preliminares al XIV Encuentro Internacional de Educación UPN-212.",
     ),
   component: Encuesta,
 });
 
+type Rol = "alumno" | "docente" | "externo";
+type Paso = "identificacion" | "conferencia" | "preguntas" | "acuse";
+
 /**
- * La encuesta de evaluación y seguimiento académico. **Vista de demostración.**
+ * Evalúa las conferencias preliminares al XIV Encuentro, una por una.
  *
- * Está aparte del flujo público a propósito y no se enlaza desde ninguna barra:
- * sirve para enseñar el instrumento ya dibujado —cómo se ve y cómo se
- * contesta— sin tocar el pre-registro, los paneles ni la base. Nada de lo que
- * se marca aquí se guarda: se pierde al recargar, y la pantalla lo dice antes
- * de pedir la primera respuesta para que nadie crea que ya entregó su
- * evaluación.
+ * Cuatro pasos: identificación (una sola vez), elegir cuál conferencia se
+ * evalúa, las preguntas del instrumento, y el acuse. Desde el acuse se puede
+ * volver a elegir conferencia sin repetir la identificación —ver `Acuse`—,
+ * pero solo dentro de la misma visita: las tres conferencias están repartidas
+ * en dos días y horarios distintos, así que casi nadie va a tener la pestaña
+ * abierta de una a otra. Pedir los datos otra vez al volver es lo esperado, no
+ * un error.
  *
- * Quien contesta no ve ningún puntaje ni nivel de logro —ver `Resultado`—. El
- * cálculo existe igual, en `lib/encuesta.ts`, y es para el agregado.
- *
- * Lo que sí es definitivo son las preguntas, la escala y los rangos de
- * interpretación, que viven en `lib/encuesta.ts` tal como están impresos.
+ * Quien contesta no ve ningún puntaje ni nivel de logro —ver `Acuse`—. El
+ * cálculo existe igual, en `lib/encuesta.ts`, y es para el agregado de la
+ * coordinación.
  */
 function Encuesta() {
   const { configuracion: evento } = useEstadoEvento();
+  const [paso, setPaso] = useState<Paso>("identificacion");
+
+  // ---------------------------------------------------------- identidad ---
+  const [rol, setRol] = useState<Rol>("alumno");
+  const [nombre, setNombre] = useState("");
+  const [matricula, setMatricula] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [programa, setPrograma] = useState("");
+  const [errorIdentidad, setErrorIdentidad] = useState("");
+
+  const programas = useMemo(
+    () =>
+      evento.catalogoAcademico
+        .flatMap((n) => n.programas.map((p) => p.nombre))
+        .sort((a, b) => a.localeCompare(b)),
+    [evento.catalogoAcademico],
+  );
+
+  function continuarIdentificacion() {
+    if (!nombre.trim()) {
+      setErrorIdentidad("Escribe tu nombre completo.");
+      return;
+    }
+    if (rol === "alumno") {
+      if (!esMatricula(matricula)) {
+        setErrorIdentidad(`Tu matrícula debe tener entre 8 y 11 dígitos.`);
+        return;
+      }
+      if (!programa) {
+        setErrorIdentidad("Elige tu licenciatura o maestría.");
+        return;
+      }
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) {
+      setErrorIdentidad("Escribe un correo válido.");
+      return;
+    }
+    setErrorIdentidad("");
+    setPaso("conferencia");
+  }
+
+  // -------------------------------------------------------- conferencia ---
+  const [conferenciaSlug, setConferenciaSlug] = useState<string | null>(null);
+  // Qué conferencias ya evaluó, en esta misma visita. Las que ya evaluó no
+  // vuelven a ofrecerse: evitar repetirla por accidente importa más que dejar
+  // una puerta para corregir un envío, que de cualquier forma no muestra nada
+  // que corregir —ver `Acuse`—.
+  const [evaluadas, setEvaluadas] = useState<Set<string>>(new Set());
+  const porEvaluar = CONFERENCIAS_PRELIMINARES.filter((c) => !evaluadas.has(c.slug));
+
+  function elegirConferencia(slug: string) {
+    setConferenciaSlug(slug);
+    setRespuestas({});
+    setFaltantes(new Set());
+    setPaso("preguntas");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---------------------------------------------------------- preguntas ---
   const [respuestas, setRespuestas] = useState<Record<number, ValorEscala>>({});
-  const [enviada, setEnviada] = useState(false);
-  /*
-   * Qué preguntas quedaron sin contestar en el último intento de envío.
-   *
-   * No se marcan desde el principio: una pantalla con todas sus preguntas en
-   * rojo antes de que la persona toque nada regaña por adelantado. El
-   * resaltado aparece solo al pulsar «Enviar mis respuestas», que es cuando el
-   * hueco importa.
-   */
   const [faltantes, setFaltantes] = useState<Set<number>>(new Set());
+  const [enviando, setEnviando] = useState(false);
   /*
    * Para llevar el foco a la primera pregunta sin contestar. Decir «te faltan
    * tres» al pie de una página larga obliga a buscarlas a mano.
@@ -75,7 +140,7 @@ function Encuesta() {
     });
   }
 
-  function enviar() {
+  async function enviar() {
     // Solo las VISIBLES pueden exigirse: una pregunta oculta no tiene dónde
     // contestarse, y pedirla dejaría el botón de enviar roto para siempre.
     const sinContestar = PREGUNTAS_VISIBLES.filter((p) => respuestas[p.numero] === undefined);
@@ -87,51 +152,73 @@ function Encuesta() {
       });
       return;
     }
+    if (!conferenciaSlug) return;
     setFaltantes(new Set());
-    setEnviada(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setEnviando(true);
+    try {
+      if (hayBaseDeDatos) {
+        const d = await import("@/lib/datos");
+        await d.evaluarConferencia({
+          conferencia: conferenciaSlug,
+          perfil: rol,
+          nombre: nombre.trim(),
+          matricula: rol === "alumno" ? matricula : undefined,
+          programa: rol === "alumno" ? programa : undefined,
+          correo: rol !== "alumno" ? correo.trim().toLowerCase() : undefined,
+          respuestas,
+        });
+      }
+      setEvaluadas((previas) => new Set(previas).add(conferenciaSlug));
+      setPaso("acuse");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      toast.error(mensajeDeError(e));
+    } finally {
+      setEnviando(false);
+    }
   }
 
-  function reiniciar() {
-    setRespuestas({});
-    setFaltantes(new Set());
-    setEnviada(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  const conferencia = conferenciaSlug ? conferenciaDe(conferenciaSlug) : undefined;
 
   return (
     <PantallaPublica ancho="lg" variante="portada">
       <header>
-        <Rotulo className="text-primary">Evaluación y seguimiento académico</Rotulo>
+        <Rotulo className="text-primary">Evaluación de conferencias</Rotulo>
         <Titulo className="mt-2">
           {evento.nombre || "XIV Encuentro Internacional de Educación UPN-212"}
         </Titulo>
         <Texto className="mt-3">
-          Esta evaluación mide la satisfacción, el impacto formativo y el acervo intelectual que
-          dejó el Encuentro. Son {PREGUNTAS_VISIBLES.length} afirmaciones: marca en cada una qué tan
-          de acuerdo estás.
+          Programa de actividades preliminares, modalidad virtual. Evalúa cada conferencia que hayas
+          visto.
         </Texto>
       </header>
 
-      {/*
-       * El aviso de que esto no se guarda va arriba y no al pie. Abajo lo lee
-       * quien ya contestó todo, que es justo cuando ya no sirve de nada.
-       */}
-      <p className="mt-5 flex items-start gap-2 rounded-md border border-dashed border-border bg-muted px-4 py-3 text-xs text-muted-foreground">
-        <ClipboardList className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <span>
-          <strong className="font-semibold text-foreground">Vista de demostración.</strong> Las
-          respuestas no se guardan en ninguna parte: se pierden al recargar la página.
-        </span>
-      </p>
-
-      {enviada ? (
-        <Resultado onReiniciar={reiniciar} />
-      ) : (
+      {paso === "identificacion" ? (
+        <Identificacion
+          rol={rol}
+          onRol={(r) => {
+            setRol(r);
+            setErrorIdentidad("");
+          }}
+          nombre={nombre}
+          onNombre={setNombre}
+          matricula={matricula}
+          onMatricula={setMatricula}
+          correo={correo}
+          onCorreo={setCorreo}
+          programa={programa}
+          onPrograma={setPrograma}
+          programas={programas}
+          error={errorIdentidad}
+          onContinuar={continuarIdentificacion}
+        />
+      ) : paso === "conferencia" ? (
+        <SelectorConferencia opciones={porEvaluar} onElegir={elegirConferencia} />
+      ) : paso === "preguntas" && conferencia ? (
         <>
           <Tarjeta className="mt-6 p-4" padding="none">
             <div className="flex items-center justify-between gap-4">
-              <Rotulo como="span">Avance</Rotulo>
+              <Rotulo como="span">{conferencia.titulo}</Rotulo>
               <span className="text-sm font-semibold tabular-nums">
                 {contestadas} de {PREGUNTAS_VISIBLES.length}
               </span>
@@ -159,8 +246,14 @@ function Encuesta() {
           />
 
           <div className="mt-8 flex flex-col items-center gap-3">
-            <Button size="lg" className="w-full sm:w-auto" onClick={enviar}>
-              Enviar mis respuestas
+            <Button
+              size="lg"
+              className="w-full sm:w-auto"
+              disabled={enviando}
+              onClick={() => void enviar()}
+            >
+              {enviando ? <Loader2 className="size-5 animate-spin" aria-hidden /> : null}
+              {enviando ? "Enviando…" : "Enviar mis respuestas"}
             </Button>
             {faltantes.size > 0 ? (
               <p className="text-sm font-medium text-destructive" role="alert">
@@ -177,8 +270,179 @@ function Encuesta() {
             )}
           </div>
         </>
+      ) : (
+        <Acuse
+          conferencia={conferencia}
+          quedanPorEvaluar={porEvaluar.length > 0}
+          onEvaluarOtra={() => setPaso("conferencia")}
+        />
       )}
     </PantallaPublica>
+  );
+}
+
+/** El paso de identificación: rol y los datos que le corresponden. */
+function Identificacion({
+  rol,
+  onRol,
+  nombre,
+  onNombre,
+  matricula,
+  onMatricula,
+  correo,
+  onCorreo,
+  programa,
+  onPrograma,
+  programas,
+  error,
+  onContinuar,
+}: {
+  rol: Rol;
+  onRol: (r: Rol) => void;
+  nombre: string;
+  onNombre: (v: string) => void;
+  matricula: string;
+  onMatricula: (v: string) => void;
+  correo: string;
+  onCorreo: (v: string) => void;
+  programa: string;
+  onPrograma: (v: string) => void;
+  programas: string[];
+  error: string;
+  onContinuar: () => void;
+}) {
+  const OPCIONES_ROL: { valor: Rol; titulo: string; detalle: string }[] = [
+    { valor: "alumno", titulo: "Alumno", detalle: "Me identifico con mi matrícula." },
+    { valor: "docente", titulo: "Docente", detalle: "Doy clase en una institución." },
+    { valor: "externo", titulo: "Externo", detalle: "Público en general." },
+  ];
+
+  return (
+    <Tarjeta className="mt-6 p-5 lg:p-6">
+      <Rotulo como="span">¿Quién contesta?</Rotulo>
+      <div className="mt-2 grid gap-2 sm:grid-cols-3">
+        {OPCIONES_ROL.map((o) => (
+          <button
+            key={o.valor}
+            type="button"
+            aria-pressed={rol === o.valor}
+            onClick={() => onRol(o.valor)}
+            className={cn("min-h-12 rounded-md border p-3 text-left", opcion(rol === o.valor))}
+          >
+            <span className="block text-sm font-semibold">{o.titulo}</span>
+            <span
+              className={cn(
+                "mt-0.5 block text-xs leading-snug",
+                rol === o.valor ? "text-primary-foreground/80" : "text-muted-foreground",
+              )}
+            >
+              {o.detalle}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-4">
+        <div>
+          <Label htmlFor="nombre">Nombre completo</Label>
+          <Input
+            id="nombre"
+            value={nombre}
+            onChange={(e) => onNombre(soloLetras(e.target.value, 100))}
+            {...CAMPO_MAYUSCULAS}
+            placeholder="JUAN CARLOS PÉREZ LÓPEZ"
+            className="mt-1.5 h-12 md:h-11 text-base uppercase"
+          />
+        </div>
+
+        {rol === "alumno" ? (
+          <>
+            <div>
+              <Label htmlFor="matricula">Matrícula</Label>
+              <Input
+                id="matricula"
+                value={matricula}
+                onChange={(e) => onMatricula(soloDigitos(e.target.value, MAX_MATRICULA))}
+                inputMode="numeric"
+                placeholder="202012345"
+                className="mt-1.5 h-12 md:h-11 text-base"
+              />
+            </div>
+            <div>
+              <Label htmlFor="programa">Licenciatura o maestría</Label>
+              <select
+                id="programa"
+                value={programa}
+                onChange={(e) => onPrograma(e.target.value)}
+                className="mt-1.5 h-12 md:h-11 w-full rounded-md border border-input bg-background px-3 text-base"
+              >
+                <option value="">Elige tu programa</option>
+                {programas.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : (
+          <div>
+            <Label htmlFor="correo">Correo</Label>
+            <Input
+              id="correo"
+              type="email"
+              value={correo}
+              onChange={(e) => onCorreo(e.target.value)}
+              placeholder="correo@ejemplo.com"
+              className="mt-1.5 h-12 md:h-11 text-base"
+            />
+          </div>
+        )}
+      </div>
+
+      {error ? (
+        <p className="mt-3 text-xs font-medium text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <Button size="lg" className="mt-5 w-full sm:w-auto" onClick={onContinuar}>
+        Continuar
+      </Button>
+    </Tarjeta>
+  );
+}
+
+/** El paso de elegir cuál conferencia se evalúa. */
+function SelectorConferencia({
+  opciones,
+  onElegir,
+}: {
+  opciones: readonly (typeof CONFERENCIAS_PRELIMINARES)[number][];
+  onElegir: (slug: string) => void;
+}) {
+  return (
+    <div className="mt-6">
+      <Rotulo como="span">¿Cuál conferencia vas a evaluar?</Rotulo>
+      <div className="mt-3 grid gap-3">
+        {opciones.map((c) => (
+          <button
+            key={c.slug}
+            type="button"
+            onClick={() => onElegir(c.slug)}
+            className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary hover:bg-accent"
+          >
+            <span className="block text-sm font-semibold">{c.titulo}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {c.ponente} · {c.pais}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {c.fecha}, {c.hora}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -335,52 +599,52 @@ function ReactivoLikert({
 }
 
 /**
- * Lo que se ve al terminar: un acuse, y nada más.
+ * Lo que se ve al terminar de evaluar una conferencia: un acuse, y nada más.
  *
- * Aquí estaban el puntaje sobre 60, el nivel de logro con su interpretación,
- * el desglose por instrumento y la tabla de la escala, y se quitaron los
- * cuatro. No fue por sitio: **la calificación no es para quien contesta.**
- *
- * El instrumento mide el evento, no a la persona, y devolverle un «Bajo — el
- * impacto académico fue limitado» a quien acaba de dedicarle diez minutos
- * convierte una evaluación en un veredicto sobre ella. Y lo que hace al
- * contestar la siguiente —si la hay— es acomodar las respuestas para no
- * volver a salir en rojo, que es justo el dato que se estaba buscando.
- *
- * El cálculo no se borró: `nivelDeLogro`, los rangos y los máximos por
- * instrumento siguen en `lib/encuesta.ts` enteros y comprobados. Lo que
- * cambió es quién los lee —la coordinación, sobre el agregado— y no si
- * existen.
- *
- * Y el acuse se quedó en dos renglones por lo mismo que no lleva puntaje: esta
- * pantalla no tiene nada que pedirle ni que enseñarle. Lo único que le hace
- * falta saber es que sus respuestas no se leen como suyas.
+ * Sin puntaje, sin nivel de logro. **La calificación no es para quien
+ * contesta**: el instrumento mide la conferencia, no a la persona, y
+ * devolverle un veredicto a quien acaba de dedicarle diez minutos la convierte
+ * en una nota sobre ella. El cálculo —`nivelDeLogro`, los rangos— sigue
+ * entero en `lib/encuesta.ts`, para cuando la coordinación lo lea sobre el
+ * agregado.
  */
-function Resultado({ onReiniciar }: { onReiniciar: () => void }) {
+function Acuse({
+  conferencia,
+  quedanPorEvaluar,
+  onEvaluarOtra,
+}: {
+  conferencia: { titulo: string } | undefined;
+  quedanPorEvaluar: boolean;
+  onEvaluarOtra: () => void;
+}) {
   return (
     <div className="mt-6">
       <Tarjeta className="text-center">
         <CheckCircle2 className="mx-auto size-8 text-estado-pagado" aria-hidden />
         <p className="mt-3 text-lg font-bold tracking-tight">Gracias por responder</p>
-        {/*
-          Una línea, y la que queda es la que informa.
-
-          Decía antes «Terminaste las doce afirmaciones» y eso lo acaba de
-          hacer: contárselo es ocupar el renglón más visible de la pantalla con
-          algo que ya sabe. Lo que NO sabe, y es lo único que le concierne, es
-          que nadie va a leer sus respuestas como suyas.
-        */}
         <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
-          Tus respuestas se analizan en conjunto para evaluar el Encuentro, no una por una.
+          {conferencia ? (
+            <>
+              Tu evaluación de <strong className="font-semibold">{conferencia.titulo}</strong> quedó
+              registrada. Tus respuestas se analizan en conjunto, no una por una.
+            </>
+          ) : (
+            "Tus respuestas se analizan en conjunto, no una por una."
+          )}
         </p>
       </Tarjeta>
 
-      <div className="mt-8 flex justify-center">
-        <Button variant="outline" size="lg" onClick={onReiniciar}>
-          <RotateCcw aria-hidden />
-          Responder otra vez
-        </Button>
-      </div>
+      {quedanPorEvaluar ? (
+        <div className="mt-8 flex justify-center">
+          <Button size="lg" onClick={onEvaluarOtra}>
+            Evaluar otra conferencia
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          Ya evaluaste las tres conferencias preliminares. Gracias por tu tiempo.
+        </p>
+      )}
     </div>
   );
 }
