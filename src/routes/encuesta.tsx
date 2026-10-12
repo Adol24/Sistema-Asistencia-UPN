@@ -7,7 +7,6 @@ import { Ayuda, Rotulo, Tarjeta, Texto, Titulo } from "@/components/tipografia";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import {
   CAMPO_MAYUSCULAS,
   MAX_MATRICULA,
@@ -216,19 +215,7 @@ function Encuesta() {
         <SelectorConferencia opciones={porEvaluar} onElegir={elegirConferencia} />
       ) : paso === "preguntas" && conferencia ? (
         <>
-          <Tarjeta className="mt-6 p-4" padding="none">
-            <div className="flex items-center justify-between gap-4">
-              <Rotulo como="span">{conferencia.titulo}</Rotulo>
-              <span className="text-sm font-semibold tabular-nums">
-                {contestadas} de {PREGUNTAS_VISIBLES.length}
-              </span>
-            </div>
-            <Progress
-              className="mt-2"
-              value={(contestadas / PREGUNTAS_VISIBLES.length) * 100}
-              aria-label="Preguntas contestadas"
-            />
-          </Tarjeta>
+          <Rotulo className="mt-6 text-primary">{conferencia.titulo}</Rotulo>
 
           <Seccion
             instrumento="impacto"
