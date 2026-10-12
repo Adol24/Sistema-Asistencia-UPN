@@ -38,6 +38,7 @@ export type RutaConstruida =
   | "/admin/elegibles"
   | "/admin/talleres"
   | "/admin/configuracion"
+  | "/admin/encuesta"
   | "/admin/padron"
   | "/admin/alumnos"
   | "/admin/preinscritos"
@@ -127,6 +128,7 @@ export const modulos: ModuloIndice[] = [
       { estado: "listo", to: "/admin/monitoreo", label: "Monitoreo en vivo" },
       { estado: "listo", to: "/admin/talleres", label: "Talleres (CRUD)" },
       { estado: "listo", to: "/admin/configuracion", label: "Configuración del evento" },
+      { estado: "listo", to: "/admin/encuesta", label: "Respuestas de la encuesta" },
       { estado: "listo", to: "/admin/padron", label: "Importación del padrón" },
       { estado: "listo", to: "/admin/preinscritos", label: "Preinscritos" },
       { estado: "listo", to: "/admin/alumnos", label: "Directorio de participantes" },

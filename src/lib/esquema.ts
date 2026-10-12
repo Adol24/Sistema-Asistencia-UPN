@@ -28,6 +28,7 @@ import type {
 } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import type { RespuestaEncuesta, ValorEscala } from "@/lib/encuesta";
 import type { PagoRegistrado } from "@/lib/pagos-logica";
 import { isoAFecha } from "@/lib/formato";
 import { rolDesdeBase } from "@/lib/roles";
@@ -332,6 +333,30 @@ export const aEntradaBitacora = (f: FilaBitacora): EntradaBitacora => ({
   // Lo que viene de la base es, por definición, lo ya ocurrido: la marca de
   // «sesión» la pone quien la anota en este navegador.
   deLaSesion: false,
+});
+
+export interface FilaEncuestaRespuesta {
+  id: string;
+  conferencia: string;
+  perfil: string;
+  nombre: string;
+  matricula: string | null;
+  programa: string | null;
+  correo: string | null;
+  respuestas: Record<string, number>;
+  creado_en: string;
+}
+
+export const aRespuestaEncuesta = (f: FilaEncuestaRespuesta): RespuestaEncuesta => ({
+  id: f.id,
+  conferencia: f.conferencia,
+  perfil: f.perfil as RespuestaEncuesta["perfil"],
+  nombre: f.nombre,
+  matricula: f.matricula,
+  programa: f.programa,
+  correo: f.correo,
+  respuestas: f.respuestas as Record<number, ValorEscala>,
+  creadoEn: aFechaHora(f.creado_en),
 });
 
 // ================================================================ el puente ===

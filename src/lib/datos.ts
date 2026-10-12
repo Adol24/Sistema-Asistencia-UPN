@@ -26,6 +26,7 @@ import {
   aEvidencia,
   aPago,
   aParticipante,
+  aRespuestaEncuesta,
   aTallerBase,
   aUsuario,
   type FilaAsistencia,
@@ -33,6 +34,7 @@ import {
   type FilaCaso,
   type FilaConfiguracion,
   type FilaDia,
+  type FilaEncuestaRespuesta,
   type FilaEstadoPago,
   type FilaEvidencia,
   type FilaNivel,
@@ -59,6 +61,7 @@ import type { NivelAcademico } from "@/dominio/catalogos";
 // también el servidor para pintar lo público antes de que haya navegador.
 import type { PerfilSinPadron, ProgramaDeVentana, VentanaPreregistro } from "@/lib/ventanas";
 import type { Modo } from "@/lib/escaneo";
+import type { RespuestaEncuesta } from "@/lib/encuesta";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
 import type { EntradaBitacora } from "@/lib/contrato-estado";
@@ -1848,6 +1851,26 @@ export async function evaluarConferencia(datos: {
     p_programa: datos.programa ?? null,
     p_respuestas: datos.respuestas,
   });
+}
+
+/**
+ * Quién ha respondido la encuesta de las conferencias preliminares, y qué.
+ *
+ * Aparte de `Instantanea` y a propósito: es una tabla que solo mira `/admin`,
+ * de vez en cuando, y meterla en la carga inicial pagaría su consulta en
+ * cada sesión —incluida la de la puerta y la de captura— por una pantalla
+ * que casi nadie abre. Se pide completa porque son cientos de filas, no
+ * miles: tres conferencias, no un padrón.
+ */
+export async function obtenerRespuestasEncuesta(): Promise<RespuestaEncuesta[]> {
+  const sb = exigirBase();
+  const filas = await datosDe<FilaEncuestaRespuesta[]>(
+    sb
+      .from("encuesta_respuestas")
+      .select("id, conferencia, perfil, nombre, matricula, programa, correo, respuestas, creado_en")
+      .order("creado_en", { ascending: false }),
+  );
+  return filas.map(aRespuestaEncuesta);
 }
 
 /**

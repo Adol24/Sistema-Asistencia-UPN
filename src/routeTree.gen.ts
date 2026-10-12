@@ -27,6 +27,7 @@ import { Route as AdminAvanceRouteImport } from './routes/admin.avance'
 import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
+import { Route as AdminEncuestaRouteImport } from './routes/admin.encuesta'
 import { Route as AdminLeipRouteImport } from './routes/admin.leip'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
 import { Route as AdminPadronRouteImport } from './routes/admin.padron'
@@ -137,6 +138,11 @@ const AdminConfiguracionRoute = AdminConfiguracionRouteImport.update({
 const AdminElegiblesRoute = AdminElegiblesRouteImport.update({
   id: '/admin/elegibles',
   path: '/admin/elegibles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEncuestaRoute = AdminEncuestaRouteImport.update({
+  id: '/admin/encuesta',
+  path: '/admin/encuesta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLeipRoute = AdminLeipRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/encuesta': typeof AdminEncuestaRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/encuesta': typeof AdminEncuestaRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
+  '/admin/encuesta': typeof AdminEncuestaRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/encuesta'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/encuesta'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/admin/bitacora'
     | '/admin/configuracion'
     | '/admin/elegibles'
+    | '/admin/encuesta'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -513,6 +525,7 @@ export interface RootRouteChildren {
   AdminBitacoraRoute: typeof AdminBitacoraRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminElegiblesRoute: typeof AdminElegiblesRoute
+  AdminEncuestaRoute: typeof AdminEncuestaRoute
   AdminLeipRoute: typeof AdminLeipRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
   AdminPadronRoute: typeof AdminPadronRoute
@@ -663,6 +676,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/elegibles'
       fullPath: '/admin/elegibles'
       preLoaderRoute: typeof AdminElegiblesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/encuesta': {
+      id: '/admin/encuesta'
+      path: '/admin/encuesta'
+      fullPath: '/admin/encuesta'
+      preLoaderRoute: typeof AdminEncuestaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/leip': {
@@ -833,6 +853,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBitacoraRoute: AdminBitacoraRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminElegiblesRoute: AdminElegiblesRoute,
+  AdminEncuestaRoute: AdminEncuestaRoute,
   AdminLeipRoute: AdminLeipRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
   AdminPadronRoute: AdminPadronRoute,

@@ -18,6 +18,7 @@
 import {
   BookOpenCheck,
   CalendarCog,
+  ClipboardCheck,
   ClipboardList,
   Contact,
   FileSpreadsheet,
@@ -85,6 +86,7 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
       enlaces: [
         { to: "/admin/talleres", label: "Talleres", icono: GraduationCap },
         { to: "/admin/configuracion", label: "Configuración", icono: CalendarCog },
+        { to: "/admin/encuesta", label: "Encuesta", icono: ClipboardCheck },
       ],
     },
     {

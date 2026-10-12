@@ -232,3 +232,24 @@ export const NIVELES: readonly Nivel[] = [
  */
 export const nivelDeLogro = (total: number): Nivel =>
   NIVELES.find((n) => total >= n.min && total <= n.max) ?? NIVELES[NIVELES.length - 1]!;
+
+/**
+ * Una evaluación guardada, tal como la ve `/admin`.
+ *
+ * `respuestas` solo trae las `PREGUNTAS_VISIBLES` —10, no las 12 del
+ * instrumento en papel—, así que un total sobre esta forma NO es comparable
+ * contra `NIVELES`: esa tabla está calibrada sobre 60 (doce reactivos) y el
+ * máximo real aquí es 50. Por eso el panel enseña promedios de 1 a 5, no un
+ * nivel de logro.
+ */
+export interface RespuestaEncuesta {
+  id: string;
+  conferencia: string;
+  perfil: "alumno" | "docente" | "externo";
+  nombre: string;
+  matricula: string | null;
+  programa: string | null;
+  correo: string | null;
+  respuestas: Record<number, ValorEscala>;
+  creadoEn: string;
+}
