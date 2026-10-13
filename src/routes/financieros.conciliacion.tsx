@@ -18,6 +18,7 @@ import { usePrototipo } from "@/lib/prototipo";
 import { usePaginacion } from "@/lib/paginacion";
 import { meta } from "@/lib/seo";
 import { GrupoFiltro } from "@/components/grupo-filtro";
+import type { Perfil } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/financieros/conciliacion")({
   head: () =>
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/financieros/conciliacion")({
 });
 
 type Filtro = "todos" | "pagado" | "discrepancia" | "por_vencer";
+type FiltroPerfil = "todos" | Perfil;
 
 function Conciliacion() {
   const { participantes, pagos, estadoDe, configuracion: evento } = useEstadoEvento();
@@ -37,6 +39,7 @@ function Conciliacion() {
   const ejemplo = folioDeEjemplo(participantes);
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [filtroPerfil, setFiltroPerfil] = useState<FiltroPerfil>("todos");
 
   // Todos los totales se calculan de los pagos registrados; ninguno está escrito a mano.
   const cifras = useMemo(() => {
@@ -95,6 +98,7 @@ function Conciliacion() {
         return { p, estado: e, pagado: suyos.reduce((a, x) => a + x.monto, 0), n: suyos.length };
       })
       .filter((f) => {
+        if (filtroPerfil !== "todos" && f.p.perfil !== filtroPerfil) return false;
         if (filtro === "pagado" && f.estado.evento !== "pagado") return false;
         if (
           filtro === "discrepancia" &&
@@ -115,7 +119,7 @@ function Conciliacion() {
           (f.p.matricula ?? "").toLowerCase().includes(t)
         );
       });
-  }, [participantes, q, filtro, pagos, estadoDe]);
+  }, [participantes, q, filtro, filtroPerfil, pagos, estadoDe]);
 
   /*
    * La tabla se pagina, y con dos mil participantes deja de ser un lujo.
@@ -128,7 +132,7 @@ function Conciliacion() {
    * La clave de reinicio son los dos filtros: cambiar de estado o de búsqueda
    * devuelve a la página 1, que es lo que se espera. Ver `usePaginacion`.
    */
-  const tramo = usePaginacion(filas, 50, `${q}|${filtro}`);
+  const tramo = usePaginacion(filas, 50, `${q}|${filtro}|${filtroPerfil}`);
 
   /*
    * El archivo que Servicios Financieros cuadra contra el estado de cuenta.
@@ -250,16 +254,28 @@ function Conciliacion() {
           marcador="Filtrar por folio, nombre o matrícula"
           etiqueta="Filtrar la tabla de conciliación"
         />
-        <GrupoFiltro
-          valor={filtro}
-          alElegir={setFiltro}
-          opciones={[
-            ["todos", "Todos"],
-            ["pagado", "Pagados"],
-            ["discrepancia", "Con discrepancia"],
-            ["por_vencer", "Por vencer"],
-          ]}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <GrupoFiltro
+            valor={filtroPerfil}
+            alElegir={setFiltroPerfil}
+            opciones={[
+              ["todos", "Todos los perfiles"],
+              ["alumno", "Alumnos"],
+              ["docente", "Maestros"],
+              ["externo", "Externos"],
+            ]}
+          />
+          <GrupoFiltro
+            valor={filtro}
+            alElegir={setFiltro}
+            opciones={[
+              ["todos", "Todos"],
+              ["pagado", "Pagados"],
+              ["discrepancia", "Con discrepancia"],
+              ["por_vencer", "Por vencer"],
+            ]}
+          />
+        </div>
       </div>
 
       {/*
@@ -288,7 +304,7 @@ function Conciliacion() {
                 {ejemplo
                   ? `Prueba con el folio completo, por ejemplo ${ejemplo}, o quita `
                   : "Quita "}
-                el filtro de estado.
+                los filtros.
               </p>
             </>
           ) : null
