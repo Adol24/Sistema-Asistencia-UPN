@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Keyboard, LogIn, LogOut, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
 import { CamaraQR } from "@/components/camara-qr";
@@ -196,6 +197,23 @@ function PantallaEscaneo() {
     const t = setTimeout(() => setResultado(null), resultado.detiene ? MS_AVISO : MS_VERDE);
     return () => clearTimeout(t);
   }, [resultado, retenido]);
+
+  /*
+   * El campo manual es el blanco de un lector USB o Bluetooth tipo pistola
+   * (ver el comentario de `ultimoAMano` más arriba): ese aparato no abre
+   * nada, solo teclea el folio y un Intro hacia donde esté el foco. Si el
+   * foco se queda en cualquier otro lado —al cargar la pantalla, o tras
+   * cerrar un aviso con el mouse— sus lecturas no llegan a ningún sitio.
+   *
+   * Solo en escritorio: en el teléfono enfocar el campo abre el teclado
+   * virtual encima del vídeo de la cámara, que es justo lo que se evita más
+   * arriba al no devolver el foco tras una lectura de cámara.
+   */
+  const esMovil = useIsMobile();
+  const listoParaEscanear = !bloqueante && porVerificar === null && !autorizando;
+  useEffect(() => {
+    if (!esMovil && listoParaEscanear) campo.current?.focus();
+  }, [esMovil, listoParaEscanear]);
 
   // Accesos rápidos a casos representativos: la cámara es simulada, así que sin
   // esto no habría forma cómoda de disparar cada color durante la revisión.
