@@ -57,6 +57,19 @@ export const Route = createFileRoute("/captura/escaneo")({
 const MS_VERDE = 900;
 const MS_AVISO = 2500;
 
+/*
+ * El lector físico manda el código de tecla de EE.UU., y en un teclado
+ * configurado en español esa tecla ya no es «-»: es «'». El folio llega como
+ * PRE'00801 en vez de PRE-00801, y no es un dato distinto, es el mismo guion
+ * mal traducido por la distribución del teclado del equipo.
+ *
+ * El arreglo de fondo es configurar el lector a distribución «Español
+ * Latinoamérica» desde su manual; esto es la red de seguridad mientras eso no
+ * esté hecho en cada equipo. No hay riesgo de corregir de más: ni un folio
+ * (`PRE-00801`) ni una matrícula (solo dígitos) llevan apóstrofe nunca.
+ */
+const corrigeApostrofeDeEscaner = (valor: string) => valor.replace(/['’]/g, "-");
+
 function PantallaEscaneo() {
   const {
     participantes,
@@ -276,7 +289,7 @@ function PantallaEscaneo() {
         <Input
           ref={campo}
           value={entrada}
-          onChange={(e) => setEntrada(e.target.value)}
+          onChange={(e) => setEntrada(corrigeApostrofeDeEscaner(e.target.value))}
           {...CAMPO_MAYUSCULAS}
           placeholder="Folio o matrícula"
           aria-label="Capturar folio o matrícula a mano"
