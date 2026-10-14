@@ -17,6 +17,7 @@ import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { opcion } from "@/lib/estilos";
 import {
   corrigeApostrofeDeEscaner,
+  esControlReal,
   fuenteGuardada,
   guardarFuente,
   type FuenteEntrada,
@@ -237,6 +238,29 @@ function PantallaEscaneo() {
     if (fuente === "lector" || !esMovil) campo.current?.focus();
   };
 
+  /*
+   * Tercer guardián del foco, y el que cubre el caso que faltaba: un toque
+   * en cualquier zona vacía de la pantalla —no un botón, no otro campo— que
+   * le quita el foco al campo sin dárselo a nada útil. Los otros dos
+   * reaccionan a CAMBIOS de estado (cerrar un diálogo, cambiar de fuente);
+   * este reacciona al blur del campo mismo, pase lo que pase.
+   *
+   * El `setTimeout` es necesario: en el instante del propio evento `blur` el
+   * navegador todavía no terminó de decidir quién se queda con el foco, así
+   * que `document.activeElement` miente si se lee antes de ese respiro.
+   */
+  const alPerderFoco = () => {
+    setTimeout(() => {
+      if (
+        listoParaEscanear &&
+        (fuente === "lector" || !esMovil) &&
+        !esControlReal(document.activeElement)
+      ) {
+        campo.current?.focus();
+      }
+    }, 0);
+  };
+
   // Accesos rápidos a casos representativos: la cámara es simulada, así que sin
   // esto no habría forma cómoda de disparar cada color durante la revisión.
   // Los candidatos se evalúan con el mismo motor del escáner, no se adivinan:
@@ -332,6 +356,7 @@ function PantallaEscaneo() {
           ref={campo}
           value={entrada}
           onChange={(e) => setEntrada(corrigeApostrofeDeEscaner(e.target.value))}
+          onBlur={alPerderFoco}
           {...CAMPO_MAYUSCULAS}
           placeholder="Folio o matrícula"
           aria-label="Capturar folio o matrícula a mano"

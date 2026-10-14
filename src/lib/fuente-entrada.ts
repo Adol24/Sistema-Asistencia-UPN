@@ -38,3 +38,20 @@ export const guardarFuente = (valor: FuenteEntrada): void => {
  * cualquier campo que un lector pueda llenar, no solo en el de la puerta.
  */
 export const corrigeApostrofeDeEscaner = (valor: string) => valor.replace(/['’]/g, "-");
+
+/*
+ * ¿Lo que tiene el foco ahora es un control real —botón, selector, otro
+ * campo— o es cualquier otra cosa: el fondo de la pantalla, un párrafo, el
+ * `<body>` mismo?
+ *
+ * Es la pregunta que decide si hay que reclamar el foco de vuelta para el
+ * lector. Un capturista de pie, con el aparato en la otra mano, toca la
+ * pantalla sin querer —para desplazarse, por error— y ese toque sobre una
+ * zona vacía le quita el foco al campo sin dárselo a nada útil. No hay que
+ * pelearse con un clic real: cualquier botón, selector, campo o enlace se
+ * queda con el suyo.
+ */
+export const esControlReal = (el: Element | null): boolean =>
+  !!el &&
+  el.tagName !== "BODY" &&
+  ["INPUT", "SELECT", "TEXTAREA", "BUTTON", "A"].includes(el.tagName);

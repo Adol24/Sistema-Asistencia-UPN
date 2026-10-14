@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { corrigeApostrofeDeEscaner, fuenteGuardada } from "@/lib/fuente-entrada";
+import { corrigeApostrofeDeEscaner, esControlReal, fuenteGuardada } from "@/lib/fuente-entrada";
 import { sitioDelTaller } from "@/lib/formato";
 import { retroalimentar } from "@/lib/retro";
 import { meta } from "@/lib/seo";
@@ -127,6 +127,15 @@ function ModoTaller() {
     if (fuente === "lector") campo.current?.focus();
   }, [fuente]);
 
+  // Un toque en zona vacía —no un botón, no la búsqueda, no otro campo— le
+  // quita el foco sin dárselo a nada útil. Lo recupera, sin pelearse con un
+  // clic real: ver `esControlReal` en `fuente-entrada.ts`.
+  const alPerderFoco = () => {
+    setTimeout(() => {
+      if (fuente === "lector" && !esControlReal(document.activeElement)) campo.current?.focus();
+    }, 0);
+  };
+
   const marcarPorLector = async (valor: string) => {
     const limpio = corrigeApostrofeDeEscaner(valor).trim();
     if (!limpio || repiteAMano(limpio)) return;
@@ -199,6 +208,7 @@ function ModoTaller() {
                 ref={campo}
                 value={entrada}
                 onChange={(e) => setEntrada(e.target.value)}
+                onBlur={alPerderFoco}
                 {...CAMPO_MAYUSCULAS}
                 placeholder="Escanea el folio o matrícula"
                 aria-label="Marcar asistencia con el lector"
