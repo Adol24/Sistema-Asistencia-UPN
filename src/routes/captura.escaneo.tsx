@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Keyboard, LogIn, LogOut, ShieldCheck, Volume2, VolumeX, Zap } from "lucide-react";
+import {
+  Camera,
+  Keyboard,
+  LogIn,
+  LogOut,
+  ScanBarcode,
+  ShieldCheck,
+  Volume2,
+  VolumeX,
+  Zap,
+} from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
@@ -13,6 +23,7 @@ import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
+import { opcion } from "@/lib/estilos";
 import { estaSilenciado, probar, retroalimentar, silenciar, type Aviso } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
 import type { OpcionesEscaneo } from "@/lib/contrato-estado";
@@ -70,6 +81,36 @@ const MS_AVISO = 2500;
  */
 const corrigeApostrofeDeEscaner = (valor: string) => valor.replace(/['’]/g, "-");
 
+/*
+ * Qué aparato lee el código. Vive en `localStorage` y no en el estado de la
+ * sesión: es una preferencia del EQUIPO —la laptop de esa puerta trae un
+ * lector USB enchufado, o no—, no de la sesión de captura, que cambia de
+ * capturista varias veces en el día sin que el cable se mueva de sitio.
+ */
+const CLAVE_FUENTE = "captura.fuenteEntrada";
+type FuenteEntrada = "camara" | "lector";
+
+const fuenteGuardada = (): FuenteEntrada => {
+  try {
+    return window.localStorage.getItem(CLAVE_FUENTE) === "lector" ? "lector" : "camara";
+  } catch {
+    return "camara";
+  }
+};
+
+const guardarFuente = (valor: FuenteEntrada): void => {
+  try {
+    window.localStorage.setItem(CLAVE_FUENTE, valor);
+  } catch {
+    /* Sin almacenamiento, el ajuste dura lo que la pestaña. */
+  }
+};
+
+const FUENTES: { valor: FuenteEntrada; etiqueta: string; icono: typeof Camera }[] = [
+  { valor: "camara", etiqueta: "Cámara", icono: Camera },
+  { valor: "lector", etiqueta: "Lector externo", icono: ScanBarcode },
+];
+
 function PantallaEscaneo() {
   const {
     participantes,
@@ -116,13 +157,20 @@ function PantallaEscaneo() {
     extra?: OpcionesEscaneo | undefined;
   } | null>(null);
   const [mudo, setMudo] = useState(false);
+  const [fuente, setFuente] = useState<FuenteEntrada>("camara");
 
   // El ajuste se lee después de montar y no al crear el estado: en el servidor
   // no hay `localStorage`, y leerlo durante el render haría que la primera
   // pintura del cliente no coincidiera con la del servidor.
   useEffect(() => {
     setMudo(estaSilenciado());
+    setFuente(fuenteGuardada());
   }, []);
+
+  const elegirFuente = (valor: FuenteEntrada) => {
+    setFuente(valor);
+    guardarFuente(valor);
+  };
   const [retenido, setRetenido] = useState(false);
   const [autorizando, setAutorizando] = useState<string | null>(null);
   const [nota, setNota] = useState("");
@@ -202,8 +250,13 @@ function PantallaEscaneo() {
    * La cámara se detiene mientras se verifica. Si siguiera leyendo, la persona
    * de atrás entraría en pantalla mientras quien captura está comparando el
    * nombre de la de adelante, y confirmaría a la equivocada.
+   *
+   * Y no se activa en absoluto en modo lector: ni se pide permiso de cámara
+   * ni se enciende el sensor. Con un lector USB o Bluetooth en la puerta, el
+   * cuadro de vídeo no aporta nada y sí le quita pantalla al campo que sí
+   * importa.
    */
-  const camaraActiva = !bloqueante && porVerificar === null;
+  const camaraActiva = fuente === "camara" && !bloqueante && porVerificar === null;
 
   useEffect(() => {
     if (!resultado || retenido) return;
@@ -218,15 +271,15 @@ function PantallaEscaneo() {
    * foco se queda en cualquier otro lado —al cargar la pantalla, o tras
    * cerrar un aviso con el mouse— sus lecturas no llegan a ningún sitio.
    *
-   * Solo en escritorio: en el teléfono enfocar el campo abre el teclado
-   * virtual encima del vídeo de la cámara, que es justo lo que se evita más
-   * arriba al no devolver el foco tras una lectura de cámara.
+   * En escritorio se enfoca siempre. En el teléfono solo en modo lector: ahí
+   * no hay cámara en pantalla con la que el teclado virtual se encime, y es
+   * justo el aparato con el que se usa un lector Bluetooth.
    */
   const esMovil = useIsMobile();
   const listoParaEscanear = !bloqueante && porVerificar === null && !autorizando;
   useEffect(() => {
-    if (!esMovil && listoParaEscanear) campo.current?.focus();
-  }, [esMovil, listoParaEscanear]);
+    if (listoParaEscanear && (fuente === "lector" || !esMovil)) campo.current?.focus();
+  }, [esMovil, fuente, listoParaEscanear]);
 
   // Accesos rápidos a casos representativos: la cámara es simulada, así que sin
   // esto no habría forma cómoda de disparar cada color durante la revisión.
@@ -253,10 +306,42 @@ function PantallaEscaneo() {
       .sort((a, b) => orden.indexOf(a.color) - orden.indexOf(b.color));
   }, [participantes, sesion, asistencias, estadoDe, diasDelTaller]);
 
+  // Se repite en los dos casos —cámara y lector— así que se arma una vez.
+  const overlay = (
+    <>
+      <span className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
+        {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
+      </span>
+      {resultado && !resultado.detiene ? <Destello r={resultado} /> : null}
+    </>
+  );
+
   return (
     <PantallaCaptura titulo={`Escaneo · Día ${sesion.dia} · ${sesion.punto}`}>
       <div className="rounded-lg border border-border bg-card p-2">
         <SelectorModo compacto />
+      </div>
+
+      {/*
+        No es una preferencia de la sesión de captura, es del equipo: la
+        laptop de esta puerta trae un lector enchufado o no, y eso no cambia
+        cuando entra el siguiente capturista. Por eso vive en `localStorage`
+        y se ofrece aquí, fuera de `SelectorModo`.
+      */}
+      <div className="mt-2 grid grid-cols-2 gap-1" role="group" aria-label="Fuente de lectura">
+        {FUENTES.map((f) => (
+          <button
+            key={f.valor}
+            onClick={() => elegirFuente(f.valor)}
+            aria-pressed={fuente === f.valor}
+            className={cn(
+              "flex min-h-10 items-center justify-center gap-1.5 rounded-md border text-xs font-bold transition-colors",
+              opcion(fuente === f.valor),
+            )}
+          >
+            <f.icono className="size-3.5" aria-hidden /> {f.etiqueta}
+          </button>
+        ))}
       </div>
 
       {/*
@@ -272,12 +357,13 @@ function PantallaEscaneo() {
         pagaba 700 veces por jornada. Ahora el resultado va encima y el vídeo
         sigue vivo debajo.
       */}
-      <CamaraQR onLeer={(valor) => void disparar(valor)} activa={camaraActiva}>
-        <span className="absolute right-3 top-3 z-10 rounded-md bg-background/90 px-2 py-1 text-xs font-bold">
-          {escaneosSesion} {escaneosSesion === 1 ? "escaneo" : "escaneos"}
-        </span>
-        {resultado && !resultado.detiene ? <Destello r={resultado} /> : null}
-      </CamaraQR>
+      {fuente === "camara" ? (
+        <CamaraQR onLeer={(valor) => void disparar(valor)} activa={camaraActiva}>
+          {overlay}
+        </CamaraQR>
+      ) : (
+        <PanelLector>{overlay}</PanelLector>
+      )}
 
       <form
         className="mt-3 flex gap-2"
@@ -564,6 +650,29 @@ function Verificacion({
           No coincide — pasar a incidencias
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * El mismo marco que `CamaraQR`, sin video: para cuando quien captura trae un
+ * lector USB o Bluetooth enchufado y no necesita —ni quiere— la cámara
+ * encendida.
+ *
+ * Mismo tamaño y mismas esquinas que el cuadro de la cámara a propósito: el
+ * resultado (`Destello`, `Semaforo`) y el contador de escaneos se dibujan
+ * encima con las mismas clases en los dos casos, así que el marco tiene que
+ * medir igual para que no salten de sitio al cambiar de fuente.
+ */
+function PanelLector({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="relative mt-3 flex aspect-[4/3] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg bg-foreground/90 px-6 text-center">
+      <ScanBarcode className="size-8 text-background/70" aria-hidden />
+      <p className="text-sm font-semibold text-background">Lector externo activo</p>
+      <p className="text-xs text-background/80">
+        Apunta el lector al código. El campo de abajo lo recibe solo, sin que le des clic.
+      </p>
+      {children}
     </div>
   );
 }
