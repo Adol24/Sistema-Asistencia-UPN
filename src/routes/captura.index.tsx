@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, MapPin, ScanLine, UserRound } from "lucide-react";
+import { CalendarDays, CircleAlert, MapPin, ScanLine, UserRound } from "lucide-react";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Button } from "@/components/ui/button";
 
-import { isoAFecha } from "@/lib/formato";
+import { diaRealDeHoy, isoAFecha } from "@/lib/formato";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { meta } from "@/lib/seo";
@@ -54,6 +54,26 @@ function ConfiguracionSesion() {
     if (soyYo && sesion.capturista !== soyYo) setSesion({ capturista: soyYo });
   }, [soyYo, sesion.capturista, setSesion]);
 
+  /*
+   * El día que se puede capturar es el de HOY, y nada más.
+   *
+   * `diaRealDeHoy` compara la fecha real de cada día —la que se edita en
+   * `/admin/configuracion`— contra la de hoy. La base ya rechaza el insert si
+   * no coincide (ver la migración que agrega `trg_exigir_dia_real`), pero
+   * dejar elegir un día equivocado aquí solo serviría para que el capturista
+   * escaneara una fila entera antes de toparse con el error en el primer
+   * registro. Se bloquea donde se elige, no donde se descubre.
+   *
+   * En modo prototipo no hay base real que proteger —nada se escribe de
+   * verdad—, así que ahí se deja elegir libremente: es donde se enseña el
+   * sistema fuera de fecha.
+   */
+  const diaReal = diaRealDeHoy(evento.dias);
+  const bloqueaPorFecha = !modoPrototipo;
+  useEffect(() => {
+    if (bloqueaPorFecha && diaReal && sesion.dia !== diaReal) setSesion({ dia: diaReal });
+  }, [bloqueaPorFecha, diaReal, sesion.dia, setSesion]);
+
   return (
     <PantallaCaptura titulo="Configuración de sesión">
       <p className="text-sm text-muted-foreground">
@@ -68,14 +88,19 @@ function ConfiguracionSesion() {
         <div className="mt-2 grid grid-cols-3 gap-2">
           {([1, 2, 3] as Dia[]).map((d) => {
             const info = infoDia(d);
+            const deshabilitado = bloqueaPorFecha && d !== diaReal;
             return (
               <button
                 key={d}
-                onClick={() => setSesion({ dia: d })}
+                onClick={() => !deshabilitado && setSesion({ dia: d })}
+                disabled={deshabilitado}
                 aria-pressed={sesion.dia === d}
+                title={deshabilitado ? `Hoy no es ${info.etiqueta.toLowerCase()}` : undefined}
                 className={cn(
                   "min-h-20 rounded-lg border px-2 text-center transition-colors",
-                  opcion(sesion.dia === d),
+                  deshabilitado
+                    ? "cursor-not-allowed border-border bg-muted text-muted-foreground opacity-50"
+                    : opcion(sesion.dia === d),
                 )}
               >
                 <span className="block text-xl font-extrabold">{d}</span>
@@ -87,6 +112,13 @@ function ConfiguracionSesion() {
         <p className="mt-2 text-xs text-muted-foreground">
           {dia.etiqueta} — {isoAFecha(dia.fecha)} · Registro de entrada: {evento.registroEntrada}
         </p>
+        {bloqueaPorFecha && diaReal === null ? (
+          <p className="mt-2 flex items-start gap-1.5 rounded-md bg-estado-cancelado-bg p-2 text-xs font-medium text-estado-cancelado">
+            <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            Hoy no es ninguno de los tres días del evento. No se puede capturar asistencia hasta que
+            llegue la fecha.
+          </p>
+        ) : null}
       </section>
 
       <section className="mt-6">
@@ -166,6 +198,7 @@ function ConfiguracionSesion() {
 
       <Button
         className="mt-8 h-14 w-full text-base font-bold"
+        disabled={bloqueaPorFecha && diaReal === null}
         onClick={() => navigate({ to: "/captura/escaneo" })}
       >
         <ScanLine className="size-5" /> Comenzar a escanear

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { ConfiguracionEvento } from "@/lib/configuracion";
+import { diaRealDeHoy } from "@/lib/formato";
 import type { Dia } from "@/dominio/tipos";
 
 /**
@@ -56,16 +57,14 @@ export function useRelojEvento(configuracion: ConfiguracionEvento) {
   /*
    * El día del evento que corresponde a hoy, o `null` si hoy no es ninguno.
    *
-   * Se compara contra la fecha local, no contra UTC: a las 19:00 en México ya
-   * es el día siguiente en UTC, y el monitoreo saltaría al día 2 con la jornada
-   * del 1 todavía en marcha.
+   * `diaRealDeHoy` ya compara contra la fecha local y no UTC: a las 19:00 en
+   * México ya es el día siguiente en UTC, y el monitoreo saltaría al día 2 con
+   * la jornada del 1 todavía en marcha.
    */
-  const diaDeHoy = useCallback((): Dia | null => {
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, "0");
-    const hoy = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-    return (configuracion.dias.find((x) => x.fecha.slice(0, 10) === hoy)?.dia as Dia) ?? null;
-  }, [configuracion.dias]);
+  const diaDeHoy = useCallback(
+    (): Dia | null => diaRealDeHoy(configuracion.dias),
+    [configuracion.dias],
+  );
 
   /*
    * Mientras siga la hora real, se pone al día solo.

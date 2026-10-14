@@ -65,6 +65,21 @@ export const hoyIso = () => {
 };
 
 /**
+ * El día del evento (1, 2 o 3) cuya fecha real es hoy, o `null` si hoy no es
+ * ninguno de los tres —antes del evento, entre jornadas, o ya terminado—.
+ *
+ * Se compara contra la fecha LOCAL (`hoyIso`), no contra UTC: a las 19:00 en
+ * México ya es el día siguiente en UTC, y comparar contra UTC adelantaría el
+ * día del evento seis horas antes de que de verdad llegara.
+ */
+export const diaRealDeHoy = <T extends { dia: number; fecha: string }>(
+  dias: readonly T[],
+): T["dia"] | null => {
+  const hoy = hoyIso();
+  return dias.find((d) => d.fecha.slice(0, 10) === hoy)?.dia ?? null;
+};
+
+/**
  * La fecha límite tal como se lee en pantalla: «viernes, 9 de octubre».
  *
  * Este formateo vivía DENTRO de `aConfiguracion`, y ahí era una trampa: la
