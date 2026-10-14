@@ -1,13 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Users } from "lucide-react";
+import { Check, Keyboard, Users } from "lucide-react";
+import { toast } from "sonner";
+import { useAntirreboteManual } from "@/hooks/use-antirrebote-manual";
 import { Buscador } from "@/components/buscador";
 import { PantallaCaptura } from "@/components/captura-shell";
 import { Campo } from "@/components/tipografia";
 import { EstadoVacio } from "@/components/tipografia";
 import { PerfilBadge } from "@/components/estado-badges";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { corrigeApostrofeDeEscaner, fuenteGuardada } from "@/lib/fuente-entrada";
 import { sitioDelTaller } from "@/lib/formato";
 import { retroalimentar } from "@/lib/retro";
 import { meta } from "@/lib/seo";
@@ -84,6 +90,7 @@ function ModoTaller() {
      */
     const r = await escanear(folio, { modo: "taller" });
     retroalimentar(r);
+    return r;
   };
 
   // Con 25 casillas, corregir un error tiene que ser tan directo como marcarlo.
@@ -95,6 +102,41 @@ function ModoTaller() {
   };
 
   const nMarcados = inscritos.filter((p) => marcados.has(p.folio)).length;
+
+  /*
+   * El lector externo también sirve aquí, no solo en la puerta.
+   *
+   * «Marcar una lista es más rápido que escanear uno por uno» era cierto
+   * cuando la alternativa era apuntar la cámara del teléfono a cada QR; con
+   * un lector USB o Bluetooth en la mano, escanear es igual de rápido que
+   * tocar, y es la MISMA preferencia que ya se eligió en `/captura/escaneo`
+   * —ver `fuente-entrada.ts`—, no una nueva que haya que repetir aquí.
+   */
+  const [fuente, setFuente] = useState<"camara" | "lector">("camara");
+  useEffect(() => {
+    setFuente(fuenteGuardada());
+  }, []);
+
+  const [entrada, setEntrada] = useState("");
+  const campo = useRef<HTMLInputElement>(null);
+  const repiteAMano = useAntirreboteManual();
+
+  // Enfocado siempre que hay lector: no hay cámara aquí con la que un teclado
+  // virtual se encime, así que aplica igual en teléfono que en escritorio.
+  useEffect(() => {
+    if (fuente === "lector") campo.current?.focus();
+  }, [fuente]);
+
+  const marcarPorLector = async (valor: string) => {
+    const limpio = corrigeApostrofeDeEscaner(valor).trim();
+    if (!limpio || repiteAMano(limpio)) return;
+    const r = await marcar(limpio);
+    if (r.color === "verde") toast.success(r.titulo);
+    else if (r.color === "rojo") toast.error(r.titulo);
+    else toast(r.titulo);
+    setEntrada("");
+    campo.current?.focus();
+  };
 
   return (
     <PantallaCaptura titulo={`Pase de lista · Día ${sesion.dia}`}>
@@ -144,6 +186,33 @@ function ModoTaller() {
               </span>
             </span>
           </div>
+
+          {fuente === "lector" ? (
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void marcarPorLector(entrada);
+              }}
+            >
+              <Input
+                ref={campo}
+                value={entrada}
+                onChange={(e) => setEntrada(e.target.value)}
+                {...CAMPO_MAYUSCULAS}
+                placeholder="Escanea el folio o matrícula"
+                aria-label="Marcar asistencia con el lector"
+                className="h-14 font-mono text-base uppercase"
+              />
+              <Button
+                type="submit"
+                className="h-14 px-6 text-base font-bold"
+                disabled={!entrada.trim()}
+              >
+                <Keyboard className="size-5" /> Marcar
+              </Button>
+            </form>
+          ) : null}
 
           <Buscador
             className="mt-3"

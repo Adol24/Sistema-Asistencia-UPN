@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Camera, Keyboard, LogIn, LogOut, ScanBarcode, ShieldCheck, Zap } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAntirreboteManual } from "@/hooks/use-antirrebote-manual";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
 import { CamaraQR } from "@/components/camara-qr";
@@ -14,6 +15,12 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { opcion } from "@/lib/estilos";
+import {
+  corrigeApostrofeDeEscaner,
+  fuenteGuardada,
+  guardarFuente,
+  type FuenteEntrada,
+} from "@/lib/fuente-entrada";
 import { retroalimentar } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
 import type { OpcionesEscaneo } from "@/lib/contrato-estado";
@@ -45,44 +52,6 @@ export const Route = createFileRoute("/captura/escaneo")({
  */
 const MS_VERDE = 900;
 const MS_AVISO = 2500;
-
-/*
- * El lector físico manda el código de tecla de EE.UU., y en un teclado
- * configurado en español esa tecla ya no es «-»: es «'». El folio llega como
- * PRE'00801 en vez de PRE-00801, y no es un dato distinto, es el mismo guion
- * mal traducido por la distribución del teclado del equipo.
- *
- * El arreglo de fondo es configurar el lector a distribución «Español
- * Latinoamérica» desde su manual; esto es la red de seguridad mientras eso no
- * esté hecho en cada equipo. No hay riesgo de corregir de más: ni un folio
- * (`PRE-00801`) ni una matrícula (solo dígitos) llevan apóstrofe nunca.
- */
-const corrigeApostrofeDeEscaner = (valor: string) => valor.replace(/['’]/g, "-");
-
-/*
- * Qué aparato lee el código. Vive en `localStorage` y no en el estado de la
- * sesión: es una preferencia del EQUIPO —la laptop de esa puerta trae un
- * lector USB enchufado, o no—, no de la sesión de captura, que cambia de
- * capturista varias veces en el día sin que el cable se mueva de sitio.
- */
-const CLAVE_FUENTE = "captura.fuenteEntrada";
-type FuenteEntrada = "camara" | "lector";
-
-const fuenteGuardada = (): FuenteEntrada => {
-  try {
-    return window.localStorage.getItem(CLAVE_FUENTE) === "lector" ? "lector" : "camara";
-  } catch {
-    return "camara";
-  }
-};
-
-const guardarFuente = (valor: FuenteEntrada): void => {
-  try {
-    window.localStorage.setItem(CLAVE_FUENTE, valor);
-  } catch {
-    /* Sin almacenamiento, el ajuste dura lo que la pestaña. */
-  }
-};
 
 const FUENTES: { valor: FuenteEntrada; etiqueta: string; icono: typeof Camera }[] = [
   { valor: "camara", etiqueta: "Cámara", icono: Camera },
@@ -156,7 +125,7 @@ function PantallaEscaneo() {
   // app, le "teclea" el folio y un Intro al campo enfocado. Si queda apuntando
   // al mismo código, dispara ráfagas de Intro igual que la cámara con el
   // teléfono quieto frente al lente.
-  const ultimoAMano = useRef<{ valor: string; en: number }>({ valor: "", en: 0 });
+  const repiteAMano = useAntirreboteManual();
 
   const escaneosSesion = historial.length;
 
@@ -174,12 +143,7 @@ function PantallaEscaneo() {
     opciones?: { autorizado?: boolean; nota?: string; aMano?: boolean },
   ) => {
     if (!valor.trim()) return;
-    if (opciones?.aMano) {
-      const limpio = valor.trim();
-      const ahora = Date.now();
-      if (limpio === ultimoAMano.current.valor && ahora - ultimoAMano.current.en < 5000) return;
-      ultimoAMano.current = { valor: limpio, en: ahora };
-    }
+    if (opciones?.aMano && repiteAMano(valor.trim())) return;
     const extra = {
       autorizado: opciones?.autorizado ?? false,
       ...(opciones?.nota ? { nota: opciones.nota, autorizadoPor: sesion.capturista } : {}),
@@ -242,7 +206,7 @@ function PantallaEscaneo() {
 
   /*
    * El campo manual es el blanco de un lector USB o Bluetooth tipo pistola
-   * (ver el comentario de `ultimoAMano` más arriba): ese aparato no abre
+   * (ver el comentario de `repiteAMano` más arriba): ese aparato no abre
    * nada, solo teclea el folio y un Intro hacia donde esté el foco. Si el
    * foco se queda en cualquier otro lado —al cargar la pantalla, o tras
    * cerrar un aviso con el mouse— sus lecturas no llegan a ningún sitio.
