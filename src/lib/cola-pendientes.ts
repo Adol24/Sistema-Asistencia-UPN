@@ -1,12 +1,12 @@
 /**
  * Persistencia de la cola de escaneos pendientes de sincronizar.
  *
- * Es la ÚNICA excepción a la regla de que el estado del prototipo vive en
- * memoria y se reinicia al recargar. La razón es que aquí la interfaz promete
- * algo concreto —«SIN CONEXIÓN — 23 pendientes», los escaneos se guardan y se
- * sincronizan al volver la red— y perderlos al recargar demostraría justo lo
- * contrario. En todo lo demás el reinicio sigue siendo el comportamiento
- * correcto.
+ * Es una de las dos excepciones —la otra es `historial-local.ts`— a la regla
+ * de que el estado del prototipo vive en memoria y se reinicia al recargar.
+ * La razón es que aquí la interfaz promete algo concreto —«SIN CONEXIÓN — 23
+ * pendientes», los escaneos se guardan y se sincronizan al volver la red— y
+ * perderlos al recargar demostraría justo lo contrario. En todo lo demás el
+ * reinicio sigue siendo el comportamiento correcto.
  *
  * Toda lectura y escritura está protegida: `localStorage` puede no existir
  * (renderizado en servidor), estar deshabilitado por el navegador, contener

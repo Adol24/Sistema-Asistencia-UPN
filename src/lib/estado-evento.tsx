@@ -40,6 +40,7 @@ import {
 import { asistenciaDe, evaluarEscaneo, type SesionCaptura } from "@/lib/escaneo";
 import { fechaHora, hora as horaActual } from "@/lib/formato";
 import { guardarCola, leerCola } from "@/lib/cola-pendientes";
+import { guardarHistorial, leerHistorial } from "@/lib/historial-local";
 import { aplicarRevisiones } from "@/lib/revision";
 import type { Ctx, EntradaBitacora, EscaneoHistorial, RevisionSesion } from "@/lib/contrato-estado";
 
@@ -117,11 +118,12 @@ export function EstadoEventoProvider({
   const [contadorPagos, setContadorPagos] = useState(0);
 
   const [capturadas, setCapturadas] = useState<Asistencia[]>([]);
-  // La cola arranca de lo que quedó guardado: es lo único que sobrevive a una recarga.
+  // La cola y el historial arrancan de lo que quedó guardado: es lo único que
+  // sobrevive a una recarga.
   const [enCola, setEnCola] = useState<Asistencia[]>(() => leerCola());
   const [revisiones, setRevisiones] = useState<Record<string, RevisionSesion>>({});
   const [ordenRevision, setOrdenRevision] = useState<string[]>([]);
-  const [historial, setHistorial] = useState<EscaneoHistorial[]>([]);
+  const [historial, setHistorial] = useState<EscaneoHistorial[]>(() => leerHistorial());
   const [contadorEscaneos, setContadorEscaneos] = useState(0);
 
   /*
@@ -669,10 +671,15 @@ export function EstadoEventoProvider({
     [asistenciasBase, capturadas, anuladas],
   );
 
-  // La cola es lo único que se guarda fuera de memoria; ver `cola-pendientes.ts`.
+  // La cola y el historial son lo único que se guarda fuera de memoria; ver
+  // `cola-pendientes.ts` y `historial-local.ts`.
   useEffect(() => {
     guardarCola(enCola);
   }, [enCola]);
+
+  useEffect(() => {
+    guardarHistorial(historial);
+  }, [historial]);
 
   /*
    * Vaciar la cola contra la base, que es lo que la cola nunca hizo.
