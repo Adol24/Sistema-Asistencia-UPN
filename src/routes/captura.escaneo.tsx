@@ -257,6 +257,22 @@ function PantallaEscaneo() {
     if (listoParaEscanear && (fuente === "lector" || !esMovil)) campo.current?.focus();
   }, [esMovil, fuente, listoParaEscanear]);
 
+  /*
+   * Lo mismo que el efecto de arriba, pero LLAMADO, no esperado.
+   *
+   * Toda entrada pasa por `Verificacion` —`verificar: tipo === "entrada"` en
+   * `lib/escaneo.ts`—, así que el registro de verdad ocurre al tocar
+   * «REGISTRAR ENTRADA» con el mouse, no al enviar el formulario. Ese toque le
+   * quita el foco al campo, y el efecto de arriba depende de que
+   * `listoParaEscanear` cambie de valor para devolverlo: casi siempre lo
+   * hace, pero no hay que apostarle a la carrera entre el efecto y la
+   * siguiente lectura del lector, que puede llegar antes de que React pinte.
+   * Se llama en el mismo evento que cierra el diálogo, sin esperar a nadie.
+   */
+  const enfocarCampoSiAplica = () => {
+    if (fuente === "lector" || !esMovil) campo.current?.focus();
+  };
+
   // Accesos rápidos a casos representativos: la cámara es simulada, así que sin
   // esto no habría forma cómoda de disparar cada color durante la revisión.
   // Los candidatos se evalúan con el mismo motor del escáner, no se adivinan:
@@ -405,7 +421,10 @@ function PantallaEscaneo() {
 
       <DialogoConfirmar
         abierto={!!autorizando}
-        alCerrar={() => setAutorizando(null)}
+        alCerrar={() => {
+          setAutorizando(null);
+          enfocarCampoSiAplica();
+        }}
         titulo="Autorización de supervisor"
         descripcion={
           <>
@@ -422,6 +441,7 @@ function PantallaEscaneo() {
           setAutorizando(null);
           setNota("");
           void disparar(folio, { autorizado: true, nota: texto });
+          enfocarCampoSiAplica();
         }}
       >
         <Textarea
@@ -449,10 +469,12 @@ function PantallaEscaneo() {
             setResultado(porVerificar.r);
             setRetenido(false);
             setPorVerificar(null);
+            enfocarCampoSiAplica();
           }}
           onDescartar={() => {
             descartarEscaneo(porVerificar.r, "Los datos no coinciden con la credencial");
             setPorVerificar(null);
+            enfocarCampoSiAplica();
           }}
         />
       ) : null}
@@ -469,6 +491,7 @@ function PantallaEscaneo() {
           onCerrar={() => {
             setResultado(null);
             setRetenido(false);
+            enfocarCampoSiAplica();
           }}
           onAutorizar={() => {
             setAutorizando(resultado.participante?.folio ?? resultado.entradaCruda);
