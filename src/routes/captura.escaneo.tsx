@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Camera,
-  Keyboard,
-  LogIn,
-  LogOut,
-  ScanBarcode,
-  ShieldCheck,
-  Volume2,
-  VolumeX,
-  Zap,
-} from "lucide-react";
+import { Camera, Keyboard, LogIn, LogOut, ScanBarcode, ShieldCheck, Zap } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PantallaCaptura, SelectorModo } from "@/components/captura-shell";
 import { Rotulo } from "@/components/tipografia";
@@ -24,23 +14,11 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { useSesion } from "@/lib/sesion";
 import { CAMPO_MAYUSCULAS } from "@/lib/campos";
 import { opcion } from "@/lib/estilos";
-import { estaSilenciado, probar, retroalimentar, silenciar, type Aviso } from "@/lib/retro";
+import { retroalimentar } from "@/lib/retro";
 import { evaluarEscaneo, type Color, type ResultadoEscaneo } from "@/lib/escaneo";
 import type { OpcionesEscaneo } from "@/lib/contrato-estado";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-
-/** Los ocho avisos, con el nombre que usa quien está en la puerta. */
-const PRUEBAS: [Aviso, string][] = [
-  ["correcto", "Entrada"],
-  ["salida", "Salida"],
-  ["folio_invalido", "Folio inválido"],
-  ["dia_equivocado", "Día equivocado"],
-  ["denegado", "Sin pagar"],
-  ["ya_registrado", "Ya registrado"],
-  ["reingreso", "Reingreso"],
-  ["advertencia", "Pasa con aviso"],
-];
 
 export const Route = createFileRoute("/captura/escaneo")({
   head: () =>
@@ -156,14 +134,12 @@ function PantallaEscaneo() {
     r: ResultadoEscaneo;
     extra?: OpcionesEscaneo | undefined;
   } | null>(null);
-  const [mudo, setMudo] = useState(false);
   const [fuente, setFuente] = useState<FuenteEntrada>("camara");
 
   // El ajuste se lee después de montar y no al crear el estado: en el servidor
   // no hay `localStorage`, y leerlo durante el render haría que la primera
   // pintura del cliente no coincidiera con la del servidor.
   useEffect(() => {
-    setMudo(estaSilenciado());
     setFuente(fuenteGuardada());
   }, []);
 
@@ -389,59 +365,6 @@ function PantallaEscaneo() {
         El campo es el plan B para quien llega sin código.
         {!enLinea ? ` Sin conexión: ${pendientes} escaneos esperando sincronización.` : ""}
       </p>
-
-      {/*
-        La prueba de sonido va aquí, en la pantalla donde se usa.
-        El volumen de la puerta se ajusta ANTES de que llegue la fila, no
-        descubriendo a media jornada que el teléfono estaba en silencio.
-      */}
-      <section className="mt-5 rounded-lg border border-border bg-card p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Rotulo className="flex items-center gap-2">
-            <Volume2 className="size-3.5" aria-hidden /> Avisos sonoros
-          </Rotulo>
-          <Button
-            type="button"
-            variant={mudo ? "destructive" : "outline"}
-            size="sm"
-            onClick={() => {
-              const v = !mudo;
-              silenciar(v);
-              setMudo(v);
-              // Al reactivar suena, para confirmar que el altavoz responde.
-              if (!v) probar("correcto");
-            }}
-          >
-            {mudo ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-            {mudo ? "Sonido apagado" : "Sonido encendido"}
-          </Button>
-        </div>
-        {mudo ? (
-          <p className="mt-2 text-xs font-medium text-destructive">
-            Con el sonido apagado tendrás que mirar la pantalla en cada escaneo. La vibración sigue
-            funcionando.
-          </p>
-        ) : (
-          <>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Escúchalos antes de abrir la puerta: cada situación suena distinto para no tener que
-              leer la pantalla.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {PRUEBAS.map(([aviso, etiqueta]) => (
-                <button
-                  key={aviso}
-                  type="button"
-                  onClick={() => probar(aviso)}
-                  className="min-h-11 rounded-md border border-border bg-muted/40 px-3 text-left text-xs font-medium hover:bg-muted"
-                >
-                  {etiqueta}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
 
       {/*
         El panel de pruebas solo existe en modo prototipo.
