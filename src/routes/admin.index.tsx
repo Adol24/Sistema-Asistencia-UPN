@@ -1,9 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { DialogoConfirmar } from "@/components/dialogo-confirmar";
+import { AnularAsistenciaDialogo } from "@/components/anular-asistencia";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import type { Asistencia } from "@/dominio/tipos";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -625,42 +623,18 @@ function Dashboard() {
           </ul>
         </Tarjeta>
       </div>
-      <DialogoConfirmar
-        abierto={!!anulando}
-        alCerrar={() => setAnulando(null)}
-        titulo={
-          <>
-            Anular la {anulando?.tipo} de {anulando?.nombre}
-          </>
-        }
-        descripcion={
-          <>
-            Del día {anulando?.dia} a las {anulando?.hora}. El registro deja de contar para su
-            asistencia y para los elegibles, pero queda en la bitácora con tu nombre y el motivo.
-            Escribe por qué: sin eso, dentro de un mes nadie sabrá si fue un error o una corrección.
-          </>
-        }
-        confirmar="Anular"
-        deshabilitado={motivo.trim().length < 10}
-        alConfirmar={() => {
+      <AnularAsistenciaDialogo
+        anulando={anulando}
+        motivo={motivo}
+        onMotivo={setMotivo}
+        onCerrar={() => setAnulando(null)}
+        onConfirmar={() => {
           if (!anulando) return;
           anularAsistencia(anulando.id, motivo.trim());
           toast.success(`Anulada la ${anulando.tipo} de ${anulando.nombre}.`);
           setAnulando(null);
         }}
-      >
-        <div>
-          <Label htmlFor="motivo-anulacion">Motivo</Label>
-          <Textarea
-            id="motivo-anulacion"
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Cambió de día por corrección del padrón; esta entrada era del día anterior."
-            rows={3}
-            className="mt-1"
-          />
-        </div>
-      </DialogoConfirmar>
+      />
     </PantallaPanel>
   );
 }

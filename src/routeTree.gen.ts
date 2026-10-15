@@ -24,6 +24,7 @@ import { Route as RevisionRouteImport } from './routes/revision'
 import { Route as TalleresRouteImport } from './routes/talleres'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAlumnosRouteImport } from './routes/admin.alumnos'
+import { Route as AdminAsistenciasRouteImport } from './routes/admin.asistencias'
 import { Route as AdminAvanceRouteImport } from './routes/admin.avance'
 import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
@@ -125,6 +126,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminAlumnosRoute = AdminAlumnosRouteImport.update({
   id: '/admin/alumnos',
   path: '/admin/alumnos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAsistenciasRoute = AdminAsistenciasRouteImport.update({
+  id: '/admin/asistencias',
+  path: '/admin/asistencias',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAvanceRoute = AdminAvanceRouteImport.update({
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
   '/admin/alumnos': typeof AdminAlumnosRoute
+  '/admin/asistencias': typeof AdminAsistenciasRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
   '/admin/alumnos': typeof AdminAlumnosRoute
+  '/admin/asistencias': typeof AdminAsistenciasRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -367,6 +375,7 @@ export interface FileRoutesById {
   '/revision': typeof RevisionRoute
   '/talleres': typeof TalleresRoute
   '/admin/alumnos': typeof AdminAlumnosRoute
+  '/admin/asistencias': typeof AdminAsistenciasRoute
   '/admin/avance': typeof AdminAvanceRoute
   '/admin/bitacora': typeof AdminBitacoraRoute
   '/admin/configuracion': typeof AdminConfiguracionRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
     | '/revision'
     | '/talleres'
     | '/admin/alumnos'
+    | '/admin/asistencias'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -457,6 +467,7 @@ export interface FileRouteTypes {
     | '/revision'
     | '/talleres'
     | '/admin/alumnos'
+    | '/admin/asistencias'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -501,6 +512,7 @@ export interface FileRouteTypes {
     | '/revision'
     | '/talleres'
     | '/admin/alumnos'
+    | '/admin/asistencias'
     | '/admin/avance'
     | '/admin/bitacora'
     | '/admin/configuracion'
@@ -546,6 +558,7 @@ export interface RootRouteChildren {
   RevisionRoute: typeof RevisionRoute
   TalleresRoute: typeof TalleresRoute
   AdminAlumnosRoute: typeof AdminAlumnosRoute
+  AdminAsistenciasRoute: typeof AdminAsistenciasRoute
   AdminAvanceRoute: typeof AdminAvanceRoute
   AdminBitacoraRoute: typeof AdminBitacoraRoute
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
@@ -681,6 +694,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/alumnos'
       fullPath: '/admin/alumnos'
       preLoaderRoute: typeof AdminAlumnosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/asistencias': {
+      id: '/admin/asistencias'
+      path: '/admin/asistencias'
+      fullPath: '/admin/asistencias'
+      preLoaderRoute: typeof AdminAsistenciasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/avance': {
@@ -890,6 +910,7 @@ const rootRouteChildren: RootRouteChildren = {
   RevisionRoute: RevisionRoute,
   TalleresRoute: TalleresRoute,
   AdminAlumnosRoute: AdminAlumnosRoute,
+  AdminAsistenciasRoute: AdminAsistenciasRoute,
   AdminAvanceRoute: AdminAvanceRoute,
   AdminBitacoraRoute: AdminBitacoraRoute,
   AdminConfiguracionRoute: AdminConfiguracionRoute,

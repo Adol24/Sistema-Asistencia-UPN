@@ -27,6 +27,7 @@ import {
   LifeBuoy,
   ListChecks,
   Receipt,
+  ScanLine,
   ScrollText,
   Upload,
   UserCheck,
@@ -77,6 +78,7 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
          * pensando «necesito el correo de un alumno», no «abro el directorio».
          */
         { to: "/admin/alumnos", label: "Alumnos", icono: Contact },
+        { to: "/admin/asistencias", label: "Asistencias", icono: ScanLine },
         { to: "/admin/elegibles", label: "Elegibles", icono: UserSearch },
         { to: "/admin/soporte", label: "Soporte", icono: LifeBuoy },
       ],
