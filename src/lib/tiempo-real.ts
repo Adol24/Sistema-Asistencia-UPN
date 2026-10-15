@@ -78,9 +78,27 @@ const AGRUPAR_MS = 500;
  * cada pestaña abierta, de todas las tablas. Este suelo las junta sin que nadie
  * lo note: lo que la persona que está capturando ve al instante es la respuesta
  * de SU escaneo, que no pasa por aquí. Esto es enterarse de lo que hacen los
- * demás, y cinco segundos de retraso en eso no cambia ninguna decisión.
+ * demás, y el retraso en eso no cambia ninguna decisión.
+ *
+ * ---------------------------------------------------------------------------
+ * Eran 5 segundos, y con varios puntos de captura a la vez eso no bastaba.
+ * ---------------------------------------------------------------------------
+ * El costo de CADA recarga no es una consulta: son diez, en paralelo
+ * —`cargarTodo`—, y una de ellas (`v_estado_pago`) es una vista sin
+ * materializar que recalcula de cero un `CROSS JOIN` + `GROUP BY` sobre TODOS
+ * los participantes y TODOS los pagos. Con seis estaciones escaneando sin
+ * parar, siempre hay un cambio nuevo cada pocos segundos, así que ese suelo de
+ * cinco se tocaba constantemente: cada pestaña abierta —las seis de captura
+ * MÁS cualquier panel de admin, financieros o monitoreo— repetía esa recarga
+ * completa cada cinco segundos, durante todo el evento, con `asistencias`
+ * creciendo hora tras hora. Eso es carga real contra el mismo proyecto que
+ * tiene que atender, a la vez, las escrituras de los propios escaneos.
+ *
+ * Subirlo no cambia la garantía que ya documentaba el párrafo de arriba —el
+ * capturista sigue viendo SU escaneo al instante, sin pasar por aquí—; solo
+ * espacia cuánto tarda en enterarse de lo que hizo otra estación.
  */
-const SUELO_MS = 5_000;
+const SUELO_MS = 20_000;
 
 export interface Escucha {
   /** Corta la suscripción. Hay que llamarlo al desmontar o al cerrar sesión. */
