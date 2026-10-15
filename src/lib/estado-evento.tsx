@@ -42,6 +42,7 @@ import { fechaHora, hora as horaActual } from "@/lib/formato";
 import { guardarCola, leerCola } from "@/lib/cola-pendientes";
 import { guardarHistorial, leerHistorial } from "@/lib/historial-local";
 import { aplicarRevisiones } from "@/lib/revision";
+import { mensajeDeError } from "@/lib/errores";
 import type { Ctx, EntradaBitacora, EscaneoHistorial, RevisionSesion } from "@/lib/contrato-estado";
 
 /**
@@ -738,10 +739,36 @@ export function EstadoEventoProvider({
           });
         } catch (e) {
           console.error("No se pudo sincronizar una asistencia de la cola", e);
+          /*
+           * Antes, CUALQUIER fallo paraba el vaciado entero —ver el comentario de
+           * arriba—, bajo el supuesto de que casi siempre es la red. Pero desde
+           * que `fn_exigir_dia_real` (20261014120000) rechaza en la base cualquier
+           * asistencia cuyo día no es HOY, un solo escaneo de cola con el día
+           * equivocado —típicamente uno que se quedó sin enviar de una sesión
+           * anterior— rechaza para SIEMPRE, y al ser siempre el primero de la
+           * cola, su `break` bloqueaba detrás suyo a todos los escaneos de HOY
+           * que sí eran válidos. Resultado: la barra se quedaba en
+           * «SINCRONIZANDO» de forma permanente aunque hubiera red real.
+           *
+           * `navigator.onLine` sigue siendo la señal para distinguir los dos
+           * casos: si de verdad se fue la red, se para aquí igual que antes —
+           * repetir contra las demás no cambiaría el resultado—. Si la red sigue
+           * en pie, lo que falló es ESTE registro —día equivocado, folio que ya
+           * no existe, sesión del capturista vencida—, así que se avisa y se
+           * sigue con el resto. El registro se queda en la cola para poder
+           * reintentarlo si alguien corrige la causa, pero ya no le tapa el paso
+           * a nadie más.
+           */
+          if (!navigator.onLine) {
+            avisarFallo(
+              `Quedan ${pendientes.length - guardadas} asistencias sin sincronizar. NO cierres la pestaña: se reintentan solas al volver la red.`,
+            );
+            break;
+          }
           avisarFallo(
-            `Quedan ${pendientes.length - guardadas} asistencias sin sincronizar. NO cierres la pestaña: se reintentan solas al volver la red.`,
+            `${a.nombre} (${a.folio}) no se pudo sincronizar: ${mensajeDeError(e)}. Sigue en la cola; avisa a soporte si no se resuelve sola.`,
           );
-          break;
+          continue;
         }
         // Solo después del acuse: la fila sale de la cola y pasa a capturada.
         guardadas++;
