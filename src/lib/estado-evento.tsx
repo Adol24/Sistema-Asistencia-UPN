@@ -799,6 +799,32 @@ export function EstadoEventoProvider({
     if (enLinea) void vaciarCola();
   }, [enLinea, vaciarCola]);
 
+  /*
+   * El reintento periódico que faltaba.
+   *
+   * El efecto de arriba solo dispara `vaciarCola` al montar y cuando
+   * `navigator.onLine` pasa de `false` a `true` —es decir, cuando el wifi del
+   * aparato se cae de verdad y vuelve—. Pero con varios puntos de captura
+   * escaneando a la vez, lo que falla no es el wifi: es el SERVIDOR, saturado
+   * por la carga de todos a la vez. `navigator.onLine` sigue en `true` todo el
+   * rato —la tarjeta de red nunca se desconectó— así que ese efecto no vuelve
+   * a correr nunca, y una fila que cayó por saturación se queda en la cola
+   * PARA SIEMPRE: nada la vuelve a intentar hasta que alguien recargue la
+   * pestaña, y si el servidor sigue saturado en ese instante, vuelve a fallar.
+   * Eso es lo que se veía como la barra atascada en «SINCRONIZANDO» con varios
+   * equipos a la vez y con red real.
+   *
+   * El intervalo lleva su propio azar —entre 15 y 25 segundos— para que las
+   * seis estaciones no coincidan reintentando en el mismo segundo exacto: si
+   * la causa fue que todas saturaron el servidor juntas, que las seis vuelvan
+   * a golpearlo juntas de nuevo no ayuda a que ninguna pase.
+   */
+  useEffect(() => {
+    const espera = 15_000 + Math.random() * 10_000;
+    const t = setInterval(() => void vaciarCola(), espera);
+    return () => clearInterval(t);
+  }, [vaciarCola]);
+
   const anularAsistencia = useCallback<Ctx["anularAsistencia"]>(
     (id, motivo, usuario) => {
       const a = [...asistenciasBase, ...capturadas].find((x) => x.id === id);
