@@ -87,6 +87,7 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
         { to: "/admin/talleres", label: "Talleres", icono: GraduationCap },
         { to: "/admin/configuracion", label: "Configuración", icono: CalendarCog },
         { to: "/admin/encuesta", label: "Encuesta", icono: ClipboardCheck },
+        { to: "/admin/encuesta-taller", label: "Encuesta de talleres", icono: ClipboardCheck },
       ],
     },
     {

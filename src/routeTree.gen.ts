@@ -16,6 +16,7 @@ import { Route as CompletarDatosRouteImport } from './routes/completar-datos'
 import { Route as ComprobanteRouteImport } from './routes/comprobante'
 import { Route as ConfirmarNombreRouteImport } from './routes/confirmar-nombre'
 import { Route as EncuestaRouteImport } from './routes/encuesta'
+import { Route as EncuestaTallerRouteImport } from './routes/encuesta-taller'
 import { Route as MiDiaRouteImport } from './routes/mi-dia'
 import { Route as PagoRouteImport } from './routes/pago'
 import { Route as RegistroRouteImport } from './routes/registro'
@@ -28,6 +29,7 @@ import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
 import { Route as AdminEncuestaRouteImport } from './routes/admin.encuesta'
+import { Route as AdminEncuestaTallerRouteImport } from './routes/admin.encuesta-taller'
 import { Route as AdminLeipRouteImport } from './routes/admin.leip'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
 import { Route as AdminPadronRouteImport } from './routes/admin.padron'
@@ -83,6 +85,11 @@ const ConfirmarNombreRoute = ConfirmarNombreRouteImport.update({
 const EncuestaRoute = EncuestaRouteImport.update({
   id: '/encuesta',
   path: '/encuesta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EncuestaTallerRoute = EncuestaTallerRouteImport.update({
+  id: '/encuesta-taller',
+  path: '/encuesta-taller',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MiDiaRoute = MiDiaRouteImport.update({
@@ -143,6 +150,11 @@ const AdminElegiblesRoute = AdminElegiblesRouteImport.update({
 const AdminEncuestaRoute = AdminEncuestaRouteImport.update({
   id: '/admin/encuesta',
   path: '/admin/encuesta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEncuestaTallerRoute = AdminEncuestaTallerRouteImport.update({
+  id: '/admin/encuesta-taller',
+  path: '/admin/encuesta-taller',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLeipRoute = AdminLeipRouteImport.update({
@@ -259,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/comprobante': typeof ComprobanteRoute
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
+  '/encuesta-taller': typeof EncuestaTallerRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -270,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -301,6 +315,7 @@ export interface FileRoutesByTo {
   '/comprobante': typeof ComprobanteRoute
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
+  '/encuesta-taller': typeof EncuestaTallerRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -312,6 +327,7 @@ export interface FileRoutesByTo {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -344,6 +360,7 @@ export interface FileRoutesById {
   '/comprobante': typeof ComprobanteRoute
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
+  '/encuesta-taller': typeof EncuestaTallerRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -355,6 +372,7 @@ export interface FileRoutesById {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
@@ -388,6 +406,7 @@ export interface FileRouteTypes {
     | '/comprobante'
     | '/confirmar-nombre'
     | '/encuesta'
+    | '/encuesta-taller'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -399,6 +418,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -430,6 +450,7 @@ export interface FileRouteTypes {
     | '/comprobante'
     | '/confirmar-nombre'
     | '/encuesta'
+    | '/encuesta-taller'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -441,6 +462,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -472,6 +494,7 @@ export interface FileRouteTypes {
     | '/comprobante'
     | '/confirmar-nombre'
     | '/encuesta'
+    | '/encuesta-taller'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -483,6 +506,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
@@ -515,6 +539,7 @@ export interface RootRouteChildren {
   ComprobanteRoute: typeof ComprobanteRoute
   ConfirmarNombreRoute: typeof ConfirmarNombreRoute
   EncuestaRoute: typeof EncuestaRoute
+  EncuestaTallerRoute: typeof EncuestaTallerRoute
   MiDiaRoute: typeof MiDiaRoute
   PagoRoute: typeof PagoRoute
   RegistroRoute: typeof RegistroRoute
@@ -526,6 +551,7 @@ export interface RootRouteChildren {
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminElegiblesRoute: typeof AdminElegiblesRoute
   AdminEncuestaRoute: typeof AdminEncuestaRoute
+  AdminEncuestaTallerRoute: typeof AdminEncuestaTallerRoute
   AdminLeipRoute: typeof AdminLeipRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
   AdminPadronRoute: typeof AdminPadronRoute
@@ -599,6 +625,13 @@ declare module '@tanstack/react-router' {
       path: '/encuesta'
       fullPath: '/encuesta'
       preLoaderRoute: typeof EncuestaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/encuesta-taller': {
+      id: '/encuesta-taller'
+      path: '/encuesta-taller'
+      fullPath: '/encuesta-taller'
+      preLoaderRoute: typeof EncuestaTallerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mi-dia': {
@@ -683,6 +716,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/encuesta'
       fullPath: '/admin/encuesta'
       preLoaderRoute: typeof AdminEncuestaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/encuesta-taller': {
+      id: '/admin/encuesta-taller'
+      path: '/admin/encuesta-taller'
+      fullPath: '/admin/encuesta-taller'
+      preLoaderRoute: typeof AdminEncuestaTallerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/leip': {
@@ -843,6 +883,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComprobanteRoute: ComprobanteRoute,
   ConfirmarNombreRoute: ConfirmarNombreRoute,
   EncuestaRoute: EncuestaRoute,
+  EncuestaTallerRoute: EncuestaTallerRoute,
   MiDiaRoute: MiDiaRoute,
   PagoRoute: PagoRoute,
   RegistroRoute: RegistroRoute,
@@ -854,6 +895,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminElegiblesRoute: AdminElegiblesRoute,
   AdminEncuestaRoute: AdminEncuestaRoute,
+  AdminEncuestaTallerRoute: AdminEncuestaTallerRoute,
   AdminLeipRoute: AdminLeipRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
   AdminPadronRoute: AdminPadronRoute,

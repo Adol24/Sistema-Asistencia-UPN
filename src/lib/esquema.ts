@@ -29,6 +29,7 @@ import type {
 import type { NivelAcademico } from "@/dominio/catalogos";
 import type { ConfiguracionEvento } from "@/lib/configuracion";
 import type { RespuestaEncuesta, ValorEscala } from "@/lib/encuesta";
+import type { RespuestaEncuestaTaller } from "@/lib/encuesta-talleres";
 import type { PagoRegistrado } from "@/lib/pagos-logica";
 import { isoAFecha } from "@/lib/formato";
 import { rolDesdeBase } from "@/lib/roles";
@@ -351,6 +352,34 @@ export const aRespuestaEncuesta = (f: FilaEncuestaRespuesta): RespuestaEncuesta 
   id: f.id,
   conferencia: f.conferencia,
   perfil: f.perfil as RespuestaEncuesta["perfil"],
+  nombre: f.nombre,
+  matricula: f.matricula,
+  programa: f.programa,
+  correo: f.correo,
+  respuestas: f.respuestas as Record<number, ValorEscala>,
+  creadoEn: aFechaHora(f.creado_en),
+});
+
+export interface FilaEncuestaTallerRespuesta {
+  id: string;
+  perfil: string;
+  nombre: string;
+  matricula: string | null;
+  programa: string | null;
+  correo: string | null;
+  respuestas: Record<string, number>;
+  creado_en: string;
+  /** Embebido por PostgREST desde la llave foránea `taller_id`. */
+  talleres: { clave: string; nombre: string } | null;
+}
+
+export const aRespuestaEncuestaTaller = (
+  f: FilaEncuestaTallerRespuesta,
+): RespuestaEncuestaTaller => ({
+  id: f.id,
+  tallerClave: f.talleres?.clave ?? "",
+  tallerNombre: f.talleres?.nombre ?? "",
+  perfil: f.perfil as RespuestaEncuestaTaller["perfil"],
   nombre: f.nombre,
   matricula: f.matricula,
   programa: f.programa,

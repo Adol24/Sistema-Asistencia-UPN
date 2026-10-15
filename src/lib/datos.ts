@@ -27,6 +27,7 @@ import {
   aPago,
   aParticipante,
   aRespuestaEncuesta,
+  aRespuestaEncuestaTaller,
   aTallerBase,
   aUsuario,
   type FilaAsistencia,
@@ -35,6 +36,7 @@ import {
   type FilaConfiguracion,
   type FilaDia,
   type FilaEncuestaRespuesta,
+  type FilaEncuestaTallerRespuesta,
   type FilaEstadoPago,
   type FilaEvidencia,
   type FilaNivel,
@@ -62,6 +64,7 @@ import type { NivelAcademico } from "@/dominio/catalogos";
 import type { PerfilSinPadron, ProgramaDeVentana, VentanaPreregistro } from "@/lib/ventanas";
 import type { Modo } from "@/lib/escaneo";
 import type { RespuestaEncuesta } from "@/lib/encuesta";
+import type { RespuestaEncuestaTaller } from "@/lib/encuesta-talleres";
 import { fechaAIso } from "@/lib/formato";
 import { resultadoDe, type PagoRegistrado } from "@/lib/pagos-logica";
 import type { EntradaBitacora } from "@/lib/contrato-estado";
@@ -1886,6 +1889,58 @@ export async function eliminarRespuestaEncuesta(
   id: string,
 ): Promise<{ nombre: string; conferencia: string }> {
   return llamar<{ nombre: string; conferencia: string }>("fn_eliminar_respuesta_encuesta", {
+    p_id: id,
+  });
+}
+
+/**
+ * Evalúa uno de los talleres del Encuentro.
+ *
+ * A diferencia de `evaluarConferencia`, el taller no es un slug fijo: es uno
+ * de los que ya existen en `talleres`, así que la clave corta (`T01`) se
+ * resuelve a su uuid con `uuidDelTaller` antes de llamar a la función, igual
+ * que hace el pre-registro al elegir taller.
+ */
+export async function evaluarTaller(datos: {
+  taller: string;
+  perfil: "alumno" | "docente" | "externo";
+  nombre: string;
+  matricula?: string | undefined;
+  correo?: string | undefined;
+  programa?: string | undefined;
+  respuestas: Record<number, number>;
+}) {
+  const sb = exigirBase();
+  return llamar<{ id: string }>("fn_evaluar_taller", {
+    p_taller: await uuidDelTaller(sb, datos.taller),
+    p_perfil: datos.perfil,
+    p_nombre: datos.nombre,
+    p_matricula: datos.matricula ?? null,
+    p_correo: datos.correo ?? null,
+    p_programa: datos.programa ?? null,
+    p_respuestas: datos.respuestas,
+  });
+}
+
+/** Quién ha respondido la encuesta de talleres, y qué. Solo administración. */
+export async function obtenerRespuestasEncuestaTalleres(): Promise<RespuestaEncuestaTaller[]> {
+  const sb = exigirBase();
+  const filas = await datosDe<FilaEncuestaTallerRespuesta[]>(
+    sb
+      .from("encuesta_talleres_respuestas")
+      .select(
+        "id, perfil, nombre, matricula, programa, correo, respuestas, creado_en, talleres(clave, nombre)",
+      )
+      .order("creado_en", { ascending: false }),
+  );
+  return filas.map(aRespuestaEncuestaTaller);
+}
+
+/** Borra una respuesta de la encuesta de talleres. SOLO administración, y no se deshace. */
+export async function eliminarRespuestaEncuestaTaller(
+  id: string,
+): Promise<{ nombre: string; taller: string }> {
+  return llamar<{ nombre: string; taller: string }>("fn_eliminar_respuesta_encuesta_taller", {
     p_id: id,
   });
 }
