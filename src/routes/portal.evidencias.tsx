@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Image as ImageIcon,
+  Loader2,
   Lock,
   MonitorSmartphone,
   Upload,
@@ -21,6 +22,7 @@ import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { hoyIso, isoAFecha } from "@/lib/formato";
+import { comprimirImagen, pesoLegible } from "@/lib/imagen";
 import { meta } from "@/lib/seo";
 import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
 
@@ -247,6 +249,10 @@ function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [progreso, setProgreso] = useState(0);
   const [subiendo, setSubiendo] = useState(false);
+  // Mientras se reescala y reencoda la foto elegida. Ver `lib/imagen.ts`: sin
+  // esto el botón de subir quedaba activo con la foto ORIGINAL todavía en
+  // camino, y un toque antes de que terminara mandaba el archivo grande.
+  const [comprimiendo, setComprimiendo] = useState(false);
 
   /*
    * Esto no subía nada, y lo decía en verde.
@@ -301,7 +307,9 @@ function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
       <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border bg-muted/40 p-4 text-center text-sm hover:bg-muted">
         <Upload className="size-5 text-muted-foreground" aria-hidden />
         <span className="font-medium">Toca para elegir una foto</span>
-        <span className="text-xs text-muted-foreground">JPG o PNG, máximo 5 MB</span>
+        <span className="text-xs text-muted-foreground">
+          Cualquier foto de tu cámara: la ajustamos antes de subirla
+        </span>
         <input
           type="file"
           accept="image/*"
@@ -311,23 +319,50 @@ function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
             // ponía una imagen de relleno y dejaba «subir» igualmente, que es
             // coherente con que la subida fuera simulada y no con que suba.
             const f = e.target.files?.[0] ?? null;
-            setArchivo(f);
-            setPreview(f ? URL.createObjectURL(f) : null);
+            if (!f) {
+              setArchivo(null);
+              setPreview(null);
+              return;
+            }
+            // Se comprime ANTES de guardarla: la vista previa y el peso que
+            // se enseñan abajo son los de lo que de verdad se va a subir, no
+            // los de la foto de la cámara que todavía no se tocó.
+            setComprimiendo(true);
+            void comprimirImagen(f).then((comprimida) => {
+              setArchivo(comprimida);
+              setPreview(URL.createObjectURL(comprimida));
+              setComprimiendo(false);
+            });
           }}
         />
       </label>
       {preview ? (
-        <img
-          src={preview}
-          alt="Vista previa de tu evidencia"
-          className="h-48 w-full rounded-md object-cover"
-        />
+        <>
+          <img
+            src={preview}
+            alt="Vista previa de tu evidencia"
+            className="h-48 w-full rounded-md object-cover"
+          />
+          <p className="text-xs text-muted-foreground">
+            {comprimiendo ? (
+              <span className="inline-flex items-center gap-1">
+                <Loader2 className="size-3 animate-spin" aria-hidden /> Ajustando tu foto…
+              </span>
+            ) : archivo ? (
+              `Lista para subir: ${pesoLegible(archivo.size)}`
+            ) : null}
+          </p>
+        </>
       ) : null}
       {subiendo || progreso === 100 ? <Progress value={progreso} className="h-2" /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* La regla, no un contador: el que había mentía en cada recarga. */}
         <p className="text-xs text-muted-foreground">Máximo 3 intentos por día</p>
-        <Button className="h-11" disabled={!preview || subiendo} onClick={() => void subir()}>
+        <Button
+          className="h-11"
+          disabled={!preview || subiendo || comprimiendo}
+          onClick={() => void subir()}
+        >
           {subiendo ? "Subiendo…" : etiqueta}
         </Button>
       </div>

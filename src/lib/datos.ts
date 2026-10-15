@@ -2010,10 +2010,23 @@ export async function subirEvidenciaRemota(
 ): Promise<void> {
   const sb = exigirBase();
 
-  // El tope lo aplica también el bucket, pero decirlo aquí evita gastar la
-  // subida entera de alguien con datos móviles para que la rechacen al final.
-  if (archivo.size > 5 * 1024 * 1024)
-    throw new Error("La imagen pesa más de 5 MB. Haz una foto con menos resolución.");
+  /*
+   * El tope real del bucket bajó de 5 MB a 2 —ver
+   * `20261015120000_evidencias_mas_ligeras.sql`—, porque con ~1,500 alumnos y
+   * dos evidencias cada uno, fotos de cámara sin tocar se iban a los 10-15 GB
+   * en el plan gratis de Supabase (1 GB).
+   *
+   * En el camino normal esto nunca se dispara: `comprimirImagen` en la
+   * pantalla ya deja la foto en unos cientos de KB antes de llegar aquí. Solo
+   * salta cuando ese paso no pudo comprimir nada —un formato que el navegador
+   * no supo decodificar— y la foto ORIGINAL todavía pesa de más. Decirlo
+   * aquí, y no dejar que lo rechace el bucket, evita gastar la subida entera
+   * de alguien con datos móviles para que la rechacen al final.
+   */
+  if (archivo.size > 2 * 1024 * 1024)
+    throw new Error(
+      "La imagen pesa más de 2 MB y no se pudo ajustar automáticamente. Prueba con otra foto.",
+    );
 
   const ruta = await llamar<string>("fn_evidencia_preparar", {
     p_folio: folio,
