@@ -679,7 +679,7 @@ export async function guardarPago(p: {
    * quedaba en NULL siempre, a diferencia de `guardarAsistencia`, que sí firma.
    * Un cobro discutido sin cajero es un caso sin responsable.
    */
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
 
   // `resultado` no se manda: lo decide un disparador comparando el monto contra
   // lo esperado. Enviarlo desde aquí permitiría marcar como pagada una
@@ -699,7 +699,7 @@ export async function guardarPago(p: {
       // DateStyle MDY, así que DD/MM/AAAA entraba con el mes y el día cambiados.
       fecha_deposito: fechaAIso(p.fechaDeposito),
       origen: p.origen ?? "ventanilla",
-      registrado_por: sesion.user?.id ?? null,
+      registrado_por: sesion.session?.user?.id ?? null,
       resultado: resultadoDe(p.monto, p.montoEsperado),
       /*
        * Una discrepancia SIEMPRE lleva nota, aunque quien llame no la ponga.
@@ -757,8 +757,15 @@ export async function guardarAsistencia(a: {
    * un punto de captura, eso convierte cualquier registro dudoso en un caso sin
    * responsable. `guardarRevision`, veinte líneas más abajo, ya lo hacía bien;
    * aquí solo faltaba aplicarlo.
+   *
+   * `getSession()` y no `getUser()`: el id solo firma una columna de auditoría,
+   * no decide nada —eso lo hace la política de la base con el JWT que el
+   * cliente ya manda solo—, así que no hace falta la vuelta al servidor de Auth
+   * que exige `getUser()`. Con varios puntos de captura escaneando a la vez eso
+   * eran dos peticiones a Auth por escaneo —ésta y la de `anotarEnBitacora`—,
+   * cien por ciento evitables, exactamente cuando el servidor ya está exigido.
    */
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
 
   /*
    * En qué taller, cuando la asistencia es de taller.
@@ -794,7 +801,7 @@ export async function guardarAsistencia(a: {
     tipo: a.tipo,
     punto: a.punto,
     taller_id: tallerId,
-    capturista_id: sesion.user?.id ?? null,
+    capturista_id: sesion.session?.user?.id ?? null,
     autorizacion_motivo: a.autorizacionMotivo ?? null,
   });
 
@@ -820,11 +827,11 @@ export async function guardarRevision(
   motivo?: string,
 ): Promise<void> {
   const sb = exigirBase();
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
   await exigir(
     sb.from("revisiones").insert({
       evidencia_id: evidenciaId,
-      revisor_id: sesion.user?.id,
+      revisor_id: sesion.session?.user?.id,
       decision,
       motivo_rechazo: motivo ?? null,
     }),
@@ -1188,12 +1195,12 @@ export async function anotarEnBitacora(
   usuarioTexto?: string,
 ): Promise<void> {
   const sb = exigirBase();
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
   await sb.from("bitacora").insert({
     accion,
     detalle,
-    usuario_id: sesion.user?.id ?? null,
-    usuario_texto: sesion.user?.id ? null : (usuarioTexto ?? "Sistema"),
+    usuario_id: sesion.session?.user?.id ?? null,
+    usuario_texto: sesion.session?.user?.id ? null : (usuarioTexto ?? "Sistema"),
   });
 }
 
@@ -1396,7 +1403,7 @@ export async function cambiarEstadoCasoRemoto(
   // Quien atiende es quien tiene la sesión abierta. Se toma de aquí y no de un
   // nombre que llegue desde la pantalla: `usuarios_internos.id` ES el id de
   // `auth.users`, así que la propia sesión ya lo dice sin poder equivocarse.
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
 
   await exigir(
     sb
@@ -1404,7 +1411,7 @@ export async function cambiarEstadoCasoRemoto(
       .update({
         estado,
         resuelto_en: estado === "resuelto" ? new Date().toISOString() : null,
-        ...(sesion.user?.id ? { atiende_id: sesion.user.id } : {}),
+        ...(sesion.session?.user?.id ? { atiende_id: sesion.session.user.id } : {}),
       })
       .eq("id", id),
   );
@@ -1534,13 +1541,13 @@ export async function desactivarUsuarioRemoto(id: string): Promise<void> {
  */
 export async function anularAsistenciaRemota(id: string, motivo: string): Promise<void> {
   const sb = exigirBase();
-  const { data: sesion } = await sb.auth.getUser();
+  const { data: sesion } = await sb.auth.getSession();
   await exigir(
     sb
       .from("asistencias")
       .update({
         anulada_en: new Date().toISOString(),
-        anulada_por: sesion.user?.id ?? null,
+        anulada_por: sesion.session?.user?.id ?? null,
         anulacion_motivo: motivo,
       })
       .eq("id", id),
