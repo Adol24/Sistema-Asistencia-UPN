@@ -98,9 +98,21 @@ function Dashboard() {
   const [motivo, setMotivo] = useState("");
 
   /**
-   * Las asistencias que quedaron en un día que ya no es el del participante.
-   * Se calculan aquí y no se leen de las violaciones porque hace falta el
-   * registro completo, no su descripción: sin el id no se puede anular.
+   * Las entradas y salidas que quedaron en un día que ya no es el del
+   * participante. Se calculan aquí y no se leen de las violaciones porque
+   * hace falta el registro completo, no su descripción: sin el id no se
+   * puede anular.
+   *
+   * **Solo puerta, nunca taller.** `p.dia` es el día de ENTRADA al Encuentro
+   * —el que reparte Servicios Escolares—, y es la comparación correcta para
+   * `entrada`/`salida`. Para `taller` NO lo es: por regla de Adol
+   * (2026-09-23) el taller se imparte en otra sede, es otro evento, y
+   * cualquier persona puede tomar un taller de un día distinto al suyo —
+   * `evaluarEscaneo` nunca compara el taller contra `p.dia`, solo contra los
+   * días en que ESE taller se imparte. Antes de este filtro, cada persona en
+   * esa situación —de ningún modo rara: es justo el caso que motivó la
+   * regla— se enseñaba aquí como un dato roto que no lo era, mezclado con
+   * los casos reales de alguien que sí cambió de día asignado.
    */
   const desfasadas = useMemo(() => {
     const diaDe = new Map(participantes.map((p) => [p.folio, p.dia]));
@@ -114,7 +126,7 @@ function Dashboard() {
      * mismo y encerrado en este closure.
      */
     return asistencias
-      .filter((a) => diaDe.has(a.folio) && diaDe.get(a.folio) !== a.dia)
+      .filter((a) => a.tipo !== "taller" && diaDe.has(a.folio) && diaDe.get(a.folio) !== a.dia)
       .map((a) => ({ ...a, diaQueToca: diaDe.get(a.folio) }));
   }, [asistencias, participantes]);
 
