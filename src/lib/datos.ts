@@ -244,17 +244,28 @@ export async function cargarPublico(): Promise<Publico | null> {
 /**
  * Cuántas filas trae PostgREST de una vez, y el tope que se pide por tramo.
  *
- * Mil es el `max-rows` con el que viene un proyecto de Supabase. Pedir tramos de
- * ese tamaño hace que la última página venga corta justo cuando se acabó la
- * tabla, que es la señal con la que `porTramos` sabe parar.
+ * Mil era el `max-rows` con el que viene un proyecto de Supabase por defecto;
+ * este proyecto lo subió a 5000 en el panel (*Project Settings → Data API →
+ * Max Rows*) el 2026-10-15, después de que el evento con seis puntos de
+ * captura mostrara el costo real: `v_estado_pago` —sin materializar— se
+ * recalculaba desde cero EN CADA TRAMO, y con miles de participantes eso eran
+ * varias recomputaciones completas por cada recarga.
+ *
+ * **Este número tiene que coincidir con el del panel, nunca adelantarse.** Si
+ * aquí se pide un tramo más grande que el `max-rows` real del servidor, este
+ * devuelve una página recortada y más corta que `TRAMO`, y `porTramos` la
+ * confunde con el final de la tabla: perdería en silencio cualquier fila que
+ * quedara más allá del límite real. Subirlo en código es siempre el SEGUNDO
+ * paso, después de subirlo en el panel.
  */
-const TRAMO = 1000;
+const TRAMO = 5000;
 
 /**
  * Techo de tramos por consulta. Existe solo para que un servidor que ignorara
  * `range` no deje al navegador pidiendo páginas para siempre contra la base de
- * producción. Cien tramos son cien mil filas: muy por encima de cualquier tabla
- * de este evento, y muy por debajo de un bucle infinito.
+ * producción. Con `TRAMO` en 5000, cien tramos son 500 mil filas: muy por
+ * encima de cualquier tabla de este evento, y muy por debajo de un bucle
+ * infinito.
  */
 const MAX_TRAMOS = 100;
 
