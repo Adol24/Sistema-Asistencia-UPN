@@ -108,14 +108,21 @@ export interface Escucha {
 /**
  * Escucha los cambios y llama a `alCambiar` cuando algo se movió.
  *
- * @param alCambiar Se invoca ya agrupado, no una vez por fila.
+ * @param alCambiar Se invoca ya agrupado, no una vez por fila. Recibe QUÉ
+ *   tablas cambiaron en esta ráfaga, para que quien escucha pueda pedir solo
+ *   lo que de verdad cambió en vez de las diez consultas completas. Durante
+ *   el escaneo normal eso es casi siempre `{asistencias, bitacora}` —cada
+ *   escaneo toca las dos y ninguna otra tabla—, así que distinguirlo importa:
+ *   es la diferencia entre recargar dos listas pequeñas o recalcular de cero
+ *   `v_estado_pago`, que no está materializada, sobre participantes y pagos
+ *   completos.
  * @param alEstado Informa si el canal está escuchando de verdad. La pantalla lo
  *   usa para poder decirlo: «en vivo» cuando nadie lo comprobó es peor que no
  *   decir nada, porque quien atiende deja de actualizar creyendo que no hace
  *   falta.
  */
 export async function escucharCambios(
-  alCambiar: () => void,
+  alCambiar: (tablas: ReadonlySet<string>) => void,
   alEstado?: (enVivo: boolean) => void,
 ): Promise<Escucha> {
   const { supabase } = await import("@/lib/supabase");
@@ -126,11 +133,20 @@ export async function escucharCambios(
   let ultima = 0;
   /** Hubo cambios mientras nadie miraba; se atienden al volver. */
   let pendiente = false;
+  /**
+   * Qué tablas tocó la ráfaga que se está agrupando, o la que quedó pendiente
+   * mientras la pestaña estaba oculta. Se vacía en cada disparo: lo que
+   * importa es lo que cambió DESDE la última vez que se avisó, no el
+   * historial completo de la sesión.
+   */
+  let tablasTocadas = new Set<string>();
 
   const disparar = () => {
     ultima = Date.now();
     pendiente = false;
-    alCambiar();
+    const tablas = tablasTocadas;
+    tablasTocadas = new Set();
+    alCambiar(tablas);
   };
 
   /*
@@ -145,8 +161,12 @@ export async function escucharCambios(
    *
    * El segundo: **un suelo entre recargas**. Ver `SUELO_MS`.
    */
-  const agrupado = () => {
+  /** @param tabla Ausente cuando es solo el reintento al volver al frente. */
+  const agrupado = (tabla?: string) => {
     if (cerrado) return;
+    // Se anota ANTES de mirar si la pestaña está oculta: lo que cambió
+    // mientras nadie miraba hay que recordarlo igual, para saberlo al volver.
+    if (tabla) tablasTocadas.add(tabla);
     if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       pendiente = true;
       return;
@@ -177,7 +197,9 @@ export async function escucharCambios(
   const canal: RealtimeChannel = supabase.channel("cambios-del-evento");
 
   for (const tabla of TABLAS) {
-    canal.on("postgres_changes", { event: "*", schema: "public", table: tabla }, agrupado);
+    canal.on("postgres_changes", { event: "*", schema: "public", table: tabla }, () =>
+      agrupado(tabla),
+    );
   }
 
   canal.subscribe((estado) => {

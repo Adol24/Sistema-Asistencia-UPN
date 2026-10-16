@@ -553,6 +553,60 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
   };
 }
 
+/**
+ * Solo asistencias y bitácora, sin las otras ocho consultas de `cargarTodo`.
+ *
+ * **Para qué existe.** Cada escaneo de la puerta toca exactamente estas dos
+ * tablas y ninguna otra. La escucha en vivo avisaba de CUALQUIER cambio
+ * mandando a pedir las diez consultas completas —incluida `v_estado_pago`,
+ * una vista sin materializar que recalcula de cero un `group by` sobre
+ * participantes y pagos enteros—, así que el caso más frecuente del evento
+ * —alguien pasa por la puerta— pagaba el costo del más caro. Quien escucha
+ * (`estado-evento.tsx`) solo llama aquí cuando sabe, por las tablas que
+ * `escucharCambios` reportó, que no hizo falta nada más.
+ *
+ * Mismas consultas, mismo orden de columnas, que las dos equivalentes dentro
+ * de `cargarTodo`: una diferencia entre esta copia y aquella se notaría como
+ * una pantalla que ve algo distinto según si cargó entera o por este camino.
+ */
+export async function cargarAsistenciasYBitacora(): Promise<{
+  asistencias: Asistencia[];
+  bitacora: EntradaBitacora[];
+} | null> {
+  if (!supabase) return null;
+  const sb = supabase;
+
+  const [asistencias, bitacora] = await Promise.all([
+    porTramos((desde, hasta) =>
+      sb
+        .from("asistencias")
+        .select(
+          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+        )
+        .is("anulada_en", null)
+        .order("registrada_en")
+        .order("id")
+        .range(desde, hasta),
+    ),
+    sb
+      .from("bitacora")
+      .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
+      .order("ocurrido_en", { ascending: false })
+      .limit(500),
+  ]);
+
+  if (asistencias.error || bitacora.error) {
+    // Sin permiso o sin sesión: igual que `cargarTodo`, no se lanza. Quien
+    // llama se queda con lo que ya tenía.
+    return null;
+  }
+
+  return {
+    asistencias: ((asistencias.data ?? []) as unknown as FilaAsistencia[]).map(aAsistencia),
+    bitacora: ((bitacora.data ?? []) as unknown as FilaBitacora[]).map(aEntradaBitacora),
+  };
+}
+
 // ============================================================== escrituras ===
 
 /**
@@ -733,6 +787,28 @@ export async function guardarPago(p: {
   );
 }
 
+/**
+ * Un solo viaje al servidor, no dos o tres.
+ *
+ * **Antes esto era: buscar el id del folio, si era de taller preguntar el
+ * taller del participante, e insertar.** Tres peticiones para el escaneo más
+ * frecuente de todo el sistema —cada entrada, cada salida, cada pase de
+ * lista, de las seis estaciones a la vez— en el momento exacto en que el
+ * servidor ya tiene encima la carga de Realtime y el resto de pantallas. Se
+ * juntó en `fn_registrar_asistencia` (`20261015200000`): el folio se busca
+ * ahí, el taller se valida ahí, y la fila se inserta ahí, en una sola ida y
+ * vuelta.
+ *
+ * La función es `security invoker`: corre con el permiso de quien capturó, no
+ * con uno más alto, así que pasa por las MISMAS políticas de siempre. Y firma
+ * el registro con `auth.uid()` del lado de la base, por lo que ya no hace
+ * falta pedirle la sesión al cliente de Auth antes de escribir.
+ *
+ * El choque contra una llave única —«ya estaba», no «falló», el caso que hace
+ * segura la cola cuando la respuesta se perdió a mitad de camino— también se
+ * decide ahora dentro de la función, con el mismo criterio que antes vivía
+ * aquí comparando `error.code === "23505"`.
+ */
 export async function guardarAsistencia(a: {
   folio: string;
   dia: Dia;
@@ -745,80 +821,16 @@ export async function guardarAsistencia(a: {
    */
   idRemoto?: string | undefined;
 }): Promise<void> {
-  const sb = exigirBase();
-  const participanteId = await idDelFolio(sb, a.folio);
-
-  /*
-   * Cada escaneo se firma con quien lo hizo.
-   *
-   * `asistencias.capturista_id` existía desde el principio pero este insert no
-   * lo enviaba, así que la columna quedaba en NULL: la tabla podía decir que
-   * alguien entró, pero no quién lo registró. Con tres personas turnándose en
-   * un punto de captura, eso convierte cualquier registro dudoso en un caso sin
-   * responsable. `guardarRevision`, veinte líneas más abajo, ya lo hacía bien;
-   * aquí solo faltaba aplicarlo.
-   *
-   * `getSession()` y no `getUser()`: el id solo firma una columna de auditoría,
-   * no decide nada —eso lo hace la política de la base con el JWT que el
-   * cliente ya manda solo—, así que no hace falta la vuelta al servidor de Auth
-   * que exige `getUser()`. Con varios puntos de captura escaneando a la vez eso
-   * eran dos peticiones a Auth por escaneo —ésta y la de `anotarEnBitacora`—,
-   * cien por ciento evitables, exactamente cuando el servidor ya está exigido.
-   */
-  const { data: sesion } = await sb.auth.getSession();
-
-  /*
-   * En qué taller, cuando la asistencia es de taller.
-   *
-   * `chk_taller_solo_en_taller` exige que una fila de `tipo = 'taller'` traiga
-   * `taller_id`, y este insert no lo mandaba: **TODA asistencia de taller la
-   * rechazaba la base**. Como `escribir` solo dejaba el fallo en la consola, el
-   * pase de lista marcaba las treinta casillas en verde y al terminar el taller
-   * no había ni una fila. Nadie de ese grupo acreditaba.
-   *
-   * Sale de la base y no de la pantalla a propósito: quién está inscrito en qué
-   * taller lo sabe `participantes`, y pedirlo aquí evita que el capturista
-   * pueda registrar a alguien en un taller que no es el suyo.
-   */
-  let tallerId: string | null = null;
-  if (a.tipo === "taller") {
-    const fila = await datosDe<{ taller_id: string | null }>(
-      sb.from("participantes").select("taller_id").eq("id", participanteId).single(),
-    );
-    tallerId = fila.taller_id;
-    // Sin taller no hay asistencia de taller que registrar, y la restricción lo
-    // rechazaría con un mensaje que no dice esto. Se dice aquí.
-    if (!tallerId)
-      throw new Error(`${a.folio} no está inscrito en ningún taller: no se puede pasar su lista.`);
-  }
-
-  const { error } = await sb.from("asistencias").insert({
-    // Sin `idRemoto` lo numera la base, como siempre: una cola guardada antes
-    // de esta versión no lo trae.
-    ...(a.idRemoto ? { id: a.idRemoto } : {}),
-    participante_id: participanteId,
-    dia: a.dia,
-    tipo: a.tipo,
-    punto: a.punto,
-    taller_id: tallerId,
-    capturista_id: sesion.session?.user?.id ?? null,
-    autorizacion_motivo: a.autorizacionMotivo ?? null,
-  });
-
-  /*
-   * Chocar contra la llave primaria significa «ya estaba», no «falló».
-   *
-   * Es el caso que hace segura la cola: la fila entró y la respuesta se perdió
-   * de vuelta —la red del recinto cayéndose a mitad de la petición—, así que al
-   * recuperar la conexión se reintenta con el MISMO uuid. Tratar eso como error
-   * dejaría la asistencia atascada en la cola para siempre; tratarlo como éxito
-   * es lo correcto, porque en la base está exactamente lo que se quería poner.
-   *
-   * `23505` es `unique_violation`, y aquí solo puede venir de la clave primaria:
-   * es el único índice único que le queda a la tabla desde que la migración 25
-   * retiró `uq_asistencia_por_dia`.
-   */
-  if (error && error.code !== "23505") throw error;
+  await exigir(
+    exigirBase().rpc("fn_registrar_asistencia", {
+      p_folio: a.folio,
+      p_dia: a.dia,
+      p_tipo: a.tipo,
+      p_punto: a.punto,
+      p_autorizacion_motivo: a.autorizacionMotivo ?? null,
+      p_id_remoto: a.idRemoto ?? null,
+    }),
+  );
 }
 
 export async function guardarRevision(

@@ -331,6 +331,33 @@ export function EstadoEventoProvider({
   }, [cargar]);
 
   /*
+   * El camino ligero: solo cuando la ráfaga no tocó más que asistencias y
+   * bitácora, que es el caso de cada escaneo de la puerta.
+   *
+   * Si tocó cualquier otra tabla —un pago, una importación de padrón, un
+   * taller que cambió de cupo— se cae a `cargar(true)`, la recarga completa
+   * de siempre: ahí sí puede haber cambiado algo que `v_estado_pago` o
+   * `participantes` necesitan reflejar, y no vale la pena adivinar cuáles.
+   */
+  const cargarSegunLoQueCambio = useCallback(
+    (tablas: ReadonlySet<string>) => {
+      const soloAsistenciaYBitacora =
+        tablas.size > 0 && [...tablas].every((t) => t === "asistencias" || t === "bitacora");
+      if (!soloAsistenciaYBitacora) {
+        void cargar(true);
+        return;
+      }
+      void import("@/lib/datos").then(async (m) => {
+        const datos = await m.cargarAsistenciasYBitacora();
+        if (!datos) return;
+        setAsistenciasBase(datos.asistencias);
+        setBitacoraBase(datos.bitacora);
+      });
+    },
+    [cargar],
+  );
+
+  /*
    * La escucha en vivo.
    *
    * Con ella la pantalla deja de ser una foto: un pre-registro nuevo, un cobro
@@ -338,9 +365,10 @@ export function EstadoEventoProvider({
    * nada. Solo se abre con sesión de personal: el anónimo no puede leer estas
    * tablas y suscribirlo sería abrir un canal que nunca va a recibir nada.
    *
-   * `cargar` está en las dependencias, y por eso la escucha se rehace al
-   * cambiar de persona. Es lo correcto: el canal lleva la credencial de quien
-   * lo abrió, y Realtime decide con ella qué filas entrega.
+   * `cargarSegunLoQueCambio` —que a su vez depende de `cargar`— está en las
+   * dependencias, y por eso la escucha se rehace al cambiar de persona. Es lo
+   * correcto: el canal lleva la credencial de quien lo abrió, y Realtime
+   * decide con ella qué filas entrega.
    */
   const [enVivo, setEnVivo] = useState(false);
 
@@ -353,7 +381,7 @@ export function EstadoEventoProvider({
     let vigente = true;
 
     void import("@/lib/tiempo-real")
-      .then((m) => m.escucharCambios(() => void cargar(true), setEnVivo))
+      .then((m) => m.escucharCambios(cargarSegunLoQueCambio, setEnVivo))
       .then((e) => {
         // Si el efecto se limpió mientras se abría el canal, se cierra en vez de
         // quedar colgado sin nadie que lo apague.
@@ -369,7 +397,7 @@ export function EstadoEventoProvider({
       vigente = false;
       escucha?.cerrar();
     };
-  }, [cargar, cargandoSesion, personaId]);
+  }, [cargarSegunLoQueCambio, cargandoSesion, personaId]);
 
   /*
    * Volver a la pestaña vuelve a pedir los datos.
