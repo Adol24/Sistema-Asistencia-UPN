@@ -2310,10 +2310,18 @@ export async function asignarDiaRemoto(
 export async function asignarTaller(
   folio: string,
   clave: string | null,
+  /**
+   * Administración ya miró el voucher y confirma que SÍ incluye el taller.
+   * Solo tiene efecto al PONER un taller por primera vez con un depósito ya
+   * registrado —el caso que, sin esto, `fn_asignar_taller` rechaza sin
+   * remedio—. Falso por omisión: sin pasarlo, el comportamiento es idéntico
+   * al de antes de que existiera este parámetro.
+   */
+  confirmado = false,
 ): Promise<{ folio: string; antes: string | null; ahora: string | null }> {
   return llamar<{ folio: string; antes: string | null; ahora: string | null }>(
     "fn_asignar_taller",
-    { p_folio: folio, p_clave: clave },
+    { p_folio: folio, p_clave: clave, p_confirmado: confirmado },
   );
 }
 

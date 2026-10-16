@@ -84,7 +84,7 @@ export function AsignarTaller({
   participante: Participante;
   /** El catálogo completo; aquí se filtran los activos. */
   talleres: Taller[];
-  asignar: (folio: string, clave: string | null) => Promise<void>;
+  asignar: (folio: string, clave: string | null, confirmado?: boolean) => Promise<void>;
   alCerrar: () => void;
 }) {
   /*
@@ -98,6 +98,13 @@ export function AsignarTaller({
   const [guardando, setGuardando] = useState(false);
   /** La baja sobre un depósito ya hecho no se pulsa sin haber mirado el voucher. */
   const [comprobado, setComprobado] = useState(false);
+  /**
+   * La puesta sobre un depósito ya hecho tampoco se pulsa sin haber mirado el
+   * voucher. Se reinicia al cambiar de taller: confirmar que el voucher
+   * incluye T01 no debe seguir contando como confirmado si quien atiende
+   * cambia la selección a T02.
+   */
+  const [comprobadoAsignar, setComprobadoAsignar] = useState(false);
 
   /*
    * Las dos preguntas, y son distintas.
@@ -118,6 +125,15 @@ export function AsignarTaller({
   const actual = participante.tallerId ?? "";
   /** Ya depositó, pero de su taller no entró un peso: la baja sigue abierta. */
   const soloQuitar = yaDeposito && actual !== "" && sinPagoTaller;
+  /**
+   * Nunca tuvo taller, ya depositó, y quiere ponérselo.
+   *
+   * Es la salida simétrica de `soloQuitar`: administración puede asignarlo
+   * bajo su responsabilidad, confirmando que miró el voucher. No aplica a
+   * quien YA tiene un taller con cobro propio y quiere cambiarlo —ese dinero
+   * ya está atado a un taller concreto, y es una decisión distinta—.
+   */
+  const puedeAsignarConDeposito = yaDeposito && actual === "";
   const activos = talleres.filter((t) => t.activo);
   const elegido = talleres.find((t) => t.id === clave);
   const sinCambio = clave === actual;
@@ -156,10 +172,10 @@ export function AsignarTaller({
   const suyo = talleres.find((t) => t.id === actual);
   const costoApuntado = participante.montoEsperadoTaller ?? costoDelTaller(suyo);
 
-  const aplicar = async (destino: string | null) => {
+  const aplicar = async (destino: string | null, confirmado = false) => {
     setGuardando(true);
     try {
-      await asignar(participante.folio, destino);
+      await asignar(participante.folio, destino, confirmado);
       toast.success(
         destino === null
           ? `${participante.folio} se queda sin taller.`
@@ -237,36 +253,27 @@ export function AsignarTaller({
               </span>
             </label>
           </>
-        ) : yaDeposito ? (
+        ) : yaDeposito && actual ? (
           <Alert variant="destructive" className="mt-4">
             <Wallet className="size-4" />
-            {actual ? (
-              <>
-                <AlertTitle>Su taller ya tiene un cobro registrado</AlertTitle>
-                <AlertDescription>
-                  El costo del taller entró con su depósito, así que quitárselo es decidir qué pasa
-                  con ese dinero. Mándalo a Servicios Financieros: es donde está y quien puede
-                  decidir sobre él.
-                </AlertDescription>
-              </>
-            ) : (
-              <>
-                <AlertTitle>Este folio ya tiene un depósito registrado</AlertTitle>
-                <AlertDescription>
-                  El taller va en ese mismo depósito y su concepto ya está escrito en el voucher que
-                  entregó, así que añadírselo desde aquí le invalidaría el papel y dejaría el costo
-                  sin cobrar. Mándalo a Servicios Financieros: es donde está el dinero y quien puede
-                  decidir sobre él.
-                </AlertDescription>
-              </>
-            )}
+            <AlertTitle>Su taller ya tiene un cobro registrado</AlertTitle>
+            <AlertDescription>
+              El costo del taller entró con su depósito, así que cambiárselo es decidir qué pasa con
+              ese dinero. Mándalo a Servicios Financieros: es donde está y quien puede decidir sobre
+              él.
+            </AlertDescription>
           </Alert>
         ) : (
           <>
             <Campo etiqueta="Taller" className="mt-4">
               <select
                 value={clave}
-                onChange={(e) => setClave(e.target.value)}
+                onChange={(e) => {
+                  setClave(e.target.value);
+                  // Cambiar de taller invalida cualquier confirmación previa:
+                  // haber mirado el voucher para T01 no dice nada de T02.
+                  setComprobadoAsignar(false);
+                }}
                 className="h-11 w-full rounded-md border border-input bg-card px-2 text-sm"
               >
                 <option value="">Sin taller</option>
@@ -344,12 +351,47 @@ export function AsignarTaller({
                     : "Solo el evento, en un solo depósito. Si tenía taller, el concepto que escriba a mano ya no lo incluye."}
               </AlertDescription>
             </Alert>
+
+            {/*
+             * Solo cuando hay depósito de por medio. La salida simétrica de
+             * `soloQuitar`: el dato que falta —si el voucher ya incluye el
+             * taller— está en papel, y por eso lo decide una persona con el
+             * voucher delante, no una consulta.
+             */}
+            {puedeAsignarConDeposito ? (
+              <>
+                <Alert variant="destructive" className="mt-4">
+                  <TriangleAlert className="size-4" />
+                  <AlertTitle>Este folio ya tiene un depósito registrado</AlertTitle>
+                  <AlertDescription>
+                    El taller va en ese mismo depósito y su concepto ya está escrito en el voucher
+                    que entregó. Si lo que falta es que ese concepto se confirme o se cobre, mándalo
+                    a Servicios Financieros. Si ya comprobaste que el voucher SÍ incluye el taller,
+                    puedes asignarlo bajo tu responsabilidad.
+                  </AlertDescription>
+                </Alert>
+
+                <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={comprobadoAsignar}
+                    onCheckedChange={(v) => setComprobadoAsignar(v === true)}
+                    disabled={!elegido}
+                  />
+                  <span>
+                    Comprobé en su voucher que el concepto SÍ incluye el taller
+                    {elegido ? ` ${elegido.id}` : ""}.
+                  </span>
+                </label>
+              </>
+            ) : null}
           </>
         )}
 
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <Button variant="outline" className="h-11" onClick={alCerrar} disabled={guardando}>
-            {yaDeposito && !soloQuitar ? "Cerrar" : "Cancelar"}
+            {/* Sin salida es solo el caso que de verdad no tiene ninguna: cambiar un taller que ya tiene su propio cobro. */}
+            {yaDeposito && actual ? "Cerrar" : "Cancelar"}
           </Button>
           {soloQuitar ? (
             <Button
@@ -361,14 +403,25 @@ export function AsignarTaller({
               {guardando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               {guardando ? "Quitando…" : "Quitarle el taller"}
             </Button>
-          ) : yaDeposito ? null : (
+          ) : yaDeposito && actual ? null : (
             <Button
+              variant={puedeAsignarConDeposito ? "destructive" : "default"}
               className="h-11"
-              onClick={() => void aplicar(clave === "" ? null : clave)}
-              disabled={guardando || sinCambio}
+              onClick={() => void aplicar(clave === "" ? null : clave, puedeAsignarConDeposito)}
+              disabled={
+                guardando ||
+                sinCambio ||
+                (puedeAsignarConDeposito && (!comprobadoAsignar || clave === ""))
+              }
             >
               {guardando ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-              {guardando ? "Guardando…" : sinCambio ? "Sin cambios" : "Guardar"}
+              {guardando
+                ? "Guardando…"
+                : sinCambio
+                  ? "Sin cambios"
+                  : puedeAsignarConDeposito
+                    ? "Asignarle el taller"
+                    : "Guardar"}
             </Button>
           )}
         </div>

@@ -1957,11 +1957,11 @@ export function EstadoEventoProvider({
    * indexa por el folio tal como lo trae el participante.
    */
   const asignarTaller = useCallback<Ctx["asignarTaller"]>(
-    async (folio, clave) => {
+    async (folio, clave, confirmado) => {
       if (!hayBaseDeDatos)
         throw new Error("Sin base de datos configurada no se puede asignar un taller.");
       const d = await import("@/lib/datos");
-      const r = await d.asignarTaller(folio, clave);
+      const r = await d.asignarTaller(folio, clave, confirmado);
 
       /*
        * `x.id === clave`, y no es una confusión: en la aplicación el
@@ -1979,10 +1979,12 @@ export function EstadoEventoProvider({
           montoEsperadoTaller: t?.costo,
           /*
            * `pre_registrado`, y se puede afirmar para el caso en que se PONE un
-           * taller: esa rama la sigue rechazando la función en cuanto existe
-           * cualquier pago, así que quien llega aquí con `t` no tiene ninguno y
-           * su concepto nuevo nace donde nace el del evento de quien no ha
-           * depositado.
+           * taller. Esa rama sigue rechazando cualquier depósito salvo que
+           * administración lo confirme —ver `confirmado` en `asignarTaller`—,
+           * y en los dos casos que llegan aquí con éxito no existe ninguna fila
+           * de pago CON CONCEPTO TALLER: quien no había depositado nada, y quien
+           * sí depositó pero solo le registraron el evento. El concepto nuevo
+           * nace igual que el de cualquiera que no ha pagado su taller.
            *
            * Al QUITARLO no queda concepto que tenga estado, y eso vale también
            * desde el 2026-09-29, que es cuando la baja dejó de estar cerrada

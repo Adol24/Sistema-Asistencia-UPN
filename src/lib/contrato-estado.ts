@@ -293,8 +293,14 @@ export interface Ctx {
    * El depósito lo cierra: quien ya pagó va a Servicios Financieros, porque el
    * taller viaja en el mismo depósito y su concepto ya está escrito en el voucher
    * que entregó.
+   *
+   * **Salvo que `confirmado` sea `true`.** Es la salida para quien SÍ pagó
+   * taller y evento juntos pero quedó registrado solo el evento: administración
+   * confirma que miró el voucher y el asignado procede bajo su responsabilidad.
+   * Solo tiene efecto al poner un taller por primera vez; cambiar uno que ya
+   * tiene su propio cobro sigue sin excepción.
    */
-  asignarTaller: (folio: string, clave: string | null) => Promise<void>;
+  asignarTaller: (folio: string, clave: string | null, confirmado?: boolean) => Promise<void>;
 
   /**
    * Le da plazo a un alumno para completar su depósito, hasta el instante que
