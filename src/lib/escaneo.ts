@@ -41,17 +41,27 @@ export type Modo = "puerta" | "taller";
 export type Color = "verde" | "azul" | "amarillo" | "rojo";
 
 /**
- * Minutos dentro de los cuales un segundo escaneo de la misma persona en la
+ * Segundos dentro de los cuales un segundo escaneo de la misma persona en la
  * puerta NO cuenta.
  *
  * Aquí cada escaneo invierte el estado, así que un doble escaneo por descuido
  * —el capturista que pasa el lector dos veces, o dos filas que leen a la misma
  * persona— no deja un duplicado inocuo: la marca como que se fue.
  *
- * Dos minutos es más de lo que tarda un doble escaneo y menos de lo que tarda la
- * ida más corta al baño, que es el movimiento real más breve que existe.
+ * Diez segundos y no los dos minutos de antes: con seis estaciones operadas
+ * con disciplina de un solo gatillo por persona, el doble escaneo accidental
+ * no es el riesgo real que se pensaba, y dos minutos castigaba de más a quien
+ * de verdad sale y vuelve rápido.
+ *
+ * **Ojo con la precisión entre estaciones distintas.** `instante`, más abajo,
+ * reconstruye la hora de un movimiento que no se escaneó en ESTE teléfono a
+ * partir de `hora` —"14:47", sin segundos— y pone los segundos en cero. Para
+ * esos casos el margen de error de este umbral es de hasta 59 segundos, en
+ * cualquier dirección: no es un umbral exacto de diez segundos entre
+ * estaciones, es "menos de un minuto, aproximado". Dentro del MISMO teléfono,
+ * en cambio, `ts` trae milisegundos reales y el umbral es exacto.
  */
-export const VENTANA_ANTIDOBLE_MIN = 2;
+export const VENTANA_ANTIDOBLE_SEG = 10;
 
 /** Lo mismo para el pase de lista de taller, donde no hay idas y vueltas. */
 export const VENTANA_REINGRESO_MIN = 15;
@@ -260,17 +270,25 @@ export function evaluarEscaneo(e: EntradaEvaluacion): ResultadoEscaneo {
     const ultimo = movs[movs.length - 1];
 
     if (ultimo) {
-      // Doble escaneo por descuido. Aquí no basta con no duplicar: registrarlo
-      // invertiría el estado y dejaría fuera a quien acaba de entrar.
-      const minutos = Math.floor((ahora - instante(ultimo, ahora)) / 60000);
-      if (minutos < VENTANA_ANTIDOBLE_MIN)
+      /*
+       * Doble escaneo por descuido. Aquí no basta con no duplicar: registrarlo
+       * invertiría el estado y dejaría fuera a quien acaba de entrar.
+       *
+       * En SEGUNDOS, no en minutos truncados: con un umbral de 10 s,
+       * `Math.floor(ms / 60000)` solo puede dar 0 o un entero mayor, así que
+       * cualquier umbral menor a 1 minuto se comportaba igual que "menos de un
+       * minuto" sin importar el número exacto. Comparar en segundos es lo que
+       * hace que 10 signifique 10 y no "menos de 60".
+       */
+      const segundos = Math.floor((ahora - instante(ultimo, ahora)) / 1000);
+      if (segundos < VENTANA_ANTIDOBLE_SEG)
         return {
           ...conPersona,
           tipo: ultimo.tipo,
           color: "amarillo",
           titulo: "YA ESCANEADO",
           motivo: `Su ${ultimo.tipo} se registró hace ${
-            minutos < 1 ? "menos de un minuto" : `${minutos} min`
+            segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`
           }.`,
           accion: "Déjalo pasar.",
           registra: false,
