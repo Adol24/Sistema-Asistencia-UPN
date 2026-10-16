@@ -48,20 +48,25 @@ export type Color = "verde" | "azul" | "amarillo" | "rojo";
  * —el capturista que pasa el lector dos veces, o dos filas que leen a la misma
  * persona— no deja un duplicado inocuo: la marca como que se fue.
  *
- * Diez segundos y no los dos minutos de antes: con seis estaciones operadas
- * con disciplina de un solo gatillo por persona, el doble escaneo accidental
- * no es el riesgo real que se pensaba, y dos minutos castigaba de más a quien
- * de verdad sale y vuelve rápido.
+ * Bajó de 2 minutos a 10 segundos el 2026-10-16, y de ahí a 3 el mismo día:
+ * Adol reportó que los alumnos de verdad vuelven a entrar en menos de 3
+ * segundos —con seis estaciones y disciplina de un solo gatillo por persona,
+ * el doble escaneo accidental no es el riesgo real que motivó la ventana
+ * original—, así que un umbral mayor bloqueaba reingresos genuinos tratándolos
+ * como "YA ESCANEADO".
  *
- * **Ojo con la precisión entre estaciones distintas.** `instante`, más abajo,
- * reconstruye la hora de un movimiento que no se escaneó en ESTE teléfono a
- * partir de `hora` —"14:47", sin segundos— y pone los segundos en cero. Para
- * esos casos el margen de error de este umbral es de hasta 59 segundos, en
- * cualquier dirección: no es un umbral exacto de diez segundos entre
- * estaciones, es "menos de un minuto, aproximado". Dentro del MISMO teléfono,
- * en cambio, `ts` trae milisegundos reales y el umbral es exacto.
+ * **Ojo con la precisión entre estaciones distintas, y aquí pesa más que
+ * nunca.** `instante`, más abajo, reconstruye la hora de un movimiento que no
+ * se escaneó en ESTE teléfono a partir de `hora` —"14:47", sin segundos— y
+ * pone los segundos en cero. Para esos casos el margen de error de este
+ * umbral es de hasta 59 segundos, en cualquier dirección: con el umbral en 3,
+ * ese margen de error es casi veinte veces más grande que el propio umbral,
+ * así que entre estaciones distintas esta ventana en la práctica no protege
+ * de nada —puede leer "3 segundos" una diferencia real de minuto y medio, o
+ * al revés—. Dentro del MISMO teléfono, en cambio, `ts` trae milisegundos
+ * reales y el umbral sigue siendo exacto.
  */
-export const VENTANA_ANTIDOBLE_SEG = 10;
+export const VENTANA_ANTIDOBLE_SEG = 3;
 
 /** Lo mismo para el pase de lista de taller, donde no hay idas y vueltas. */
 export const VENTANA_REINGRESO_MIN = 15;
