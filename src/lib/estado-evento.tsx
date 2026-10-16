@@ -249,6 +249,28 @@ export function EstadoEventoProvider({
    */
   const sembradoDelServidor = useRef(inicial != null);
 
+  /*
+   * Quién es la carga más nueva, para que una más vieja y más lenta no pise a
+   * una más joven y más rápida.
+   *
+   * Antes de la recarga selectiva —ver `cargarSegunLoQueCambio`, más abajo—
+   * esto no hacía falta: toda recarga llamaba a `cargarTodo` y escribía las
+   * diez piezas juntas, así que dos cargas solapadas como mucho se pisaban
+   * ENTERAS la una a la otra, con la misma foto completa para todo. Desde que
+   * hay dos caminos escribiendo PARCIALMENTE las mismas piezas —`asistencias`
+   * y `bitácora`—, una carga completa que empezó antes de un escaneo pero
+   * tarda más en volver (la pestaña vuelve al frente justo cuando alguien más
+   * escanea en otra estación) podía resolver DESPUÉS de la recarga ligera que
+   * ya había traído ese escaneo, y borrarlo de la pantalla con una foto más
+   * vieja. No es cosmético: `asistencias` decide, en la estación que lo mira,
+   * si a esa persona le toca entrada o salida.
+   *
+   * Cada llamada se numera; si cuando vuelve ya hay un número más alto en
+   * curso, se descarta entera —no se aplica ninguna de sus piezas— porque ya
+   * hay algo más nuevo en camino o puesto.
+   */
+  const secuenciaCarga = useRef(0);
+
   const cargar = useCallback(
     async (silencioso = false) => {
       if (!hayBaseDeDatos || cargandoSesion) return;
@@ -262,6 +284,7 @@ export function EstadoEventoProvider({
         return;
       }
       if (!silencioso) setCargandoDatos(true);
+      const miTurno = ++secuenciaCarga.current;
       try {
         const m = await import("@/lib/datos");
         /*
@@ -277,6 +300,9 @@ export function EstadoEventoProvider({
         if (!silencioso) m.olvidarPublico();
         const datos = await m.cargarTodo(personaId !== null);
         if (!datos) return;
+        // Se cayó el número desde que esta petición salió: hay una carga más
+        // nueva en curso o ya resuelta. Esta llegó tarde y trae una foto vieja.
+        if (secuenciaCarga.current !== miTurno) return;
         setConfiguracion(datos.configuracion);
         setTalleresBase(datos.talleresBase);
         setSedes(datos.sedes);
@@ -347,9 +373,14 @@ export function EstadoEventoProvider({
         void cargar(true);
         return;
       }
+      // Mismo número que `cargar`: si una recarga completa más nueva se
+      // adelanta a esta ligera, esta se descarta en vez de pisarla con una
+      // foto más vieja al volver. Ver `secuenciaCarga`.
+      const miTurno = ++secuenciaCarga.current;
       void import("@/lib/datos").then(async (m) => {
         const datos = await m.cargarAsistenciasYBitacora();
         if (!datos) return;
+        if (secuenciaCarga.current !== miTurno) return;
         setAsistenciasBase(datos.asistencias);
         setBitacoraBase(datos.bitacora);
       });

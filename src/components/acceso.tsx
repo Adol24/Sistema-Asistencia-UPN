@@ -41,30 +41,7 @@ export function Protegido({ area, children }: { area: Area; children: ReactNode 
     );
   }
 
-  /*
-   * Sin esto, el límite por IP de `fn_perfil_interno` (acceso del personal,
-   * 10 intentos/15 min) se veía exactamente como una sesión vencida: el
-   * formulario de acceso en blanco, sin decir por qué. Con varios puntos de
-   * captura en el mismo WiFi del recinto —y teléfonos que recargan la
-   * pestaña solos al volver de segundo plano— ese tope se agota entre todos,
-   * no por persona, y entonces nadie de ese punto puede volver a entrar
-   * aunque su contraseña sea correcta hasta que pase la ventana.
-   */
-  if (!persona && limitado) {
-    return (
-      <Centrado>
-        <ShieldAlert className="mx-auto size-8 text-estado-discrepancia" aria-hidden />
-        <h1 className="mt-3 text-xl font-bold tracking-tight">Demasiados intentos</h1>
-        <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
-          Esta red —la de todos los puntos de captura del recinto— ya preguntó demasiadas veces en
-          los últimos minutos. No es tu sesión ni tu contraseña: espera unos minutos y vuelve a
-          intentar.
-        </p>
-      </Centrado>
-    );
-  }
-
-  if (!persona) return <FormularioAcceso />;
+  if (!persona) return <FormularioAcceso limitado={limitado} />;
 
   if (!puedeEntrar(persona.rol, area)) {
     return (
@@ -84,7 +61,17 @@ export function Protegido({ area, children }: { area: Area; children: ReactNode 
   return <>{children}</>;
 }
 
-function FormularioAcceso() {
+/**
+ * @param limitado Esta cuenta agotó el tope de `fn_perfil_interno` (ver
+ *   `limitado` en `useSesion`). **No bloquea el formulario.** Antes esto se
+ *   enseñaba como una pantalla sin salida —solo el aviso, sin el formulario
+ *   debajo— y quien lo veía se quedaba atascado hasta recargar la pestaña a
+ *   mano, aunque los quince minutos ya hubieran pasado: nada volvía a
+ *   comprobar el límite salvo un montaje nuevo. Dejar el formulario visible
+ *   le da una salida real: `entrar()` vuelve a preguntar, y si la ventana ya
+ *   cerró, entra igual sin que nadie tenga que recargar nada.
+ */
+function FormularioAcceso({ limitado }: { limitado: boolean }) {
   const { entrar } = useSesion();
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
@@ -99,6 +86,13 @@ function FormularioAcceso() {
       <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
         Entra con la cuenta que te dio administración.
       </p>
+
+      {limitado ? (
+        <p className="mx-auto mt-4 max-w-prose rounded-md bg-estado-discrepancia-bg p-3 text-pretty text-xs font-medium text-estado-discrepancia">
+          Esta cuenta ya preguntó demasiadas veces en los últimos minutos. No es tu contraseña:
+          espera un poco y vuelve a intentar.
+        </p>
+      ) : null}
 
       <form
         noValidate

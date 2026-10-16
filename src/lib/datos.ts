@@ -159,6 +159,36 @@ const COLS_PADRON = `
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )
 `;
 
+/**
+ * Las asistencias vivas, por tramo. La misma consulta la usan `cargarTodo` y
+ * `cargarAsistenciasYBitacora` —esta última solo trae asistencias y bitácora,
+ * para la recarga que dispara un escaneo sin pagar las otras ocho tablas—, y
+ * se puso en un solo sitio a propósito: dos copias de la misma consulta
+ * pueden desincronizarse en silencio el día que alguien le agregue una
+ * columna a una y se olvide de la otra, y la pantalla enseñaría algo distinto
+ * según de cuál de los dos caminos vino el dato.
+ */
+const consultaAsistencias = (sb: SupabaseClient, desde: number, hasta: number) =>
+  sb
+    .from("asistencias")
+    .select(
+      "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
+    )
+    .is("anulada_en", null)
+    // `id` detrás de la fecha: dos registros del mismo instante empatan, y un
+    // empate al paginar repite filas en un tramo y las pierde en el otro.
+    .order("registrada_en")
+    .order("id")
+    .range(desde, hasta);
+
+/** Igual que `consultaAsistencias`: una sola definición para los dos caminos. */
+const consultaBitacora = (sb: SupabaseClient) =>
+  sb
+    .from("bitacora")
+    .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
+    .order("ocurrido_en", { ascending: false })
+    .limit(500);
+
 /** Lo que cualquiera puede leer: el evento, sus días, el catálogo y los talleres. */
 export interface Publico {
   configuracion: ConfiguracionEvento;
@@ -420,19 +450,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
         porTramos((desde, hasta) =>
           sb.from("padron_alumnos").select(COLS_PADRON).order("matricula").range(desde, hasta),
         ),
-        porTramos((desde, hasta) =>
-          sb
-            .from("asistencias")
-            .select(
-              "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-            )
-            .is("anulada_en", null)
-            // `id` detrás de la fecha: dos registros del mismo instante empatan, y
-            // un empate al paginar repite filas en un tramo y las pierde en el otro.
-            .order("registrada_en")
-            .order("id")
-            .range(desde, hasta),
-        ),
+        porTramos((desde, hasta) => consultaAsistencias(sb, desde, hasta)),
         porTramos((desde, hasta) =>
           sb
             .from("evidencias")
@@ -481,11 +499,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
          * diez sería pagar el histórico entero en cada carga. Lo que la pantalla
          * contesta es «quién hizo esto», y eso se pregunta sobre lo reciente.
          */
-        sb
-          .from("bitacora")
-          .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
-          .order("ocurrido_en", { ascending: false })
-          .limit(500),
+        consultaBitacora(sb),
       ])
     : [NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA, NADA];
 
@@ -576,9 +590,8 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
  * (`estado-evento.tsx`) solo llama aquí cuando sabe, por las tablas que
  * `escucharCambios` reportó, que no hizo falta nada más.
  *
- * Mismas consultas, mismo orden de columnas, que las dos equivalentes dentro
- * de `cargarTodo`: una diferencia entre esta copia y aquella se notaría como
- * una pantalla que ve algo distinto según si cargó entera o por este camino.
+ * Mismas `consultaAsistencias`/`consultaBitacora` que usa `cargarTodo`: no
+ * hay una segunda copia que pueda desincronizarse de la primera.
  */
 export async function cargarAsistenciasYBitacora(): Promise<{
   asistencias: Asistencia[];
@@ -588,22 +601,8 @@ export async function cargarAsistenciasYBitacora(): Promise<{
   const sb = supabase;
 
   const [asistencias, bitacora] = await Promise.all([
-    porTramos((desde, hasta) =>
-      sb
-        .from("asistencias")
-        .select(
-          "id, dia, tipo, registrada_en, punto, autorizacion_motivo, autorizada_por, participantes ( folio, nombre ), capturista:capturista_id ( nombre ), supervisor:autorizada_por ( nombre )",
-        )
-        .is("anulada_en", null)
-        .order("registrada_en")
-        .order("id")
-        .range(desde, hasta),
-    ),
-    sb
-      .from("bitacora")
-      .select("id, accion, detalle, ocurrido_en, usuario_texto, usuarios_internos ( nombre )")
-      .order("ocurrido_en", { ascending: false })
-      .limit(500),
+    porTramos((desde, hasta) => consultaAsistencias(sb, desde, hasta)),
+    consultaBitacora(sb),
   ]);
 
   if (asistencias.error || bitacora.error) {
