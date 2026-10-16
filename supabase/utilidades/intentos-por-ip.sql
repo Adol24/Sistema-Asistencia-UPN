@@ -14,7 +14,12 @@
 --   abrir_caso_nombre   10     reportar el nombre mal escrito
 --   evidencia           20     subir su comprobante
 --   portal              40     consultar su estado
---   acceso              10     la puerta del personal (ventana de 15 minutos)
+--
+-- `acceso` —la puerta del personal, 10 cada 15 minutos— YA NO vive aquí desde
+-- `20261015190000`: pasó a contarse por CUENTA (`privado.intentos_por_cuenta`),
+-- no por IP, precisamente porque varios puntos de captura detrás del mismo
+-- enlace se repartían ese cupo entre todos. La consulta 2 de este archivo, más
+-- abajo, ya no la incluye; para verla usa `intentos-por-cuenta.sql`.
 --
 -- Esos números se pusieron pensando en un atacante enumerando el padrón. El día
 -- del registro el que los agota es otro: **la fila**. La IP la toma
@@ -70,8 +75,8 @@ with topes(accion, maximo, ventana) as (
     ('ventana_matricula', 30, interval '10 minutes'),
     ('abrir_caso_nombre', 10, interval '10 minutes'),
     ('evidencia',         20, interval '10 minutes'),
-    ('portal',            40, interval '10 minutes'),
-    ('acceso',            10, interval '15 minutes')
+    ('portal',            40, interval '10 minutes')
+    -- 'acceso' se quitó de aquí: ya no se cuenta por IP. Ver intentos-por-cuenta.sql.
 )
 select
   i.accion,

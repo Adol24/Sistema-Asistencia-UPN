@@ -25,12 +25,12 @@ interface Sesion {
    */
   modoPrototipo: boolean;
   /**
-   * La IP de esta conexión agotó el tope de `fn_perfil_interno` (acceso del
-   * personal). No es que la sesión haya expirado ni que falten credenciales:
-   * es que, desde esta misma red, ya se preguntó demasiadas veces en los
-   * últimos 15 minutos. Típico con varios puntos de captura compartiendo el
-   * WiFi del recinto y teléfonos que recargan la pestaña solos al volver de
-   * segundo plano.
+   * Esta CUENTA agotó el tope de `fn_perfil_interno` (acceso del personal,
+   * 10 intentos/15 min — ver `20261015190000`, por cuenta y no por IP desde
+   * ese cambio). No es que la sesión haya expirado ni que falten
+   * credenciales: es que esta cuenta ya preguntó demasiadas veces en los
+   * últimos 15 minutos, típicamente porque el teléfono recarga la pestaña
+   * solo al volver de segundo plano.
    */
   limitado: boolean;
   entrar: (correo: string, contrasena: string) => Promise<string | null>;
@@ -131,10 +131,33 @@ export function SesionProvider({ children }: { children: ReactNode }) {
         email: correo.trim(),
         password: contrasena,
       });
-      // Un mensaje único para credenciales malas: distinguir «ese correo no
-      // existe» de «esa contraseña no es» convierte el acceso en un buscador de
-      // correos válidos del personal.
-      if (error) return "Correo o contraseña incorrectos.";
+      if (error) {
+        /*
+         * Antes CUALQUIER error de `signInWithPassword` —el límite propio de
+         * Supabase Auth, un corte de Starlink a mitad de la petición, lo que
+         * fuera— se enseñaba como «correo o contraseña incorrectos». Con seis
+         * puntos de captura reintentando sobre el mismo enlace satelital eso
+         * mandó a gente con la contraseña correcta a cambiarla, a pedirle a
+         * administración que la restableciera, o simplemente a seguir
+         * reintentando mientras el verdadero motivo —un límite temporal, o la
+         * red cortada un segundo— se resolvía solo.
+         *
+         * Las credenciales malas sí se siguen fundiendo en un único mensaje:
+         * distinguir «ese correo no existe» de «esa contraseña no es»
+         * convierte el acceso en un buscador de correos válidos del personal.
+         * Pero eso solo aplica al código que de verdad significa eso.
+         */
+        if (error.code === "over_request_rate_limit" || error.status === 429) {
+          setLimitado(true);
+          return "Demasiados intentos desde esta conexión. Espera unos minutos.";
+        }
+        // Sin status es un fallo de red antes de llegar al servidor
+        // (`AuthRetryableFetchError`); 5xx es el servidor, no la contraseña.
+        if (error.status === undefined || error.status >= 500) {
+          return "No se pudo conectar con el servidor. Revisa la conexión e inténtalo otra vez.";
+        }
+        return "Correo o contraseña incorrectos.";
+      }
 
       const p = await leerPerfil();
       if (p === "limitado") {

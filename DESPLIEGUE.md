@@ -102,24 +102,38 @@ la página. Se registra un renglón por intento en `privado.intentos` —un esqu
 que PostgREST no publica— y la IP sale de `cf-connecting-ip`, la cabecera de
 fiar porque Supabase corre detrás de Cloudflare.
 
-| Puerta | Tope | Ventana |
-| --- | --- | --- |
-| `fn_padron_existe` | 30 | 10 min |
-| `fn_padron_confirmar` | 10 | 10 min |
-| `fn_perfil_interno` (acceso) | 10 | 15 min |
+| Puerta | Tope | Ventana | Cuenta por |
+| --- | --- | --- | --- |
+| `fn_padron_existe` | 30 | 10 min | IP |
+| `fn_padron_confirmar` | 10 | 10 min | IP |
+| `fn_perfil_interno` (acceso) | 10 | 15 min | **cuenta**, desde `20261015190000` |
 
 Sobre el acceso del personal: el inicio de sesión lo atiende Supabase Auth y no
 se puede interceptar desde Postgres. Pero entrar necesita **dos** cosas —la
 sesión de Auth y una fila activa en `usuarios_internos`—, y esa segunda sí pasa
-por la base. Por eso el límite está ahí: una IP que aporrea el acceso deja de
-obtener perfil aunque acierte la contraseña.
+por la base. Por eso el límite está ahí: una cuenta que aporrea el acceso deja
+de obtener perfil aunque acierte la contraseña.
+
+Hasta `20261015190000` este tope también contaba por IP, y un evento real lo
+demostró mal pensado: seis puntos de captura detrás de un único enlace
+—Starlink, en ese caso— comparten la misma IP pública, así que las seis
+cuentas se repartían el mismo cupo de diez y se bloqueaban entre ellas sin que
+ninguna hiciera nada malo. `fn_perfil_interno` ya exige `auth.uid()` no nulo
+—Supabase Auth ya validó la contraseña— antes de llegar al límite, así que
+contar por esa cuenta en vez de por la red que comparte no abre ningún hueco
+nuevo: sigue frenando a una cuenta insistiendo, y deja de castigar a sus
+vecinas de red. `fn_padron_existe` y `fn_padron_confirmar` siguen por IP a
+propósito: ahí quien llama es anónimo y no hay cuenta que repartir el cupo.
 
 Conviene además subir el límite propio de Supabase Auth en el panel
-(*Authentication → Rate Limits*), que es la primera barrera y actúa antes.
+(*Authentication → Rate Limits*), que es la primera barrera y actúa antes. Sus
+valores por defecto (150 peticiones/5 min al endpoint de token, que cubre el
+inicio de sesión, por IP) son generosos para seis equipos; si en el panel
+aparecen más bajos que eso, alguien los bajó a mano.
 
-Si no hay ninguna cabecera de IP —desarrollo local— no se limita. Inventar una
-agruparía a todo el mundo bajo la misma cuenta y bastaría un usuario para dejar
-fuera a los demás.
+Si no hay ninguna cabecera de IP —desarrollo local— los topes por IP no
+limitan. Inventar una agruparía a todo el mundo bajo la misma cuenta y
+bastaría un usuario para dejar fuera a los demás.
 
 ## Tiempo real
 
