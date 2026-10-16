@@ -28,7 +28,7 @@ import type { ReactNode } from "react";
  * pero sin el rol que esta zona pide.
  */
 export function Protegido({ area, children }: { area: Area; children: ReactNode }) {
-  const { persona, cargando, modoPrototipo } = useSesion();
+  const { persona, cargando, modoPrototipo, limitado } = useSesion();
 
   if (modoPrototipo) return <>{children}</>;
 
@@ -37,6 +37,29 @@ export function Protegido({ area, children }: { area: Area; children: ReactNode 
       <Centrado>
         <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" aria-hidden />
         <p className="mt-3 text-sm text-muted-foreground">Comprobando tu sesión…</p>
+      </Centrado>
+    );
+  }
+
+  /*
+   * Sin esto, el límite por IP de `fn_perfil_interno` (acceso del personal,
+   * 10 intentos/15 min) se veía exactamente como una sesión vencida: el
+   * formulario de acceso en blanco, sin decir por qué. Con varios puntos de
+   * captura en el mismo WiFi del recinto —y teléfonos que recargan la
+   * pestaña solos al volver de segundo plano— ese tope se agota entre todos,
+   * no por persona, y entonces nadie de ese punto puede volver a entrar
+   * aunque su contraseña sea correcta hasta que pase la ventana.
+   */
+  if (!persona && limitado) {
+    return (
+      <Centrado>
+        <ShieldAlert className="mx-auto size-8 text-estado-discrepancia" aria-hidden />
+        <h1 className="mt-3 text-xl font-bold tracking-tight">Demasiados intentos</h1>
+        <p className="mx-auto mt-2 max-w-prose text-pretty text-sm text-muted-foreground">
+          Esta red —la de todos los puntos de captura del recinto— ya preguntó demasiadas veces en
+          los últimos minutos. No es tu sesión ni tu contraseña: espera unos minutos y vuelve a
+          intentar.
+        </p>
       </Centrado>
     );
   }

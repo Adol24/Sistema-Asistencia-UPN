@@ -24,6 +24,15 @@ interface Sesion {
    * publique el prototipo creyendo que las pantallas internas están cerradas.
    */
   modoPrototipo: boolean;
+  /**
+   * La IP de esta conexión agotó el tope de `fn_perfil_interno` (acceso del
+   * personal). No es que la sesión haya expirado ni que falten credenciales:
+   * es que, desde esta misma red, ya se preguntó demasiadas veces en los
+   * últimos 15 minutos. Típico con varios puntos de captura compartiendo el
+   * WiFi del recinto y teléfonos que recargan la pestaña solos al volver de
+   * segundo plano.
+   */
+  limitado: boolean;
   entrar: (correo: string, contrasena: string) => Promise<string | null>;
   salir: () => Promise<void>;
 }
@@ -56,6 +65,7 @@ type Perfil = PersonaInterna | null | "limitado";
 export function SesionProvider({ children }: { children: ReactNode }) {
   const [persona, setPersona] = useState<PersonaInterna | null>(null);
   const [cargando, setCargando] = useState(hayBaseDeDatos);
+  const [limitado, setLimitado] = useState(false);
 
   const leerPerfil = useCallback(async (): Promise<Perfil> => {
     const { supabase } = await import("@/lib/supabase");
@@ -95,8 +105,16 @@ export function SesionProvider({ children }: { children: ReactNode }) {
     let vigente = true;
 
     void leerPerfil()
-      .then((p) => vigente && setPersona(p === "limitado" ? null : p))
-      .catch(() => vigente && setPersona(null))
+      .then((p) => {
+        if (!vigente) return;
+        setLimitado(p === "limitado");
+        setPersona(p === "limitado" ? null : p);
+      })
+      .catch(() => {
+        if (!vigente) return;
+        setLimitado(false);
+        setPersona(null);
+      })
       .finally(() => vigente && setCargando(false));
 
     return () => {
@@ -121,12 +139,14 @@ export function SesionProvider({ children }: { children: ReactNode }) {
       const p = await leerPerfil();
       if (p === "limitado") {
         await supabase.auth.signOut();
+        setLimitado(true);
         return "Demasiados intentos desde esta conexión. Espera unos minutos.";
       }
       if (!p) {
         await supabase.auth.signOut();
         return "Esa cuenta no tiene acceso al sistema. Habla con administración.";
       }
+      setLimitado(false);
       setPersona(p);
       return null;
     },
@@ -140,8 +160,8 @@ export function SesionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const valor = useMemo<Sesion>(
-    () => ({ persona, cargando, modoPrototipo: !hayBaseDeDatos, entrar, salir }),
-    [persona, cargando, entrar, salir],
+    () => ({ persona, cargando, modoPrototipo: !hayBaseDeDatos, limitado, entrar, salir }),
+    [persona, cargando, limitado, entrar, salir],
   );
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
