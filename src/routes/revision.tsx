@@ -301,6 +301,19 @@ function PanelRevision() {
                 <option value="todos">Todos</option>
               </select>
             </Campo>
+            <Campo etiqueta="Tipo">
+              <select
+                value={filtros.tipo}
+                onChange={(e) =>
+                  setFiltros((f) => ({ ...f, tipo: e.target.value as FiltrosRevision["tipo"] }))
+                }
+                className="h-10 rounded-md border border-input bg-card px-2 text-sm"
+              >
+                <option value="todos">Evento y taller</option>
+                <option value="evento">Solo evento</option>
+                <option value="taller">Solo taller</option>
+              </select>
+            </Campo>
             <Campo etiqueta="Asignación">
               <select
                 value={filtros.revisor}
@@ -446,7 +459,10 @@ function PanelRevision() {
               <dl className="mt-4 grid gap-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Día</dt>
-                  <dd className="font-semibold">Día {actual.dia}</dd>
+                  <dd className="font-semibold">
+                    Día {actual.dia}
+                    {actual.tipo === "taller" ? " · Taller" : ""}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Subida</dt>

@@ -55,6 +55,7 @@ import type {
   Evidencia,
   Participante,
   TallerBase,
+  TipoEvidencia,
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { ConfiguracionEvento, DiaEvento } from "@/lib/configuracion";
@@ -455,7 +456,7 @@ export async function cargarTodo(conSesion = false): Promise<Instantanea | null>
           sb
             .from("evidencias")
             .select(
-              "id, dia, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
+              "id, dia, tipo, archivo_url, hash_archivo, estado, subida_en, participantes ( folio, nombre, matricula )",
             )
             // Por día hay miles de empates: sin `id` detrás, paginar sobre `dia`
             // devolvería unas evidencias dos veces y otras ninguna.
@@ -2036,6 +2037,7 @@ export async function subirEvidenciaRemota(
   credencial: string,
   dia: number,
   archivo: File,
+  tipo: TipoEvidencia = "evento",
 ): Promise<void> {
   const sb = exigirBase();
 
@@ -2061,6 +2063,7 @@ export async function subirEvidenciaRemota(
     p_folio: folio,
     p_credencial: credencial,
     p_dia: dia,
+    p_tipo: tipo,
   });
 
   const bytes = await archivo.arrayBuffer();
@@ -2078,6 +2081,7 @@ export async function subirEvidenciaRemota(
     p_dia: dia,
     p_ruta: ruta,
     p_hash: hash,
+    p_tipo: tipo,
   });
 }
 

@@ -24,6 +24,7 @@ import type {
   Participante,
   Perfil,
   TallerBase,
+  TipoEvidencia,
   UsuarioInterno,
 } from "@/dominio/tipos";
 import type { NivelAcademico } from "@/dominio/catalogos";
@@ -277,6 +278,7 @@ export interface FilaAsistencia {
 export interface FilaEvidencia {
   id: string;
   dia: Dia;
+  tipo: TipoEvidencia;
   archivo_url: string | null;
   hash_archivo: string | null;
   estado: EstadoEvidencia;
@@ -725,6 +727,7 @@ export const aEvidencia = (f: FilaEvidencia): Evidencia => ({
   matricula: f.participantes?.matricula ?? "",
   nombre: f.participantes?.nombre ?? "",
   dia: f.dia,
+  tipo: f.tipo,
   estado: f.estado,
   hash: f.hash_archivo ?? "",
   // La imagen vive en Storage; la fila solo guarda su ruta.

@@ -255,12 +255,16 @@ export interface Asistencia {
   autorizacion?: { nota: string; autorizadoPor: string; en: string } | undefined;
 }
 
+/** `evento`: conferencia de un día que no le tocó asistir en persona. `taller`: el taller al que está inscrito. */
+export type TipoEvidencia = "evento" | "taller";
+
 export interface Evidencia {
   id: string;
   folio: string;
   matricula: string;
   nombre: string;
   dia: Dia;
+  tipo: TipoEvidencia;
   subidaEn: string;
   estado: EstadoEvidencia;
   motivoRechazo?: string | undefined;

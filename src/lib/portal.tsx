@@ -45,7 +45,7 @@ export interface ElegibilidadPortal {
 export interface DatosPortal {
   participante: Participante;
   asistencias: { dia: number; tipo: string; hora: string }[];
-  evidencias: { dia: number; estado: string; motivo_rechazo?: string | null }[];
+  evidencias: { dia: number; tipo: string; estado: string; motivo_rechazo?: string | null }[];
   /** `null` mientras la vista no tenga fila para esa persona. */
   elegibilidad: ElegibilidadPortal | null;
   /**

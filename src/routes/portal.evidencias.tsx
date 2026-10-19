@@ -24,7 +24,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { hoyIso, isoAFecha } from "@/lib/formato";
 import { comprimirImagen, pesoLegible } from "@/lib/imagen";
 import { meta } from "@/lib/seo";
-import type { Dia, EstadoEvidencia } from "@/dominio/tipos";
+import type { Dia, EstadoEvidencia, TipoEvidencia } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/portal/evidencias")({
   head: () =>
@@ -69,7 +69,7 @@ function MisEvidencias() {
 }
 
 function MisEvidenciasContenido({ p }: { p: Participante }) {
-  const { infoDia } = useEstadoEvento();
+  const { infoDia, getTaller } = useEstadoEvento();
   /*
    * Sus evidencias salen del PORTAL, no del almacén del personal.
    *
@@ -148,6 +148,33 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
       return {
         tipo: "bloqueada",
         texto: `Podrás subirla el ${isoAFecha(fecha)}, que es el día de esa sesión.`,
+      };
+
+    return { tipo: "disponible" };
+  };
+
+  /*
+   * La evidencia de taller es UNA sola para todo el taller, no una por día —
+   * aunque dure dos—, así que se guarda contra el primer día del taller y no
+   * se itera como las de evento. Independiente del día presencial del alumno:
+   * su taller puede caer justo ese día.
+   */
+  const taller = p.tallerId ? getTaller(p.tallerId) : undefined;
+  const diaTaller = taller?.dias[0];
+  const tarjetaTaller = (): Tarjeta => {
+    const ev = mias.find((e) => e.tipo === "taller");
+    if (ev && ev.estado !== "no_entregada")
+      return {
+        tipo: "estado",
+        estado: ev.estado as EstadoEvidencia,
+        ...(ev.motivo_rechazo ? { motivo: ev.motivo_rechazo } : {}),
+      };
+
+    const fecha = diaTaller ? infoDia(diaTaller).fecha : undefined;
+    if (fecha && hoyIso() < fecha)
+      return {
+        tipo: "bloqueada",
+        texto: `Podrás subirla el ${isoAFecha(fecha)}, que es el día de tu taller.`,
       };
 
     return { tipo: "disponible" };
@@ -239,11 +266,82 @@ function MisEvidenciasContenido({ p }: { p: Participante }) {
           );
         })}
       </ul>
+
+      {taller && diaTaller ? (
+        <>
+          <p className="mt-6 text-sm font-bold">Mi taller</p>
+          <ul className="mt-2 grid gap-3">
+            {(() => {
+              const t = tarjetaTaller();
+              return (
+                <li className="overflow-hidden rounded-lg border border-border bg-card">
+                  <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-3">
+                    <p className="text-sm font-bold">{taller.nombre}</p>
+                  </div>
+                  <div className="p-4">
+                    {t.tipo === "bloqueada" ? (
+                      <div className="flex items-start gap-3 rounded-md bg-muted p-3 text-sm">
+                        <Lock
+                          className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                          aria-hidden
+                        />
+                        <div>
+                          <p className="font-semibold">Fuera de la ventana horaria</p>
+                          <p className="text-muted-foreground">{t.texto}</p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {t.tipo === "estado" ? (
+                      <div className="grid gap-2">
+                        <EstadoEvidenciaBadge estado={t.estado} className="w-fit" />
+                        {t.subidaEn ? (
+                          <p className="text-xs text-muted-foreground">Subida el {t.subidaEn}</p>
+                        ) : null}
+                        {t.revisor ? (
+                          <p className="text-xs text-muted-foreground">
+                            Revisada por {t.revisor}
+                            {t.revisadaEn ? ` el ${t.revisadaEn}` : ""}
+                          </p>
+                        ) : null}
+                        {t.estado === "rechazada" ? (
+                          <>
+                            <p className="rounded-md bg-estado-cancelado-bg p-3 text-sm text-estado-cancelado">
+                              Motivo: {t.motivo ?? "Imagen ilegible o muy oscura"}
+                            </p>
+                            <SubirEvidencia
+                              dia={diaTaller}
+                              tipo="taller"
+                              etiqueta="Volver a subir evidencia"
+                            />
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {t.tipo === "disponible" ? (
+                      <SubirEvidencia dia={diaTaller} tipo="taller" etiqueta="Subir evidencia" />
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })()}
+          </ul>
+        </>
+      ) : null}
     </PantallaPublica>
   );
 }
 
-function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
+function SubirEvidencia({
+  dia,
+  etiqueta,
+  tipo = "evento",
+}: {
+  dia: number;
+  etiqueta: string;
+  tipo?: TipoEvidencia;
+}) {
   const { sesion, refrescar } = usePortal();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -276,7 +374,7 @@ function SubirEvidencia({ dia, etiqueta }: { dia: number; etiqueta: string }) {
     try {
       const { subirEvidenciaRemota } = await import("@/lib/datos");
       setProgreso(40);
-      await subirEvidenciaRemota(sesion.folio, sesion.credencial, dia, archivo);
+      await subirEvidenciaRemota(sesion.folio, sesion.credencial, dia, archivo, tipo);
       setProgreso(100);
       toast.success("Tu evidencia quedó en revisión.");
       // Los intentos y el estado los lleva la base: se vuelven a pedir en vez

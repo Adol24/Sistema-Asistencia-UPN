@@ -101,6 +101,7 @@ export interface FiltrosRevision {
   soloDuplicados: boolean;
   /** Texto libre: nombre, matrícula o folio del alumno que se busca. */
   busqueda: string;
+  tipo: "todos" | "evento" | "taller";
 }
 
 export const FILTROS_INICIALES: FiltrosRevision = {
@@ -109,10 +110,12 @@ export const FILTROS_INICIALES: FiltrosRevision = {
   revisor: "todos",
   soloDuplicados: false,
   busqueda: "",
+  tipo: "todos",
 };
 
 /** Sin acentos ni mayúsculas, para que "José" encuentre a "jose". */
-const normalizarBusqueda = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+const normalizarBusqueda = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 /** Aplica los filtros de la barra superior a la cola completa. */
 export function filtrarCola(
@@ -128,6 +131,7 @@ export function filtrarCola(
     if (filtros.revisor !== "todos" && revisorDe(e.id, asignacion) !== filtros.revisor)
       return false;
     if (filtros.soloDuplicados && !duplicadas.has(e.id)) return false;
+    if (filtros.tipo !== "todos" && e.tipo !== filtros.tipo) return false;
     if (
       busqueda &&
       !normalizarBusqueda(e.nombre).includes(busqueda) &&

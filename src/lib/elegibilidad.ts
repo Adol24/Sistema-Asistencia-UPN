@@ -34,6 +34,9 @@ export interface Elegibilidad {
 /** Evidencias aprobadas que un alumno necesita para su constancia. */
 export const EVIDENCIAS_REQUERIDAS = 2;
 
+/** Evidencias de taller aprobadas que hacen falta para la constancia del taller. */
+export const EVIDENCIAS_TALLER_REQUERIDAS = 1;
+
 export interface EntornoConstancias {
   estadoDe: (p: Participante) => { evento: EstadoPago; taller: EstadoPago | undefined };
   asistenciasDe: (folio: string, dia?: 1 | 2 | 3) => Asistencia[];
@@ -95,7 +98,9 @@ export function elegibilidadEvento(entorno: EntornoConstancias, p: Participante)
    * las que se entregaron antes siguen en la tabla y hay que seguir contándolas
    * bien.
    */
-  const suyasDeOtrosDias = entorno.evidenciasDe(p.folio).filter((e) => e.dia !== p.dia);
+  const suyasDeOtrosDias = entorno
+    .evidenciasDe(p.folio)
+    .filter((e) => e.tipo === "evento" && e.dia !== p.dia);
   const aprobadas = suyasDeOtrosDias.filter((e) => e.estado === "aprobada").length;
 
   // El detalle tiene que alcanzar para responder sin abrir otra pantalla: es la
@@ -176,6 +181,35 @@ export function elegibilidadTaller(
       }.`,
     },
   ];
+
+  /*
+   * La evidencia de taller es un requisito aparte del escaneo de puerta: ambos
+   * prueban la asistencia, pero la organización decidió pedir los dos. Es UNA
+   * sola evidencia para todo el taller, no una por día, aunque el taller dure
+   * más de uno: ver `src/routes/portal.evidencias.tsx`.
+   *
+   * Solo se le exige a quien puede entregarla. `fn_evidencia_preparar` sigue
+   * aceptando evidencia únicamente de alumnos (migración 58): pedírsela
+   * también a un docente con taller lo dejaría eternamente sin constancia por
+   * un requisito que su perfil no tiene forma de cumplir.
+   */
+  if (p.perfil === "alumno") {
+    const evidenciasTaller = entorno.evidenciasDe(p.folio).filter((e) => e.tipo === "taller");
+    const aprobadasTaller = evidenciasTaller.filter((e) => e.estado === "aprobada").length;
+    const ultimaTaller = evidenciasTaller.at(-1);
+
+    requisitos.push({
+      texto: `${EVIDENCIAS_TALLER_REQUERIDAS} evidencia aprobada del taller`,
+      ok: aprobadasTaller >= EVIDENCIAS_TALLER_REQUERIDAS,
+      comoSeResuelve: !ultimaTaller
+        ? "Todavía no sube evidencia de su taller."
+        : ultimaTaller.estado === "rechazada"
+          ? `Su evidencia fue rechazada (${ultimaTaller.motivoRechazo ?? "sin motivo"}).`
+          : ultimaTaller.estado === "pendiente"
+            ? "Su evidencia sigue pendiente de revisión."
+            : "Ya tiene su evidencia de taller aprobada.",
+    });
+  }
 
   const faltante = requisitos.find((r) => !r.ok);
   return { requisitos, elegible: !faltante, faltante };
