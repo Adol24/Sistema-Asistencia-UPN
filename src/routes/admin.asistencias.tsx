@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Buscador } from "@/components/buscador";
 import { EstadoVacio, Tarjeta } from "@/components/tipografia";
+import { Paginacion } from "@/components/tabla";
 import { PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { movimientosDe } from "@/lib/escaneo";
 import { diaRealDeHoy, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
+import { usePaginacion } from "@/lib/paginacion";
 import { meta } from "@/lib/seo";
 import type { Asistencia, Dia, Participante } from "@/dominio/tipos";
 
@@ -112,7 +114,19 @@ function Asistencias() {
    */
   const hoy = diaRealDeHoy(configuracion.dias);
 
-  const encontrados = useMemo(() => buscarEnParticipantes(participantes, q), [participantes, q]);
+  /*
+   * Sin búsqueda, la pantalla se enseñaba vacía hasta que alguien escribía un
+   * nombre — un lugar raro para no poder ver de un vistazo a quién le falta
+   * algo. Con búsqueda, sigue siendo `buscarEnParticipantes`; sin ella, es
+   * todo el padrón, alfabético y paginado para no pintar dos mil quinientas
+   * fichas de golpe.
+   */
+  const encontrados = useMemo(() => {
+    if (q.trim() !== "") return buscarEnParticipantes(participantes, q);
+    return [...participantes].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [participantes, q]);
+
+  const tramo = usePaginacion(encontrados, 20, q);
 
   const abrirAnular = (a: Asistencia) => {
     setAnulando(a);
@@ -259,16 +273,12 @@ function Asistencias() {
       ) : null}
 
       <div className="mt-4 grid gap-3">
-        {q.trim() === "" ? (
-          <EstadoVacio icono={<Search className="size-8" aria-hidden />} titulo="Busca a alguien">
-            Escribe un nombre, folio o matrícula para ver su historial.
-          </EstadoVacio>
-        ) : encontrados.length === 0 ? (
+        {encontrados.length === 0 ? (
           <EstadoVacio icono={<Search className="size-8" aria-hidden />} titulo="Nadie coincide">
             Prueba con otro nombre, folio o matrícula.
           </EstadoVacio>
         ) : (
-          encontrados.map((p) => (
+          tramo.visibles.map((p) => (
             <FichaDeAsistencia
               key={p.id}
               p={p}
@@ -284,6 +294,8 @@ function Asistencias() {
           ))
         )}
       </div>
+
+      <Paginacion tramo={tramo} />
 
       <AnularAsistenciaDialogo
         anulando={anulando}
