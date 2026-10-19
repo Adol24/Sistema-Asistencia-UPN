@@ -10,7 +10,7 @@ import {
 import type { ReactNode } from "react";
 
 import { hayBaseDeDatos } from "@/lib/supabase-config";
-import { aParticipanteDeVista, type FilaVistaParticipante } from "@/lib/esquema";
+import { aHora, aParticipanteDeVista, type FilaVistaParticipante } from "@/lib/esquema";
 import type { CitaDePago } from "@/lib/datos";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { usePrototipo } from "@/lib/prototipo";
@@ -206,7 +206,12 @@ export function PortalProvider({ children }: { children: ReactNode }) {
           (d) => infoDiaRef.current(d).lugar,
           (uuid) => clavePorId.get(uuid),
         ),
-        asistencias: (crudo["asistencias"] ?? []) as DatosPortal["asistencias"],
+        // `fn_portal_estado` manda `registrada_en` crudo (con microsegundos y
+        // zona UTC): «2026-10-15T14:04:12.085121+00:00». Sin formatear, eso es
+        // justo lo que el alumno veía en su tarjeta de día presencial.
+        asistencias: (
+          (crudo["asistencias"] ?? []) as { dia: number; tipo: string; hora: string }[]
+        ).map((a) => ({ ...a, hora: aHora(a.hora) })),
         evidencias: (crudo["evidencias"] ?? []) as DatosPortal["evidencias"],
         // Se mapea aunque ninguna pantalla lo lea ya: es lo que la función
         // devuelve. Ver `ElegibilidadPortal`.
