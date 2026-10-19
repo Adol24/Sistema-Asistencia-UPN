@@ -1577,6 +1577,61 @@ export async function anularAsistenciaRemota(id: string, motivo: string): Promis
   );
 }
 
+/**
+ * Corrige la hora de una asistencia ya escrita.
+ *
+ * Un `update` directo, sin RPC: ningún disparador vigila `UPDATE` en
+ * `asistencias` —los dos que existen son `BEFORE INSERT`— y la política
+ * `asistencias_anulacion` ya deja a `admin` tocar cualquier columna. Se
+ * reutilizan `autorizada_por`/`autorizacion_motivo` para dejar quién corrigió
+ * y por qué, igual que la anulación deja quién anuló.
+ */
+export async function corregirHoraAsistenciaRemota(
+  id: string,
+  nuevaHoraIso: string,
+  motivo: string,
+): Promise<void> {
+  const sb = exigirBase();
+  const { data: sesion } = await sb.auth.getSession();
+  await exigir(
+    sb
+      .from("asistencias")
+      .update({
+        registrada_en: nuevaHoraIso,
+        autorizada_por: sesion.session?.user?.id ?? null,
+        autorizacion_motivo: motivo,
+      })
+      .eq("id", id),
+  );
+}
+
+/**
+ * Agrega a mano una entrada, salida o pase de taller que nunca llegó a la
+ * base. Ver `fn_admin_registrar_asistencia`: salta `fn_exigir_dia_real` con
+ * motivo obligatorio; `fn_exigir_alternancia_de_puerta` sigue aplicando sin
+ * excepción, así que dos entradas seguidas se rechazan igual que a un
+ * capturista.
+ */
+export async function agregarAsistenciaRemota(a: {
+  participanteId: string;
+  dia: Dia;
+  tipo: Asistencia["tipo"];
+  horaIso: string;
+  motivo: string;
+  tallerId?: string | undefined;
+}): Promise<string> {
+  return datosDe<string>(
+    exigirBase().rpc("fn_admin_registrar_asistencia", {
+      p_participante_id: a.participanteId,
+      p_dia: a.dia,
+      p_tipo: a.tipo,
+      p_hora: a.horaIso,
+      p_motivo: a.motivo,
+      p_taller_id: a.tallerId ?? null,
+    }),
+  );
+}
+
 // =================================================== funciones del portal ===
 // El participante no tiene sesión, así que su único camino son estas llamadas.
 
