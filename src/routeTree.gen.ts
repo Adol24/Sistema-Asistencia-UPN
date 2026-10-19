@@ -34,6 +34,7 @@ import { Route as AdminEncuestaTallerRouteImport } from './routes/admin.encuesta
 import { Route as AdminLeipRouteImport } from './routes/admin.leip'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
 import { Route as AdminPadronRouteImport } from './routes/admin.padron'
+import { Route as AdminPanoramaRouteImport } from './routes/admin.panorama'
 import { Route as AdminPreinscritosRouteImport } from './routes/admin.preinscritos'
 import { Route as AdminReportesRouteImport } from './routes/admin.reportes'
 import { Route as AdminSoporteRouteImport } from './routes/admin.soporte'
@@ -178,6 +179,11 @@ const AdminPadronRoute = AdminPadronRouteImport.update({
   path: '/admin/padron',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPanoramaRoute = AdminPanoramaRouteImport.update({
+  id: '/admin/panorama',
+  path: '/admin/panorama',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPreinscritosRoute = AdminPreinscritosRouteImport.update({
   id: '/admin/preinscritos',
   path: '/admin/preinscritos',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/panorama': typeof AdminPanoramaRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/panorama': typeof AdminPanoramaRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
   '/admin/padron': typeof AdminPadronRoute
+  '/admin/panorama': typeof AdminPanoramaRoute
   '/admin/preinscritos': typeof AdminPreinscritosRoute
   '/admin/reportes': typeof AdminReportesRoute
   '/admin/soporte': typeof AdminSoporteRoute
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/panorama'
     | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/panorama'
     | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/admin/leip'
     | '/admin/monitoreo'
     | '/admin/padron'
+    | '/admin/panorama'
     | '/admin/preinscritos'
     | '/admin/reportes'
     | '/admin/soporte'
@@ -568,6 +580,7 @@ export interface RootRouteChildren {
   AdminLeipRoute: typeof AdminLeipRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
   AdminPadronRoute: typeof AdminPadronRoute
+  AdminPanoramaRoute: typeof AdminPanoramaRoute
   AdminPreinscritosRoute: typeof AdminPreinscritosRoute
   AdminReportesRoute: typeof AdminReportesRoute
   AdminSoporteRoute: typeof AdminSoporteRoute
@@ -766,6 +779,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPadronRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/panorama': {
+      id: '/admin/panorama'
+      path: '/admin/panorama'
+      fullPath: '/admin/panorama'
+      preLoaderRoute: typeof AdminPanoramaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/preinscritos': {
       id: '/admin/preinscritos'
       path: '/admin/preinscritos'
@@ -920,6 +940,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLeipRoute: AdminLeipRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
   AdminPadronRoute: AdminPadronRoute,
+  AdminPanoramaRoute: AdminPanoramaRoute,
   AdminPreinscritosRoute: AdminPreinscritosRoute,
   AdminReportesRoute: AdminReportesRoute,
   AdminSoporteRoute: AdminSoporteRoute,

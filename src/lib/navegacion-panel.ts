@@ -22,6 +22,7 @@ import {
   ClipboardList,
   Contact,
   FileSpreadsheet,
+  Gauge,
   GraduationCap,
   LayoutDashboard,
   LifeBuoy,
@@ -65,6 +66,7 @@ export const NAVEGACION_PANEL: Partial<Record<Area, GrupoPanel[]>> = {
       enlaces: [
         { to: "/admin", label: "Dashboard", icono: LayoutDashboard },
         { to: "/admin/monitoreo", label: "Monitoreo", icono: ListChecks },
+        { to: "/admin/panorama", label: "Panorama", icono: Gauge },
       ],
     },
     {

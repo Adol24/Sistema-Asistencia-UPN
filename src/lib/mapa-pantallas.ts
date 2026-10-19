@@ -35,6 +35,7 @@ export type RutaConstruida =
   | "/revision"
   | "/admin"
   | "/admin/monitoreo"
+  | "/admin/panorama"
   | "/admin/asistencias"
   | "/admin/elegibles"
   | "/admin/talleres"
@@ -128,6 +129,11 @@ export const modulos: ModuloIndice[] = [
     rutas: [
       { estado: "listo", to: "/admin", label: "Dashboard" },
       { estado: "listo", to: "/admin/monitoreo", label: "Monitoreo en vivo" },
+      {
+        estado: "listo",
+        to: "/admin/panorama",
+        label: "Panorama (cruce completo por participante)",
+      },
       { estado: "listo", to: "/admin/asistencias", label: "Entrada, salida y reintegro" },
       { estado: "listo", to: "/admin/talleres", label: "Talleres (CRUD)" },
       { estado: "listo", to: "/admin/configuracion", label: "Configuración del evento" },
