@@ -99,6 +99,8 @@ export interface FiltrosRevision {
   estado: "todos" | "pendiente" | "aprobada" | "rechazada" | "no_entregada";
   revisor: "todos" | string;
   soloDuplicados: boolean;
+  /** Texto libre: nombre, matrícula o folio del alumno que se busca. */
+  busqueda: string;
 }
 
 export const FILTROS_INICIALES: FiltrosRevision = {
@@ -106,7 +108,11 @@ export const FILTROS_INICIALES: FiltrosRevision = {
   estado: "pendiente",
   revisor: "todos",
   soloDuplicados: false,
+  busqueda: "",
 };
+
+/** Sin acentos ni mayúsculas, para que "José" encuentre a "jose". */
+const normalizarBusqueda = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 /** Aplica los filtros de la barra superior a la cola completa. */
 export function filtrarCola(
@@ -115,12 +121,20 @@ export function filtrarCola(
   asignacion: Map<string, string>,
 ): Evidencia[] {
   const duplicadas = new Set([...gruposDuplicados(evidencias).values()].flat().map((e) => e.id));
+  const busqueda = normalizarBusqueda(filtros.busqueda);
   return evidencias.filter((e) => {
     if (filtros.dia !== "todos" && e.dia !== filtros.dia) return false;
     if (filtros.estado !== "todos" && e.estado !== filtros.estado) return false;
     if (filtros.revisor !== "todos" && revisorDe(e.id, asignacion) !== filtros.revisor)
       return false;
     if (filtros.soloDuplicados && !duplicadas.has(e.id)) return false;
+    if (
+      busqueda &&
+      !normalizarBusqueda(e.nombre).includes(busqueda) &&
+      !normalizarBusqueda(e.matricula).includes(busqueda) &&
+      !normalizarBusqueda(e.folio).includes(busqueda)
+    )
+      return false;
     return true;
   });
 }

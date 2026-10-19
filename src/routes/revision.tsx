@@ -9,6 +9,7 @@ import {
   ImageOff,
   Minus,
   Plus,
+  Search,
   Undo2,
   X,
 } from "lucide-react";
@@ -248,6 +249,24 @@ function PanelRevision() {
                   </option>
                 ))}
               </select>
+            </Campo>
+            <Campo etiqueta="Buscar alumno">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <input
+                  type="text"
+                  value={filtros.busqueda}
+                  onChange={(e) => {
+                    setFiltros((f) => ({ ...f, busqueda: e.target.value }));
+                    setIndice(0);
+                  }}
+                  placeholder="Nombre, matrícula o folio"
+                  className="h-10 w-56 rounded-md border border-input bg-card pl-8 pr-2 text-sm"
+                />
+              </div>
             </Campo>
             <Campo etiqueta="Día">
               <select
