@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { usePortal, useParticipanteDelPortal } from "@/lib/portal";
 import type { Participante } from "@/dominio/tipos";
 import { EsperaDelPortal } from "@/components/acceso";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { hoyIso, isoAFecha } from "@/lib/formato";
 import { comprimirImagen, pesoLegible } from "@/lib/imagen";
@@ -345,6 +346,7 @@ function SubirEvidencia({
   const { sesion, refrescar } = usePortal();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [verCompleta, setVerCompleta] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const [subiendo, setSubiendo] = useState(false);
   // Mientras se reescala y reencoda la foto elegida. Ver `lib/imagen.ts`: sin
@@ -389,6 +391,14 @@ function SubirEvidencia({
     }
   };
 
+  /** Quita la foto elegida y vuelve a «Toca para elegir una foto», sin subir nada. */
+  const cancelar = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setArchivo(null);
+    setPreview(null);
+    setProgreso(0);
+  };
+
   /*
    * Aquí había un «Ya usaste tus 3 intentos» que decidía un contador de
    * memoria: arrancaba en cero y se reiniciaba en cada recarga, así que ni
@@ -417,6 +427,7 @@ function SubirEvidencia({
             // ponía una imagen de relleno y dejaba «subir» igualmente, que es
             // coherente con que la subida fuera simulada y no con que suba.
             const f = e.target.files?.[0] ?? null;
+            if (preview) URL.revokeObjectURL(preview);
             if (!f) {
               setArchivo(null);
               setPreview(null);
@@ -435,12 +446,21 @@ function SubirEvidencia({
         />
       </label>
       {preview ? (
-        <>
-          <img
-            src={preview}
-            alt="Vista previa de tu evidencia"
-            className="h-48 w-full rounded-md object-cover"
-          />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setVerCompleta(true)}
+            className="group relative shrink-0 overflow-hidden rounded-md border border-border"
+          >
+            <img
+              src={preview}
+              alt="Vista previa de tu evidencia"
+              className="size-24 object-cover"
+            />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-center text-[11px] font-semibold text-transparent transition group-hover:bg-black/50 group-hover:text-white">
+              Ver completa
+            </span>
+          </button>
           <p className="text-xs text-muted-foreground">
             {comprimiendo ? (
               <span className="inline-flex items-center gap-1">
@@ -450,19 +470,40 @@ function SubirEvidencia({
               `Lista para subir: ${pesoLegible(archivo.size)}`
             ) : null}
           </p>
-        </>
+        </div>
       ) : null}
+
+      <Dialog open={verCompleta} onOpenChange={setVerCompleta}>
+        <DialogContent className="max-w-2xl p-3">
+          <DialogTitle className="sr-only">Vista previa completa de tu evidencia</DialogTitle>
+          {preview ? (
+            <img
+              src={preview}
+              alt="Tu evidencia, completa"
+              className="max-h-[80vh] w-full rounded-md object-contain"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {subiendo || progreso === 100 ? <Progress value={progreso} className="h-2" /> : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* La regla, no un contador: el que había mentía en cada recarga. */}
         <p className="text-xs text-muted-foreground">Máximo 3 intentos por día</p>
-        <Button
-          className="h-11"
-          disabled={!preview || subiendo || comprimiendo}
-          onClick={() => void subir()}
-        >
-          {subiendo ? "Subiendo…" : etiqueta}
-        </Button>
+        <div className="flex items-center gap-2">
+          {preview ? (
+            <Button variant="outline" className="h-11" disabled={subiendo} onClick={cancelar}>
+              Cancelar
+            </Button>
+          ) : null}
+          <Button
+            className="h-11"
+            disabled={!preview || subiendo || comprimiendo}
+            onClick={() => void subir()}
+          >
+            {subiendo ? "Subiendo…" : etiqueta}
+          </Button>
+        </div>
       </div>
     </div>
   );
