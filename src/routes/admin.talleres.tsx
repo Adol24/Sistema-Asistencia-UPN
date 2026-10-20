@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
-import { PerfilBadge } from "@/components/estado-badges";
+import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { isoAMomentoLocal, momentoLocalAIso, moneda, sitioDelTaller } from "@/lib/formato";
 import { meta } from "@/lib/seo";
@@ -38,6 +38,7 @@ export const Route = createFileRoute("/admin/talleres")({
 });
 
 type FiltroAsistenciaTaller = "todos" | "asistio" | "no_asistio";
+type FiltroPagoTaller = "todos" | "pagado" | "no_pagado";
 
 /** A quién se le va a marcar la asistencia de su taller a mano. */
 interface MarcandoInfo {
@@ -54,6 +55,7 @@ function AdminTalleres() {
     participantes,
     talleres,
     asistencias,
+    estadoDe,
     guardarTaller,
     eliminarTaller,
     registrarBitacora,
@@ -66,6 +68,7 @@ function AdminTalleres() {
   // encontrar a nadie.
   const [verInscritos, setVerInscritos] = useState<string | null>(null);
   const [filtroAsistencia, setFiltroAsistencia] = useState<FiltroAsistenciaTaller>("todos");
+  const [filtroPago, setFiltroPago] = useState<FiltroPagoTaller>("todos");
 
   const [marcando, setMarcando] = useState<MarcandoInfo | null>(null);
   const [diaMarcar, setDiaMarcar] = useState<Dia | null>(null);
@@ -95,6 +98,13 @@ function AdminTalleres() {
       .filter((p) => p.tallerId === id)
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   const inscritos = (id: string) => inscritosDe(id).length;
+
+  // El pre-registro al taller y el pago son cosas distintas: alguien puede
+  // haberse anotado y nunca completar su depósito, o haber pagado y de todos
+  // modos no presentarse. `estadoDe(p).taller` es el estado derivado real
+  // -el mismo que usa /financieros-, no un «sí/no» inventado aquí.
+  const pagoTallerDe = (p: Participante) => estadoDe(p).taller;
+  const pagoTaller = (p: Participante) => pagoTallerDe(p) === "pagado";
 
   const abrirMarcar = (p: Participante, t: TallerBase, diaPreferido?: Dia) => {
     setMarcando({
@@ -283,9 +293,13 @@ function AdminTalleres() {
                     const abriendo = verInscritos !== t.id;
                     setVerInscritos(abriendo ? t.id : null);
                     // El filtro no sobrevive de un taller a otro: dejarlo puesto
-                    // haría parecer vacío a T05 solo porque T01 se cerró en
-                    // «no asistieron».
-                    if (abriendo) setFiltroAsistencia("todos");
+                    // Los filtros no sobreviven de un taller a otro: dejarlos
+                    // puestos haría parecer vacío a T05 solo porque T01 se
+                    // cerró en «no asistieron» o en «no pagado».
+                    if (abriendo) {
+                      setFiltroAsistencia("todos");
+                      setFiltroPago("todos");
+                    }
                   }}
                 >
                   {verInscritos === t.id ? (
@@ -300,12 +314,19 @@ function AdminTalleres() {
                 ? (() => {
                     const todos = inscritosDe(t.id);
                     const asistieron = todos.filter((p) => asistioCompleto(p, t));
-                    const visibles =
+                    const pagaron = todos.filter(pagoTaller);
+                    const porAsistencia =
                       filtroAsistencia === "asistio"
                         ? asistieron
                         : filtroAsistencia === "no_asistio"
                           ? todos.filter((p) => !asistioCompleto(p, t))
                           : todos;
+                    const visibles =
+                      filtroPago === "pagado"
+                        ? porAsistencia.filter(pagoTaller)
+                        : filtroPago === "no_pagado"
+                          ? porAsistencia.filter((p) => !pagoTaller(p))
+                          : porAsistencia;
                     const dosOMasDias = t.dias.length > 1;
                     return (
                       <div className="mt-2 rounded-md border border-border bg-muted/30 p-2">
@@ -337,8 +358,37 @@ function AdminTalleres() {
                             </button>
                           ))}
                         </div>
+                        {/*
+                         * Pre-registro, pago y asistencia son tres hechos
+                         * distintos: elegir el taller no es haber pagado, y
+                         * pagar no es haber ido. Un segundo filtro, no el
+                         * mismo de arriba con otro nombre.
+                         */}
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {(
+                            [
+                              ["todos", "Cualquier pago"],
+                              ["pagado", `Pagaron (${pagaron.length})`],
+                              ["no_pagado", `No pagaron (${todos.length - pagaron.length})`],
+                            ] as [FiltroPagoTaller, string][]
+                          ).map(([valor, texto]) => (
+                            <button
+                              key={valor}
+                              onClick={() => setFiltroPago(valor)}
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-xs font-semibold",
+                                filtroPago === valor
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-card text-muted-foreground hover:bg-muted",
+                              )}
+                            >
+                              {texto}
+                            </button>
+                          ))}
+                        </div>
                         <ul className="mt-2 grid gap-1">
                           {visibles.map((p) => {
+                            const pago = pagoTallerDe(p);
                             return (
                               <li
                                 key={p.id}
@@ -416,6 +466,7 @@ function AdminTalleres() {
                                       Marcar asistencia
                                     </Button>
                                   ) : null}
+                                  {pago ? <EstadoPagoBadge estado={pago} /> : null}
                                   <PerfilBadge perfil={p.perfil} />
                                 </span>
                               </li>
