@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, ChevronDown, ChevronUp, Pencil, Plus, Trash2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Circle,
+  Pencil,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
@@ -16,7 +26,7 @@ import { useEstadoEvento } from "@/lib/estado-evento";
 import { moneda, sitioDelTaller } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import type { Dia, TallerBase } from "@/dominio/tipos";
+import type { Dia, Participante, TallerBase } from "@/dominio/tipos";
 
 export const Route = createFileRoute("/admin/talleres")({
   head: () =>
@@ -27,8 +37,10 @@ export const Route = createFileRoute("/admin/talleres")({
   component: AdminTalleres,
 });
 
+type FiltroAsistenciaTaller = "todos" | "asistio" | "no_asistio";
+
 function AdminTalleres() {
-  const { participantes, talleres, guardarTaller, eliminarTaller, registrarBitacora } =
+  const { participantes, talleres, asistencias, guardarTaller, eliminarTaller, registrarBitacora } =
     useEstadoEvento();
   const [editando, setEditando] = useState<TallerBase | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
@@ -36,6 +48,12 @@ function AdminTalleres() {
   // ver a los setenta de T12 y a los veinticinco de T01 de golpe no ayuda a
   // encontrar a nadie.
   const [verInscritos, setVerInscritos] = useState<string | null>(null);
+  const [filtroAsistencia, setFiltroAsistencia] = useState<FiltroAsistenciaTaller>("todos");
+
+  // El pase de lista del taller es su propia asistencia (tipo "taller"), no
+  // el pre-registro: inscrito es «eligió este taller», asistió es «lo escanearon ahí».
+  const asistioAlTaller = (p: Participante) =>
+    asistencias.some((a) => a.folio === p.folio && a.tipo === "taller");
 
   const inscritosDe = (id: string) =>
     participantes
@@ -184,7 +202,14 @@ function AdminTalleres() {
                 <Button
                   variant="outline"
                   className="mt-2 h-9"
-                  onClick={() => setVerInscritos(verInscritos === t.id ? null : t.id)}
+                  onClick={() => {
+                    const abriendo = verInscritos !== t.id;
+                    setVerInscritos(abriendo ? t.id : null);
+                    // El filtro no sobrevive de un taller a otro: dejarlo puesto
+                    // haría parecer vacío a T05 solo porque T01 se cerró en
+                    // «no asistieron».
+                    if (abriendo) setFiltroAsistencia("todos");
+                  }}
                 >
                   {verInscritos === t.id ? (
                     <ChevronUp className="size-4" />
@@ -194,25 +219,82 @@ function AdminTalleres() {
                   {verInscritos === t.id ? "Ocultar" : "Ver"} inscritos ({delPrototipo})
                 </Button>
               ) : null}
-              {verInscritos === t.id ? (
-                <ul className="mt-2 grid gap-1 rounded-md border border-border bg-muted/30 p-2">
-                  {inscritosDe(t.id).map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-2 py-1 text-sm"
-                    >
-                      <span className="min-w-0 truncate">
-                        {p.nombre}
-                        <span className="ml-2 font-mono text-xs text-muted-foreground">
-                          {p.folio}
-                          {p.matricula ? ` · ${p.matricula}` : ""}
-                        </span>
-                      </span>
-                      <PerfilBadge perfil={p.perfil} />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              {verInscritos === t.id
+                ? (() => {
+                    const todos = inscritosDe(t.id);
+                    const asistieron = todos.filter(asistioAlTaller);
+                    const visibles =
+                      filtroAsistencia === "asistio"
+                        ? asistieron
+                        : filtroAsistencia === "no_asistio"
+                          ? todos.filter((p) => !asistioAlTaller(p))
+                          : todos;
+                    return (
+                      <div className="mt-2 rounded-md border border-border bg-muted/30 p-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {(
+                            [
+                              ["todos", `Todos (${todos.length})`],
+                              ["asistio", `Asistieron (${asistieron.length})`],
+                              ["no_asistio", `No asistieron (${todos.length - asistieron.length})`],
+                            ] as [FiltroAsistenciaTaller, string][]
+                          ).map(([valor, texto]) => (
+                            <button
+                              key={valor}
+                              onClick={() => setFiltroAsistencia(valor)}
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-xs font-semibold",
+                                filtroAsistencia === valor
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-card text-muted-foreground hover:bg-muted",
+                              )}
+                            >
+                              {texto}
+                            </button>
+                          ))}
+                        </div>
+                        <ul className="mt-2 grid gap-1">
+                          {visibles.map((p) => {
+                            const asistio = asistioAlTaller(p);
+                            return (
+                              <li
+                                key={p.id}
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-2 py-1 text-sm"
+                              >
+                                <span className="flex min-w-0 items-center gap-1.5">
+                                  {asistio ? (
+                                    <CheckCircle2
+                                      className="size-3.5 shrink-0 text-estado-pagado"
+                                      aria-hidden
+                                    />
+                                  ) : (
+                                    <Circle
+                                      className="size-3.5 shrink-0 text-muted-foreground"
+                                      aria-hidden
+                                    />
+                                  )}
+                                  <span className="truncate">
+                                    {p.nombre}
+                                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                                      {p.folio}
+                                      {p.matricula ? ` · ${p.matricula}` : ""}
+                                    </span>
+                                  </span>
+                                </span>
+                                <PerfilBadge perfil={p.perfil} />
+                              </li>
+                            );
+                          })}
+                          {visibles.length === 0 ? (
+                            <li className="px-2 py-1 text-xs text-muted-foreground">
+                              Nadie en este filtro.
+                            </li>
+                          ) : null}
+                        </ul>
+                      </div>
+                    );
+                  })()
+                : null}
               {/*
                * Los dos orígenes del cupo ocupado, nombrados como lo que son.
                *
