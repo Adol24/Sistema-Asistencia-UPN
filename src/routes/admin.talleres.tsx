@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
+import { PerfilBadge } from "@/components/estado-badges";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { moneda, sitioDelTaller } from "@/lib/formato";
 import { meta } from "@/lib/seo";
@@ -31,8 +32,16 @@ function AdminTalleres() {
     useEstadoEvento();
   const [editando, setEditando] = useState<TallerBase | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
+  // Cuál taller tiene abierta la lista de inscritos, por clave. Uno a la vez:
+  // ver a los setenta de T12 y a los veinticinco de T01 de golpe no ayuda a
+  // encontrar a nadie.
+  const [verInscritos, setVerInscritos] = useState<string | null>(null);
 
-  const inscritos = (id: string) => participantes.filter((p) => p.tallerId === id).length;
+  const inscritosDe = (id: string) =>
+    participantes
+      .filter((p) => p.tallerId === id)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  const inscritos = (id: string) => inscritosDe(id).length;
 
   /*
    * La clave sale del MÁXIMO tomado, no de cuántos hay.
@@ -171,6 +180,39 @@ function AdminTalleres() {
                 </div>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">{t.descripcion}</p>
+              {delPrototipo > 0 ? (
+                <Button
+                  variant="outline"
+                  className="mt-2 h-9"
+                  onClick={() => setVerInscritos(verInscritos === t.id ? null : t.id)}
+                >
+                  {verInscritos === t.id ? (
+                    <ChevronUp className="size-4" />
+                  ) : (
+                    <ChevronDown className="size-4" />
+                  )}
+                  {verInscritos === t.id ? "Ocultar" : "Ver"} inscritos ({delPrototipo})
+                </Button>
+              ) : null}
+              {verInscritos === t.id ? (
+                <ul className="mt-2 grid gap-1 rounded-md border border-border bg-muted/30 p-2">
+                  {inscritosDe(t.id).map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-2 py-1 text-sm"
+                    >
+                      <span className="min-w-0 truncate">
+                        {p.nombre}
+                        <span className="ml-2 font-mono text-xs text-muted-foreground">
+                          {p.folio}
+                          {p.matricula ? ` · ${p.matricula}` : ""}
+                        </span>
+                      </span>
+                      <PerfilBadge perfil={p.perfil} />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {/*
                * Los dos orígenes del cupo ocupado, nombrados como lo que son.
                *
