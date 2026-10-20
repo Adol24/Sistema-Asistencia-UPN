@@ -73,10 +73,22 @@ function AdminTalleres() {
   const [motivoMarcar, setMotivoMarcar] = useState("");
   const [guardandoMarcar, setGuardandoMarcar] = useState(false);
 
-  // El pase de lista del taller es su propia asistencia (tipo "taller"), no
-  // el pre-registro: inscrito es «eligió este taller», asistió es «lo escanearon ahí».
-  const asistioAlTaller = (p: Participante) =>
-    asistencias.some((a) => a.folio === p.folio && a.tipo === "taller");
+  /*
+   * El pase de lista del taller es su propia asistencia (tipo "taller"), no
+   * el pre-registro: inscrito es «eligió este taller», asistió es «lo
+   * escanearon ahí». Y es POR DÍA: T03, T05 y T06 duran dos tardes con el
+   * mismo grupo, así que «asistió» de un taller de dos días no es un sí/no,
+   * son dos —uno por cada día— y hay que poder verlos y marcarlos por
+   * separado. Necesita `uq_asistencia_taller` por (participante, taller,
+   * día) en vez de solo (participante, taller): ver
+   * `20261016080000_el_pase_de_lista_distingue_el_dia.sql`.
+   */
+  const asistioDia = (p: Participante, dia: Dia) =>
+    asistencias.some((a) => a.folio === p.folio && a.tipo === "taller" && a.dia === dia);
+  const diasAsistidosDe = (p: Participante, t: TallerBase) =>
+    t.dias.filter((d) => asistioDia(p, d));
+  const asistioCompleto = (p: Participante, t: TallerBase) =>
+    diasAsistidosDe(p, t).length === t.dias.length;
 
   const inscritosDe = (id: string) =>
     participantes
@@ -84,7 +96,7 @@ function AdminTalleres() {
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   const inscritos = (id: string) => inscritosDe(id).length;
 
-  const abrirMarcar = (p: Participante, t: TallerBase) => {
+  const abrirMarcar = (p: Participante, t: TallerBase, diaPreferido?: Dia) => {
     setMarcando({
       participanteId: p.id,
       folio: p.folio,
@@ -93,7 +105,7 @@ function AdminTalleres() {
       tallerNombre: t.nombre,
       dias: t.dias,
     });
-    setDiaMarcar(t.dias[0] ?? null);
+    setDiaMarcar(diaPreferido ?? t.dias[0] ?? null);
     setMomentoMarcar(isoAMomentoLocal(new Date().toISOString()));
     setMotivoMarcar("");
   };
@@ -287,21 +299,28 @@ function AdminTalleres() {
               {verInscritos === t.id
                 ? (() => {
                     const todos = inscritosDe(t.id);
-                    const asistieron = todos.filter(asistioAlTaller);
+                    const asistieron = todos.filter((p) => asistioCompleto(p, t));
                     const visibles =
                       filtroAsistencia === "asistio"
                         ? asistieron
                         : filtroAsistencia === "no_asistio"
-                          ? todos.filter((p) => !asistioAlTaller(p))
+                          ? todos.filter((p) => !asistioCompleto(p, t))
                           : todos;
+                    const dosOMasDias = t.dias.length > 1;
                     return (
                       <div className="mt-2 rounded-md border border-border bg-muted/30 p-2">
                         <div className="flex flex-wrap gap-1.5">
                           {(
                             [
                               ["todos", `Todos (${todos.length})`],
-                              ["asistio", `Asistieron (${asistieron.length})`],
-                              ["no_asistio", `No asistieron (${todos.length - asistieron.length})`],
+                              [
+                                "asistio",
+                                `${dosOMasDias ? "Asistieron todos los días" : "Asistieron"} (${asistieron.length})`,
+                              ],
+                              [
+                                "no_asistio",
+                                `${dosOMasDias ? "Falta algún día" : "No asistieron"} (${todos.length - asistieron.length})`,
+                              ],
                             ] as [FiltroAsistenciaTaller, string][]
                           ).map(([valor, texto]) => (
                             <button
@@ -320,24 +339,25 @@ function AdminTalleres() {
                         </div>
                         <ul className="mt-2 grid gap-1">
                           {visibles.map((p) => {
-                            const asistio = asistioAlTaller(p);
                             return (
                               <li
                                 key={p.id}
                                 className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-card px-2 py-1 text-sm"
                               >
                                 <span className="flex min-w-0 items-center gap-1.5">
-                                  {asistio ? (
-                                    <CheckCircle2
-                                      className="size-3.5 shrink-0 text-estado-pagado"
-                                      aria-hidden
-                                    />
-                                  ) : (
-                                    <Circle
-                                      className="size-3.5 shrink-0 text-muted-foreground"
-                                      aria-hidden
-                                    />
-                                  )}
+                                  {!dosOMasDias ? (
+                                    asistioDia(p, t.dias[0] as Dia) ? (
+                                      <CheckCircle2
+                                        className="size-3.5 shrink-0 text-estado-pagado"
+                                        aria-hidden
+                                      />
+                                    ) : (
+                                      <Circle
+                                        className="size-3.5 shrink-0 text-muted-foreground"
+                                        aria-hidden
+                                      />
+                                    )
+                                  ) : null}
                                   <span className="truncate">
                                     {p.nombre}
                                     <span className="ml-2 font-mono text-xs text-muted-foreground">
@@ -346,9 +366,48 @@ function AdminTalleres() {
                                     </span>
                                   </span>
                                 </span>
-                                <span className="flex shrink-0 items-center gap-2">
-                                  <PerfilBadge perfil={p.perfil} />
-                                  {!asistio ? (
+                                <span className="flex shrink-0 flex-wrap items-center gap-2">
+                                  {dosOMasDias ? (
+                                    // Un taller de dos tardes tiene DOS asistencias
+                                    // independientes, no una: cada día se ve y se
+                                    // marca por su cuenta, porque haber ido el
+                                    // lunes no dice nada de si volvió el martes.
+                                    t.dias.map((d) => {
+                                      const fue = asistioDia(p, d);
+                                      return (
+                                        <span key={d} className="flex items-center gap-1">
+                                          {fue ? (
+                                            <CheckCircle2
+                                              className="size-3.5 shrink-0 text-estado-pagado"
+                                              aria-hidden
+                                            />
+                                          ) : (
+                                            <Circle
+                                              className="size-3.5 shrink-0 text-muted-foreground"
+                                              aria-hidden
+                                            />
+                                          )}
+                                          <span
+                                            className={cn(
+                                              "text-xs",
+                                              fue ? "text-estado-pagado" : "text-muted-foreground",
+                                            )}
+                                          >
+                                            Día {d}
+                                          </span>
+                                          {!fue ? (
+                                            <Button
+                                              variant="outline"
+                                              className="h-6 px-1.5 text-[11px]"
+                                              onClick={() => abrirMarcar(p, t, d)}
+                                            >
+                                              Marcar
+                                            </Button>
+                                          ) : null}
+                                        </span>
+                                      );
+                                    })
+                                  ) : !asistioDia(p, t.dias[0] as Dia) ? (
                                     <Button
                                       variant="outline"
                                       className="h-7 px-2 text-xs"
@@ -357,6 +416,7 @@ function AdminTalleres() {
                                       Marcar asistencia
                                     </Button>
                                   ) : null}
+                                  <PerfilBadge perfil={p.perfil} />
                                 </span>
                               </li>
                             );
