@@ -1618,16 +1618,18 @@ export async function agregarAsistenciaRemota(a: {
   tipo: Asistencia["tipo"];
   horaIso: string;
   motivo: string;
+  /** La CLAVE del taller («T05»), no su uuid: se resuelve aquí, igual que en `preregistrarExterno`. */
   tallerId?: string | undefined;
 }): Promise<string> {
+  const sb = exigirBase();
   return datosDe<string>(
-    exigirBase().rpc("fn_admin_registrar_asistencia", {
+    sb.rpc("fn_admin_registrar_asistencia", {
       p_participante_id: a.participanteId,
       p_dia: a.dia,
       p_tipo: a.tipo,
       p_hora: a.horaIso,
       p_motivo: a.motivo,
-      p_taller_id: a.tallerId ?? null,
+      p_taller_id: await uuidDelTaller(sb, a.tallerId),
     }),
   );
 }
