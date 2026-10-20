@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { PerfilBadge } from "@/components/estado-badges";
 import { useEstadoEvento } from "@/lib/estado-evento";
-import { moneda, sitioDelTaller } from "@/lib/formato";
+import { isoAMomentoLocal, momentoLocalAIso, moneda, sitioDelTaller } from "@/lib/formato";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Dia, Participante, TallerBase } from "@/dominio/tipos";
@@ -39,9 +39,26 @@ export const Route = createFileRoute("/admin/talleres")({
 
 type FiltroAsistenciaTaller = "todos" | "asistio" | "no_asistio";
 
+/** A quién se le va a marcar la asistencia de su taller a mano. */
+interface MarcandoInfo {
+  participanteId: string;
+  folio: string;
+  nombre: string;
+  tallerId: string;
+  tallerNombre: string;
+  dias: Dia[];
+}
+
 function AdminTalleres() {
-  const { participantes, talleres, asistencias, guardarTaller, eliminarTaller, registrarBitacora } =
-    useEstadoEvento();
+  const {
+    participantes,
+    talleres,
+    asistencias,
+    guardarTaller,
+    eliminarTaller,
+    registrarBitacora,
+    recargar,
+  } = useEstadoEvento();
   const [editando, setEditando] = useState<TallerBase | null>(null);
   const [borrando, setBorrando] = useState<string | null>(null);
   // Cuál taller tiene abierta la lista de inscritos, por clave. Uno a la vez:
@@ -49,6 +66,12 @@ function AdminTalleres() {
   // encontrar a nadie.
   const [verInscritos, setVerInscritos] = useState<string | null>(null);
   const [filtroAsistencia, setFiltroAsistencia] = useState<FiltroAsistenciaTaller>("todos");
+
+  const [marcando, setMarcando] = useState<MarcandoInfo | null>(null);
+  const [diaMarcar, setDiaMarcar] = useState<Dia | null>(null);
+  const [momentoMarcar, setMomentoMarcar] = useState("");
+  const [motivoMarcar, setMotivoMarcar] = useState("");
+  const [guardandoMarcar, setGuardandoMarcar] = useState(false);
 
   // El pase de lista del taller es su propia asistencia (tipo "taller"), no
   // el pre-registro: inscrito es «eligió este taller», asistió es «lo escanearon ahí».
@@ -60,6 +83,48 @@ function AdminTalleres() {
       .filter((p) => p.tallerId === id)
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   const inscritos = (id: string) => inscritosDe(id).length;
+
+  const abrirMarcar = (p: Participante, t: TallerBase) => {
+    setMarcando({
+      participanteId: p.id,
+      folio: p.folio,
+      nombre: p.nombre,
+      tallerId: t.id,
+      tallerNombre: t.nombre,
+      dias: t.dias,
+    });
+    setDiaMarcar(t.dias[0] ?? null);
+    setMomentoMarcar(isoAMomentoLocal(new Date().toISOString()));
+    setMotivoMarcar("");
+  };
+
+  const confirmarMarcar = async () => {
+    if (!marcando || !diaMarcar || guardandoMarcar) return;
+    setGuardandoMarcar(true);
+    try {
+      const { agregarAsistenciaRemota } = await import("@/lib/datos");
+      await agregarAsistenciaRemota({
+        participanteId: marcando.participanteId,
+        dia: diaMarcar,
+        tipo: "taller",
+        horaIso: momentoLocalAIso(momentoMarcar),
+        motivo: motivoMarcar.trim(),
+        tallerId: marcando.tallerId,
+      });
+      registrarBitacora(
+        "Marcó asistencia a un taller",
+        `${marcando.folio} · ${marcando.nombre} · ${marcando.tallerNombre} del día ${diaMarcar} · motivo: ${motivoMarcar.trim()}`,
+      );
+      toast.success(`Asistencia marcada — ${marcando.nombre}`);
+      setMarcando(null);
+      recargar();
+    } catch (e) {
+      const { mensajeDeError } = await import("@/lib/supabase");
+      toast.error(mensajeDeError(e));
+    } finally {
+      setGuardandoMarcar(false);
+    }
+  };
 
   /*
    * La clave sale del MÁXIMO tomado, no de cuántos hay.
@@ -281,7 +346,18 @@ function AdminTalleres() {
                                     </span>
                                   </span>
                                 </span>
-                                <PerfilBadge perfil={p.perfil} />
+                                <span className="flex shrink-0 items-center gap-2">
+                                  <PerfilBadge perfil={p.perfil} />
+                                  {!asistio ? (
+                                    <Button
+                                      variant="outline"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() => abrirMarcar(p, t)}
+                                    >
+                                      Marcar asistencia
+                                    </Button>
+                                  ) : null}
+                                </span>
                               </li>
                             );
                           })}
@@ -374,6 +450,64 @@ function AdminTalleres() {
           setBorrando(null);
         }}
       />
+
+      <DialogoConfirmar
+        abierto={!!marcando}
+        alCerrar={() => setMarcando(null)}
+        titulo={<>Marcar asistencia de {marcando?.nombre}</>}
+        descripcion={
+          <>
+            {marcando?.tallerNombre}. Para cuando sí fue pero no pasó por el registro: queda en la
+            bitácora con tu nombre y el motivo.
+          </>
+        }
+        confirmar={guardandoMarcar ? "Guardando…" : "Marcar"}
+        deshabilitado={
+          !diaMarcar || !momentoMarcar || motivoMarcar.trim().length < 10 || guardandoMarcar
+        }
+        alConfirmar={() => void confirmarMarcar()}
+      >
+        <div className="grid gap-3">
+          {marcando && marcando.dias.length > 1 ? (
+            <div>
+              <Label htmlFor="dia-marcar">Día del taller</Label>
+              <select
+                id="dia-marcar"
+                value={String(diaMarcar ?? "")}
+                onChange={(e) => setDiaMarcar(Number(e.target.value) as Dia)}
+                className="mt-1 h-11 w-full rounded-md border border-input bg-card px-2 text-sm"
+              >
+                {marcando.dias.map((d) => (
+                  <option key={d} value={d}>
+                    Día {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          <div>
+            <Label htmlFor="momento-marcar">Fecha y hora</Label>
+            <Input
+              id="momento-marcar"
+              type="datetime-local"
+              value={momentoMarcar}
+              onChange={(e) => setMomentoMarcar(e.target.value)}
+              className="mt-1 h-11"
+            />
+          </div>
+          <div>
+            <Label htmlFor="motivo-marcar">Motivo</Label>
+            <Textarea
+              id="motivo-marcar"
+              value={motivoMarcar}
+              onChange={(e) => setMotivoMarcar(e.target.value)}
+              placeholder="Sí asistió al taller; el pase de lista no se capturó ese día."
+              rows={3}
+              className="mt-1"
+            />
+          </div>
+        </div>
+      </DialogoConfirmar>
     </PantallaPanel>
   );
 }
