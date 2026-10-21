@@ -50,6 +50,7 @@ import { Route as FinancierosConciliacionRouteImport } from './routes/financiero
 import { Route as FinancierosFichaRouteImport } from './routes/financieros.ficha'
 import { Route as FinancierosPendientesRouteImport } from './routes/financieros.pendientes'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
+import { Route as PortalConstanciaRouteImport } from './routes/portal.constancia'
 import { Route as PortalEstadoRouteImport } from './routes/portal.estado'
 import { Route as PortalEvidenciasRouteImport } from './routes/portal.evidencias'
 import { Route as PortalQrRouteImport } from './routes/portal.qr'
@@ -259,6 +260,11 @@ const PortalIndexRoute = PortalIndexRouteImport.update({
   path: '/portal/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalConstanciaRoute = PortalConstanciaRouteImport.update({
+  id: '/portal/constancia',
+  path: '/portal/constancia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalEstadoRoute = PortalEstadoRouteImport.update({
   id: '/portal/estado',
   path: '/portal/estado',
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
   '/financieros/pendientes': typeof FinancierosPendientesRoute
+  '/portal/constancia': typeof PortalConstanciaRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -359,6 +366,7 @@ export interface FileRoutesByTo {
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
   '/financieros/pendientes': typeof FinancierosPendientesRoute
+  '/portal/constancia': typeof PortalConstanciaRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/financieros/conciliacion': typeof FinancierosConciliacionRoute
   '/financieros/ficha': typeof FinancierosFichaRoute
   '/financieros/pendientes': typeof FinancierosPendientesRoute
+  '/portal/constancia': typeof PortalConstanciaRoute
   '/portal/estado': typeof PortalEstadoRoute
   '/portal/evidencias': typeof PortalEvidenciasRoute
   '/portal/qr': typeof PortalQrRoute
@@ -454,6 +463,7 @@ export interface FileRouteTypes {
     | '/financieros/conciliacion'
     | '/financieros/ficha'
     | '/financieros/pendientes'
+    | '/portal/constancia'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -500,6 +510,7 @@ export interface FileRouteTypes {
     | '/financieros/conciliacion'
     | '/financieros/ficha'
     | '/financieros/pendientes'
+    | '/portal/constancia'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -546,6 +557,7 @@ export interface FileRouteTypes {
     | '/financieros/conciliacion'
     | '/financieros/ficha'
     | '/financieros/pendientes'
+    | '/portal/constancia'
     | '/portal/estado'
     | '/portal/evidencias'
     | '/portal/qr'
@@ -593,6 +605,7 @@ export interface RootRouteChildren {
   FinancierosConciliacionRoute: typeof FinancierosConciliacionRoute
   FinancierosFichaRoute: typeof FinancierosFichaRoute
   FinancierosPendientesRoute: typeof FinancierosPendientesRoute
+  PortalConstanciaRoute: typeof PortalConstanciaRoute
   PortalEstadoRoute: typeof PortalEstadoRoute
   PortalEvidenciasRoute: typeof PortalEvidenciasRoute
   PortalQrRoute: typeof PortalQrRoute
@@ -891,6 +904,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/constancia': {
+      id: '/portal/constancia'
+      path: '/portal/constancia'
+      fullPath: '/portal/constancia'
+      preLoaderRoute: typeof PortalConstanciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/estado': {
       id: '/portal/estado'
       path: '/portal/estado'
@@ -953,6 +973,7 @@ const rootRouteChildren: RootRouteChildren = {
   FinancierosConciliacionRoute: FinancierosConciliacionRoute,
   FinancierosFichaRoute: FinancierosFichaRoute,
   FinancierosPendientesRoute: FinancierosPendientesRoute,
+  PortalConstanciaRoute: PortalConstanciaRoute,
   PortalEstadoRoute: PortalEstadoRoute,
   PortalEvidenciasRoute: PortalEvidenciasRoute,
   PortalQrRoute: PortalQrRoute,
