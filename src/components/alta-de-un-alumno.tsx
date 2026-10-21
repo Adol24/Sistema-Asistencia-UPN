@@ -8,63 +8,59 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LARGOS_MATRICULA_EN_TEXTO, esMatricula } from "@/lib/campos";
+import { buscarNivel, cuentaDeAvance, type NivelAcademico } from "@/dominio/catalogos";
 import type { AlumnoPadron } from "@/dominio/tipos";
 
 /**
- * El alta de un alumno de nuevo ingreso, con lo que declara en la mesa.
+ * El alta de un alumno que falta del padrón, con lo que declara en la mesa.
  *
  * ---------------------------------------------------------------------------
  * Por qué existe esta pantalla
  * ---------------------------------------------------------------------------
  * `/admin/padron` importa archivos, y eso cubre lo normal: Servicios Escolares
- * entrega la lista y entra de una vez. Lo que no cubre es a los de nuevo
- * ingreso, cuyo padrón la unidad todavía no tiene y que se pre-registran el 27
- * y el 28. Sin fila en `padron_alumnos` no hay pre-registro posible:
- * `participantes.matricula` apunta ahí con una llave foránea, y
- * `chk_alumno_completo` exige nivel, programa, avance y plantel.
+ * entrega la lista y entra de una vez. Lo que no cubre es a quien no está en
+ * ese archivo todavía —de nuevo ingreso, o un alumno de semestre avanzado que
+ * el padrón de la unidad no trae—. Sin fila en `padron_alumnos` no hay
+ * pre-registro posible: `participantes.matricula` apunta ahí con una llave
+ * foránea, y `chk_alumno_completo` exige nivel, programa, avance y plantel.
  *
  * Se captura en mesa y no en un formulario público a propósito. La vía pública
  * tiene un techo que ninguna implementación arregla: **no se puede autenticar a
  * alguien de quien el sistema no tiene ningún dato previo.** Cualquiera puede
- * teclear un número de ocho u once dígitos, y si acierta con la matrícula real
- * de un alumno de primero, ese alumno queda fuera y nada en la base puede
- * distinguir quién es quién. En mesa el techo no desaparece, pero lo que se
- * declara lo teclea alguien con nombre y queda en la bitácora.
+ * teclear un número de ocho a once dígitos, y si acierta con la matrícula real
+ * de otro alumno, ese alumno queda fuera y nada en la base puede distinguir
+ * quién es quién. En mesa el techo no desaparece, pero lo que se declara lo
+ * teclea alguien con nombre y queda en la bitácora.
  *
  * ---------------------------------------------------------------------------
- * Tres campos y medio, no seis
+ * Nivel, programa y avance: listas y catálogo, no texto libre
  * ---------------------------------------------------------------------------
- * La lista larga era nombre, licenciatura, sede, semestre, grupo y matrícula.
- * Cada recorte tiene su motivo:
+ * - **Nivel y programa son listas**, no texto: `programa_id` y `nivel_id` son
+ *   llaves foráneas obligatorias al catálogo académico de `/admin/configuracion`,
+ *   así que un texto libre no se podría guardar. Y si se pudiera, «LEIP»,
+ *   «L.E.I.P.» y el nombre completo serían tres programas distintos que ningún
+ *   reporte podría agrupar.
+ * - **El avance SÍ se pregunta**, con la etiqueta que le toque («Semestre» o
+ *   «Módulo», según `cuentaDeAvance`) y limitado al tope de su programa o
+ *   nivel. Antes esta pantalla era solo para nuevo ingreso y lo fijaba en 1 sin
+ *   preguntarlo; generalizarla a cualquier alumno que falte del padrón —no
+ *   solo a los de primer semestre— significa que ya no hay un único avance
+ *   seguro que adivinar.
+ * - **El grupo es opcional** y se queda en blanco sin disculpas: puede que
+ *   todavía no se lo hayan asignado, y un grupo inventado es peor que ninguno.
  *
- * - **El semestre NO se pregunta.** Son todos de nuevo ingreso, así que el
- *   avance es 1. Es el único dato seguro de esta población, y preguntarlo abre
- *   la puerta a equivocarse en lo que no hacía falta preguntar. Además la
- *   palabra sería la equivocada para la licenciatura modular, que cuenta por
- *   módulos y no por semestres.
- * - **La licenciatura y la sede son listas, no texto libre.** No es preferencia
- *   de forma: `programa_id`, `nivel_id` y `plantel_id` son llaves foráneas
- *   obligatorias a los catálogos, así que un texto libre no se puede guardar. Y
- *   si se pudiera, «LEIP», «L.E.I.P.» y el nombre completo serían tres
- *   programas distintos que ningún reporte podría agrupar.
- * - **El grupo es opcional** y se queda en blanco sin disculpas: a los de nuevo
- *   ingreso puede que todavía no se lo hayan asignado, y un grupo inventado es
- *   peor que ninguno.
- *
- * El nivel no aparece porque la base lo deriva del programa por la llave
- * compuesta `(programa_id, nivel_id)`. Ofrecerlo permitiría mandar una
- * combinación que la llave rechazaría después, con un error sobre una
- * restricción que no le dice nada a quien está capturando.
+ * La base vuelve a validar el tope de avance (`trg_padron_avance`) y el
+ * programa (`fn_padron_alta_asistida`): esto es un adelanto para avisar
+ * mientras se teclea, no la regla.
  */
 export function AltaDeUnAlumno({
-  licenciaturas,
+  catalogo,
   sedes,
   onCerrar,
   onAlta,
 }: {
-  /** Nombres de las licenciaturas del catálogo. Solo licenciaturas: esta puerta
-   *  es para nuevo ingreso, y la base rechaza cualquier otro nivel. */
-  licenciaturas: string[];
+  /** El catálogo académico completo —todos los niveles y sus programas—, el mismo que usa `/admin/configuracion`. */
+  catalogo: NivelAcademico[];
   sedes: string[];
   onCerrar: () => void;
   onAlta: (d: {
@@ -72,23 +68,44 @@ export function AltaDeUnAlumno({
     nombre: string;
     programa: string;
     plantel: string;
+    avance: number;
     grupo?: string | undefined;
   }) => Promise<AlumnoPadron>;
 }) {
   const [matricula, setMatricula] = useState("");
   const [nombre, setNombre] = useState("");
-  const [programa, setPrograma] = useState(licenciaturas[0] ?? "");
+  const [nivel, setNivel] = useState(catalogo[0]?.nivel ?? "");
+  const [programa, setPrograma] = useState(catalogo[0]?.programas[0]?.nombre ?? "");
   const [plantel, setPlantel] = useState(sedes[0] ?? "");
+  const [avance, setAvance] = useState(1);
   const [grupo, setGrupo] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  const programasDelNivel = buscarNivel(catalogo, nivel)?.programas ?? [];
+
   /*
-   * Las dos comprobaciones que se pueden hacer sin preguntar a la base.
+   * Cambiar de nivel reinicia el programa al primero de la lista nueva: el que
+   * estuviera elegido puede ni existir en el otro nivel, y una maestría
+   * seleccionada mientras el desplegable todavía enseña licenciaturas es una
+   * combinación que la llave compuesta rechazaría después.
+   */
+  const alCambiarNivel = (v: string) => {
+    setNivel(v);
+    setPrograma(buscarNivel(catalogo, v)?.programas[0]?.nombre ?? "");
+  };
+
+  // Misma precedencia que `avanceTexto`: manda el programa y, si no dice
+  // nada, el nivel. Es la única excepción hoy (LEIP, que cuenta por módulos).
+  const cuenta = cuentaDeAvance(catalogo, nivel, programa);
+
+  /*
+   * Las comprobaciones que se pueden hacer sin preguntar a la base.
    *
-   * Son las mismas que la base exige —el largo de la matrícula, y al menos dos
-   * palabras en el nombre— escritas aquí para poder avisar mientras se teclea en
-   * vez de al pulsar. La base sigue siendo la que manda: estas son un adelanto,
-   * no la regla, y por eso el mensaje de un rechazo suyo se enseña tal cual.
+   * Son las mismas que la base exige —el largo de la matrícula, al menos dos
+   * palabras en el nombre, y el avance dentro de su tope— escritas aquí para
+   * poder avisar mientras se teclea en vez de al pulsar. La base sigue siendo
+   * la que manda: estas son un adelanto, no la regla, y por eso el mensaje de
+   * un rechazo suyo se enseña tal cual.
    *
    * El largo se pregunta a `esMatricula` y no a una copia local. Aquí había una
    * escrita a mano —`/^([0-9]{8}|[0-9]{11})$/`— y al abrir el rango a nueve y
@@ -97,7 +114,8 @@ export function AltaDeUnAlumno({
    */
   const matriculaOk = esMatricula(matricula.trim());
   const nombreOk = nombre.trim().split(/\s+/).filter(Boolean).length >= 2;
-  const completo = matriculaOk && nombreOk && !!programa && !!plantel;
+  const avanceOk = avance >= 1 && (!cuenta || avance <= cuenta.total);
+  const completo = matriculaOk && nombreOk && !!programa && !!plantel && avanceOk;
 
   const guardar = async () => {
     setGuardando(true);
@@ -107,6 +125,7 @@ export function AltaDeUnAlumno({
         nombre,
         programa,
         plantel,
+        avance,
         ...(grupo.trim() ? { grupo: grupo.trim() } : {}),
       });
       /*
@@ -121,8 +140,8 @@ export function AltaDeUnAlumno({
       onCerrar();
     } catch (e) {
       // El motivo de la base, tal cual: distingue «ya está en el padrón» de «ya
-      // está registrada» de «esa licenciatura no está en el catálogo», y las
-      // tres llevan a cosas distintas.
+      // está registrada» de «ese programa no está en el catálogo» de «el avance
+      // está fuera de rango», y las cuatro llevan a cosas distintas.
       const { mensajeDeError } = await import("@/lib/supabase");
       toast.error(mensajeDeError(e));
     } finally {
@@ -136,7 +155,7 @@ export function AltaDeUnAlumno({
     <Dialog open onOpenChange={(o) => !o && onCerrar()}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Alta de un alumno de nuevo ingreso</DialogTitle>
+          <DialogTitle>Dar de alta a un alumno</DialogTitle>
         </DialogHeader>
 
         <Alert>
@@ -190,18 +209,55 @@ export function AltaDeUnAlumno({
             />
           </Campo>
 
-          <Campo etiqueta="Licenciatura">
+          <Campo etiqueta="Nivel">
+            <select
+              value={nivel}
+              onChange={(e) => alCambiarNivel(e.target.value)}
+              className={claseSelect}
+            >
+              {catalogo.map((n) => (
+                <option key={n.nivel} value={n.nivel}>
+                  {n.nivel}
+                </option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo etiqueta="Licenciatura o maestría">
             <select
               value={programa}
               onChange={(e) => setPrograma(e.target.value)}
               className={claseSelect}
             >
-              {licenciaturas.map((l) => (
-                <option key={l} value={l}>
-                  {l}
+              {programasDelNivel.map((p) => (
+                <option key={p.nombre} value={p.nombre}>
+                  {p.nombre}
                 </option>
               ))}
             </select>
+          </Campo>
+
+          <Campo
+            etiqueta={cuenta?.etiqueta ?? "Avance"}
+            ayuda={
+              !avanceOk ? (
+                <span className="text-xs text-estado-cancelado">
+                  {avance < 1
+                    ? "Debe ser 1 o más."
+                    : `${cuenta?.etiqueta ?? "El avance"} llega hasta ${cuenta?.total}.`}
+                </span>
+              ) : null
+            }
+          >
+            <Input
+              type="number"
+              min={1}
+              max={cuenta?.total}
+              value={avance}
+              onChange={(e) => setAvance(Number(e.target.value))}
+              inputMode="numeric"
+              className="mt-1 h-11"
+            />
           </Campo>
 
           <Campo etiqueta="Sede donde estudia">
@@ -233,15 +289,6 @@ export function AltaDeUnAlumno({
               className="mt-1 h-11"
             />
           </Campo>
-
-          {/*
-            Se dice que el semestre NO se pregunta. Sin esta línea, quien captura
-            busca el campo y concluye que la pantalla está incompleta.
-          */}
-          <p className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
-            No se pregunta el semestre: al ser de nuevo ingreso queda en el primero, y el sistema lo
-            sabe. Tampoco el nivel, que sale de la licenciatura.
-          </p>
         </div>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-2">

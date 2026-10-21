@@ -2426,8 +2426,8 @@ export async function eliminarPreregistro(folio: string): Promise<{
 /**
  * Da de alta a UN alumno en el padrón con lo que declara en la mesa de registro.
  *
- * Para los de nuevo ingreso, que se pre-registran el 27 y el 28 y cuyo padrón la
- * unidad todavía no tiene. Sin fila en `padron_alumnos` no hay alta posible: la
+ * Para cualquiera cuyo padrón la unidad todavía no tiene —nuevo ingreso o no,
+ * de cualquier nivel—. Sin fila en `padron_alumnos` no hay alta posible: la
  * llave foránea de `participantes.matricula` apunta ahí.
  *
  * La resolución de nombre a uuid se hace AQUÍ y no en la base, por lo mismo que
@@ -2436,18 +2436,19 @@ export async function eliminarPreregistro(folio: string): Promise<{
  * mayúsculas —la misma `clave` que el importador— porque los catálogos y lo que
  * la pantalla enseña vienen del mismo sitio pero pasan por el navegador.
  *
- * Lo que NO se manda: `avance`, que va fijo en 1 dentro de la función porque es
- * el único dato seguro de esta población, y `nivel`, que se deriva del programa.
- * Mandarlos permitiría una combinación que la llave compuesta rechazaría después
- * con un error sobre una restricción.
+ * `avance` SÍ se manda —ya no va fijo en 1— y la base lo valida contra el tope
+ * de su programa o nivel (`trg_padron_avance`). `nivel` no se manda: se deriva
+ * del programa, porque mandarlo aparte permitiría una combinación que la
+ * llave compuesta rechazaría después con un error sobre una restricción.
  */
 export async function altaAsistidaPadron(datos: {
   matricula: string;
   nombre: string;
-  /** Nombre de la licenciatura, tal como la enseña el catálogo. */
+  /** Nombre de la licenciatura o maestría, tal como la enseña el catálogo. */
   programa: string;
   /** Nombre de la sede donde estudia. */
   plantel: string;
+  avance: number;
   grupo?: string | undefined;
 }): Promise<AlumnoPadron> {
   const sb = exigirBase();
@@ -2473,7 +2474,7 @@ export async function altaAsistidaPadron(datos: {
 
   // Se avisa antes de llamar: el mensaje de la función hablaría del catálogo,
   // y el problema aquí es que la pantalla mandó un nombre que no está en él.
-  if (!idPrograma) throw new Error(`La licenciatura «${datos.programa}» no está en el catálogo.`);
+  if (!idPrograma) throw new Error(`El programa «${datos.programa}» no está en el catálogo.`);
   if (!idPlantel) throw new Error(`La sede «${datos.plantel}» no está en el catálogo.`);
 
   const fila = await llamar<{
@@ -2488,6 +2489,7 @@ export async function altaAsistidaPadron(datos: {
     p_nombre: datos.nombre,
     p_programa: idPrograma,
     p_plantel: idPlantel,
+    p_avance: datos.avance,
     p_grupo: datos.grupo ?? null,
   });
 

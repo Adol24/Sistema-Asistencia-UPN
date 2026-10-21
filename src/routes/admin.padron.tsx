@@ -79,22 +79,6 @@ function ImportacionPadron() {
     configuracion,
   } = useEstadoEvento();
   const [altaAbierta, setAltaAbierta] = useState(false);
-  /*
-   * Solo las licenciaturas, y solo sus nombres.
-   *
-   * El alta en mesa es para nuevo ingreso, y `fn_padron_alta_asistida` rechaza
-   * cualquier otro nivel con un mensaje explícito. Ofrecer las maestrías en la
-   * lista sería dejar que quien captura eligiera algo que la base va a devolver:
-   * el filtro se hace aquí para que no llegue a pasar.
-   */
-  const licenciaturas = useMemo(
-    () =>
-      configuracion.catalogoAcademico
-        .filter((n) => n.nivel === "Licenciatura")
-        .flatMap((n) => n.programas.map((p) => p.nombre))
-        .sort((a, b) => a.localeCompare(b, "es")),
-    [configuracion.catalogoAcademico],
-  );
   // Lo que la base rechazó: se enseña, no se esconde en la consola.
   const [rechazados, setRechazados] = useState<{ matricula: string; motivo: string }[]>([]);
   const [aplicado, setAplicado] = useState<{
@@ -442,12 +426,13 @@ function ImportacionPadron() {
       acciones={
         <div className="flex flex-wrap gap-2">
           {/*
-            El alta de uno, para la mesa del 27 y 28.
+            El alta de uno, para quien falte del padrón.
             ----------------------------------------------------------------
             Esta pantalla importa archivos, y eso cubre lo normal: Servicios
-            Escolares entrega la lista y entra de una vez. Lo que no cubría es
-            el caso de los de nuevo ingreso, cuyo padrón la unidad todavía no
-            tiene: sin fila en el padrón no hay pre-registro posible, porque
+            Escolares entrega la lista y entra de una vez. Lo que no cubre es
+            a quien no está en ese archivo todavía —de nuevo ingreso, o de un
+            semestre que el padrón de la unidad no trae—: sin fila en el
+            padrón no hay pre-registro posible, porque
             `participantes.matricula` apunta ahí con una llave foránea.
 
             Va aquí y no en una ruta aparte porque es el mismo padrón, y quien
@@ -1126,7 +1111,7 @@ function ImportacionPadron() {
 
       {altaAbierta ? (
         <AltaDeUnAlumno
-          licenciaturas={licenciaturas}
+          catalogo={configuracion.catalogoAcademico}
           sedes={sedes}
           onCerrar={() => setAltaAbierta(false)}
           onAlta={altaAsistidaPadron}
