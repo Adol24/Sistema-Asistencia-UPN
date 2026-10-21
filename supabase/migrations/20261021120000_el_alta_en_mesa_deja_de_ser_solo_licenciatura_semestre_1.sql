@@ -220,32 +220,46 @@ comment on function fn_padron_alta_asistida is
 
 -- ---------------------------------------------------------------------------
 -- Qué quedó puesto
+--
+-- Se busca por NÚMERO de argumentos y por el nombre de uno de ellos, no por
+-- el texto exacto de `pg_get_function_identity_arguments`: esa función
+-- reconstruye la firma CON los nombres de los parámetros tal como se
+-- declararon (`p_matricula text, p_nombre text, …`), no solo los tipos. Un
+-- primer intento comparó contra `'text, text, uuid, uuid, smallint, text'`
+-- —sin nombres— y nunca pudo coincidir con nada real: el `raise exception`
+-- de un falso negativo abortó la transacción entera, incluido el `create
+-- function` de arriba, y la migración completa se revirtió sin dejar rastro
+-- salvo el error.
 -- ---------------------------------------------------------------------------
 do $$
 declare
+  v_oid oid;
   v_cuerpo text;
 begin
-  select pg_get_functiondef(p.oid) into v_cuerpo
+  select p.oid into v_oid
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
      and p.proname = 'fn_padron_alta_asistida'
-     and pg_get_function_identity_arguments(p.oid) = 'text, text, uuid, uuid, smallint, text';
+     and p.pronargs = 6
+     and 'p_avance' = any(p.proargnames);
 
-  if v_cuerpo is null then
-    raise exception 'fn_padron_alta_asistida(text,text,uuid,uuid,smallint,text) no quedó puesta.';
+  if v_oid is null then
+    raise exception 'fn_padron_alta_asistida con p_avance (seis argumentos) no quedó puesta.';
   end if;
+
+  select pg_get_functiondef(v_oid) into v_cuerpo;
+
   if v_cuerpo like '%nuevo ingreso%' or v_cuerpo like '%v_nivel <> ''Licenciatura''%' then
     raise exception 'El alta en mesa sigue rechazando niveles distintos de Licenciatura.';
-  end if;
-  if v_cuerpo not like '%p_avance%' then
-    raise exception 'El alta en mesa no quedó recibiendo p_avance.';
   end if;
 
   if exists (
     select 1 from pg_proc p
-     where p.proname = 'fn_padron_alta_asistida'
-       and pg_get_function_identity_arguments(p.oid) = 'text, text, uuid, uuid, text'
+     join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'fn_padron_alta_asistida'
+      and p.pronargs = 5
   ) then
     raise exception 'La firma vieja de cinco argumentos sigue viva junto a la nueva.';
   end if;
