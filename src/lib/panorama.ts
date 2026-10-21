@@ -47,6 +47,11 @@ export interface FilaPanorama {
   diasTaller: Dia[];
   diasTallerAsistidos: number;
   evidenciaTallerAprobada: boolean;
+  /** Primera entrada y última salida registradas el día que le tocaba. `undefined` si no entró. */
+  horaEntradaEvento: string | undefined;
+  horaSalidaEvento: string | undefined;
+  /** Hora del primer escaneo de taller, de cualquiera de sus días. `undefined` si no entró a ninguno. */
+  horaEntradaTaller: string | undefined;
   elegibleEvento: boolean;
   elegibleTaller: boolean | null;
   /** Tiene el depósito del evento confirmado pero no llegó el día que le tocaba. */
@@ -83,6 +88,22 @@ export function filaPanoramaDe(
 
   const taller = elegibilidadTaller(entorno, p);
 
+  // `hora` ya llega como "HH:MM" con cero a la izquierda, así que ordena bien
+  // alfabéticamente dentro de un mismo día sin tener que tocar fechas.
+  const delDia = entorno.asistenciasDe(p.folio, p.dia);
+  const horasDe = (tipo: "entrada" | "salida") =>
+    delDia
+      .filter((a) => a.tipo === tipo)
+      .map((a) => a.hora)
+      .sort();
+  const entradasEvento = horasDe("entrada");
+  const salidasEvento = horasDe("salida");
+
+  const asistenciasTaller = entorno
+    .asistenciasDe(p.folio)
+    .filter((a) => a.tipo === "taller")
+    .sort((a, b) => a.dia - b.dia || a.hora.localeCompare(b.hora));
+
   return {
     p,
     avance: avanceTexto(catalogo, p.nivel, p.avance, p.programa),
@@ -95,6 +116,9 @@ export function filaPanoramaDe(
     diasTaller,
     diasTallerAsistidos,
     evidenciaTallerAprobada,
+    horaEntradaEvento: entradasEvento[0],
+    horaSalidaEvento: salidasEvento[salidasEvento.length - 1],
+    horaEntradaTaller: asistenciasTaller[0]?.hora,
     elegibleEvento: elegibilidadEvento(entorno, p).elegible,
     elegibleTaller: taller ? taller.elegible : null,
     pagoSinAsistencia: estado.evento === "pagado" && !asistioSuDia,
