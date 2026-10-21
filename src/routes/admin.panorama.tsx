@@ -204,6 +204,7 @@ function Panorama() {
         "hora_salida_evento",
         "estado_pago_evento",
         "evidencias_evento_aprobadas",
+        "taller_clave",
         "taller",
         "hora_entrada_taller",
         "dias_taller_asistidos_de",
@@ -232,6 +233,7 @@ function Panorama() {
         f.horaSalidaEvento ?? "",
         f.estadoPagoEvento,
         String(f.evidenciasEventoAprobadas),
+        f.p.tallerId ?? "",
         f.tallerNombre ?? "",
         f.horaEntradaTaller ?? "",
         f.p.tallerId ? `${f.diasTallerAsistidos}/${f.diasTaller.length}` : "",
@@ -601,7 +603,16 @@ function FilaDetalle({ f }: { f: FilaPanorama }) {
       <td className="px-3 py-2">
         <EstadoPagoBadge estado={f.estadoPagoEvento} />
       </td>
-      <td className="px-3 py-2">{f.tallerNombre ?? "—"}</td>
+      <td className="px-3 py-2">
+        {f.tallerNombre ? (
+          <>
+            {f.tallerNombre}{" "}
+            <span className="text-xs text-muted-foreground">({p.tallerId})</span>
+          </>
+        ) : (
+          "—"
+        )}
+      </td>
       <td className="px-3 py-2 text-center tabular-nums">
         {p.tallerId ? `${f.diasTallerAsistidos}/${f.diasTaller.length}` : "—"}
       </td>
