@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Check,
+  Download,
   HelpCircle,
   LifeBuoy,
   Loader2,
@@ -23,8 +24,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { avanceTexto } from "@/dominio/catalogos";
 import { buscarEnParticipantes } from "@/lib/busqueda";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { descargarCsv } from "@/lib/exportar";
 import { mensajeDeError } from "@/lib/errores";
 import { meta } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -92,6 +95,7 @@ function Soporte() {
   const {
     casos,
     participantes,
+    configuracion,
     abrirCaso,
     cambiarEstadoCaso,
     corregirNombre,
@@ -176,27 +180,92 @@ function Soporte() {
     );
   };
 
+  /*
+   * Exporta los casos de nombre con el dato completo de la persona: quien
+   * corrige una constancia necesita matrícula, contacto, sede y licenciatura
+   * para encontrarla fuera de este sistema, y el caso por sí solo no los
+   * trae —`casos_soporte` solo guarda el folio—.
+   *
+   * Va sobre TODOS los casos de nombre, no sobre `visibles`: es un reporte
+   * aparte de la bandeja, y filtrar por estado o canal aquí escondería casos
+   * ya resueltos que alguien puede necesitar para el historial.
+   */
+  const exportarNombres = () => {
+    const deNombre = casos.filter((c) => /nombre/i.test(c.asunto));
+    const n = descargarCsv(
+      "casos-de-nombre.csv",
+      [
+        "caso",
+        "estado",
+        "folio",
+        "nombre incorrecto",
+        "nombre correcto",
+        "matricula",
+        "correo",
+        "celular",
+        "perfil",
+        "licenciatura",
+        "nivel",
+        "avance",
+        "grupo",
+        "plantel",
+        "sede",
+        "dia",
+      ],
+      deNombre.map((c) => {
+        const p = getParticipante(c.folio);
+        const correcto =
+          p && p.nombre !== c.nombre ? p.nombre : nombrePropuesto(c.detalle, c.nombre);
+        return [
+          c.id,
+          c.estado.replace("_", " "),
+          c.folio,
+          c.nombre,
+          correcto,
+          p?.matricula ?? "",
+          p?.correo ?? "",
+          p?.celular ?? "",
+          p?.perfil ?? "",
+          p?.programa ?? "",
+          p?.nivel ?? "",
+          p ? avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa) : "",
+          p?.grupo ?? "",
+          p?.plantel ?? "",
+          p?.lugar ?? "",
+          p?.dia ?? "",
+        ];
+      }),
+    );
+    registrarBitacora("Exportó los casos de nombre", `${n} casos`);
+    toast.success(`Exportamos ${n} casos de nombre.`);
+  };
+
   return (
     <PantallaPanel
       area="admin"
       titulo="Casos de soporte"
       descripcion="Llegan del botón de WhatsApp y de «mi nombre está mal» del pre-registro."
       acciones={
-        <Button
-          className="h-11"
-          onClick={() =>
-            setNuevo({
-              folio: "",
-              nombre: "",
-              busqueda: "",
-              asunto: "",
-              detalle: "",
-              canal: "whatsapp",
-            })
-          }
-        >
-          <Plus className="size-4" /> Abrir caso
-        </Button>
+        <>
+          <Button variant="outline" className="h-11" onClick={exportarNombres}>
+            <Download className="size-4" /> Exportar nombres
+          </Button>
+          <Button
+            className="h-11"
+            onClick={() =>
+              setNuevo({
+                folio: "",
+                nombre: "",
+                busqueda: "",
+                asunto: "",
+                detalle: "",
+                canal: "whatsapp",
+              })
+            }
+          >
+            <Plus className="size-4" /> Abrir caso
+          </Button>
+        </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
