@@ -190,6 +190,24 @@ export function movimientosDe(asistencias: Asistencia[], folio: string, dia: Dia
 }
 
 /**
+ * Entrada, salida o reintegro: la etiqueta de un movimiento según su posición
+ * en la lista que devuelve `movimientosDe`.
+ *
+ * El primero siempre es "Entrada" aunque su `tipo` diga otra cosa, porque un
+ * día que abre con una salida es un dato sucio, no un reintegro. De ahí en
+ * adelante la etiqueta sí sigue al `tipo`: una salida es "Salida" y una
+ * entrada posterior a la primera es "Reintegro". Única fuente de esta regla
+ * —antes vivía solo en `/admin/asistencias` y el panorama la habría repetido.
+ */
+export function etiquetaMovimiento(
+  indice: number,
+  tipo: Asistencia["tipo"],
+): "Entrada" | "Salida" | "Reintegro" {
+  if (indice === 0) return "Entrada";
+  return tipo === "salida" ? "Salida" : "Reintegro";
+}
+
+/**
  * ¿Esta persona está dentro del recinto ahora mismo?
  *
  * Manda su último movimiento. Quien nunca pasó por la puerta está fuera, y quien

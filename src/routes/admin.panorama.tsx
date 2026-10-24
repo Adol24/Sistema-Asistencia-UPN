@@ -18,6 +18,7 @@ import { Campo, Cifra, EstadoVacio, Rotulo, Tarjeta } from "@/components/tipogra
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { useEstadoEvento } from "@/lib/estado-evento";
+import { etiquetaMovimiento } from "@/lib/escaneo";
 import { folioDeEjemplo } from "@/lib/busqueda";
 import { useEntornoConstancias } from "@/lib/elegibilidad";
 import {
@@ -185,6 +186,14 @@ function Panorama() {
   };
 
   const exportar = () => {
+    /*
+     * El número de columnas de movimientos lo pone quien más entró y salió
+     * ese día, no un tope fijo: un reintegro de más no debe perderse por
+     * quedarse fuera de una columna que no se abrió.
+     */
+    const maxMovimientos = Math.max(1, ...visibles.map((f) => f.movimientosEvento.length));
+    const columnasMovimientos = Array.from({ length: maxMovimientos }, (_, i) => `movimiento_${i + 1}`);
+
     const n = descargarCsv(
       "panorama.csv",
       [
@@ -202,6 +211,7 @@ function Panorama() {
         "dias_asistidos",
         "hora_entrada_evento",
         "hora_salida_evento",
+        ...columnasMovimientos,
         "estado_pago_evento",
         "evidencias_evento_aprobadas",
         "taller_clave",
@@ -231,6 +241,10 @@ function Panorama() {
         f.diasAsistidos.join("/"),
         f.horaEntradaEvento ?? "",
         f.horaSalidaEvento ?? "",
+        ...columnasMovimientos.map((_, i) => {
+          const m = f.movimientosEvento[i];
+          return m ? `${m.hora} ${etiquetaMovimiento(i, m.tipo)}` : "";
+        }),
         f.estadoPagoEvento,
         String(f.evidenciasEventoAprobadas),
         f.p.tallerId ?? "",

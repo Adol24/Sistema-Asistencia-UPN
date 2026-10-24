@@ -15,7 +15,7 @@ import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { AnularAsistenciaDialogo, type AsistenciaParaAnular } from "@/components/anular-asistencia";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { buscarEnParticipantes } from "@/lib/busqueda";
-import { movimientosDe } from "@/lib/escaneo";
+import { etiquetaMovimiento, movimientosDe } from "@/lib/escaneo";
 import { diaRealDeHoy, isoAMomentoLocal, momentoLocalAIso } from "@/lib/formato";
 import { usePaginacion } from "@/lib/paginacion";
 import { meta } from "@/lib/seo";
@@ -34,9 +34,9 @@ const DIAS: Dia[] = [1, 2, 3];
 
 /** La etiqueta de un movimiento, por su posición y su tipo. Ver `movimientosDe`. */
 function etiquetaDe(indice: number, m: Asistencia): { texto: string; icono: typeof LogIn } {
-  if (indice === 0) return { texto: "Entrada", icono: LogIn };
-  if (m.tipo === "salida") return { texto: "Salida", icono: LogOut };
-  return { texto: "Reintegro", icono: RotateCcw };
+  const texto = etiquetaMovimiento(indice, m.tipo);
+  const icono = texto === "Entrada" ? LogIn : texto === "Salida" ? LogOut : RotateCcw;
+  return { texto, icono };
 }
 
 /** Lo que hace falta para corregir la hora de un movimiento ya escrito. */

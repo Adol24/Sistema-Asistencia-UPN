@@ -23,8 +23,9 @@ import {
   EVIDENCIAS_TALLER_REQUERIDAS,
   type EntornoConstancias,
 } from "@/lib/elegibilidad";
+import { movimientosDe } from "@/lib/escaneo";
 import { sinAcreditar } from "@/lib/pagos-logica";
-import type { Dia, EstadoPago, Participante, Taller } from "@/dominio/tipos";
+import type { Asistencia, Dia, EstadoPago, Participante, Taller } from "@/dominio/tipos";
 
 const DIAS: Dia[] = [1, 2, 3];
 
@@ -50,6 +51,14 @@ export interface FilaPanorama {
   /** Primera entrada y última salida registradas el día que le tocaba. `undefined` si no entró. */
   horaEntradaEvento: string | undefined;
   horaSalidaEvento: string | undefined;
+  /**
+   * Entradas y salidas del evento el día que le tocaba, completas y en orden.
+   *
+   * `horaEntradaEvento`/`horaSalidaEvento` resumen el extremo de esta lista;
+   * esto trae cada movimiento de en medio, que es lo que un reintegro deja
+   * fuera de ese resumen. Ver `movimientosDe` y `etiquetaMovimiento`.
+   */
+  movimientosEvento: Asistencia[];
   /** Hora del primer escaneo de taller, de cualquiera de sus días. `undefined` si no entró a ninguno. */
   horaEntradaTaller: string | undefined;
   elegibleEvento: boolean;
@@ -98,6 +107,7 @@ export function filaPanoramaDe(
       .sort();
   const entradasEvento = horasDe("entrada");
   const salidasEvento = horasDe("salida");
+  const movimientosEvento = movimientosDe(delDia, p.folio, p.dia);
 
   const asistenciasTaller = entorno
     .asistenciasDe(p.folio)
@@ -118,6 +128,7 @@ export function filaPanoramaDe(
     evidenciaTallerAprobada,
     horaEntradaEvento: entradasEvento[0],
     horaSalidaEvento: salidasEvento[salidasEvento.length - 1],
+    movimientosEvento,
     horaEntradaTaller: asistenciasTaller[0]?.hora,
     elegibleEvento: elegibilidadEvento(entorno, p).elegible,
     elegibleTaller: taller ? taller.elegible : null,
