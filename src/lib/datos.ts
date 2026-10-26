@@ -2056,6 +2056,26 @@ export async function estadoDelPortal(folio: string, credencial: string) {
 }
 
 /**
+ * Guarda la CURP del alumno autenticado por folio + credencial.
+ *
+ * La base vuelve a comprobar perfil y formato -ver
+ * `20261026120000_el_alumno_guarda_su_curp.sql`-; aquí solo se manda tal cual,
+ * ya en mayúsculas, para que el error de la base y el del campo digan
+ * siempre lo mismo.
+ */
+export async function guardarCurpRemoto(
+  folio: string,
+  credencial: string,
+  curp: string,
+): Promise<void> {
+  await llamar<null>("fn_portal_guardar_curp", {
+    p_folio: folio,
+    p_credencial: credencial,
+    p_curp: curp,
+  });
+}
+
+/**
  * La huella del archivo, SHA-256 en hexadecimal.
  *
  * Se calcula sobre los BYTES que se van a subir, no sobre el archivo elegido:

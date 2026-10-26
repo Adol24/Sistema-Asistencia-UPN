@@ -81,6 +81,12 @@ export interface Participante {
   estadoPagoTaller?: EstadoPago | undefined;
   nombreEnRevision: boolean;
   /**
+   * Solo el alumno la necesita -es para RENAPO, no para docentes ni externos-
+   * y nadie la trae el día que se pre-registra: indefinida hasta que la
+   * escribe desde su portal. Ver `fn_portal_guardar_curp`.
+   */
+  curp?: string | undefined;
+  /**
    * Cuándo aceptó el aviso de privacidad, ya formateado.
    *
    * Indefinido en quien se pre-registró antes de que el aviso se enseñara. Es un

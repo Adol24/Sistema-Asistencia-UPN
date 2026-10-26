@@ -3,6 +3,7 @@ import { ImageUp, LogOut, QrCode, Route as RouteIcon } from "lucide-react";
 
 import { ENLACE_NAV } from "@/lib/estilos";
 import { usePortal } from "@/lib/portal";
+import { AvisoCurp } from "@/components/aviso-curp";
 import type { RutaConstruida } from "@/lib/mapa-pantallas";
 
 const items: { to: RutaConstruida; label: string; icono: typeof QrCode }[] = [
@@ -38,6 +39,7 @@ export function PortalNav() {
   const { cerrar } = usePortal();
   return (
     <div className="mb-5 grid gap-2">
+      <AvisoCurp />
       <nav
         aria-label="Secciones del portal"
         className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1"
