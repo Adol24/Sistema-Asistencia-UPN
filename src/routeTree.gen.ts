@@ -17,6 +17,7 @@ import { Route as ComprobanteRouteImport } from './routes/comprobante'
 import { Route as ConfirmarNombreRouteImport } from './routes/confirmar-nombre'
 import { Route as EncuestaRouteImport } from './routes/encuesta'
 import { Route as EncuestaTallerRouteImport } from './routes/encuesta-taller'
+import { Route as EvidenciasRouteImport } from './routes/evidencias'
 import { Route as MiDiaRouteImport } from './routes/mi-dia'
 import { Route as PagoRouteImport } from './routes/pago'
 import { Route as RegistroRouteImport } from './routes/registro'
@@ -93,6 +94,11 @@ const EncuestaRoute = EncuestaRouteImport.update({
 const EncuestaTallerRoute = EncuestaTallerRouteImport.update({
   id: '/encuesta-taller',
   path: '/encuesta-taller',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvidenciasRoute = EvidenciasRouteImport.update({
+  id: '/evidencias',
+  path: '/evidencias',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MiDiaRoute = MiDiaRouteImport.update({
@@ -290,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
   '/encuesta-taller': typeof EncuestaTallerRoute
+  '/evidencias': typeof EvidenciasRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByTo {
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
   '/encuesta-taller': typeof EncuestaTallerRoute
+  '/evidencias': typeof EvidenciasRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/confirmar-nombre': typeof ConfirmarNombreRoute
   '/encuesta': typeof EncuestaRoute
   '/encuesta-taller': typeof EncuestaTallerRoute
+  '/evidencias': typeof EvidenciasRoute
   '/mi-dia': typeof MiDiaRoute
   '/pago': typeof PagoRoute
   '/registro': typeof RegistroRoute
@@ -434,6 +443,7 @@ export interface FileRouteTypes {
     | '/confirmar-nombre'
     | '/encuesta'
     | '/encuesta-taller'
+    | '/evidencias'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/confirmar-nombre'
     | '/encuesta'
     | '/encuesta-taller'
+    | '/evidencias'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -528,6 +539,7 @@ export interface FileRouteTypes {
     | '/confirmar-nombre'
     | '/encuesta'
     | '/encuesta-taller'
+    | '/evidencias'
     | '/mi-dia'
     | '/pago'
     | '/registro'
@@ -576,6 +588,7 @@ export interface RootRouteChildren {
   ConfirmarNombreRoute: typeof ConfirmarNombreRoute
   EncuestaRoute: typeof EncuestaRoute
   EncuestaTallerRoute: typeof EncuestaTallerRoute
+  EvidenciasRoute: typeof EvidenciasRoute
   MiDiaRoute: typeof MiDiaRoute
   PagoRoute: typeof PagoRoute
   RegistroRoute: typeof RegistroRoute
@@ -671,6 +684,13 @@ declare module '@tanstack/react-router' {
       path: '/encuesta-taller'
       fullPath: '/encuesta-taller'
       preLoaderRoute: typeof EncuestaTallerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evidencias': {
+      id: '/evidencias'
+      path: '/evidencias'
+      fullPath: '/evidencias'
+      preLoaderRoute: typeof EvidenciasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mi-dia': {
@@ -944,6 +964,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmarNombreRoute: ConfirmarNombreRoute,
   EncuestaRoute: EncuestaRoute,
   EncuestaTallerRoute: EncuestaTallerRoute,
+  EvidenciasRoute: EvidenciasRoute,
   MiDiaRoute: MiDiaRoute,
   PagoRoute: PagoRoute,
   RegistroRoute: RegistroRoute,
