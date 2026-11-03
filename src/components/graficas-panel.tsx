@@ -357,3 +357,85 @@ export function GraficaConteo({
     </ResponsiveContainer>
   );
 }
+
+/** Un reactivo Likert: cuántas respuestas cayeron en cada uno de los cinco valores. */
+export interface BarraLikert {
+  etiqueta: string;
+  v5: number;
+  v4: number;
+  v3: number;
+  v2: number;
+  v1: number;
+}
+
+/**
+ * La paleta de la escala, verde a rojo.
+ *
+ * `v5` y `v1` son los mismos oklch de `--estado-pagado` y `--estado-cancelado`
+ * en `styles.css` —de acuerdo total se lee como un «sí», desacuerdo total como
+ * un «no»—, y `v3` toma `--estado-discrepancia`, el amarillo de en medio. No
+ * hay un cuarto y un quinto token de estado que nombrar para `v4` y `v2`, así
+ * que son la media exacta entre sus vecinos: un degradado interpolado se lee
+ * mejor que inventar dos colores sueltos que no vengan de ningún lado.
+ */
+export const TINTA_LIKERT: Record<"v5" | "v4" | "v3" | "v2" | "v1", string> = {
+  v5: "oklch(0.506 0.142 149)",
+  v4: "oklch(0.513 0.131 112)",
+  v3: "oklch(0.52 0.12 75)",
+  v2: "oklch(0.511 0.159 48)",
+  v1: "oklch(0.502 0.197 20.6)",
+};
+
+/**
+ * La distribución 1-5 de un conjunto de reactivos: una barra apilada por
+ * pregunta, de «totalmente de acuerdo» a «totalmente en desacuerdo».
+ *
+ * Apiladas y no una barra por valor: lo que importa no es cuánta gente marcó
+ * exactamente un 3, sino qué tan pareja o polarizada sale cada pregunta de un
+ * vistazo, y eso solo lo enseña ver las cinco juntas en la misma barra.
+ */
+export function GraficaLikert({
+  datos,
+  color = TINTA_LIKERT,
+  alto,
+  anchoEtiqueta = 40,
+}: {
+  datos: BarraLikert[];
+  color?: Record<"v5" | "v4" | "v3" | "v2" | "v1", string>;
+  alto?: number;
+  /** Cuánto se reserva para el rótulo de la izquierda. */
+  anchoEtiqueta?: number;
+}) {
+  // Sin alto fijo por omisión: crece con el número de reactivos, igual que
+  // una tabla. Una gráfica de doce preguntas en 180 px sale con las barras de
+  // un hilo.
+  const altoFinal = alto ?? Math.max(120, 26 * datos.length + 40);
+  return (
+    <ResponsiveContainer width="100%" height={altoFinal}>
+      <BarChart data={datos} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
+        <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+        <YAxis
+          type="category"
+          dataKey="etiqueta"
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          width={anchoEtiqueta}
+        />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 10 }} />
+        <Bar dataKey="v5" stackId="a" fill={color.v5} name="Totalmente de acuerdo" />
+        <Bar dataKey="v4" stackId="a" fill={color.v4} name="De acuerdo" />
+        <Bar dataKey="v3" stackId="a" fill={color.v3} name="Ni de acuerdo ni en desacuerdo" />
+        <Bar dataKey="v2" stackId="a" fill={color.v2} name="En desacuerdo" />
+        <Bar
+          dataKey="v1"
+          stackId="a"
+          fill={color.v1}
+          name="Totalmente en desacuerdo"
+          radius={[0, 3, 3, 0]}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}

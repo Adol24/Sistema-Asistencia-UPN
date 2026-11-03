@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2, MessageSquareWarning, Star, Trash2 } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChartColumn, Download, Loader2, MessageSquareWarning, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -144,11 +144,23 @@ function PanelEncuesta() {
       titulo="Encuesta"
       descripcion="Quién ha evaluado cada conferencia preliminar, y qué contestó."
       acciones={
-        respuestas && respuestas.length > 0 ? (
-          <Button variant="outline" className="h-11" onClick={exportar}>
-            <Download className="size-4" /> Exportar ({visibles.length})
+        <div className="flex flex-wrap gap-2">
+          {/*
+            La hoja con gráficas, lista para `Ctrl+P` → «Guardar como PDF». Es
+            un enlace y no una descarga porque el archivo lo genera el
+            navegador: ver la cabecera de `admin.encuesta-imprimir.tsx`.
+          */}
+          <Button asChild variant="outline" className="h-11">
+            <Link to="/admin/encuesta-imprimir">
+              <ChartColumn className="size-4" /> Hoja con gráficas
+            </Link>
           </Button>
-        ) : undefined
+          {respuestas && respuestas.length > 0 ? (
+            <Button variant="outline" className="h-11" onClick={exportar}>
+              <Download className="size-4" /> Exportar ({visibles.length})
+            </Button>
+          ) : null}
+        </div>
       }
     >
       {cargando ? (

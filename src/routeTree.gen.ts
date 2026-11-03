@@ -31,6 +31,7 @@ import { Route as AdminBitacoraRouteImport } from './routes/admin.bitacora'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminElegiblesRouteImport } from './routes/admin.elegibles'
 import { Route as AdminEncuestaRouteImport } from './routes/admin.encuesta'
+import { Route as AdminEncuestaImprimirRouteImport } from './routes/admin.encuesta-imprimir'
 import { Route as AdminEncuestaTallerRouteImport } from './routes/admin.encuesta-taller'
 import { Route as AdminLeipRouteImport } from './routes/admin.leip'
 import { Route as AdminMonitoreoRouteImport } from './routes/admin.monitoreo'
@@ -164,6 +165,11 @@ const AdminElegiblesRoute = AdminElegiblesRouteImport.update({
 const AdminEncuestaRoute = AdminEncuestaRouteImport.update({
   id: '/admin/encuesta',
   path: '/admin/encuesta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEncuestaImprimirRoute = AdminEncuestaImprimirRouteImport.update({
+  id: '/admin/encuesta-imprimir',
+  path: '/admin/encuesta-imprimir',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminEncuestaTallerRoute = AdminEncuestaTallerRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-imprimir': typeof AdminEncuestaImprimirRoute
   '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
@@ -357,6 +364,7 @@ export interface FileRoutesByTo {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-imprimir': typeof AdminEncuestaImprimirRoute
   '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
@@ -406,6 +414,7 @@ export interface FileRoutesById {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/elegibles': typeof AdminElegiblesRoute
   '/admin/encuesta': typeof AdminEncuestaRoute
+  '/admin/encuesta-imprimir': typeof AdminEncuestaImprimirRoute
   '/admin/encuesta-taller': typeof AdminEncuestaTallerRoute
   '/admin/leip': typeof AdminLeipRoute
   '/admin/monitoreo': typeof AdminMonitoreoRoute
@@ -456,6 +465,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-imprimir'
     | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
@@ -504,6 +514,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-imprimir'
     | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
@@ -552,6 +563,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/elegibles'
     | '/admin/encuesta'
+    | '/admin/encuesta-imprimir'
     | '/admin/encuesta-taller'
     | '/admin/leip'
     | '/admin/monitoreo'
@@ -601,6 +613,7 @@ export interface RootRouteChildren {
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminElegiblesRoute: typeof AdminElegiblesRoute
   AdminEncuestaRoute: typeof AdminEncuestaRoute
+  AdminEncuestaImprimirRoute: typeof AdminEncuestaImprimirRoute
   AdminEncuestaTallerRoute: typeof AdminEncuestaTallerRoute
   AdminLeipRoute: typeof AdminLeipRoute
   AdminMonitoreoRoute: typeof AdminMonitoreoRoute
@@ -782,6 +795,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/encuesta'
       fullPath: '/admin/encuesta'
       preLoaderRoute: typeof AdminEncuestaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/encuesta-imprimir': {
+      id: '/admin/encuesta-imprimir'
+      path: '/admin/encuesta-imprimir'
+      fullPath: '/admin/encuesta-imprimir'
+      preLoaderRoute: typeof AdminEncuestaImprimirRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/encuesta-taller': {
@@ -977,6 +997,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminElegiblesRoute: AdminElegiblesRoute,
   AdminEncuestaRoute: AdminEncuestaRoute,
+  AdminEncuestaImprimirRoute: AdminEncuestaImprimirRoute,
   AdminEncuestaTallerRoute: AdminEncuestaTallerRoute,
   AdminLeipRoute: AdminLeipRoute,
   AdminMonitoreoRoute: AdminMonitoreoRoute,
