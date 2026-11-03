@@ -24,8 +24,13 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Loader2, MessageSquareWarning, Printer } from "lucide-react";
 import { Protegido } from "@/components/acceso";
-import { GraficaConteo, GraficaLikert, GraficaPerfiles } from "@/components/graficas-panel";
-import { CONFERENCIAS_PRELIMINARES, conferenciaDe } from "@/lib/conferencias";
+import {
+  GraficaConteo,
+  GraficaLikert,
+  GraficaPerfiles,
+  TINTA_LIKERT,
+} from "@/components/graficas-panel";
+import { CONFERENCIAS_PRELIMINARES } from "@/lib/conferencias";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import {
   ESCALA,
@@ -102,7 +107,11 @@ function Seccion({
 }) {
   return (
     <section
-      className={cn("mt-6", junta && "break-inside-avoid", nuevaPagina && "print:break-before-page")}
+      className={cn(
+        "mt-6",
+        junta && "break-inside-avoid",
+        nuevaPagina && "print:break-before-page",
+      )}
     >
       <h2 className="text-sm font-bold">{titulo}</h2>
       {nota ? <p className="mb-2 text-xs text-neutral-500">{nota}</p> : null}
@@ -113,6 +122,35 @@ function Seccion({
 
 /** El alto de la gráfica Likert: un renglón por pregunta, como una tabla. */
 const altoLikert = (preguntas: number) => Math.max(120, 26 * preguntas + 40);
+
+/** Los cinco colores de la distribución, en HTML normal y no en la leyenda de Recharts. */
+const LEYENDA_LIKERT = [
+  { clave: "v5", texto: "Totalmente de acuerdo" },
+  { clave: "v4", texto: "De acuerdo" },
+  { clave: "v3", texto: "Ni de acuerdo ni en desacuerdo" },
+  { clave: "v2", texto: "En desacuerdo" },
+  { clave: "v1", texto: "Totalmente en desacuerdo" },
+] as const;
+
+/**
+ * La leyenda de `GraficaLikert`, fuera del SVG.
+ *
+ * `GraficaLikert` ya no trae su propia `<Legend>` de Recharts —le quitaba
+ * alto al área de dibujo y hacía que Recharts escondiera ticks del eje—. Esta
+ * es la misma leyenda, en HTML normal, que no le disputa espacio a la gráfica.
+ */
+function LeyendaLikert() {
+  return (
+    <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
+      {LEYENDA_LIKERT.map((l) => (
+        <li key={l.clave} className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-sm" style={{ background: TINTA_LIKERT[l.clave] }} />
+          {l.texto}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Las cinco respuestas de la distribución Likert, listas para `GraficaLikert`. */
 function distribucionDe(respuestas: RespuestaEncuesta[], numero: number) {
@@ -163,7 +201,9 @@ function HojaDeEncuesta() {
       CONFERENCIAS_PRELIMINARES.map((c) => {
         const deEsta = r.filter((x) => x.conferencia === c.slug);
         return {
-          etiqueta: c.titulo.length > 28 ? `${c.titulo.slice(0, 27)}…` : c.titulo,
+          // Completo, sin truncar: `GraficaConteo` con `multilinea` lo parte
+          // solo en el eje. Truncar aquí escondería la mitad del título.
+          etiqueta: c.titulo,
           cantidad: promedioGeneral(deEsta) ?? 0,
           respuestas: deEsta.length,
         };
@@ -178,7 +218,8 @@ function HojaDeEncuesta() {
       const valores = r
         .map((x) => x.respuestas[p.numero])
         .filter((v): v is ValorEscala => v !== undefined);
-      const promedio = valores.length > 0 ? valores.reduce((a, b) => a + b, 0) / valores.length : null;
+      const promedio =
+        valores.length > 0 ? valores.reduce((a, b) => a + b, 0) / valores.length : null;
       return { pregunta: p, promedio, respondidaPor: valores.length };
     });
     return { preguntas, filas };
@@ -188,20 +229,6 @@ function HojaDeEncuesta() {
   const seguimiento = useMemo(() => bloqueDe("seguimiento"), [r]);
 
   const promedio = promedioGeneral(r);
-
-  const tarjetas = [
-    { etiqueta: "Respuestas", valor: String(r.length), pie: "en las tres conferencias" },
-    {
-      etiqueta: "Promedio general",
-      valor: promedio !== null ? promedio.toFixed(2) : "—",
-      pie: "de 1 a 5, sobre las preguntas visibles",
-    },
-    {
-      etiqueta: "Conferencias evaluadas",
-      valor: String(CONFERENCIAS_PRELIMINARES.filter((c) => r.some((x) => x.conferencia === c.slug)).length),
-      pie: `de ${CONFERENCIAS_PRELIMINARES.length} preliminares`,
-    },
-  ];
 
   return (
     <div className="min-h-svh bg-neutral-100 p-4 print:bg-white print:p-0">
@@ -234,6 +261,16 @@ function HojaDeEncuesta() {
             {configuracion.fechas ? ` · ${configuracion.fechas}` : ""}
           </p>
           <p className="mt-0.5 text-xs text-neutral-500">Generado el {fechaHora()}</p>
+          {!cargando && !error ? (
+            <p className="mt-2 text-sm text-neutral-700">
+              <strong className="font-bold tabular-nums">{r.length}</strong> respuestas en las tres
+              conferencias · promedio general{" "}
+              <strong className="font-bold tabular-nums">
+                {promedio !== null ? promedio.toFixed(2) : "—"}
+              </strong>{" "}
+              de 5
+            </p>
+          ) : null}
         </header>
 
         {cargando ? (
@@ -248,19 +285,7 @@ function HojaDeEncuesta() {
           </div>
         ) : (
           <>
-            <section className="mt-5 grid grid-cols-3 gap-4 break-inside-avoid">
-              {tarjetas.map((c) => (
-                <div key={c.etiqueta} className="rounded-lg border border-neutral-300 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    {c.etiqueta}
-                  </p>
-                  <p className="mt-1 text-2xl font-extrabold tabular-nums">{c.valor}</p>
-                  <p className="text-xs text-neutral-500">{c.pie}</p>
-                </div>
-              ))}
-            </section>
-
-            <section className="mt-6 grid grid-cols-2 gap-6 break-inside-avoid">
+            <section className="mt-5 grid grid-cols-2 gap-6 break-inside-avoid">
               <div>
                 <h2 className="text-sm font-bold">Por perfil</h2>
                 <p className="mb-2 text-xs text-neutral-500">Reparto de {r.length} respuestas</p>
@@ -268,9 +293,15 @@ function HojaDeEncuesta() {
                   <GraficaPerfiles datos={porPerfil} color={TINTA} alto={160} ancho="55%" />
                   <ul className="grid flex-1 gap-1.5">
                     {porPerfil.map((d) => (
-                      <li key={d.perfil} className="flex items-center justify-between gap-2 text-xs">
+                      <li
+                        key={d.perfil}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
                         <span className="flex items-center gap-2">
-                          <span className="size-2.5 rounded-sm" style={{ background: TINTA[d.perfil] }} />
+                          <span
+                            className="size-2.5 rounded-sm"
+                            style={{ background: TINTA[d.perfil] }}
+                          />
                           {d.etiqueta}
                         </span>
                         <span className="font-bold tabular-nums">{d.total}</span>
@@ -281,33 +312,40 @@ function HojaDeEncuesta() {
               </div>
               <div>
                 <h2 className="text-sm font-bold">Promedio por conferencia</h2>
-                <p className="mb-2 text-xs text-neutral-500">De 1 a 5, cada una con sus respuestas</p>
+                <p className="mb-2 text-xs text-neutral-500">
+                  De 1 a 5, cada una con sus respuestas
+                </p>
                 <GraficaConteo
                   datos={porConferencia}
                   color={TINTA.alumno}
-                  alto={160}
+                  alto={210}
                   horizontal
-                  anchoEtiqueta={130}
+                  anchoEtiqueta={160}
+                  multilinea
+                  dominio={[0, 5]}
+                  ticks={[0, 1, 2, 3, 4, 5]}
+                  mostrarValor
                 />
               </div>
             </section>
 
             {(
               [
-                { instrumento: "impacto" as const, bloque: impacto, nuevaPagina: true },
-                { instrumento: "seguimiento" as const, bloque: seguimiento, nuevaPagina: false },
+                { instrumento: "impacto" as const, bloque: impacto },
+                { instrumento: "seguimiento" as const, bloque: seguimiento },
               ] as const
-            ).map(({ instrumento, bloque, nuevaPagina }) => (
+            ).map(({ instrumento, bloque }) => (
               <Seccion
                 key={instrumento}
                 titulo={INSTRUMENTOS[instrumento].titulo}
                 nota={INSTRUMENTOS[instrumento].descripcion}
                 junta={false}
-                nuevaPagina={nuevaPagina}
               >
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <p className="mb-1 text-xs font-semibold text-neutral-600">Promedio por pregunta</p>
+                    <p className="mb-1 text-xs font-semibold text-neutral-600">
+                      Promedio por pregunta
+                    </p>
                     <GraficaConteo
                       datos={bloque.filas.map((f) => ({
                         etiqueta: `P${f.pregunta.numero}`,
@@ -317,10 +355,15 @@ function HojaDeEncuesta() {
                       horizontal
                       anchoEtiqueta={32}
                       alto={altoLikert(bloque.preguntas.length)}
+                      dominio={[0, 5]}
+                      ticks={[0, 1, 2, 3, 4, 5]}
+                      mostrarValor
                     />
                   </div>
                   <div>
-                    <p className="mb-1 text-xs font-semibold text-neutral-600">Distribución de respuestas</p>
+                    <p className="mb-1 text-xs font-semibold text-neutral-600">
+                      Distribución de respuestas
+                    </p>
                     <GraficaLikert
                       datos={bloque.preguntas.map((p) => ({
                         etiqueta: `P${p.numero}`,
@@ -328,6 +371,7 @@ function HojaDeEncuesta() {
                       }))}
                       alto={altoLikert(bloque.preguntas.length)}
                     />
+                    <LeyendaLikert />
                   </div>
                 </div>
 
@@ -364,9 +408,9 @@ function HojaDeEncuesta() {
                 {ESCALA.find((e) => e.valor === 5)?.etiqueta.toLowerCase()}).
               </p>
               <p className="mt-1">
-                El promedio se calcula sobre las preguntas visibles del instrumento: diez de los doce
-                reactivos del cuestionario en papel. Los dos restantes no se le presentan hoy a quien
-                contesta.
+                El promedio se calcula sobre las preguntas visibles del instrumento: diez de los
+                doce reactivos del cuestionario en papel. Los dos restantes no se le presentan hoy a
+                quien contesta.
               </p>
               <p className="mt-1">
                 <strong className="font-semibold text-neutral-700">Respondida por</strong> puede ser

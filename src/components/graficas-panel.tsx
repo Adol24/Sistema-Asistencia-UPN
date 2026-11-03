@@ -18,6 +18,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  LabelList,
   Legend,
   Pie,
   PieChart,
@@ -306,6 +307,10 @@ export function GraficaConteo({
   alto = ALTO,
   horizontal = false,
   anchoEtiqueta = 150,
+  dominio,
+  ticks,
+  mostrarValor = false,
+  multilinea = false,
 }: {
   datos: BarraConteo[];
   color: string;
@@ -313,13 +318,40 @@ export function GraficaConteo({
   horizontal?: boolean;
   /** Cuánto se reserva para el rótulo cuando va tumbada. */
   anchoEtiqueta?: number;
+  /**
+   * El rango del eje numérico, escrito.
+   *
+   * Sin esto, Recharts autoescala a «números redondos»: con promedios de 1 a
+   * 5 y un máximo real de 4.5, eso da un eje de 0 a 8, que no significa nada
+   * para una escala que no pasa de 5. Se usa solo donde el dato tiene un techo
+   * conocido —el promedio de la encuesta—, no en los conteos de siempre.
+   */
+  dominio?: [number, number];
+  /** Las marcas exactas del eje numérico, a juego con `dominio`. */
+  ticks?: number[];
+  /**
+   * Escribe la cifra exacta al final de cada barra.
+   *
+   * El `<Tooltip>` de abajo no sirve de nada en un PDF —no hay con qué pasar
+   * el mouse por encima—, así que una gráfica pensada para imprimirse necesita
+   * su número ya puesto, no escondido detrás de un hover que nunca llega.
+   */
+  mostrarValor?: boolean;
+  /**
+   * Parte el rótulo del eje tumbado en varias líneas, por palabras.
+   *
+   * Pensado para títulos largos —el de una conferencia, no un «P3»—, donde
+   * truncar con «…» esconde la mitad del dato y ensanchar el eje a lo bestia
+   * le quita todo el ancho a la barra.
+   */
+  multilinea?: boolean;
 }) {
   return (
     <ResponsiveContainer width="100%" height={alto}>
       <BarChart
         data={datos}
         layout={horizontal ? "vertical" : "horizontal"}
-        margin={{ top: 4, right: 12, bottom: 0, left: 0 }}
+        margin={{ top: 4, right: mostrarValor ? 36 : 12, bottom: 0, left: 0 }}
       >
         {horizontal ? (
           <XAxis
@@ -328,6 +360,8 @@ export function GraficaConteo({
             axisLine={false}
             fontSize={11}
             allowDecimals={false}
+            domain={dominio}
+            ticks={ticks}
           />
         ) : (
           <XAxis dataKey="etiqueta" tickLine={false} axisLine={false} fontSize={11} />
@@ -340,6 +374,8 @@ export function GraficaConteo({
             axisLine={false}
             fontSize={11}
             width={anchoEtiqueta}
+            interval={0}
+            tick={multilinea ? <TickMultilinea anchoMaximo={anchoEtiqueta - 8} /> : undefined}
           />
         ) : (
           <YAxis
@@ -349,12 +385,78 @@ export function GraficaConteo({
             fontSize={11}
             width={32}
             allowDecimals={false}
+            domain={dominio}
+            ticks={ticks}
           />
         )}
         <Tooltip />
-        <Bar dataKey="cantidad" fill={color} radius={horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]} />
+        <Bar dataKey="cantidad" fill={color} radius={horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]}>
+          {mostrarValor ? (
+            <LabelList
+              dataKey="cantidad"
+              position={horizontal ? "right" : "top"}
+              fontSize={11}
+              fill="#404040"
+              formatter={(v: number) => v.toFixed(2)}
+            />
+          ) : null}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+/**
+ * El rótulo tumbado, partido en varias líneas.
+ *
+ * Reemplaza el `<text>` de una sola línea que pone Recharts por omisión. Parte
+ * por palabras hasta un ancho aproximado —no hay medida real de texto SVG sin
+ * montar el DOM, así que se estima a ~6.2px por carácter a 11px de fuente—, y
+ * si aun así sobran líneas, la última se corta con «…» en vez de desbordar.
+ */
+function TickMultilinea({
+  x,
+  y,
+  payload,
+  anchoMaximo,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  anchoMaximo: number;
+}) {
+  if (x === undefined || y === undefined || !payload) return null;
+  const maxCaracteres = Math.max(10, Math.floor(anchoMaximo / 6.2));
+  const palabras = payload.value.split(" ");
+  const lineas: string[] = [];
+  let actual = "";
+  for (const palabra of palabras) {
+    const prueba = actual ? `${actual} ${palabra}` : palabra;
+    if (prueba.length > maxCaracteres && actual) {
+      lineas.push(actual);
+      actual = palabra;
+    } else {
+      actual = prueba;
+    }
+  }
+  if (actual) lineas.push(actual);
+
+  const MAX_LINEAS = 4;
+  const final =
+    lineas.length > MAX_LINEAS
+      ? [...lineas.slice(0, MAX_LINEAS - 1), `${lineas[MAX_LINEAS - 1]}…`]
+      : lineas;
+  const altoLinea = 12;
+  const primerOffset = -((final.length - 1) * altoLinea) / 2;
+
+  return (
+    <text x={x} y={y} textAnchor="end" fontSize={11} fill="#525252">
+      {final.map((linea, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? primerOffset : altoLinea}>
+          {linea}
+        </tspan>
+      ))}
+    </text>
   );
 }
 
@@ -371,19 +473,20 @@ export interface BarraLikert {
 /**
  * La paleta de la escala, verde a rojo.
  *
- * `v5` y `v1` son los mismos oklch de `--estado-pagado` y `--estado-cancelado`
- * en `styles.css` —de acuerdo total se lee como un «sí», desacuerdo total como
- * un «no»—, y `v3` toma `--estado-discrepancia`, el amarillo de en medio. No
- * hay un cuarto y un quinto token de estado que nombrar para `v4` y `v2`, así
- * que son la media exacta entre sus vecinos: un degradado interpolado se lee
- * mejor que inventar dos colores sueltos que no vengan de ningún lado.
+ * Divergente de verdad: los extremos son oscuros y saturados —de acuerdo
+ * total en verde, desacuerdo total en rojo—, y el centro es un gris casi sin
+ * matiz, porque «ni de acuerdo ni en desacuerdo» es precisamente eso, neutral.
+ * La primera versión variaba el matiz pero no la luminosidad —los cinco
+ * rondaban L≈0.5—, y en papel se leían como una sola mancha continua sin
+ * jerarquía. Aquí la luminosidad SÍ cambia de extremo a centro, que es lo que
+ * separa un verde de un gris a simple vista.
  */
 export const TINTA_LIKERT: Record<"v5" | "v4" | "v3" | "v2" | "v1", string> = {
-  v5: "oklch(0.506 0.142 149)",
-  v4: "oklch(0.513 0.131 112)",
-  v3: "oklch(0.52 0.12 75)",
-  v2: "oklch(0.511 0.159 48)",
-  v1: "oklch(0.502 0.197 20.6)",
+  v5: "oklch(0.45 0.15 150)",
+  v4: "oklch(0.75 0.12 145)",
+  v3: "oklch(0.8 0.01 255)",
+  v2: "oklch(0.72 0.14 50)",
+  v1: "oklch(0.45 0.18 25)",
 };
 
 /**
@@ -393,6 +496,13 @@ export const TINTA_LIKERT: Record<"v5" | "v4" | "v3" | "v2" | "v1", string> = {
  * Apiladas y no una barra por valor: lo que importa no es cuánta gente marcó
  * exactamente un 3, sino qué tan pareja o polarizada sale cada pregunta de un
  * vistazo, y eso solo lo enseña ver las cinco juntas en la misma barra.
+ *
+ * Sin `<Legend>` de Recharts: le comía alto al área de dibujo y, con menos
+ * alto disponible, Recharts auto-ocultaba ticks del eje categórico para no
+ * amontonarlos —con cinco preguntas, solo dejaba ver la 1ª, 3ª y 5ª—. La
+ * leyenda vive ahora en HTML normal, fuera de este componente, junto a quien
+ * lo llama. `interval={0}` en el eje es el cinturón además del tirante: nunca
+ * debe esconder una pregunta aunque el alto vuelva a quedar justo.
  */
 export function GraficaLikert({
   datos,
@@ -413,7 +523,13 @@ export function GraficaLikert({
   return (
     <ResponsiveContainer width="100%" height={altoFinal}>
       <BarChart data={datos} layout="vertical" margin={{ top: 4, right: 12, bottom: 0, left: 0 }}>
-        <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+        <XAxis
+          type="number"
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          allowDecimals={false}
+        />
         <YAxis
           type="category"
           dataKey="etiqueta"
@@ -421,9 +537,9 @@ export function GraficaLikert({
           axisLine={false}
           fontSize={11}
           width={anchoEtiqueta}
+          interval={0}
         />
         <Tooltip />
-        <Legend wrapperStyle={{ fontSize: 10 }} />
         <Bar dataKey="v5" stackId="a" fill={color.v5} name="Totalmente de acuerdo" />
         <Bar dataKey="v4" stackId="a" fill={color.v4} name="De acuerdo" />
         <Bar dataKey="v3" stackId="a" fill={color.v3} name="Ni de acuerdo ni en desacuerdo" />
