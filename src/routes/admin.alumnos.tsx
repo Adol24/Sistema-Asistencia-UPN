@@ -277,9 +277,10 @@ function Alumnos() {
 
       <Tabla
         className="mt-3"
-        anchoMinimo="78rem"
+        anchoMinimo="84rem"
         columnas={[
           "Nombre",
+          "CURP",
           "Matrícula",
           "Licenciatura",
           "Avance",
@@ -321,6 +322,9 @@ function Alumnos() {
                   en revisión
                 </span>
               ) : null}
+            </td>
+            <td className="px-3 py-2 font-mono text-xs">
+              {p.perfil === "alumno" ? (p.curp ?? "—") : "No aplica"}
             </td>
             <td className="px-3 py-2 font-mono text-xs">{p.matricula ?? "—"}</td>
             <td className="px-3 py-2">{p.programa ?? "—"}</td>
