@@ -154,6 +154,7 @@ function Alumnos() {
         "matricula",
         "nombre",
         "perfil",
+        "curp",
         "nivel",
         "programa",
         "avance",
@@ -168,6 +169,7 @@ function Alumnos() {
         p.matricula ?? "",
         p.nombre,
         p.perfil,
+        p.curp ?? "",
         p.nivel ?? "",
         p.programa ?? "",
         avanceTexto(configuracion.catalogoAcademico, p.nivel, p.avance, p.programa),
@@ -449,6 +451,12 @@ function FichaDelParticipante({
           <Dato etiqueta="Matrícula">
             <span className="font-mono">{p.matricula ?? "No aplica"}</span>
           </Dato>
+          {/* Solo el alumno la guarda, desde su portal: ver `Participante.curp`. */}
+          {p.perfil === "alumno" ? (
+            <Dato etiqueta="CURP">
+              <span className="font-mono">{p.curp ?? "No consta"}</span>
+            </Dato>
+          ) : null}
         </section>
 
         {/*
