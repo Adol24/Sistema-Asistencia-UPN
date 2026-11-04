@@ -138,7 +138,7 @@ export interface Instantanea {
  * sin prórrogas en vez de decirlo.
  */
 const COLS_PARTICIPANTE = `
-  id, folio, perfil, matricula, nombre, nombre_en_revision, correo, celular,
+  id, folio, perfil, matricula, nombre, nombre_en_revision, curp, correo, celular,
   institucion, avance, grupo, dia, taller_id, monto_esperado_evento,
   monto_esperado_taller, creado_en, prorroga_hasta,
   programas ( nombre, niveles_academicos ( nivel ) ), planteles ( nombre )

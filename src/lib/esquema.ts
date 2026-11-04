@@ -178,6 +178,7 @@ export interface FilaParticipante {
   matricula: string | null;
   nombre: string;
   nombre_en_revision: boolean;
+  curp?: string | null;
   correo: string;
   celular: string;
   institucion: string;
@@ -600,24 +601,19 @@ export function aParticipanteDeVista(
   /** Ver `aParticipante`: la vista también trae el uuid, no la clave. */
   clavePorId: (uuid: string) => string | undefined,
 ): Participante {
-  return {
-    ...aParticipante(
-      {
-        ...f,
-        programas: f.programa
-          ? { nombre: f.programa, niveles_academicos: f.nivel ? { nivel: f.nivel } : null }
-          : null,
-        planteles: f.plantel ? { nombre: f.plantel } : null,
-      },
-      lugarPorDia,
-      clavePorId,
-      (_id, concepto) =>
-        concepto === "evento" ? f.estado_pago_evento : (f.estado_pago_taller ?? undefined),
-    ),
-    // Solo `v_participantes` la trae: la tabla no la necesita en ningún panel
-    // interno todavía, así que `aParticipante`/`FilaParticipante` no la cargan.
-    curp: f.curp ?? undefined,
-  };
+  return aParticipante(
+    {
+      ...f,
+      programas: f.programa
+        ? { nombre: f.programa, niveles_academicos: f.nivel ? { nivel: f.nivel } : null }
+        : null,
+      planteles: f.plantel ? { nombre: f.plantel } : null,
+    },
+    lugarPorDia,
+    clavePorId,
+    (_id, concepto) =>
+      concepto === "evento" ? f.estado_pago_evento : (f.estado_pago_taller ?? undefined),
+  );
 }
 
 export function aParticipante(
@@ -677,6 +673,7 @@ export function aParticipante(
     tallerId: f.taller_id ? clavePorId(f.taller_id) : undefined,
     estadoPagoTaller: f.taller_id ? (estado?.(f.id, "taller") ?? "pre_registrado") : undefined,
     nombreEnRevision: f.nombre_en_revision,
+    curp: f.curp ?? undefined,
     montoEsperadoEvento: Number(f.monto_esperado_evento),
     montoEsperadoTaller:
       f.monto_esperado_taller === null ? undefined : Number(f.monto_esperado_taller),
