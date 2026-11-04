@@ -77,7 +77,9 @@ comment on function fn_portal_guardar_curp is
 -- v_participantes necesita la columna nueva: `fn_portal_estado` la expone con
 -- `to_jsonb(vp)`, y sin tocar la vista el alumno nunca vería lo que acaba de
 -- guardar. El cuerpo es el de la migración de abonos de prórroga; lo único que
--- cambia es la línea de `curp`.
+-- cambia es que se agrega `curp` AL FINAL -`create or replace view` no deja
+-- insertar una columna en medio de las que ya existen: Postgres lo lee como
+-- un rename de la columna que estaba en esa posición y lo rechaza con 42P16-.
 -- ---------------------------------------------------------------------------
 create or replace view v_participantes
 with (security_invoker = true) as
@@ -88,7 +90,6 @@ select
   p.matricula,
   p.nombre,
   p.nombre_en_revision,
-  p.curp,
   p.correo,
   p.celular,
   p.institucion,
@@ -113,7 +114,8 @@ select
     as estado_pago_taller,
   p.creado_en,
   p.acepto_aviso_en,
-  p.prorroga_hasta
+  p.prorroga_hasta,
+  p.curp
 from participantes p
 join dias_evento d on d.dia = p.dia
 left join niveles_academicos n on n.id = p.nivel_id
