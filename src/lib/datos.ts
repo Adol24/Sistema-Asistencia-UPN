@@ -1484,6 +1484,19 @@ export async function corregirNombreRemoto(folio: string, nombre: string): Promi
 }
 
 /**
+ * Borra la CURP de un alumno, para que la vuelva a escribir desde su portal.
+ *
+ * Es la corrección de quien la tecleó mal: el portal no deja editarla una vez
+ * guardada —`AvisoCurp` deja de dibujarse en cuanto `p.curp` tiene algo—, así
+ * que volver a `null` es la única forma de que el aviso reaparezca solo, sin
+ * tocar ninguna otra pantalla.
+ */
+export async function borrarCurpRemoto(folio: string): Promise<void> {
+  const sb = exigirBase();
+  await exigir(sb.from("participantes").update({ curp: null }).eq("folio", folio));
+}
+
+/**
  * Abre un caso desde el panel de soporte.
  *
  * Hasta ahora los casos solo nacían de una vía: el alumno reportando que su

@@ -208,6 +208,15 @@ export interface Ctx {
    * del nombre mal escrito: sin esto, resolver el caso solo quitaba la marca.
    */
   corregirNombre: (folio: string, nombre: string) => void;
+  /**
+   * Borra la CURP guardada de un alumno, para que la escriba de nuevo.
+   *
+   * Es la salida para quien la tecleó mal: el portal no deja corregirla una
+   * vez guardada —ver `AvisoCurp`—, así que haberla borrado es lo único que
+   * hace que el aviso vuelva a aparecer. No hace falta tocar el portal para
+   * eso: `AvisoCurp` ya se enseña solo en cuanto `p.curp` es nulo.
+   */
+  borrarCurp: (folio: string) => void;
   /** Corrige el contenido de un caso. El estado va aparte, por `cambiarEstadoCaso`. */
   editarCaso: (id: string, cambios: Pick<CasoSoporte, "asunto" | "detalle" | "canal">) => void;
   /**

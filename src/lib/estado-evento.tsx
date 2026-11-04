@@ -1675,6 +1675,31 @@ export function EstadoEventoProvider({
   }, []);
 
   /**
+   * Borra la CURP guardada de un alumno. Ver `Ctx["borrarCurp"]`.
+   *
+   * Mismo mecanismo que `corregirNombre`: optimista por `ajustesParticipante`,
+   * con reversión si la base rechaza el cambio.
+   */
+  const borrarCurp = useCallback<Ctx["borrarCurp"]>((folio) => {
+    let previo: string | undefined;
+    setAjustesParticipante((prev) => {
+      previo = prev[folio]?.curp;
+      return { ...prev, [folio]: { ...prev[folio], curp: undefined } };
+    });
+    escribir(
+      "la CURP",
+      (d) => d.borrarCurpRemoto(folio),
+      () => {
+        setAjustesParticipante((prev) => ({
+          ...prev,
+          [folio]: { ...prev[folio], curp: previo },
+        }));
+        avisarFallo(`No se pudo borrar la CURP de ${folio}. Sigue como estaba.`);
+      },
+    );
+  }, []);
+
+  /**
    * Corrige lo que dice un caso.
    *
    * Quien atiende por teléfono anota lo que le cuentan y luego lo reescribe con
@@ -2204,6 +2229,7 @@ export function EstadoEventoProvider({
       abrirCasoNombre,
       cambiarEstadoCaso,
       corregirNombre,
+      borrarCurp,
       abrirCaso,
       editarCaso,
       casoDeNombreAbierto,
@@ -2284,6 +2310,7 @@ export function EstadoEventoProvider({
       abrirCasoNombre,
       cambiarEstadoCaso,
       corregirNombre,
+      borrarCurp,
       abrirCaso,
       editarCaso,
       casoDeNombreAbierto,

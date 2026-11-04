@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AtSign, Download, MessageCircle, Phone, UserSearch, X } from "lucide-react";
+import { AtSign, Download, MessageCircle, Phone, Trash2, UserSearch, X } from "lucide-react";
 import { toast } from "sonner";
 import { PantallaPanel } from "@/components/layouts";
 import { Fila, Paginacion, Tabla } from "@/components/tabla";
@@ -9,6 +9,7 @@ import { Campo, Rotulo } from "@/components/tipografia";
 import { EstadoPagoBadge, PerfilBadge } from "@/components/estado-badges";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DialogoConfirmar } from "@/components/dialogo-confirmar";
 import { useEstadoEvento } from "@/lib/estado-evento";
 import { descargarCsv } from "@/lib/exportar";
 import { usePaginacion } from "@/lib/paginacion";
@@ -70,8 +71,15 @@ export const Route = createFileRoute("/admin/alumnos")({
  * mirar. Un desplegable, y deja de ser una decisión de nadie.
  */
 function Alumnos() {
-  const { participantes, configuracion, talleres, estadoDe, infoDia, registrarBitacora } =
-    useEstadoEvento();
+  const {
+    participantes,
+    configuracion,
+    talleres,
+    estadoDe,
+    infoDia,
+    registrarBitacora,
+    borrarCurp,
+  } = useEstadoEvento();
 
   const [q, setQ] = useState("");
   const [perfil, setPerfil] = useState<"todos" | Perfil>("alumno");
@@ -87,6 +95,9 @@ function Alumnos() {
    * ventanilla mientras tanto no se vería.
    */
   const [abierto, setAbierto] = useState<string | null>(null);
+
+  /** A quién se le va a borrar la CURP, por FOLIO y con el mismo motivo de arriba. */
+  const [curpABorrar, setCurpABorrar] = useState<string | null>(null);
 
   /*
    * Los tres desplegables se arman con lo que de verdad hay en la lista, no con
@@ -134,6 +145,9 @@ function Alumnos() {
   const tramo = usePaginacion(visibles, 50, `${perfil}|${programa}|${grupo}|${plantel}|${q}`);
 
   const ficha = abierto ? (participantes.find((p) => p.folio === abierto) ?? null) : null;
+  const aBorrarCurp = curpABorrar
+    ? (participantes.find((p) => p.folio === curpABorrar) ?? null)
+    : null;
 
   const limpiar = () => {
     setQ("");
@@ -378,8 +392,31 @@ function Alumnos() {
           taller={talleres.find((t) => t.id === ficha.tallerId)?.nombre}
           estado={estadoDe(ficha)}
           onCerrar={() => setAbierto(null)}
+          onBorrarCurp={() => setCurpABorrar(ficha.folio)}
         />
       ) : null}
+
+      {/*
+        No se deshace desde aquí: borrar vuelve a dejar el campo vacío y el
+        alumno la escribe de nuevo desde su portal —`AvisoCurp` reaparece solo,
+        sin tocar esa pantalla—. El diálogo dice la CURP actual para que quede
+        claro qué se va a perder.
+      */}
+      <DialogoConfirmar
+        abierto={!!aBorrarCurp}
+        alCerrar={() => setCurpABorrar(null)}
+        titulo={`¿Borrar la CURP de ${aBorrarCurp?.nombre}?`}
+        descripcion={`Tiene guardada "${aBorrarCurp?.curp}". Al confirmar, queda sin CURP y el aviso para escribirla le vuelve a salir en su portal.`}
+        confirmar="Sí, borrar"
+        alConfirmar={() => {
+          const p = aBorrarCurp;
+          if (!p) return;
+          borrarCurp(p.folio);
+          registrarBitacora("Borró la CURP de un alumno", `${p.folio} · ${p.nombre}`);
+          toast.success(`Borramos la CURP de ${p.nombre}.`);
+          setCurpABorrar(null);
+        }}
+      />
     </PantallaPanel>
   );
 }
@@ -402,10 +439,12 @@ function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactN
  * que decidió el evento. Ese agrupado no es estético: cuando un dato está mal,
  * lo primero que hay que saber es a quién se le pide la corrección.
  *
- * Es solo de lectura. Cambiar el taller se hace en `/admin/preinscritos`,
- * registrar un pago en `/financieros/ficha` y corregir un nombre en
- * `/admin/soporte`; traer esas tres acciones aquí duplicaría tres flujos que ya
- * tienen su sitio, su permiso y su registro en la bitácora.
+ * Es de lectura salvo por un botón: cambiar el taller se hace en
+ * `/admin/preinscritos`, registrar un pago en `/financieros/ficha` y corregir
+ * un nombre en `/admin/soporte`; traer esas tres acciones aquí duplicaría tres
+ * flujos que ya tienen su sitio, su permiso y su registro en la bitácora.
+ * Borrar la CURP se queda, porque no tiene otro sitio: es la única corrección
+ * que existe para ella, y nace justo donde se enseña el dato.
  */
 function FichaDelParticipante({
   p,
@@ -414,6 +453,7 @@ function FichaDelParticipante({
   taller,
   estado,
   onCerrar,
+  onBorrarCurp,
 }: {
   p: Participante;
   avance: string;
@@ -421,6 +461,7 @@ function FichaDelParticipante({
   taller: string | undefined;
   estado: { evento: EstadoPago };
   onCerrar: () => void;
+  onBorrarCurp: () => void;
 }) {
   /*
    * El enlace de WhatsApp pide el número sin signos y con lada del país. Los
@@ -458,7 +499,19 @@ function FichaDelParticipante({
           {/* Solo el alumno la guarda, desde su portal: ver `Participante.curp`. */}
           {p.perfil === "alumno" ? (
             <Dato etiqueta="CURP">
-              <span className="font-mono">{p.curp ?? "No consta"}</span>
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="font-mono">{p.curp ?? "No consta"}</span>
+                {p.curp ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                    onClick={onBorrarCurp}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden /> Borrar
+                  </Button>
+                ) : null}
+              </span>
             </Dato>
           ) : null}
         </section>
