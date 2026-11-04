@@ -63,6 +63,10 @@ export function AvisoCurp() {
           Es un paso fundamental para tu constancia: sin ella, la universidad no puede elaborar tu
           documento.
         </p>
+        <p className="font-semibold">
+          Revísala bien antes de enviarla: aparecerá tal cual en tu constancia, y una vez guardada
+          no podrás corregirla tú mismo desde aquí.
+        </p>
         <div className="grid gap-2 sm:flex sm:items-start">
           <div className="flex-1">
             <Label htmlFor="curp" className="sr-only">
