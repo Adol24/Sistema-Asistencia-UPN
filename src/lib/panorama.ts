@@ -47,6 +47,8 @@ export interface FilaPanorama {
   evidenciasEventoAprobadas: number;
   diasTaller: Dia[];
   diasTallerAsistidos: number;
+  /** Cuáles de `diasTaller` tienen entrada de taller registrada. Mismo criterio que `diasAsistidos`, para el taller. */
+  diasTallerAsistidosLista: Dia[];
   evidenciaTallerAprobada: boolean;
   /** Primera entrada y última salida registradas el día que le tocaba. `undefined` si no entró. */
   horaEntradaEvento: string | undefined;
@@ -88,9 +90,10 @@ export function filaPanoramaDe(
     .filter((e) => e.tipo === "evento" && e.dia !== p.dia && e.estado === "aprobada").length;
 
   const diasTaller = entorno.diasTallerDe(p.tallerId);
-  const diasTallerAsistidos = diasTaller.filter((d) =>
+  const diasTallerAsistidosLista = diasTaller.filter((d) =>
     entorno.asistenciasDe(p.folio, d).some((a) => a.tipo === "taller"),
-  ).length;
+  );
+  const diasTallerAsistidos = diasTallerAsistidosLista.length;
   const evidenciaTallerAprobada =
     entorno.evidenciasDe(p.folio).filter((e) => e.tipo === "taller" && e.estado === "aprobada")
       .length >= EVIDENCIAS_TALLER_REQUERIDAS;
@@ -125,6 +128,7 @@ export function filaPanoramaDe(
     evidenciasEventoAprobadas,
     diasTaller,
     diasTallerAsistidos,
+    diasTallerAsistidosLista,
     evidenciaTallerAprobada,
     horaEntradaEvento: entradasEvento[0],
     horaSalidaEvento: salidasEvento[salidasEvento.length - 1],
