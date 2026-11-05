@@ -12,10 +12,10 @@ const FORMATO_CURP = /^[A-Z0-9]{18}$/;
 /**
  * El aviso de que falta la CURP, con el campo para escribirla ahí mismo.
  *
- * Solo para alumnos -docente y externo no tienen expediente que ligar a
- * RENAPO para la constancia- y solo mientras `curp` siga vacía: en cuanto se
- * guarda, el siguiente `fn_portal_estado` la trae y este bloque deja de
- * dibujarse solo, sin que nadie tenga que cerrarlo a mano.
+ * Para cualquier perfil -alumno, docente o externo- y solo mientras `curp`
+ * siga vacía: en cuanto se guarda, el siguiente `fn_portal_estado` la trae y
+ * este bloque deja de dibujarse solo, sin que nadie tenga que cerrarlo a
+ * mano.
  *
  * Vive en `PortalNav` y no en una sola pantalla: las tres rutas del portal la
  * montan, y así se ve sin importar por dónde entre la persona, no solo en
@@ -29,7 +29,7 @@ export function AvisoCurp() {
   const [guardando, setGuardando] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
 
-  if (!p || p.perfil !== "alumno" || p.curp) return null;
+  if (!p || p.curp) return null;
 
   const guardar = async () => {
     const limpia = curp.trim().toUpperCase();

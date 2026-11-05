@@ -337,9 +337,7 @@ function Alumnos() {
                 </span>
               ) : null}
             </td>
-            <td className="px-3 py-2 font-mono text-xs">
-              {p.perfil === "alumno" ? (p.curp ?? "—") : "No aplica"}
-            </td>
+            <td className="px-3 py-2 font-mono text-xs">{p.curp ?? "—"}</td>
             <td className="px-3 py-2 font-mono text-xs">{p.matricula ?? "—"}</td>
             <td className="px-3 py-2">{p.programa ?? "—"}</td>
             <td className="px-3 py-2">
@@ -496,24 +494,22 @@ function FichaDelParticipante({
           <Dato etiqueta="Matrícula">
             <span className="font-mono">{p.matricula ?? "No aplica"}</span>
           </Dato>
-          {/* Solo el alumno la guarda, desde su portal: ver `Participante.curp`. */}
-          {p.perfil === "alumno" ? (
-            <Dato etiqueta="CURP">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="font-mono">{p.curp ?? "No consta"}</span>
-                {p.curp ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
-                    onClick={onBorrarCurp}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden /> Borrar
-                  </Button>
-                ) : null}
-              </span>
-            </Dato>
-          ) : null}
+          {/* Cualquier perfil la guarda, desde su portal: ver `Participante.curp`. */}
+          <Dato etiqueta="CURP">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-mono">{p.curp ?? "No consta"}</span>
+              {p.curp ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  onClick={onBorrarCurp}
+                >
+                  <Trash2 className="size-3.5" aria-hidden /> Borrar
+                </Button>
+              ) : null}
+            </span>
+          </Dato>
         </section>
 
         {/*
